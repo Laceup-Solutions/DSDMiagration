@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36327.8 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LaceupMigration", "LaceupMigration\LaceupMigration.csproj", "{861DF919-0793-4200-BCBA-F189428823CA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LaceupMigration.Business", "LaceupMigration.Business\LaceupMigration.Business.csproj", "{CB11D6AC-C03C-44F2-8C4D-30FE01E65251}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{861DF919-0793-4200-BCBA-F189428823CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{861DF919-0793-4200-BCBA-F189428823CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{861DF919-0793-4200-BCBA-F189428823CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{861DF919-0793-4200-BCBA-F189428823CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CB11D6AC-C03C-44F2-8C4D-30FE01E65251}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CB11D6AC-C03C-44F2-8C4D-30FE01E65251}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CB11D6AC-C03C-44F2-8C4D-30FE01E65251}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CB11D6AC-C03C-44F2-8C4D-30FE01E65251}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E03D3F67-6B41-45E9-A28E-7CE7C228BB5B}
+	EndGlobalSection
+EndGlobal

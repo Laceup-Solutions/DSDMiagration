@@ -1,0 +1,73 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net9.0-android;net9.0-ios</TargetFrameworks>
+		<OutputType>Exe</OutputType>
+		<RootNamespace>LaceupMigration</RootNamespace>
+		<UseMaui>true</UseMaui>
+		<SingleProject>true</SingleProject>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<!-- Display name -->
+		<ApplicationTitle>LaceupMigration</ApplicationTitle>
+
+		<!-- App Identifier -->
+		<ApplicationId>com.laceupsolutions.laceupmigration</ApplicationId>
+
+		<!-- Versions -->
+		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
+		<WindowsPackageType>None</WindowsPackageType>
+
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">22.0</SupportedOSPlatformVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- App Icon -->
+		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+
+		<!-- Splash Screen -->
+		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+
+		<!-- Images -->
+		<MauiImage Include="Resources\Images\*" />
+		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
+
+		<!-- Custom Fonts -->
+		<MauiFont Include="Resources\Fonts\*" />
+
+		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-android'">
+		<PackageReference Include="Honeywell.BarcodeReader"  Version="1.32.7.10" />
+        <Reference Include="BarcodeAPI_V1_1_15">
+            <HintPath>UtilDlls\BarcodeAPI_V1_1_15.dll</HintPath>
+        </Reference>
+        <Reference Include="DeviceAPI">
+            <HintPath>UtilDlls\DeviceAPI.dll</HintPath>
+        </Reference>
+        <Reference Include="Symbol.XamarinEMDK">
+            <HintPath>UtilDlls\Symbol.XamarinEMDK.dll</HintPath>
+        </Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
+		<PackageReference Include="SharpZipLib" Version="1.4.2" />
+		<PackageReference Include="SocketMobile.Capture" Version="1.7.112.395" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\LaceupMigration.Business\LaceupMigration.Business.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="UtilDlls\" />
+	</ItemGroup>
+
+</Project>

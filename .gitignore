@@ -1,0 +1,17 @@
+*.suo
+*.user
+**/.DS_Store
+_ReSharper.*
+bin
+obj
+xs
+packages
+*.json
+!spec/*.json
+.vs/
+.vs
+/.vs
+/.vs/ProjectEvaluation
+LaceupMigration/LaceupMigration.csproj.user
+/LaceupMigration/.idea
+/.idea/.idea.LaceupMigration/.idea
