@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 x:Class="LaceupMigration.TermsAndConditionsPage"
+			 Shell.NavBarIsVisible="False"
+			 Shell.BackButtonBehavior="{x:Null}">
+	<ContentPage.Content>
+		<Grid Padding="20" RowDefinitions="Auto,*,Auto">
+			<Label Text="Terms and Conditions"
+				   FontSize="24"
+				   FontAttributes="Bold"
+				   HorizontalOptions="Center"
+				   Margin="0,0,0,12" />
+
+			<ScrollView Grid.Row="1">
+				<Label Text="{Binding TermsContent}"
+					   LineBreakMode="WordWrap"
+					   FontSize="14" />
+			</ScrollView>
+
+			<Button Grid.Row="2"
+					Text="Accept Terms and Conditions"
+					Command="{Binding AcceptCommand}"
+					Padding="16"
+					Margin="0,16,0,0"
+					HorizontalOptions="Center" />
+		</Grid>
+	</ContentPage.Content>
+</ContentPage>
+
+

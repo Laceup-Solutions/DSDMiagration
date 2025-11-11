@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 x:Class="LaceupMigration.LoginConfigPage"
+			 Shell.NavBarIsVisible="False"
+			 Shell.BackButtonBehavior="{x:Null}">
+	<ScrollView>
+		<VerticalStackLayout Padding="24" Spacing="16">
+			<Image Source="appicon.svg"
+				   WidthRequest="100"
+				   HeightRequest="100"
+				   HorizontalOptions="Center"
+				   Margin="0,50,0,0" />
+
+			<Label Text="Welcome to Laceup"
+				   HorizontalOptions="Center"
+				   FontAttributes="Bold"
+				   TextColor="{DynamicResource PrimaryTextColor}"
+				   FontSize="20" />
+
+			<Button Text="Support Contact"
+					Command="{Binding SupportContactCommand}"
+					HorizontalOptions="Center" />
+
+			<Grid ColumnDefinitions="*,*"
+				  IsVisible="{Binding IsBusy}">
+				<ActivityIndicator Grid.ColumnSpan="2" IsRunning="True" IsVisible="True" />
+			</Grid>
+
+			<Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+				  WidthRequest="300"
+				  HorizontalOptions="Center">
+				<Entry Grid.Row="0"
+					   Text="{Binding ServerAddress}"
+					   Placeholder="Server Address"
+					   HorizontalTextAlignment="Center" />
+				<Entry Grid.Row="1"
+					   Text="{Binding Port}"
+					   Keyboard="Numeric"
+					   Placeholder="Company Id"
+					   HorizontalTextAlignment="Center" />
+				<Entry Grid.Row="2"
+					   Text="{Binding SalesmanId}"
+					   Keyboard="Numeric"
+					   Placeholder="Salesman Id"
+					   HorizontalTextAlignment="Center" />
+				<Button Grid.Row="3"
+						Text="Sign In"
+						Command="{Binding SignInCommand}" />
+				<Button Grid.Row="4"
+						Text="Need help?"
+						Command="{Binding NeedHelpCommand}"
+						HorizontalOptions="Center" />
+			</Grid>
+		</VerticalStackLayout>
+	</ScrollView>
+</ContentPage>
+
+

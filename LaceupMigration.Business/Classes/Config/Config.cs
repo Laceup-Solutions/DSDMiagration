@@ -349,7 +349,7 @@ namespace LaceupMigration
             Config.AddDefaultItemToCredit = Preferences.Get(AddDefaultItemToCreditKey, false);
             Config.DefaultItem = Preferences.Get(DefaultItemKey, 0);
             Config.DistanceToOrder = Preferences.Get(DistanceToOrderKey, 0);
-            Config.ProductFileCreationDate = Preferences.Get(ProductFileCreationDateKey, 0);
+            Config.ProductFileCreationDate = Preferences.Get(ProductFileCreationDateKey, 0L);
             Config.ShowInvoiceTotal = Preferences.Get(ShowInvoiceTotalKey, true);
             Config.BackGroundSync = Preferences.Get(BackGroundSyncKey, true);
             Config.CanLeaveBatch = Preferences.Get(CanLeaveBatchKey, false);
@@ -525,7 +525,7 @@ namespace LaceupMigration
             Config.UseFullConsignment = Preferences.Get(UseFullConsignmentKey, false);
             Config.RTN = Preferences.Get(RTNKey, string.Empty);
             Config.BillNumRequired = Preferences.Get(BillNumRequiredKey, false);
-            Config.DefaultTaxRate = Preferences.Get(DefaultTaxRateKey, 0);
+            Config.DefaultTaxRate = Preferences.Get(DefaultTaxRateKey, 0F);
             Config.UseLastUoM = Preferences.Get(UseLastUoMKey, false);
             Config.ShowAddrInClientList = Preferences.Get(ShowAddrInClientListKey, true);
             Config.SalesmanInCreditDel = Preferences.Get(SalesmanInCreditDelKey, false);
@@ -542,8 +542,8 @@ namespace LaceupMigration
             Config.PreSaleConsigment = Preferences.Get(PreSaleConsigmentKey, false);
             Config.UseConsignmentLot = Preferences.Get(UseConsignmentLotKey, false);
             Config.SendBackgroundBackup = Preferences.Get(SendBackgroundBackupKey, true);
-            Config.MinimumWeight = Preferences.Get(MinimumWeightkey, 0);
-            Config.MinimumAmount = Preferences.Get(Minimumamountkey, 0);
+            Config.MinimumWeight = Preferences.Get(MinimumWeightkey, 0F);
+            Config.MinimumAmount = Preferences.Get(Minimumamountkey, 0F);
             Config.PresaleCommMandatory = Preferences.Get(PresaleCommMandatoryKey, false);
             Config.PrintTaxLabel = Preferences.Get(PrintTaxLabelKey, "SALES TAX:");
             Config.AllowDiscountPerLine = Preferences.Get(AllowDiscountPerLineKey, false);
@@ -714,8 +714,8 @@ namespace LaceupMigration
             FreightType = Preferences.Get(FreightTypeKey, 0);
             OtherChargesComments = Preferences.Get(OtherChargesCommentsKey, string.Empty);
             FreightComments = Preferences.Get(FreightCommentsKey, string.Empty);
-            OtherChargesVale = Preferences.Get(OtherChargesValeKey, 0);
-            FreightVale = Preferences.Get(FreightValeKey, 0);
+            OtherChargesVale = Preferences.Get(OtherChargesValeKey, 0F);
+            FreightVale = Preferences.Get(FreightValeKey, 0F);
             UseBigFontForPrintDate = Preferences.Get(UseBigFontForPrintDateKey, false);
             Simone = Preferences.Get(SimoneKey, false);
             MinimumOrderProductId = Preferences.Get(MinimumOrderProductIdKey, 0);
@@ -759,7 +759,7 @@ namespace LaceupMigration
             GetUOMSOnCommand = Preferences.Get(GetUOMSOnCommandKey, true);
             SalesmanSeqValues = Preferences.Get(SalesmanSeqValuesKey, false);
             SalesmanSeqPrefix = Preferences.Get(SalesmanSeqPrefixKey, "");
-            SalesmanSeqExpirationDate = new DateTime(Preferences.Get(SalesmanSeqExpirationDateKey, 0));
+            SalesmanSeqExpirationDate = new DateTime(Preferences.Get(SalesmanSeqExpirationDateKey, 0L));
             SalesmanSeqFrom = Preferences.Get(SalesmanSeqFromKey, 0);
             SalesmanSeqTo = Preferences.Get(SalesmanSeqToKey, 0);
             SalesmanSelectedSite = Preferences.Get(SalesmanSelectedSiteKey, 0);
@@ -835,11 +835,11 @@ namespace LaceupMigration
             PaymentBankIsMandatory = Preferences.Get(PaymentBankIsMandatoryKey, false);
             OrderCanBeChanged = Preferences.Get(OrderCanBeChangedKey, true);
             CreditCanBeChanged = Preferences.Get(CreditCanBeChangedKey, true);
-            OrderMinimumQty = Preferences.Get(OrderMinimumQtyKey, 0);
+            OrderMinimumQty = Preferences.Get(OrderMinimumQtyKey, 0F);
             OrderMinQtyMinAmount = Preferences.Get(OrderMinQtyMinAmountKey, true);
             ProductMinQty = Preferences.Get(ProductMinQtyKey, true);
-            MaxQtyInOrder = Preferences.Get(MaxQtyInOrderKey, 0);
-            OrderMinimumTotalPrice = Preferences.Get(OrderMinimumTotalPriceKey, 0);
+            MaxQtyInOrder = Preferences.Get(MaxQtyInOrderKey, 0F);
+            OrderMinimumTotalPrice = Preferences.Get(OrderMinimumTotalPriceKey, 0F);
             OrderHistoryByClient = Preferences.Get(OrderHistoryByClientKey, false);
             PrintInvoiceAsReceipt = Preferences.Get(PrintInvoiceAsReceiptKey, false);
             HidePrintBatch = Preferences.Get(HidePrintBatchKey, false);
@@ -9553,8 +9553,9 @@ namespace LaceupMigration
         {
             string currentSSID = GetSSID().Replace("\"", "").Trim().ToUpperInvariant();
             Logger.CreateLog("Connected to: [" + (currentSSID ?? "not connected") + "]");
-            var ssid = Config.SSID.Replace("\"", "").Trim().ToUpperInvariant();
-            if (!string.IsNullOrEmpty(SSID) &&
+            var ssid = Config.SSID ?? string.Empty;
+            ssid = ssid.Replace("\"", "").Trim().ToUpperInvariant();
+            if (!string.IsNullOrEmpty(ssid) &&
                 string.Compare(currentSSID, ssid, StringComparison.OrdinalIgnoreCase) == 0)
                 return LanAddress;
             return IPAddressGateway;

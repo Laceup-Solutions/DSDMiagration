@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.PaymentsPage"
+             x:DataType="vm:PaymentsPageViewModel"
+             Title="Payments">
+
+    <ContentPage.Resources>
+        <Style TargetType="Button" x:Key="SmallButton">
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Margin" Value="4,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#FFFFFF, Dark=#2C2C2C}" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+            <Setter Property="BorderColor" Value="#CCCCCC" />
+            <Setter Property="BorderWidth" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+
+        <Style TargetType="Button" x:Key="DeleteButton">
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Margin" Value="4,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="BackgroundColor" Value="#D32F2F" />
+            <Setter Property="TextColor" Value="White" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+
+        <DataTemplate x:Key="PaymentComponentTemplate" x:DataType="vm:PaymentComponentViewModel">
+            <Frame Margin="0,2"
+                   Padding="8"
+                   HasShadow="False"
+                   BorderColor="#E0E0E0"
+                   CornerRadius="8"
+                   BackgroundColor="#FAFAFA">
+                <Grid ColumnDefinitions="*,Auto">
+                    <Label Grid.Column="0"
+                           Text="{Binding PaymentMethodText}"
+                           FontSize="13" />
+                    <Label Grid.Column="1"
+                           Text="{Binding AmountText}"
+                           FontSize="13"
+                           FontAttributes="Bold"
+                           HorizontalOptions="End" />
+                </Grid>
+            </Frame>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PaymentItemTemplate" x:DataType="vm:PaymentListItemViewModel">
+            <Frame Margin="0,4"
+                   Padding="12"
+                   HasShadow="False"
+                   BorderColor="#E0E0E0"
+                   CornerRadius="10">
+                <Grid RowDefinitions="Auto,Auto,Auto"
+                      ColumnDefinitions="Auto,*"
+                      ColumnSpacing="12">
+                    <CheckBox Grid.Row="0"
+                              Grid.Column="0"
+                              IsChecked="{Binding IsSelected}"
+                              VerticalOptions="Start" />
+
+                    <Grid Grid.Row="0"
+                          Grid.Column="1"
+                          ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout Grid.Column="0"
+                                             Spacing="4">
+                            <Label Text="{Binding InvoiceNumberLabel}"
+                                   FontSize="12"
+                                   TextColor="#666666" />
+                            <Label Text="{Binding InvoiceNumberText}"
+                                   FontSize="16"
+                                   FontAttributes="Bold" />
+                            <Label Text="{Binding TotalText}"
+                                   FontSize="14"
+                                   FontAttributes="Bold" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="1"
+                                Text="→"
+                                FontSize="18"
+                                BackgroundColor="Transparent"
+                                TextColor="#1976D2"
+                                Command="{Binding ViewDetailsCommand}"
+                                WidthRequest="40"
+                                HeightRequest="40"
+                                Padding="0" />
+                    </Grid>
+
+                    <CollectionView Grid.Row="1"
+                                    Grid.Column="1"
+                                    ItemsSource="{Binding Components}"
+                                    ItemTemplate="{StaticResource PaymentComponentTemplate}"
+                                    SelectionMode="None"
+                                    Margin="0,8,0,0" />
+                </Grid>
+            </Frame>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ClientGroupTemplate" x:DataType="vm:ClientPaymentGroupViewModel">
+            <VerticalStackLayout Spacing="4">
+                <Frame Padding="12"
+                       BackgroundColor="#F5F5F5"
+                       HasShadow="False">
+                    <Label Text="{Binding ClientName}"
+                           FontSize="16"
+                           FontAttributes="Bold" />
+                </Frame>
+                <CollectionView ItemsSource="{Binding Payments}"
+                                ItemTemplate="{StaticResource PaymentItemTemplate}"
+                                SelectionMode="None" />
+            </VerticalStackLayout>
+        </DataTemplate>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*"
+          Padding="16"
+          RowSpacing="12">
+        <Border Grid.Row="0"
+                StrokeThickness="0"
+                BackgroundColor="#F2F2F7"
+                IsVisible="{Binding IsSearchVisible}"
+                Padding="12,4"
+                StrokeShape="RoundRectangle 12">
+            <Grid ColumnDefinitions="*,Auto">
+                <SearchBar Grid.Column="0"
+                           Placeholder="Search payments"
+                           FontSize="14"
+                           Text="{Binding SearchQuery}"
+                           SearchButtonPressed="SearchBar_SearchButtonPressed" />
+                <Button Grid.Column="1"
+                        Text="⚙"
+                        FontSize="18"
+                        BackgroundColor="Transparent"
+                        Command="{Binding SearchMenuCommand}"
+                        WidthRequest="40" />
+            </Grid>
+        </Border>
+
+        <ScrollView Grid.Row="1"
+                    Orientation="Horizontal"
+                    IsVisible="{Binding ShowButtonsLayout}">
+            <HorizontalStackLayout Spacing="6"
+                                  HorizontalOptions="Start">
+                <Button Text="Collect Payment"
+                        Style="{StaticResource SmallButton}"
+                        Command="{Binding PaymentCommand}"
+                        WidthRequest="120" />
+                <Button Text="Print"
+                        Style="{StaticResource SmallButton}"
+                        Command="{Binding PrintCommand}" />
+                <Button Text="Send"
+                        Style="{StaticResource SmallButton}"
+                        Command="{Binding SendCommand}"
+                        IsVisible="{Binding ShowSendButton}" />
+                <Button Text="Deposit"
+                        Style="{StaticResource SmallButton}"
+                        Command="{Binding DepositCommand}"
+                        IsVisible="{Binding ShowDepositButton}"
+                        FontSize="13" />
+                <Button Text="View Summary"
+                        Style="{StaticResource SmallButton}"
+                        Command="{Binding SummaryCommand}"
+                        IsVisible="{Binding ShowSummaryButton}"
+                        FontSize="13" />
+                <Button Text="{Binding DeleteButtonText}"
+                        Style="{StaticResource DeleteButton}"
+                        Command="{Binding DeleteCommand}"
+                        IsVisible="{Binding ShowDeleteButton}" />
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <Grid Grid.Row="2"
+              ColumnDefinitions="*,Auto"
+              IsVisible="{Binding ShowSelectAllLayout}">
+            <HorizontalStackLayout Grid.Column="0"
+                                   Spacing="8"
+                                   VerticalOptions="Center">
+                <CheckBox IsChecked="{Binding IsSelectAllChecked}"
+                          CheckedChanged="CheckBox_CheckedChanged" />
+                <Label Text="{Binding SelectAllText}"
+                       TextColor="#1A1A1A"
+                       FontAttributes="Bold"
+                       FontSize="14"
+                       VerticalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding SelectAllCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </HorizontalStackLayout>
+            <Label Grid.Column="1"
+                   Text="{Binding TotalText}"
+                   FontSize="14"
+                   FontAttributes="Bold"
+                   TextColor="#1A1A1A"
+                   HorizontalOptions="End"
+                   IsVisible="{Binding ShowTotal}" />
+        </Grid>
+
+        <CollectionView Grid.Row="3"
+                        ItemsSource="{Binding ClientGroups}"
+                        ItemTemplate="{StaticResource ClientGroupTemplate}"
+                        SelectionMode="None"
+                        EmptyView="No payments available." />
+    </Grid>
+</ContentPage>

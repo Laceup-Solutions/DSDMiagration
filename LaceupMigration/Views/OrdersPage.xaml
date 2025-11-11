@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.OrdersPage"
+             x:DataType="vm:OrdersPageViewModel"
+             Title="Transactions">
+
+    <ContentPage.Resources>
+        <Style TargetType="Button" x:Key="SmallButton">
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Margin" Value="4,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#FFFFFF, Dark=#2C2C2C}" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+            <Setter Property="BorderColor" Value="#CCCCCC" />
+            <Setter Property="BorderWidth" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+
+        <DataTemplate x:Key="OrderItemTemplate" x:DataType="vm:OrderListItemViewModel">
+            <Frame Margin="0,4"
+                   Padding="12"
+                   HasShadow="False"
+                   BorderColor="#E0E0E0"
+                   CornerRadius="10">
+                <Grid ColumnDefinitions="Auto,*"
+                      RowDefinitions="Auto"
+                      ColumnSpacing="12">
+                    <CheckBox Grid.Row="0"
+                              Grid.Column="0"
+                              IsChecked="{Binding IsSelected}"
+                              VerticalOptions="Center" />
+
+                    <Grid Grid.Row="0"
+                          Grid.Column="1"
+                          ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout Grid.Column="0"
+                                             Spacing="4">
+                            <Label Text="{Binding OrderNumberText}"
+                                   FontSize="16"
+                                   FontAttributes="Bold" />
+                            <Label Text="{Binding DateText}"
+                                   FontSize="13"
+                                   TextColor="#666666" />
+                            <Label Text="{Binding TotalText}"
+                                   FontSize="13"
+                                   IsVisible="{Binding ShowTotal}" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="1"
+                                Text="→"
+                                FontSize="18"
+                                BackgroundColor="Transparent"
+                                TextColor="#1976D2"
+                                Command="{Binding ViewDetailsCommand}"
+                                WidthRequest="40"
+                                HeightRequest="40"
+                                Padding="0" />
+                    </Grid>
+                </Grid>
+            </Frame>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ClientGroupTemplate" x:DataType="vm:ClientOrderGroupViewModel">
+            <VerticalStackLayout Spacing="4">
+                <Frame Padding="12"
+                       BackgroundColor="#F5F5F5"
+                       HasShadow="False">
+                    <Label Text="{Binding ClientName}"
+                           FontSize="16"
+                           FontAttributes="Bold" />
+                </Frame>
+                <CollectionView ItemsSource="{Binding Orders}"
+                                ItemTemplate="{StaticResource OrderItemTemplate}"
+                                SelectionMode="None" />
+            </VerticalStackLayout>
+        </DataTemplate>
+
+        <DataTemplate x:Key="TransactionSectionTemplate" x:DataType="vm:TransactionSectionViewModel">
+            <VerticalStackLayout Spacing="8">
+                <Grid ColumnDefinitions="*,Auto"
+                      Padding="12,8"
+                      BackgroundColor="#E3F2FD">
+                    <Label Grid.Column="0"
+                           Text="{Binding SectionName}"
+                           FontSize="18"
+                           FontAttributes="Bold" />
+                    <Label Grid.Column="1"
+                           Text="{Binding SectionTotalText}"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           IsVisible="{Binding ShowTotal}"
+                           HorizontalOptions="End" />
+                </Grid>
+                <CollectionView ItemsSource="{Binding ClientGroups}"
+                                ItemTemplate="{StaticResource ClientGroupTemplate}"
+                                SelectionMode="None" />
+            </VerticalStackLayout>
+        </DataTemplate>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*"
+          Padding="16"
+          RowSpacing="12">
+        <Border Grid.Row="0"
+                StrokeThickness="0"
+                BackgroundColor="#F2F2F7"
+                IsVisible="{Binding IsSearchVisible}"
+                Padding="12,4"
+                StrokeShape="RoundRectangle 12">
+            <Grid ColumnDefinitions="*,Auto">
+                <SearchBar Grid.Column="0"
+                           Placeholder="Search transactions"
+                           FontSize="14"
+                           Text="{Binding SearchQuery}"
+                           SearchButtonPressed="SearchBar_SearchButtonPressed" />
+                <Button Grid.Column="1"
+                        Text="⚙"
+                        FontSize="18"
+                        BackgroundColor="Transparent"
+                        Command="{Binding SearchMenuCommand}"
+                        WidthRequest="40" />
+            </Grid>
+        </Border>
+
+        <ScrollView Grid.Row="1"
+                    Orientation="Horizontal"
+                    IsVisible="{Binding ShowButtonsLayout}">
+            <HorizontalStackLayout Spacing="6"
+                                  HorizontalOptions="Start">
+                <Picker ItemsSource="{Binding TransactionTypeOptions}"
+                        SelectedItem="{Binding SelectedTransactionType}"
+                        WidthRequest="150"
+                        FontSize="13" />
+                <Button Text="Print"
+                        Style="{StaticResource SmallButton}"
+                        Command="{Binding PrintCommand}" />
+                <Button Text="DEX"
+                        Style="{StaticResource SmallButton}"
+                        Command="{Binding DexCommand}"
+                        IsVisible="{Binding ShowDexButton}" />
+                <Button Text="Send"
+                        Style="{StaticResource SmallButton}"
+                        Command="{Binding SendCommand}" />
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <Grid Grid.Row="2"
+              ColumnDefinitions="*,Auto"
+              IsVisible="{Binding ShowSelectAllLayout}">
+            <HorizontalStackLayout Grid.Column="0"
+                                   Spacing="8"
+                                   VerticalOptions="Center">
+                <CheckBox IsChecked="{Binding IsSelectAllChecked}"
+                          CheckedChanged="CheckBox_CheckedChanged" />
+                <Label Text="{Binding SelectAllText}"
+                       TextColor="#1A1A1A"
+                       FontAttributes="Bold"
+                       FontSize="14"
+                       VerticalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding SelectAllCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </HorizontalStackLayout>
+            <Label Grid.Column="1"
+                   Text="{Binding TotalText}"
+                   FontSize="14"
+                   FontAttributes="Bold"
+                   TextColor="#1A1A1A"
+                   HorizontalOptions="End"
+                   IsVisible="{Binding ShowTotal}" />
+        </Grid>
+
+        <CollectionView Grid.Row="3"
+                        ItemsSource="{Binding TransactionSections}"
+                        ItemTemplate="{StaticResource TransactionSectionTemplate}"
+                        SelectionMode="None"
+                        EmptyView="No transactions available." />
+    </Grid>
+</ContentPage>

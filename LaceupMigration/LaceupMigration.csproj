@@ -56,7 +56,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+		<PackageReference Include="AathifMahir.Maui.MauiIcons.Core" Version="5.0.0" />
+		<PackageReference Include="AathifMahir.Maui.MauiIcons.Material.Outlined" Version="5.0.0" />
+		<PackageReference Include="CommunityToolkit.Maui" Version="12.3.0" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+		<PackageReference Include="Microsoft.AppCenter" Version="5.0.7" />
+		<PackageReference Include="Microsoft.AppCenter.Analytics" Version="5.0.7" />
+		<PackageReference Include="Microsoft.AppCenter.Crashes" Version="5.0.7" />
+		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.120" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
 		<PackageReference Include="SharpZipLib" Version="1.4.2" />
 		<PackageReference Include="SocketMobile.Capture" Version="1.7.112.395" />

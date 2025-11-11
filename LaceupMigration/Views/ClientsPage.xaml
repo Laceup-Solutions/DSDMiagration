@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.ClientsPage"
+             x:DataType="vm:ClientsPageViewModel"
+             Title="Customers">
+
+    <ContentPage.Resources>
+        <Style TargetType="Button" x:Key="SmallButton">
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Margin" Value="4,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#FFFFFF, Dark=#2C2C2C}" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+            <Setter Property="BorderColor" Value="#CCCCCC" />
+            <Setter Property="BorderWidth" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+
+        <Style TargetType="Border" x:Key="BadgeBorder">
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="StrokeShape">
+                <Setter.Value>
+                    <RoundRectangle CornerRadius="12" />
+                </Setter.Value>
+            </Setter>
+            <Setter Property="MinimumHeightRequest" Value="20" />
+        </Style>
+
+        <DataTemplate x:Key="ClientItemTemplate" x:DataType="vm:ClientListItemViewModel">
+            <Frame Margin="0,4"
+                   Padding="12"
+                   HasShadow="False"
+                   BorderColor="#E0E0E0"
+                   CornerRadius="10">
+                <Grid ColumnDefinitions="Auto,*"
+                      RowDefinitions="Auto,Auto,Auto"
+                      ColumnSpacing="12">
+                    <Border StrokeThickness="0"
+                            BackgroundColor="{Binding StopBadgeBackground}"
+                            IsVisible="{Binding ShowStop}"
+                            WidthRequest="36"
+                            HeightRequest="36"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center">
+                        <Label Text="{Binding StopText}"
+                               TextColor="{Binding StopBadgeTextColor}"
+                               FontAttributes="Bold"
+                               FontSize="14"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <VerticalStackLayout Grid.Column="1"
+                                          Spacing="2">
+                        <Label Text="{Binding Name}"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="{Binding NameColor}" />
+
+                        <Label Text="{Binding Address}"
+                               FontSize="13"
+                               TextColor="{Binding AddressColor}"
+                               IsVisible="{Binding ShowAddress}" />
+
+                        <HorizontalStackLayout Spacing="6">
+                            <Border Style="{StaticResource BadgeBorder}"
+                                    BackgroundColor="#FFE082"
+                                    IsVisible="{Binding ShowCollectBadge}">
+                                <Label Text="Collect"
+                                       FontSize="11"
+                                       TextColor="#6D4C41" />
+                            </Border>
+
+                            <Border Style="{StaticResource BadgeBorder}"
+                                    BackgroundColor="#C5E1A5"
+                                    IsVisible="{Binding ShowPaymentBadge}">
+                                <Label Text="Payment"
+                                       FontSize="11"
+                                       TextColor="#33691E" />
+                            </Border>
+
+                            <Border Style="{StaticResource BadgeBorder}"
+                                    BackgroundColor="#B3E5FC"
+                                    IsVisible="{Binding ShowVisitBadge}">
+                                <Label Text="Visiting"
+                                       FontSize="11"
+                                       TextColor="#01579B" />
+                            </Border>
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </Grid>
+            </Frame>
+        </DataTemplate>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*"
+          ColumnDefinitions="*"
+          Padding="16"
+          RowSpacing="12">
+
+        <Border Grid.Row="0"
+                x:Name="SearchBorder"
+                StrokeThickness="0"
+                BackgroundColor="#F2F2F7"
+                IsVisible="{Binding IsSearchVisible}"
+                Padding="12,4"
+                StrokeShape="RoundRectangle 12">
+            <SearchBar Placeholder="Search customers"
+                       FontSize="14"
+                       Text="{Binding SearchQuery}"
+                       SearchButtonPressed="SearchBar_SearchButtonPressed" />
+        </Border>
+
+        <DatePicker x:Name="RouteDatePicker"
+                    Grid.Row="0"
+                    IsVisible="False"
+                    DateSelected="RouteDatePicker_DateSelected" />
+
+        <HorizontalStackLayout Grid.Row="1"
+                               x:Name="ButtonsLayout"
+                               Spacing="6"
+                               HorizontalOptions="Center"
+                               IsVisible="{Binding ShowButtonsLayout}">
+            <Button Text="View Map Route"
+                    Style="{StaticResource SmallButton}"
+                    Command="{Binding OpenMapRouteCommand}"
+                    IsVisible="{Binding ShowMapRouteButton}" />
+
+            <Button Text="Search"
+                    Style="{StaticResource SmallButton}"
+                    Command="{Binding OpenSearchDialogCommand}"
+                    IsEnabled="{Binding SearchButtonEnabled}"
+                    IsVisible="{Binding ShowSearchButton}" />
+
+            <Button Text="{Binding ViewButtonText}"
+                    Style="{StaticResource SmallButton}"
+                    Command="{Binding ToggleDisplayModeCommand}"
+                    IsVisible="{Binding ShowViewButton}" />
+
+            <Button Text="{Binding SelectDayButtonText}"
+                    Style="{StaticResource SmallButton}"
+                    Command="{Binding SelectDateCommand}"
+                    IsVisible="{Binding ShowSelectDayButton}" />
+
+            <Button Text="{Binding EditButtonText}"
+                    Style="{StaticResource SmallButton}"
+                    Command="{Binding ToggleEditCommand}"
+                    IsVisible="{Binding ShowEditButton}" />
+        </HorizontalStackLayout>
+
+        <Label Grid.Row="2"
+               Text="{Binding InfoMessage}"
+               FontSize="13"
+               TextColor="#666666"
+               IsVisible="{Binding HasInfoMessage}"
+               HorizontalOptions="Center" />
+
+        <CollectionView x:Name="FlatCollectionView"
+                        Grid.Row="3"
+                        ItemsSource="{Binding Clients}"
+                        ItemTemplate="{StaticResource ClientItemTemplate}"
+                        SelectionMode="Single"
+                        SelectionChanged="OnClientSelectionChanged"
+                        IsVisible="{Binding ShowFlatList}"
+                        EmptyView="No customers available.">
+        </CollectionView>
+
+        <CollectionView x:Name="GroupedCollectionView"
+                        Grid.Row="3"
+                        ItemsSource="{Binding ClientGroups}"
+                        SelectionMode="None"
+                        IsVisible="{Binding ShowGroupedList}"
+                        EmptyView="No customers available.">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:ClientGroupViewModel">
+                    <VerticalStackLayout Spacing="4">
+                        <Grid ColumnDefinitions="*,Auto"
+                              Padding="8"
+                              BackgroundColor="#E0E0E0">
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleExpansionCommand}" />
+                            </Grid.GestureRecognizers>
+                            <Label Text="{Binding DisplayName}"
+                                   FontAttributes="Bold"
+                                   FontSize="15" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding Clients.Count}"
+                                   FontSize="13"
+                                   TextColor="#555555" />
+                        </Grid>
+
+                        <CollectionView ItemsSource="{Binding Clients}"
+                                        ItemTemplate="{StaticResource ClientItemTemplate}"
+                                        SelectionMode="Single"
+                                        SelectionChanged="OnGroupedClientSelectionChanged"
+                                        IsVisible="{Binding IsExpanded}">
+                        </CollectionView>
+                    </VerticalStackLayout>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

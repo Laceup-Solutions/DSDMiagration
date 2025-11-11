@@ -4,11 +4,47 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:LaceupMigration"
+    xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
     Title="LaceupMigration">
 
+    <Shell.ToolbarItems>
+        <ToolbarItem x:Name="MenuToolbarItem" Text="Menu" Order="Primary" Priority="0">
+            <ToolbarItem.IconImageSource>
+                <FontImageSource FontFamily="MaterialOutlined" 
+                                 Glyph="{mi:MaterialOutlined Icon=Menu}" 
+                                 Size="24"
+                                 Color="Black"/>
+                
+            </ToolbarItem.IconImageSource>
+        </ToolbarItem>
+    </Shell.ToolbarItems>
+
     <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+        Title="Splash"
+        ContentTemplate="{DataTemplate local:SplashPage}"
+        Route="Splash" />
+
+    <TabBar Route="MainPage">
+        <ShellContent
+            Title="Customers"
+            Icon="{mi:MaterialOutlined Icon=PeopleOutline}"
+            ContentTemplate="{DataTemplate local:ClientsPage}"
+            Route="Clients" />
+        <ShellContent
+            Title="Open Inv"
+            Icon="{mi:MaterialOutlined Icon=ContentCopy}"
+            ContentTemplate="{DataTemplate local:InvoicesPage}"
+            Route="Invoices" />
+        <ShellContent
+            Title="Transactions"
+            Icon="{mi:MaterialOutlined Icon=Description}"
+            ContentTemplate="{DataTemplate local:OrdersPage}"
+            Route="Orders" />
+        <ShellContent
+            Title="Payments"
+            Icon="{mi:MaterialOutlined Icon=Payments}"
+            ContentTemplate="{DataTemplate local:PaymentsPage}"
+            Route="Payments" />
+    </TabBar>
 
 </Shell>

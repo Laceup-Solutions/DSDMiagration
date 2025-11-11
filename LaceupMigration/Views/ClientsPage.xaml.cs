@@ -1,0 +1,93 @@
+using LaceupMigration.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.Dispatching;
+
+namespace LaceupMigration
+{
+	public partial class ClientsPage : ContentPage
+	{
+		private readonly ClientsPageViewModel _viewModel;
+
+		public ClientsPage()
+		{
+			InitializeComponent();
+
+			_viewModel = App.Services.GetRequiredService<ClientsPageViewModel>();
+			BindingContext = _viewModel;
+
+			_viewModel.SelectDateRequested += OnSelectDateRequested;
+		}
+
+		protected override async void OnAppearing()
+		{
+			base.OnAppearing();
+			await _viewModel.OnAppearingAsync();
+		}
+
+		protected override void OnDisappearing()
+		{
+			base.OnDisappearing();
+			var collectionView = this.FindByName<CollectionView>("FlatCollectionView");
+			if (collectionView != null)
+			{
+				collectionView.SelectedItem = null;
+			}
+		}
+
+		private void OnSelectDateRequested()
+		{
+			var datePicker = this.FindByName<DatePicker>("RouteDatePicker");
+			if (datePicker != null)
+			{
+				if (Dispatcher.IsDispatchRequired)
+				{
+					Dispatcher.Dispatch(() => datePicker.Focus());
+				}
+				else
+				{
+					datePicker.Focus();
+				}
+			}
+		}
+
+		private async void RouteDatePicker_DateSelected(object sender, DateChangedEventArgs e)
+		{
+			await _viewModel.OnRouteDateSelectedAsync(e.NewDate);
+		}
+
+		private async void OnClientSelectionChanged(object sender, SelectionChangedEventArgs e)
+		{
+			if (e.CurrentSelection.FirstOrDefault() is ClientListItemViewModel item)
+			{
+				await _viewModel.HandleClientSelectionAsync(item);
+			}
+
+			if (sender is CollectionView collectionView)
+			{
+				collectionView.SelectedItem = null;
+			}
+		}
+
+		private async void OnGroupedClientSelectionChanged(object sender, SelectionChangedEventArgs e)
+		{
+			if (e.CurrentSelection.FirstOrDefault() is ClientListItemViewModel item)
+			{
+				await _viewModel.HandleClientSelectionAsync(item);
+			}
+
+			if (sender is CollectionView collectionView)
+			{
+				collectionView.SelectedItem = null;
+			}
+		}
+
+		private void SearchBar_SearchButtonPressed(object sender, EventArgs e)
+		{
+			if (sender is SearchBar searchBar)
+			{
+				searchBar.Unfocus();
+			}
+		}
+	}
+}
+

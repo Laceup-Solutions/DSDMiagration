@@ -5,8 +5,12 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ICSharpCode.SharpZipLib.Zip;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
 
 namespace LaceupMigration
 {
@@ -5125,6 +5129,135 @@ namespace LaceupMigration
             catch (Exception ex)
             {
                 //Logger.CreateLog("Error getting => " + ex.ToString());
+            }
+        }
+        
+        
+        public static void ExportData(string subject = "")
+        {
+            //if (FileOperationsLocker.InUse)
+            //{
+            //    ActivityExtensionMethods.DisplayDialog(this, GetString(Resource.String.alert), GetString(Resource.String.errorSendingLogFileData));
+            //    return;
+            //}
+
+            lock (FileOperationsLocker.lockFilesObject)
+            {
+                try
+                {
+                    //FileOperationsLocker.InUse = true;
+
+                    var fastZip = new FastZip();
+
+                    bool recurse = true;  // Include all files by recursing through the directory structure
+                    string filter = null; // Dont filter any files at all
+
+                    // Serialize the config
+                    var sb = new StringBuilder();
+
+                    foreach (var line in Config.SerializeConfig().Split(new string[] { System.Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var parts = line.Split(new char[] { '=' });
+                        if (parts.Length == 2)
+                        {
+                            if (sb.Length > 0)
+                                sb.Append("|");
+                            sb.Append(parts[0]);
+                            sb.Append("=");
+                            switch (parts[1])
+                            {
+                                case "True":
+                                    sb.Append("1");
+                                    break;
+                                case "False":
+                                    sb.Append("0");
+                                    break;
+
+                                default:
+                                    sb.Append(parts[1]);
+                                    break;
+                            }
+                        }
+                    }
+                    string p = Path.Combine(Config.CodeBase, "serialized_config");
+
+                    using (var writer = new StreamWriter(p))
+                        writer.Write(sb.ToString());
+
+                    fastZip.CreateZip(Config.ExportImportPath, Config.CodeBase, recurse, filter);
+
+                    var l = new FileInfo(Config.ExportImportPath).Length;
+
+                    try
+                    {
+                        NetAccess access = new NetAccess();
+
+                        access.OpenConnection("app.laceupsolutions.com", 9999);
+                        access.WriteStringToNetwork("SendLogFile");
+
+                        var serializedConfig = subject + Config.SerializeConfig().Replace(System.Environment.NewLine, "<br>");
+                        serializedConfig = serializedConfig.Replace("'", "");
+                        serializedConfig = serializedConfig.Replace("’", "");
+
+                        access.WriteStringToNetwork(serializedConfig);
+
+                        access.SendFile(Config.ExportImportPath);
+                        access.WriteStringToNetwork("Goodbye");
+
+                        Thread.Sleep(1000);
+                        access.CloseConnection();
+
+                        DialogHelper._dialogService.ShowAlertAsync("Debug Data Sent!");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog(ex);
+                        DialogHelper._dialogService.ShowAlertAsync($"Error exporting data. {ex.Message}");
+
+                    }
+                    finally
+                    {
+                        File.Delete(Config.ExportImportPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex);
+                    DialogHelper._dialogService.ShowAlertAsync($"Error exporting data. {ex.Message}");
+                }
+                finally
+                {
+                    //FileOperationsLocker.InUse = false;
+                }
+            }
+        }
+        
+        public static async void RemoteControl()
+        {
+            try
+            {
+                string appId = string.Empty;
+                string storeUri = string.Empty;
+
+                if (DeviceInfo.Platform == DevicePlatform.iOS)
+                {
+                    appId = "661649585";
+                    storeUri = $"https://apps.apple.com/app/id{appId}";
+                }
+                else if (DeviceInfo.Platform == DevicePlatform.Android)
+                {
+                    appId = "com.teamviewer.quicksupport.market";
+                    storeUri = $"https://play.google.com/store/apps/details?id={appId}";
+                }
+
+                if (!string.IsNullOrEmpty(storeUri))
+                {
+                    await Launcher.OpenAsync(new Uri(storeUri));
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
             }
         }
     }

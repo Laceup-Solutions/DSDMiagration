@@ -108,6 +108,35 @@ namespace LaceupMigration
             }
             catch { }
         }
+
+        public static void SendLogFile()
+        {
+            try
+            {
+                NetAccess access = new NetAccess();
+
+                access.OpenConnection("app.laceupsolutions.com", 9999);
+                access.WriteStringToNetwork("SendLogFile");
+
+                //fix for statwide
+                var serializedConfig = Config.SerializeConfig().Replace(System.Environment.NewLine, "<br>");
+                serializedConfig = serializedConfig.Replace("'", "");
+                serializedConfig = serializedConfig.Replace("’", "");
+
+                access.WriteStringToNetwork(serializedConfig);
+
+                access.SendFile(Config.LogFile);
+                access.WriteStringToNetwork("Goodbye");
+                Thread.Sleep(1000);
+                access.CloseConnection();
+
+                DialogHelper._dialogService.ShowAlertAsync("Log Sent");
+            }
+            catch (Exception ee)
+            {
+                DialogHelper._dialogService.ShowAlertAsync("Error sending log " + ee.Message);
+            }
+        }
     }
 }
 
