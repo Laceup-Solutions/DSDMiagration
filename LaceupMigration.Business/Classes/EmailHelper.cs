@@ -540,7 +540,7 @@ namespace LaceupMigration
         {
             try
             {
-                string pdfFile = GetInvoicePdf(invoice, context);
+                string pdfFile = GetInvoicePdf(invoice);
 
                 string toAddress = null;
                 if (invoice.Client.ExtraProperties != null)
@@ -561,7 +561,7 @@ namespace LaceupMigration
         {
             try
             {
-                string pdfFile = GetInvoicesPdf(invoices, context);
+                string pdfFile = GetInvoicesPdf(invoices);
 
             }
             catch (Exception ex)
@@ -574,7 +574,7 @@ namespace LaceupMigration
         {
             try
             {
-                string pdfFile = GetOrderPdf(order, context);
+                string pdfFile = GetOrderPdf(order);
                 
             }
             catch (Exception ex)
@@ -587,7 +587,7 @@ namespace LaceupMigration
         {
             try
             {
-                string pdfFile = GetOrdersPdf(order, context);
+                string pdfFile = GetOrdersPdf(order);
 
             }
             catch (Exception ex)
@@ -600,7 +600,7 @@ namespace LaceupMigration
         {
             try
             {
-                string pdfFile = GetConsignmentPdf(order, counting, context);
+                string pdfFile = GetConsignmentPdf(order, counting);
 
             }
             catch (Exception ex)
@@ -613,7 +613,7 @@ namespace LaceupMigration
         {
             try
             {
-                string pdfFile = GetLoadPdf(order, context);
+                string pdfFile = GetLoadPdf(order);
 
             }
             catch (Exception ex)
@@ -652,7 +652,7 @@ namespace LaceupMigration
         {
             try
             {
-                string pdfFile = GetTransferPdf(sortedList, isOn, context);
+                string pdfFile = GetTransferPdf(sortedList, isOn);
 
                 ShowPdf(pdfFile);
             }
@@ -697,7 +697,7 @@ namespace LaceupMigration
             {
                 string pdfFile = GetOrdersPdf(orders);
 
-                ShowPdf(pdfFile, context);
+                ShowPdf(pdfFile);
             }
             catch (Exception ex)
             {

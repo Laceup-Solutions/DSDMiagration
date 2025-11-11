@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using SkiaSharp;
 
 namespace LaceupMigration
 {
@@ -580,50 +581,29 @@ namespace LaceupMigration
             return lines;
         }
 
-        protected override string IncludeSignature(Order order, List<string> lines, ref int startIndex)
+        public override string IncludeSignature(Order order, List<string> lines, ref int startIndex)
         {
-            DateTime st = DateTime.Now;
-            Android.Graphics.Bitmap signature;
-            signature = order.ConvertSignatureToBitmap();
-            //Logger.CreateLog ("Order.ConvertSignatureToBitmap took " + DateTime.Now.Subtract (st).TotalSeconds.ToString ());
-            //DateTime st1 = DateTime.Now;
-            var converter = new LaceupAndroidApp.BitmapConvertor();
-            // var path = System.IO.Path.GetTempFileName () + ".bmp";
-            var rawBytes = converter.convertBitmap(signature, null);
-            //Logger.CreateLog ("Order.ConvertSignatureToBitmap took " + DateTime.Now.Subtract (st1).TotalSeconds.ToString ());
+            string signatureAsString;
+            signatureAsString = order.ConvertSignatureToBitmap();
+            using SKBitmap signature = SKBitmap.Decode(signatureAsString);
 
+            var converter = new BitmapConvertor();
+            // var path = System.IO.Path.GetTempFileName () + ".bmp";
+            var rawBytes = converter.convertBitmap(signature);
             //int bitmapDataOffset = 62;
             double widthInBytes = ((signature.Width / 32) * 32) / 8;
             int height = signature.Height / 32 * 32;
-            //Math.Ceiling(signature.Width / 8.0);
+            var bitmapDataLength = rawBytes.Length;
 
-            // Copy over the actual bitmap data from the bitmap file.
-            //byte[] bitmapFileData = System.IO.File.ReadAllBytes (path);
-            // This represents the bitmap data without the header information.
-            var bitmapDataLength = rawBytes.Length; // bitmapFileData.Length - bitmapDataOffset;
-                                                    //byte[] bitmap = new byte[bitmapDataLength];
-                                                    //Buffer.BlockCopy(bitmapFileData, bitmapDataOffset, bitmap, 0, bitmapDataLength);
-
-            // Invert bitmap colors
-            /*
-			for (int i = 0; i < bitmapDataLength; i++)
-			{
-				bitmap[i] ^= 0xFF;
-			}
-			*/
             string ZPLImageDataString = BitConverter.ToString(rawBytes);
             ZPLImageDataString = ZPLImageDataString.Replace("-", string.Empty);
 
-            int i = 850 - signature.Width;
-            int offset = i / 2;
-            string label = "^FO" + offset + "," + startIndex + "^GFA, " +
+            string label = "^FO30," + startIndex.ToString() + "^GFA, " +
                            bitmapDataLength.ToString() + "," +
                            bitmapDataLength.ToString() + "," +
                            widthInBytes.ToString() + "," +
                            ZPLImageDataString;
             startIndex += height;
-            var ts = DateTime.Now.Subtract(st).TotalSeconds;
-            Logger.CreateLog("IncludeSignature took " + DateTime.Now.Subtract(st).TotalSeconds.ToString());
             return label;
         }
 

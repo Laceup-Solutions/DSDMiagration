@@ -1,4 +1,6 @@
-﻿namespace LaceupMigration
+﻿using LaceupMigration.Controls;
+
+namespace LaceupMigration
 {
     public partial class App : Application
     {
@@ -11,8 +13,7 @@
 
             Config.helper = serviceProvider.GetService<IInterfaceHelper>();
             CurrentScanner.scanner = serviceProvider.GetService<IScannerService>();
-            DialogService._dialogService = serviceProvider.GetService<DialogService>();
-
+            DialogHelper._dialogService = serviceProvider.GetService<DialogService>();
         }
 
         protected override Window CreateWindow(IActivationState? activationState)

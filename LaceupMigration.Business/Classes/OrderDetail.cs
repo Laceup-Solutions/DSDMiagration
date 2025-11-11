@@ -981,7 +981,7 @@ namespace LaceupMigration
                                 {
                                     Logger.CreateLog("Related item of product " + Convert.ToInt32(product) + " was not found");
 
-                                    DialogService._dialogService.ShowAlertAsync(
+                                    DialogHelper._dialogService.ShowAlertAsync(
                                         "This product has a related product that was not found.");
                                     return null;
                                 }

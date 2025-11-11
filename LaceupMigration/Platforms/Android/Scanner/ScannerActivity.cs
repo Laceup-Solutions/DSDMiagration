@@ -4,6 +4,9 @@ using Android.Media;
 
 using System;
 using System.Threading;
+using Android.App;
+using Android.OS;
+using Android.Views;
 
 namespace LaceupMigration
 {

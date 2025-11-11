@@ -158,13 +158,8 @@ namespace LaceupMigration
                             {
                                 MainThread.BeginInvokeOnMainThread(() =>
                                 {
-                                    ActivityExtensionMethods.DisplayDialog(Config.CurrentContext, "Alert",
-                                        "The app will block in 10 minutes for a mandatory break.", "Ok", delegate
-                                        {
-                                        });
-
+                                    DialogHelper._dialogService.ShowAlertAsync("The app will block in 10 minutes for a mandatory break.");
                                     Session.alreadyWarned = true;
-
                                 });
                             }
                             catch (Exception ex)

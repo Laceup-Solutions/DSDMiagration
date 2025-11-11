@@ -17,7 +17,7 @@ namespace LaceupMigration
                 {
                     case "01":
                         var Product_UPC = item.Value;
-                        Product = ActivityExtensionMethods.GetProduct(null, Product_UPC, false);
+                        Product = ActivityExtensionMethods.GetProduct(null, Product_UPC);
                         break;
                     case "15":
                         try

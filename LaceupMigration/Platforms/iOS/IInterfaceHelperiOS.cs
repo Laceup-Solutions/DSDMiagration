@@ -6,15 +6,16 @@ using System.Threading;
 using CoreBluetooth;
 using CoreTelephony;
 using ExternalAccessory;
-using Foundation;
-using Laceup;
-using MessageUI;
+using Foundation; using MessageUI;
 using SystemConfiguration;
 using UIKit;
 
-namespace LaceupMigration;
+using LaceupMigration;
 
 [assembly: Dependency(typeof(InterfaceHelper))]
+
+namespace LaceupMigration;
+
 public class InterfaceHelper : IInterfaceHelper
 {
     private string printCommand;

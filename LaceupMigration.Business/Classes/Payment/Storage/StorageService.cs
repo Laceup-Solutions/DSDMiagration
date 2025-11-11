@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Maui.Storage;
 
 namespace LaceupMigration
 {
@@ -9,9 +11,9 @@ namespace LaceupMigration
     {
         List<PaymentRequest> Cards = new List<PaymentRequest>();
         Client client;
-        public void AddCard(PaymentRequest paymentRequest)
+        public async Task AddCardAsync(PaymentRequest paymentRequest)
         {
-            var storedData = Xamarin.Essentials.SecureStorage.GetAsync("CardList").Result;
+            var storedData = await SecureStorage.GetAsync("CardList");
             List<PaymentRequest> cards = string.IsNullOrEmpty(storedData)
                 ? new List<PaymentRequest>() : JsonConvert.DeserializeObject<List<PaymentRequest>>(storedData);
             cards.Add(paymentRequest);
@@ -23,27 +25,27 @@ namespace LaceupMigration
 
             var jsonString = JsonConvert.SerializeObject(cards);
 
-            Xamarin.Essentials.SecureStorage.SetAsync("CardList", jsonString);
-            GetAllCards();
+            await SecureStorage.SetAsync("CardList", jsonString);
+            await GetAllCardsAsync();
         }
 
-        public void AddAuthorizedToken(PaymentAtutorizeToken token)
+        public async Task AddAuthorizedTokenAsync(PaymentAtutorizeToken token)
         {
-            var storedDataToken = Xamarin.Essentials.SecureStorage.GetAsync("CardListToken").Result;
+            var storedDataToken = await SecureStorage.GetAsync("CardListToken");
             List<PaymentAtutorizeToken> cardsToken = string.IsNullOrEmpty(storedDataToken)
                 ? new List<PaymentAtutorizeToken>() : JsonConvert.DeserializeObject<List<PaymentAtutorizeToken>>(storedDataToken);
         }
 
-        public void RemoveCard(PaymentRequest cardToRemove)
+        public async Task RemoveCardAsync(PaymentRequest cardToRemove)
         {
-            string storedData = Xamarin.Essentials.SecureStorage.GetAsync("CardList").Result;
+            string storedData = await SecureStorage.GetAsync("CardList");
             List<PaymentRequest> cards = JsonConvert.DeserializeObject<List<PaymentRequest>>(storedData);
             var cardInStorage = cards.FirstOrDefault(card => card.AccountNumber == cardToRemove.AccountNumber);
 
             if (cardInStorage != null)
             {
                 cards.Remove(cardInStorage);
-                Xamarin.Essentials.SecureStorage.SetAsync("CardList", JsonConvert.SerializeObject(cards)).Wait();
+                await SecureStorage.SetAsync("CardList", JsonConvert.SerializeObject(cards));
             }
             else
             {
@@ -51,9 +53,9 @@ namespace LaceupMigration
             }
         }
 
-        public List<PaymentRequest> GetAllCards()
+        public async Task<List<PaymentRequest>> GetAllCardsAsync()
         {
-            var storedData = Xamarin.Essentials.SecureStorage.GetAsync("CardList").Result;
+            var storedData = await SecureStorage.GetAsync("CardList");
             if (string.IsNullOrEmpty(storedData))
             {
                 return new List<PaymentRequest>();
@@ -62,9 +64,9 @@ namespace LaceupMigration
             return JsonConvert.DeserializeObject<List<PaymentRequest>>(storedData);
         }
 
-        public List<PaymentAtutorizeToken> GetAllCardsToken()
+        public async Task<List<PaymentAtutorizeToken>> GetAllCardsTokenAsync()
         {
-            var storedDataToken = Xamarin.Essentials.SecureStorage.GetAsync("OperationList").Result;
+            var storedDataToken = await SecureStorage.GetAsync("OperationList");
             if (string.IsNullOrEmpty(storedDataToken))
             {
                 return new List<PaymentAtutorizeToken>();
@@ -73,9 +75,9 @@ namespace LaceupMigration
 
         }
 
-        public PaymentRequest GetCard(string accountToken)
+        public async Task<PaymentRequest> GetCardAsync(string accountToken)
         {
-            var storedData = Xamarin.Essentials.SecureStorage.GetAsync("CardList").Result;
+            var storedData = await SecureStorage.GetAsync("CardList");
 
             if (string.IsNullOrEmpty(storedData))
             {
@@ -88,9 +90,9 @@ namespace LaceupMigration
         }
 
 
-        public bool existsStorage(PaymentRequest cardToRemove)
+        public async Task<bool> ExistsStorageAsync(PaymentRequest cardToRemove)
         {
-            string storedData = Xamarin.Essentials.SecureStorage.GetAsync("CardList").Result;
+            string storedData = await SecureStorage.GetAsync("CardList");
             List<PaymentRequest> cards = JsonConvert.DeserializeObject<List<PaymentRequest>>(storedData);
             var cardInStorage = cards.FirstOrDefault(card => card.AccountNumber == cardToRemove.AccountNumber);
 

@@ -1,6 +1,10 @@
-﻿namespace LaceupMigration;
+﻿
+using LaceupMigration;
 
 [assembly: Dependency(typeof(IScannerService))]
+
+namespace LaceupMigration;
+
 public class ScannerService : IScannerService
 {
     public event EventHandler<string> OnDataScanned;

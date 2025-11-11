@@ -54,12 +54,12 @@ namespace LaceupMigration
                                     case ParamType.Ignore:
                                         break;
                                     case ParamType.UPC:
-                                        product = ActivityExtensionMethods.GetProduct(null, part.data, false);
+                                        product = ActivityExtensionMethods.GetProduct(null, part.data);
                                         decodedItem.UPC = part.data;
                                         decodedItem.ProductId = product != null ? product.ProductId : 0;
                                         break;
                                     case ParamType.Code:
-                                        product = ActivityExtensionMethods.GetProduct(null, part.data, false);
+                                        product = ActivityExtensionMethods.GetProduct(null, part.data);
                                         if (string.IsNullOrEmpty(decodedItem.UPC))
                                             decodedItem.UPC = product != null ? product.Upc : string.Empty;
                                         decodedItem.ProductId = product != null ? product.ProductId : 0;
@@ -250,7 +250,7 @@ namespace LaceupMigration
             }
             catch (Exception ex)
             {
-                    var product = ActivityExtensionMethods.GetProduct(null, s, false);
+                    var product = ActivityExtensionMethods.GetProduct(null, s);
                     Product = product != null ? product : null;
             }
 

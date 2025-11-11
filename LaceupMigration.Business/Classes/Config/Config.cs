@@ -453,8 +453,6 @@ namespace LaceupMigration
             Config.AllowOrderForClientOverCreditLimit = Preferences.Get(AllowOrderForClientOverCreditLimitKey, true);
             Config.UserCanChangePrices = Preferences.Get(UserCanChangePricesKey, false);
             string activityProvider = Preferences.Get(ViewProviderAndroidKey, string.Empty);
-            if (!string.IsNullOrEmpty(activityProvider))
-                DataAccess.ActivityProvider.DeSerializeFromString(activityProvider);
 
             if (string.IsNullOrEmpty(Config.LanAddress)) Config.LanAddress = iPAddressGateway;
 
@@ -1144,7 +1142,6 @@ namespace LaceupMigration
             Preferences.Set(UseLocationKey, UseLocation);
             Preferences.Set(AllowOrderForClientOverCreditLimitKey, AllowOrderForClientOverCreditLimit);
             Preferences.Set(UserCanChangePricesKey, UserCanChangePrices);
-            Preferences.Set(ViewProviderAndroidKey, DataAccess.ActivityProvider.SerializeToString());
             Preferences.Set(ScannerToUseKey, ScannerToUse);
             Preferences.Set(UseUpcCheckDigitKey, UseUpcCheckDigit);
             Preferences.Set(RouteManagementKey, RouteManagement);
@@ -2300,9 +2297,7 @@ namespace LaceupMigration
             companiesCount = CompanyInfo.Companies.Count(x => x.FromFile);
 
             if (companiesCount == 0) CompanyInfo.Companies.Add(CompanyInfo.CreateDefaultCompany());
-
-            DataAccess.ActivityProvider.LoadActivitys();
-
+            
             #endregion
 
             string[] parts = configSettings.Split(new char[] { '|' });
@@ -3896,14 +3891,12 @@ namespace LaceupMigration
                     if (string.Compare(sections[0], ViewProviderKey, StringComparison.OrdinalIgnoreCase) == 0)
                     {
                         if (sections[1].Contains("iphone")) continue;
-                        DataAccess.ActivityProvider.AddCustomActivitys(sections[1]);
                         continue;
                     }
 
                     if (string.Compare(sections[0], ViewProviderAndroidKey, StringComparison.OrdinalIgnoreCase) == 0)
                     {
                         if (sections[1].Contains("iphone")) continue;
-                        DataAccess.ActivityProvider.AddCustomActivitys(sections[1]);
                         continue;
                     }
 
@@ -4899,15 +4892,6 @@ namespace LaceupMigration
                     if (string.Compare(sections[0], UseFullTemplateKey, StringComparison.OrdinalIgnoreCase) == 0)
                     {
                         Config.UseFullTemplate = Convert.ToInt32(sections[1], CultureInfo.InvariantCulture) > 0;
-
-                        if (UseFullTemplate)
-                        {
-                            DataAccess.ActivityProvider.AddCustomActivitys(
-                                "orderdetailsactivityphone,LaceupAndroidApp.FullTemplateActivity,orderdetailsactivitypad,LaceupAndroidApp.FullTemplateActivity");
-                            DataAccess.ActivityProvider.AddCustomActivitys(
-                                "ordercreditactivityphone,LaceupAndroidApp.FullTemplateActivity,ordercreditactivitypad,LaceupAndroidApp.FullTemplateActivity");
-                        }
-
                         continue;
                     }
 
@@ -6231,11 +6215,6 @@ namespace LaceupMigration
                     if (string.Compare(sections[0], ShowProductsPerUoMKey, StringComparison.OrdinalIgnoreCase) == 0)
                     {
                         Config.ShowProductsPerUoM = Convert.ToInt32(sections[1], CultureInfo.InvariantCulture) > 0;
-
-                        if (ShowProductsPerUoM)
-                            DataAccess.ActivityProvider.AddCustomActivitys(
-                                "productlistactivityphone,LaceupAndroidApp.ProductCatalogActivity,productlistactivitypad,LaceupAndroidApp.ProductCatalogActivity");
-
                         continue;
                     }
 
@@ -6678,8 +6657,6 @@ namespace LaceupMigration
             if (UseFullTemplate && !Config.UseCatalogWithFullTemplate)
             {
                 UseCatalog = false;
-                DataAccess.ActivityProvider.AddCustomActivitys(
-                    "productlistactivityphone,LaceupAndroidApp.ProductListActivity,productlistactivitypad,LaceupAndroidApp.ProductListActivity");
             }
 
             if (Config.UseCatalogWithFullTemplate && Config.UseFullTemplate) UseCatalog = true;
@@ -6693,42 +6670,7 @@ namespace LaceupMigration
                 Config.UseLot = true;
                 Config.LotIsMandatory = true;
             }
-
-            if (Config.IracarCustomization)
-            {
-                DataAccess.ActivityProvider.AddCustomActivitys(
-                    "additemactivityphone,LaceupAndroidApp.IracarAddItemActivity,additemactivitypad,LaceupAndroidApp.IracarAddItemActivity");
-                UseCatalog = false;
-                DataAccess.ActivityProvider.AddCustomActivitys(
-                    "productlistactivityphone,LaceupAndroidApp.ProductListActivity,productlistactivitypad,LaceupAndroidApp.ProductListActivity");
-            }
-
-            if (Config.NewAddItemRandomWeight)
-                DataAccess.ActivityProvider.AddCustomActivitys(
-                    "additemactivityphone,LaceupAndroidApp.AddItemRandomWeightActivity,additemactivitypad,LaceupAndroidApp.IracarAddItemActivity");
-
-            if (Config.UseCatalog)
-                DataAccess.ActivityProvider.AddCustomActivitys(
-                    "productlistactivityphone,LaceupAndroidApp.ProductCatalogActivity,productlistactivitypad,LaceupAndroidApp.ProductCatalogActivity");
-
-            if (Config.UseLaceupAdvancedCatalog)
-            {
-                DataAccess.ActivityProvider.AddCustomActivitys(
-                    "orderdetailsactivityphone,LaceupAndroidApp.AdvancedTemplateActivity,orderdetailsactivitypad,LaceupAndroidApp.AdvancedTemplateActivity");
-                DataAccess.ActivityProvider.AddCustomActivitys(
-                    "ordercreditactivityphone,LaceupAndroidApp.AdvancedTemplateActivity,ordercreditactivitypad,LaceupAndroidApp.AdvancedTemplateActivity");
-            }
-
-            if (Config.ItemGroupedTemplate)
-            {
-                DataAccess.ActivityProvider.AddCustomActivitys(
-                    "orderdetailsactivityphone,LaceupAndroidApp.NewOrderTemplateActivity,orderdetailsactivitypad,LaceupAndroidApp.NewOrderTemplateActivity");
-                DataAccess.ActivityProvider.AddCustomActivitys(
-                    "ordercreditactivityphone,LaceupAndroidApp.NewCreditTemplateActivity,ordercreditactivitypad,LaceupAndroidApp.NewCreditTemplateActivity");
-                DataAccess.ActivityProvider.AddCustomActivitys(
-                    "productlistactivityphone,LaceupAndroidApp.ProductListActivity,productlistactivitypad,LaceupAndroidApp.ProductListActivity");
-            }
-
+            
             if (Config.ParInConsignment) Config.PrinterToUse = "LaceUPMobileClassesIOS.AdvanceBatteryPrinter";
 
             if (MasterDevice) CanChangeSalesmanId = false;
@@ -9765,13 +9707,6 @@ namespace LaceupMigration
         {
             get
             {
-                if (!useCatalog.HasValue)
-                {
-                    var activity = DataAccess.ActivityProvider.GetActivityType(ActivityNames.ProductListActivity);
-
-                    return activity.FullName == "LaceupAndroidApp.ProductCatalogActivity";
-                }
-
                 return useCatalog.Value;
             }
             set { useCatalog = value; }

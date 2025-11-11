@@ -828,11 +828,8 @@ namespace LaceupMigration
                 SaveInventory();
             }
 
-            //save last sync date here
             SaveLastSync();
-
-            LaceupAndroidApp.ClientsFragment.routeDate = DateTime.Today;
-
+            
             LoadingData = false;
 
             if (Config.SiteId == 0)
@@ -3914,77 +3911,78 @@ namespace LaceupMigration
 
         public static string GetTopic()
         {
-            try
-            {
-                using (var netaccess = new NetAccess())
-                {
-                    netaccess.OpenConnection();
-                    netaccess.WriteStringToNetwork("HELO");
-                    netaccess.WriteStringToNetwork(Config.GetAuthString());
-                    netaccess.WriteStringToNetwork("GetServiceNameCommand");
-
-                    var topic = netaccess.ReadStringFromNetwork();
-
-                    topic = topic.ToLowerInvariant();
-
-                    topic = topic.Trim();
-
-                    if (!string.IsNullOrEmpty(topic))
-                    {
-                        FirebaseMessaging.Instance.UnsubscribeFromTopic(topic);
-                        FirebaseMessaging.Instance.SubscribeToTopic(topic);
-
-                        Logger.CreateLog("Subscribing to notifications on topic => " + topic);
-
-                        if (Config.AllowWorkOrder || Config.AllowNotifications || Config.NotificationsInSelfService)
-                        {
-                            FirebaseMessaging.Instance.UnsubscribeFromTopic(topic + Config.SalesmanId);
-                            FirebaseMessaging.Instance.SubscribeToTopic(topic + Config.SalesmanId);
-
-                            Logger.CreateLog("Subscribing to notifications from work order on topic => " + topic + Config.SalesmanId);
-                        }
-                    }
-
-                    return topic;
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.CreateLog("Trying to subscribe to notifications failed => " + ex.ToString());
-                return string.Empty;
-            }
+            // try
+            // {
+            //     using (var netaccess = new NetAccess())
+            //     {
+            //         netaccess.OpenConnection();
+            //         netaccess.WriteStringToNetwork("HELO");
+            //         netaccess.WriteStringToNetwork(Config.GetAuthString());
+            //         netaccess.WriteStringToNetwork("GetServiceNameCommand");
+            //
+            //         var topic = netaccess.ReadStringFromNetwork();
+            //
+            //         topic = topic.ToLowerInvariant();
+            //
+            //         topic = topic.Trim();
+            //
+            //         if (!string.IsNullOrEmpty(topic))
+            //         {
+            //             FirebaseMessaging.Instance.UnsubscribeFromTopic(topic);
+            //             FirebaseMessaging.Instance.SubscribeToTopic(topic);
+            //
+            //             Logger.CreateLog("Subscribing to notifications on topic => " + topic);
+            //
+            //             if (Config.AllowWorkOrder || Config.AllowNotifications || Config.NotificationsInSelfService)
+            //             {
+            //                 FirebaseMessaging.Instance.UnsubscribeFromTopic(topic + Config.SalesmanId);
+            //                 FirebaseMessaging.Instance.SubscribeToTopic(topic + Config.SalesmanId);
+            //
+            //                 Logger.CreateLog("Subscribing to notifications from work order on topic => " + topic + Config.SalesmanId);
+            //             }
+            //         }
+            //
+            //         return topic;
+            //     }
+            // }
+            // catch (Exception ex)
+            // {
+            //     Logger.CreateLog("Trying to subscribe to notifications failed => " + ex.ToString());
+            //     return string.Empty;
+            // }
+            return string.Empty;
         }
 
         public static void Unsubscribe()
         {
-            try
-            {
-                using (var netaccess = new NetAccess())
-                {
-                    netaccess.OpenConnection();
-                    netaccess.WriteStringToNetwork("HELO");
-                    netaccess.WriteStringToNetwork(Config.GetAuthString());
-                    netaccess.WriteStringToNetwork("GetServiceNameCommand");
-
-                    var topic = netaccess.ReadStringFromNetwork();
-
-                    topic = topic.ToLowerInvariant();
-
-                    topic = topic.Trim();
-
-                    if (!string.IsNullOrEmpty(topic))
-                    {
-                        FirebaseMessaging.Instance.UnsubscribeFromTopic(topic);
-
-                        if (Config.AllowWorkOrder || Config.AllowNotifications || Config.NotificationsInSelfService)
-                            FirebaseMessaging.Instance.UnsubscribeFromTopic(topic + "/" + Config.SalesmanId);
-                    }
-
-                }
-            }
-            catch (Exception ex)
-            {
-            }
+            // try
+            // {
+            //     using (var netaccess = new NetAccess())
+            //     {
+            //         netaccess.OpenConnection();
+            //         netaccess.WriteStringToNetwork("HELO");
+            //         netaccess.WriteStringToNetwork(Config.GetAuthString());
+            //         netaccess.WriteStringToNetwork("GetServiceNameCommand");
+            //
+            //         var topic = netaccess.ReadStringFromNetwork();
+            //
+            //         topic = topic.ToLowerInvariant();
+            //
+            //         topic = topic.Trim();
+            //
+            //         if (!string.IsNullOrEmpty(topic))
+            //         {
+            //             FirebaseMessaging.Instance.UnsubscribeFromTopic(topic);
+            //
+            //             if (Config.AllowWorkOrder || Config.AllowNotifications || Config.NotificationsInSelfService)
+            //                 FirebaseMessaging.Instance.UnsubscribeFromTopic(topic + "/" + Config.SalesmanId);
+            //         }
+            //
+            //     }
+            // }
+            // catch (Exception ex)
+            // {
+            // }
         }
         #endregion
 

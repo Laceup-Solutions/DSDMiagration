@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using Point = SixLabors.ImageSharp.Point;
 
 namespace LaceupMigration
 {
@@ -292,14 +293,14 @@ namespace LaceupMigration
                         {
                             if (line.StartsWith(order.UniqueId))
                             {
-                                order.SignaturePoints = new List<PointF>();
+                                order.SignaturePoints = new List<Point>();
                                 foreach (string point in line.Substring((order.UniqueId + "|").Length).Split(new char[] { ';' }))
                                 {
                                     string[] components = point.Split(new char[] { ',' });
-                                    order.SignaturePoints.Add(new PointF()
+                                    order.SignaturePoints.Add(new Point()
                                     {
-                                        X = Convert.ToSingle(components[0]),
-                                        Y = Convert.ToSingle(components[1])
+                                        X = Convert.ToInt32(components[0]),
+                                        Y = Convert.ToInt32(components[1])
                                     });
                                 }
                             }

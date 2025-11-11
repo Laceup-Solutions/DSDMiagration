@@ -64,13 +64,8 @@ namespace LaceupMigration
         public bool OpenConnection(string connectTo, int remotePort)
         {
             tcpc = new TcpClient();
-
-            string model = Android.OS.Build.Model;
-
+            
             return OpenConnectionAsync(connectTo, remotePort);
-
-            if (model.StartsWith("SM-G9") || model.StartsWith("SM-N9"))
-                return OpenConnectionAsync(connectTo, remotePort);
 
             try
             {

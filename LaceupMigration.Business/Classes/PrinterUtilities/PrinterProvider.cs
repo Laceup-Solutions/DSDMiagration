@@ -72,7 +72,7 @@ namespace LaceupMigration
 
         public static async void PrintDocument(Func<int, string> printIt, int copies = 1)
         {
-            var response = await DialogService._dialogService.ShowPromptAsync("Alert", "Enter Copies", "Print", "Cancel", "1", 1, "1");
+            var response = await DialogHelper._dialogService.ShowPromptAsync("Alert", "Enter Copies", "Print", "Cancel", "1", 1, "1");
 
             int qty = 1;
             Int32.TryParse(response, out qty);
@@ -85,7 +85,7 @@ namespace LaceupMigration
             switch (printers.Count)
             {
                 case 0:
-                    await DialogService._dialogService.ShowAlertAsync("No printers available");
+                    await DialogHelper._dialogService.ShowAlertAsync("No printers available");
                     break;
                 case 1:
                     PrinterProvider.PrinterAddress = printers[0].Address;
@@ -109,7 +109,7 @@ namespace LaceupMigration
 
             })).ToList();
 
-            var response = await DialogService._dialogService.ShowActionSheetAsync("Select Printer", "", "Cancel", options.ToArray());
+            var response = await DialogHelper._dialogService.ShowActionSheetAsync("Select Printer", "", "Cancel", options.ToArray());
 
             var index = options.IndexOf(response);
 
@@ -119,7 +119,7 @@ namespace LaceupMigration
 
         public static void PrintIt(int number, Func<int, string> printIt)
         {
-            DialogService._dialogService.ShowLoadingAsync("Printing");
+            DialogHelper._dialogService.ShowLoadingAsync("Printing");
 
             ThreadPool.QueueUserWorkItem(delegate (object state)
             {
@@ -127,12 +127,12 @@ namespace LaceupMigration
 
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    DialogService._dialogService.HideLoadingAsync();
+                    DialogHelper._dialogService.HideLoadingAsync();
 
                     if (!string.IsNullOrEmpty(result))
-                        DialogService._dialogService.ShowAlertAsync(result);
+                        DialogHelper._dialogService.ShowAlertAsync(result);
                     else
-                        DialogService._dialogService.ShowAlertAsync("Printed Successfully!");
+                        DialogHelper._dialogService.ShowAlertAsync("Printed Successfully!");
 
                 });
             });

@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using SkiaSharp;
 
 namespace LaceupMigration
 {
@@ -578,112 +579,7 @@ namespace LaceupMigration
             if (printingString.Contains((char)241) || printingString.Contains((char)209))
                 printingString = InsertSpecialChar(printingString);
 
-            if (Config.UseFastPrinter)
-            {
-                PrintItInFastPrinter(printingString);
-                return;
-            }
-
-            // Logger.CreateLog (printingString);
-            printCommand = printingString;
-
-            //var stack = new System.Diagnostics.StackFrame ();
-            //Logger.CreateLog (stack.ToString ());
-            if (string.IsNullOrEmpty(PrinterProvider.PrinterAddress))
-                throw new InvalidOperationException("No valid printer selected");
-
-            using (BluetoothDevice hxm = BluetoothAdapter.DefaultAdapter.GetRemoteDevice(PrinterProvider.PrinterAddress))
-            {
-                UUID applicationUUID = UUID.FromString("00001101-0000-1000-8000-00805F9B34FB");
-                using (BluetoothSocket socket = hxm.CreateRfcommSocketToServiceRecord(applicationUUID))
-                {
-                    int factor = 1 + Config.OldPrinter;
-
-                    var timer = 0;
-                    bool connected = false;
-                    Exception e = null;
-
-                    while (timer < factor && !connected)
-                    {
-                        try
-                        {
-                            Thread.Sleep(1000 * factor);
-                            socket.Connect();
-                            Thread.Sleep(1000 * factor);
-                            connected = true;
-                            break;
-                        }
-                        catch (Exception ee)
-                        {
-                            e = ee;
-                        }
-                        timer++;
-                    }
-
-                    if (!connected && e != null)
-                        throw e;
-
-                    using (var inReader = new BufferedReader(new InputStreamReader(socket.InputStream)))
-                    {
-                        using (var outReader = new BufferedWriter(new OutputStreamWriter(socket.OutputStream), 60000))
-                        {
-                            DateTime st = DateTime.Now;
-                            Logger.CreateLog("printingString.Length " + printingString.Length);
-                            if (printingString.Length > 40000)
-                            {
-                                int i = 0;
-                                while (true)
-                                {
-                                    int start = 10000 * i;
-                                    int end = 10000;
-                                    if (start + end > printingString.Length)
-                                        end = printingString.Length - start;
-                                    outReader.Write(printingString, start, end);
-                                    outReader.Flush();
-                                    i++;
-                                    if (end != 10000)
-                                        break;
-                                }
-                            }
-                            else
-                            {
-                                outReader.Write(printingString);
-                                outReader.Flush();
-                            }
-
-                            //some waiting
-                            int sec = 2;
-                            int extra = 1;
-
-                            if (printingString.Length > 10000)
-                                extra = 2;
-                            if (printingString.Length > 15000)
-                                extra = 3;
-                            if (printingString.Length > 20000)
-                                extra = 4;
-                            if (printingString.Length > 25000)
-                                extra = 5;
-                            if (printingString.Length > 30000)
-                                extra = 6;
-                            if (printingString.Length > 35000)
-                                extra = 7;
-                            if (printingString.Length > 40000)
-                                extra = 8;
-                            if (printingString.Length > 45000)
-                                extra = 9;
-                            if (printingString.Length > 50000)
-                                extra = 10;
-
-                            Thread.Sleep(sec * (extra + factor) * 1000);
-
-                            inReader.Close();
-                            socket.Close();
-                            outReader.Close();
-                        }
-                    }
-                    Logger.CreateLog("finishing printing");
-                }
-            }
+            Config.helper.PrintIt(printingString);
         }
 
         public string InsertSpecialChar(string lines)
@@ -693,68 +589,7 @@ namespace LaceupMigration
             temp_line = temp_line.Replace((char)209, (char)78);
             return temp_line;
         }
-        protected virtual void PrintItInFastPrinter(string printingString)
-        {
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            Logger.CreateLog("Inside of PrintItInFastPrinter");
-
-            // Logger.CreateLog (printingString);
-            printCommand = printingString;
-
-            //var stack = new System.Diagnostics.StackFrame ();
-            //Logger.CreateLog (stack.ToString ());
-            if (string.IsNullOrEmpty(PrinterProvider.PrinterAddress))
-                throw new InvalidOperationException("No valid printer selected");
-
-            using (BluetoothDevice hxm = BluetoothAdapter.DefaultAdapter.GetRemoteDevice(PrinterProvider.PrinterAddress))
-            {
-                UUID applicationUUID = UUID.FromString("00001101-0000-1000-8000-00805F9B34FB");
-                using (BluetoothSocket socket = hxm.CreateRfcommSocketToServiceRecord(applicationUUID))
-                {
-                    try
-                    {
-                        socket.Connect();
-                    }
-                    catch (Exception ee)
-                    {
-                        Logger.CreateLog(ee);
-                    }
-
-                    using (var inReader = new BufferedReader(new InputStreamReader(socket.InputStream)))
-                    {
-                        using (var outReader = new BufferedWriter(new OutputStreamWriter(socket.OutputStream), 60000))
-                        {
-                            DateTime st = DateTime.Now;
-                            Logger.CreateLog("printingString.Length " + printingString.Length);
-
-                            var parts = printingString.SplitInParts(10000);
-                            foreach (var part in parts)
-                            {
-                                outReader.Write(part);
-                                outReader.Flush();
-                            }
-
-                            //some waiting but less 
-                            int extra = 1;
-
-                            extra = GetExtraSeconds(printingString.Length);
-
-                            Thread.Sleep((extra));
-
-                            inReader.Close();
-                            socket.Close();
-                            outReader.Close();
-                        }
-                    }
-                    Logger.CreateLog("finishing printing");
-                }
-            }
-
-            Logger.CreateLog("Printing Stopwatch stop. Elapsed milliseconds " + stopwatch.ElapsedMilliseconds);
-        }
-
+        
         public int GetExtraSeconds(int length)
         {
             var extra_secs = 5000;
@@ -1353,41 +1188,29 @@ namespace LaceupMigration
         }
 
         protected abstract bool PrintLines(List<string> lines);
-        protected virtual string IncludeSignature(Order order, List<string> lines, ref int startIndex)
+        public string IncludeSignature(Order order, List<string> lines, ref int startIndex)
         {
-            DateTime st = DateTime.Now;
-            Android.Graphics.Bitmap signature;
-            signature = order.ConvertSignatureToBitmap();
-            Logger.CreateLog("Order.ConvertSignatureToBitmap took " + DateTime.Now.Subtract(st).TotalSeconds.ToString());
-            DateTime st1 = DateTime.Now;
-            var converter = new LaceupAndroidApp.BitmapConvertor();
+            string signatureAsString;
+            signatureAsString = order.ConvertSignatureToBitmap();
+            using SKBitmap signature = SKBitmap.Decode(signatureAsString);
+
+            var converter = new BitmapConvertor();
             // var path = System.IO.Path.GetTempFileName () + ".bmp";
-            var rawBytes = converter.convertBitmap(signature, null);
-            Logger.CreateLog("Order.ConvertSignatureToBitmap took " + DateTime.Now.Subtract(st1).TotalSeconds.ToString());
-            st1 = DateTime.Now;
+            var rawBytes = converter.convertBitmap(signature);
             //int bitmapDataOffset = 62;
             double widthInBytes = ((signature.Width / 32) * 32) / 8;
             int height = signature.Height / 32 * 32;
-
-            var bitmapDataLength = rawBytes.Length; // bitmapFileData.Length - bitmapDataOffset;
-                                                    //byte[] bitmap = new byte[bitmapDataLength];
-                                                    //Buffer.BlockCopy(bitmapFileData, bitmapDataOffset, bitmap, 0, bitmapDataLength);
+            var bitmapDataLength = rawBytes.Length;
 
             string ZPLImageDataString = BitConverter.ToString(rawBytes);
             ZPLImageDataString = ZPLImageDataString.Replace("-", string.Empty);
 
-            Logger.CreateLog("ZPLImageDataString.Replace took " + DateTime.Now.Subtract(st1).TotalSeconds.ToString());
-
-            string label = "^FO40," + startIndex.ToString() + "^GFA, " + //"^FO300,"
+            string label = "^FO30," + startIndex.ToString() + "^GFA, " +
                            bitmapDataLength.ToString() + "," +
                            bitmapDataLength.ToString() + "," +
                            widthInBytes.ToString() + "," +
                            ZPLImageDataString;
-
             startIndex += height;
-
-            var ts = DateTime.Now.Subtract(st).TotalSeconds;
-            Logger.CreateLog("IncludeSignature took " + DateTime.Now.Subtract(st).TotalSeconds.ToString());
             return label;
         }
         protected abstract IList<string> GetBottomSplitText(string text = "");

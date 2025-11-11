@@ -21,14 +21,14 @@ namespace LaceupMigration
                 {
                     if (odLine.OrderDetail == null || odLine.OrderDetail.OrderDetailId != freeDetail.OrderDetailId)
                     {
-                        DialogService._dialogService.ShowAlertAsync("The selected product is already included as a free item, you cannot add it twice to the order.");
+                        DialogHelper._dialogService.ShowAlertAsync("The selected product is already included as a free item, you cannot add it twice to the order.");
                         return null;
                     }
                 }
 
                 if (Config.FreeItemsNeedComments && string.IsNullOrEmpty(comment))
                 {
-                    DialogService._dialogService.ShowAlertAsync("A comment is mandatory for a free item.");
+                    DialogHelper._dialogService.ShowAlertAsync("A comment is mandatory for a free item.");
                     return null;
                 }
             }
@@ -47,21 +47,21 @@ namespace LaceupMigration
                         {
                             string append = Config.ShowLowestAcceptableOnWarning ? "\n" + "Lowest price:" + odLine.Product.LowestAcceptablePrice.ToCustomString() : string.Empty;
                             
-                            DialogService._dialogService.ShowAlertAsync("The selected price is too low." + append);
+                            DialogHelper._dialogService.ShowAlertAsync("The selected price is too low." + append);
 
                             return null;
                         }
 
                         if (Config.CheckIfCanIncreasePrice(order, odLine.Product) && Math.Round(price, Config.Round) < Math.Round(originalPrice, Config.Round))
                         {
-                            DialogService._dialogService.ShowAlertAsync("The selected price is too low.");
+                            DialogHelper._dialogService.ShowAlertAsync("The selected price is too low.");
                             return null;
                         }
                     }
 
                     if (price == 0 && Math.Round(price, Config.Round) != Math.Round(originalPrice, Config.Round))
                     {
-                        DialogService._dialogService.ShowAlertAsync("The price cannot be 0.");
+                        DialogHelper._dialogService.ShowAlertAsync("The price cannot be 0.");
                         return null;
                     }
                 }
@@ -94,7 +94,7 @@ namespace LaceupMigration
                         package = Convert.ToInt32(pack.Item2);
                         if (qty % package != 0)
                         {
-                            DialogService._dialogService.ShowAlertAsync("The quantity you input must be a multiple of " + package);
+                            DialogHelper._dialogService.ShowAlertAsync("The quantity you input must be a multiple of " + package);
                             return null;
                         }
                     }
@@ -125,7 +125,7 @@ namespace LaceupMigration
 
             if (overCredit > 0)
             {
-                DialogService._dialogService.ShowAlertAsync(string.Format("This customer is over the credit limit by {{0}}.", overCredit.ToCustomString()));
+                DialogHelper._dialogService.ShowAlertAsync(string.Format("This customer is over the credit limit by {{0}}.", overCredit.ToCustomString()));
                 return null;
             }
 
@@ -136,7 +136,7 @@ namespace LaceupMigration
             // do the check of the lot
             if (odLine.Product.LotIsMandatory(order.AsPresale, damaged) && string.IsNullOrEmpty(lot))
             {
-                DialogService._dialogService.ShowAlertAsync("The lot is required.");
+                DialogHelper._dialogService.ShowAlertAsync("The lot is required.");
                 return null;
             }
 
@@ -192,7 +192,7 @@ namespace LaceupMigration
 
                     if (currentInv - detBaseQty < 0)
                     {
-                        DialogService._dialogService.ShowAlertAsync("There is not enough inventory for this item.");
+                        DialogHelper._dialogService.ShowAlertAsync("There is not enough inventory for this item.");
                         return null;
                     }
                 }
@@ -211,7 +211,7 @@ namespace LaceupMigration
 
             if (order.WillHaveMoreThanLimit(1))
             {
-                DialogService._dialogService.ShowAlertAsync("This order exceeds that maximum amount of items. Modify your orden to be able to send it.");
+                DialogHelper._dialogService.ShowAlertAsync("This order exceeds that maximum amount of items. Modify your orden to be able to send it.");
                 return null;
             }
 
@@ -292,7 +292,7 @@ namespace LaceupMigration
             if (!excludeCredDump || !excludeCredRet)
                 items.Add("Credit Item");
 
-            var selectedItem = await DialogService._dialogService.ShowActionSheetAsync("Add Line As", null, "Cancel", items.ToArray());
+            var selectedItem = await DialogHelper._dialogService.ShowActionSheetAsync("Add Line As", null, "Cancel", items.ToArray());
 
             if (selectedItem == "Cancel" || string.IsNullOrEmpty(selectedItem))
                 return false;
@@ -370,7 +370,7 @@ namespace LaceupMigration
 
             var items = new string[] { "Dump", "Return" };
 
-            var selectedItem = await DialogService._dialogService.ShowActionSheetAsync("Type of Credit Item", null, "Cancel", items);
+            var selectedItem = await DialogHelper._dialogService.ShowActionSheetAsync("Type of Credit Item", null, "Cancel", items);
 
             if (selectedItem == "Cancel" || string.IsNullOrEmpty(selectedItem))
                 return;
@@ -393,7 +393,7 @@ namespace LaceupMigration
         {
             var items = new string[] { "Consignment Item", "Dealer Own" };
 
-            var selectedItem = await DialogService._dialogService.ShowActionSheetAsync("Add Line As", null, "Cancel", items);
+            var selectedItem = await DialogHelper._dialogService.ShowActionSheetAsync("Add Line As", null, "Cancel", items);
 
             if (selectedItem == "Cancel" || string.IsNullOrEmpty(selectedItem))
                 return false;
@@ -499,7 +499,7 @@ namespace LaceupMigration
             if (!excludeCredDump || !excludeCredRet)
                 items.Add("Credit Item");
 
-            var selectedItem = await DialogService._dialogService.ShowActionSheetAsync("Add Line As", null, "Cancel", items.ToArray());
+            var selectedItem = await DialogHelper._dialogService.ShowActionSheetAsync("Add Line As", null, "Cancel", items.ToArray());
 
             if (selectedItem == "Cancel" || string.IsNullOrEmpty(selectedItem))
                 return;
@@ -573,7 +573,7 @@ namespace LaceupMigration
 
             var items = new string[] { "Dump", "Return" };
 
-            var selectedItem = await DialogService._dialogService.ShowActionSheetAsync("Type of Credit Item", null, "Cancel", items);
+            var selectedItem = await DialogHelper._dialogService.ShowActionSheetAsync("Type of Credit Item", null, "Cancel", items);
 
             if (selectedItem == "Cancel" || string.IsNullOrEmpty(selectedItem))
                 return;
@@ -596,7 +596,7 @@ namespace LaceupMigration
         {
             var items = new string[] { "Consignment Item", "Dealer Own" };
 
-            var selectedItem = await DialogService._dialogService.ShowActionSheetAsync("Add Line As", null, "Cancel", items);
+            var selectedItem = await DialogHelper._dialogService.ShowActionSheetAsync("Add Line As", null, "Cancel", items);
 
             if (selectedItem == "Cancel" || string.IsNullOrEmpty(selectedItem))
                 return;

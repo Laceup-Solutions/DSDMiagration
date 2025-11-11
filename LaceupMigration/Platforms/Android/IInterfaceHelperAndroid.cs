@@ -1,21 +1,22 @@
 ﻿
-
 using Android.Net.Wifi;
-
 using Android.Preferences;
 using Android.Telephony;
-
-using Laceup;
-
-
-
 using Android;
+using Android.Bluetooth;
+using Android.Content;
+using Android.Content.PM;
+using Android.OS;
 using Android.Print;
 using AndroidX.Core.App;
+using Java.IO;
+using Java.Util;
+using LaceupMigration;
+
+[assembly: Dependency(typeof(InterfaceHelper))]
 
 namespace LaceupMigration;
 
-[assembly: Dependency(typeof(InterfaceHelper))]
 public class InterfaceHelper : IInterfaceHelper
 {
     public string GetOsVersion()

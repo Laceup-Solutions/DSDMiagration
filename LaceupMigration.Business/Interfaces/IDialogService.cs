@@ -11,7 +11,7 @@ public interface IDialogService
     Task HideLoadingAsync();
 }
 
-public class DialogService
+public class DialogHelper
 {
     public static IDialogService? _dialogService { get; set; }
 }

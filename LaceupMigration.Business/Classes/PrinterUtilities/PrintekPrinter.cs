@@ -336,36 +336,7 @@ namespace LaceupMigration
                 if (string.IsNullOrEmpty(PrinterProvider.PrinterAddress))
                     throw new InvalidOperationException("No valid printer selected");
 
-                BluetoothDevice hxm = BluetoothAdapter.DefaultAdapter.GetRemoteDevice(PrinterProvider.PrinterAddress);
-
-
-                BluetoothSocket socket = null;
-                Java.IO.BufferedReader inReader = null;
-                Java.IO.BufferedWriter outReader = null;
-                Java.Util.UUID applicationUUID = Java.Util.UUID.FromString("00001101-0000-1000-8000-00805F9B34FB");
-                //Logger.CreateLog ("using know uuid");
-                //create & connect to BT socket
-                socket = hxm.CreateRfcommSocketToServiceRecord(applicationUUID);
-                Thread.Sleep(1000);
-                //Logger.CreateLog (socket != null ? "socket not null" : "socket null");
-                //Logger.CreateLog ("before socket.IsConnected" + socket.IsConnected.ToString ());
-                socket.Connect();
-                Thread.Sleep(1000);
-                //Logger.CreateLog ("after socket.IsConnected" + socket.IsConnected.ToString ());
-                inReader = new Java.IO.BufferedReader(new Java.IO.InputStreamReader(socket.InputStream));
-                outReader = new Java.IO.BufferedWriter(new Java.IO.OutputStreamWriter(socket.OutputStream), 60000);
-                DateTime st = DateTime.Now;
-
-                outReader.Write((char)27);
-                outReader.Write((char)27);
-                outReader.Write((char)51);
-                outReader.Flush();
-
-                Thread.Sleep(5 * 1000);
-                inReader.Close();
-                socket.Close();
-                outReader.Close();
-                Logger.CreateLog("finishing printing");
+                Config.helper.PrintIt(printingString);
             }
             catch (Exception ee)
             {

@@ -72,14 +72,14 @@ namespace LaceupMigration
 
             if (sessionDetails.Any(x => x.detailType == SessionDetails.SessionDetailType.Break && x.endTime == DateTime.MinValue))
             {
-                DialogService._dialogService.ShowAlertAsync("You cannot create a transaction while you are on break.");
+                DialogHelper._dialogService.ShowAlertAsync("You cannot create a transaction while you are on break.");
                 return true;
             }
 
             if (open != null)
             {
                 var client = Client.Find(open.clientId);
-                DialogService._dialogService.ShowAlertAsync( "You have an open visit at: " + client.ClientName
+                DialogHelper._dialogService.ShowAlertAsync( "You have an open visit at: " + client.ClientName
                     + ". Please end that visit to start a new one at this client.");
                 return true;
             }

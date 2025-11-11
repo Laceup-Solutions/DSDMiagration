@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using LaceupMigration;
+
+[assembly: Dependency(typeof(IScannerService))]
 
 namespace LaceupMigration;
 
-[assembly: Dependency(typeof(IScannerService))]
 public class ScannerService : IScannerService
 {
     public event EventHandler<string> OnDataScanned;

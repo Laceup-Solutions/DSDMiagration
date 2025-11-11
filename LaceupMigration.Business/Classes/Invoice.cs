@@ -164,7 +164,7 @@ namespace LaceupMigration
         public double Tax { get; set; }
 
         public string Signature { get; set; }
-        public int SignatureWidth { get; set; }
+        public double SignatureWidth { get; set; }
         public int SignatureHeight { get; set; }
         public int SignatureSize { get; set; }
         public string SignatureAsBase64 { get; set; }

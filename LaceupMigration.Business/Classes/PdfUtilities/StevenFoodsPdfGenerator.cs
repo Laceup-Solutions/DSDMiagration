@@ -629,15 +629,7 @@ namespace LaceupMigration
 
         protected virtual string GetSignatureImage(Order order)
         {
-            var filePath = System.IO.Path.GetTempFileName();
-            var stream = new FileStream(filePath, FileMode.Create);
-
-            var bitmap = order.ConvertSignatureToBitmap();
-
-            bitmap.Compress(Android.Graphics.Bitmap.CompressFormat.Png, 100, stream);
-            stream.Close();
-
-            return filePath;
+            return order.ConvertSignatureToBitmap();
         }
 
         protected virtual Cell GetSignatureCell(Order order, int rowSpan = 4)
@@ -1210,7 +1202,7 @@ namespace LaceupMigration
             AddCellToHeader(tableLayout, "Description");
             AddCellToHeader(tableLayout, "Qty");
             AddCellToHeader(tableLayout, "UoM");
-            AddCellToHeader(tableLayout.GetString(Resource.String.priceWord));
+            AddCellToHeader(tableLayout, "Price");
             AddCellToHeader(tableLayout, "Unit Price");
             AddCellToHeader(tableLayout, "Total");
 

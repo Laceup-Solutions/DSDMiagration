@@ -16,6 +16,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 
 namespace LaceupMigration
 {
@@ -6979,21 +6980,59 @@ namespace LaceupMigration
 
                         if (i > 0)
                         {
-                            using (var reader = new System.IO.FileStream(logoFile, System.IO.FileMode.Open))
+                             using (var reader = new FileStream(logoFile, FileMode.Open, FileAccess.Read))
                             {
-                                using (var signature = Android.Graphics.BitmapFactory.DecodeStream(reader))
+                                const int MAX_W = 300;
+                                const int MAX_H = 300;
+
+                                var dOpt = new DecoderOptions
                                 {
-                                    var converter = new LaceupAndroidApp.BitmapConvertor();
-                                    int widthInBytes = ((signature.Width / 32) * 32) / 8;
-                                    int height = signature.Height / 32 * 32;
-                                    var rawBytes = converter.convertBitmap(signature, null);
-                                    string ZPLImageDataString = BitConverter.ToString(rawBytes);
-                                    ZPLImageDataString = ZPLImageDataString.Replace("-", string.Empty);
-                                    Config.CompanyLogo = ZPLImageDataString;
-                                    Config.CompanyLogoWidth = widthInBytes;
-                                    Config.CompanyLogoHeight = height;
-                                    Config.CompanyLogoSize = rawBytes.Length;
+                                    TargetSize = new SixLabors.ImageSharp.Size(MAX_W, MAX_H),
+                                    SkipMetadata = true,
+                                    Sampler = KnownResamplers.NearestNeighbor
+                                };
+
+                                using var fs = File.OpenRead(logoFile);
+                                using var img = SixLabors.ImageSharp.Image.Load<L8>(dOpt, fs);
+
+                                int paddedW = (img.Width + 31) & ~31;
+                                int paddedH = (img.Height + 31) & ~31;
+
+                                img.Configuration.PreferContiguousImageBuffers = true;
+                                if (!img.DangerousTryGetSinglePixelMemory(out Memory<L8> mem))
+                                    throw new InvalidOperationException("Pixel memory not contiguous");
+
+                                int bytesPerRow = paddedW / 8;
+                                byte[] raw = new byte[paddedH * bytesPerRow];
+
+                                Span<L8> src = mem.Span;
+                                for (int y = 0; y < img.Height; y++)
+                                {
+                                    int srcRow = y * img.Width;
+                                    int dstIdx = y * bytesPerRow;
+
+                                    byte acc = 0;
+                                    int bit = 7;
+                                    for (int x = 0; x < img.Width; x++)
+                                    {
+                                        if (src[srcRow + x].PackedValue < 128)
+                                            acc |= (byte)(1 << bit);
+
+                                        if (--bit < 0)
+                                        {
+                                            raw[dstIdx++] = acc;
+                                            acc = 0;
+                                            bit = 7;
+                                        }
+                                    }
+
+                                    if (bit != 7) raw[dstIdx] = acc;
                                 }
+
+                                Config.CompanyLogo = BitConverter.ToString(raw).Replace("-", "");
+                                Config.CompanyLogoWidth = bytesPerRow;
+                                Config.CompanyLogoHeight = paddedH;
+                                Config.CompanyLogoSize = raw.Length;
                             }
                         }
                         else
@@ -8190,9 +8229,6 @@ namespace LaceupMigration
                     netaccess.CloseConnection();
 
                     Logger.CreateLog("Salesman Device Info sent");
-
-                    Config.LaceupVersion = Config.VersionNumber;
-                    Config.SaveSettings();
                 }
             }
             catch (Exception ex)
@@ -8713,25 +8749,30 @@ namespace LaceupMigration
 
                         using (var reader = new FileStream(tempFile, FileMode.Open))
                         {
-                            using (var signature = Android.Graphics.BitmapFactory.DecodeStream(reader))
-                            {
-                                var converter = new LaceupAndroidApp.BitmapConvertor();
-                                int widthInBytes = ((signature.Width / 32) * 32) / 8;
-                                int height = signature.Height / 32 * 32;
-                                var rawBytes = converter.convertBitmap(signature, null);
-                                string ZPLImageDataString = BitConverter.ToString(rawBytes);
-                                ZPLImageDataString = ZPLImageDataString.Replace("-", string.Empty);
+                            var converter = new BitmapConvertor();
+                            // var path = System.IO.Path.GetTempFileName () + ".bmp";
+                            using SKBitmap signature = SKBitmap.Decode(tempFile);
 
-                                MemoryStream stream = new MemoryStream();
-                                signature.Compress(Android.Graphics.Bitmap.CompressFormat.Png, 100, stream);
-                                byte[] byteArray = stream.ToArray();
+                            var rawBytes = converter.convertBitmap(signature);
+                            //int bitmapDataOffset = 62;
+                            double widthInBytes = ((signature.Width / 32) * 32) / 8;
+                            int height = signature.Height / 32 * 32;
+                            var bitmapDataLength = rawBytes.Length;
 
-                                invoice.SignatureAsBase64 = Android.Util.Base64.EncodeToString(byteArray, Android.Util.Base64Flags.Default);
-                                invoice.Signature = ZPLImageDataString;
-                                invoice.SignatureWidth = widthInBytes;
-                                invoice.SignatureHeight = height;
-                                invoice.SignatureSize = rawBytes.Length;
-                            }
+                            string ZPLImageDataString = BitConverter.ToString(rawBytes);
+                            ZPLImageDataString = ZPLImageDataString.Replace("-", string.Empty);
+                            // Convert the image to a PNG format and store it as Base64
+
+                            using MemoryStream stream = new MemoryStream();
+                            signature.Encode(stream, SKEncodedImageFormat.Png, 100); // Encode as PNG
+                            byte[] byteArray = stream.ToArray();
+
+                            // Convert the byte array to Base64 string
+                            invoice.SignatureAsBase64 = Convert.ToBase64String(byteArray);
+                            invoice.Signature = ZPLImageDataString;
+                            invoice.SignatureWidth = widthInBytes;
+                            invoice.SignatureHeight = height;
+                            invoice.SignatureSize = rawBytes.Length;
                         }
                     }
                     else

@@ -6,6 +6,7 @@ using Symbol.XamarinEMDK.Barcode;
 using static Symbol.XamarinEMDK.Barcode.ScanDataCollection;
 using System.Threading;
 using Android.App;
+using Android.Content;
 
 namespace LaceupMigration
 {
@@ -22,7 +23,7 @@ namespace LaceupMigration
 
         public bool IsWorking { get; set; }
 
-        public EMDKWorker(Activity context)
+        public EMDKWorker(Context context)
         {
             EMDKResults results = EMDKManager.GetEMDKManager(context, this);
             if (results.StatusCode != EMDKResults.STATUS_CODE.Success)
