@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.RouteMapPage"
+             Shell.TabBarIsVisible="False"
+             Title="Route Map">
+    <Grid RowDefinitions="Auto,*" RowSpacing="8">
+        <HorizontalStackLayout Grid.Row="0"
+                               Spacing="8"
+                               Margin="8">
+            <Button Text="Refresh"
+                    Command="{Binding RefreshCommand}"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Show Directions"
+                    Command="{Binding ShowDirectionsCommand}"
+                    HorizontalOptions="FillAndExpand" />
+        </HorizontalStackLayout>
+
+        <Grid Grid.Row="1">
+            <!-- Map placeholder - would use actual map control in production -->
+            <Frame Padding="16"
+                   BackgroundColor="{StaticResource Gray100}"
+                   HasShadow="False"
+                   CornerRadius="8"
+                   Margin="8">
+                <VerticalStackLayout Spacing="8"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center">
+                    <Label Text="Map View"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center" />
+                    <Label Text="Map integration would go here"
+                           FontSize="14"
+                           TextColor="#666666"
+                           HorizontalOptions="Center" />
+                    <Label Text="{Binding RouteInfo}"
+                           FontSize="12"
+                           TextColor="#666666"
+                           HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <CollectionView ItemsSource="{Binding RouteStops}"
+                          Margin="8">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RouteStopViewModel">
+                        <Frame Padding="12"
+                               Margin="0,4"
+                               BackgroundColor="White"
+                               HasShadow="True"
+                               CornerRadius="8"
+                               Opacity="0.9">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="{Binding ClientName}"
+                                       FontSize="14"
+                                       FontAttributes="Bold" />
+                                <Label Text="{Binding Address}"
+                                       FontSize="12"
+                                       TextColor="#666666" />
+                                <Label Text="{Binding Sequence, StringFormat='Stop #{0}'}"
+                                       FontSize="12"
+                                       TextColor="#666666" />
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </Grid>
+</ContentPage>
+

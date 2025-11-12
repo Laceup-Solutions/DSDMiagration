@@ -48,6 +48,119 @@ public class DialogService : IDialogService
         return null;
     }
 
+    public async Task<bool> ShowConfirmAsync(string message, string title = "Confirm", string acceptText = "Yes", string cancelText = "No")
+    {
+        return await ShowConfirmationAsync(title, message, acceptText, cancelText);
+    }
+
+    public async Task<int> ShowSelectionAsync(string title, string[] options)
+    {
+        var page = GetCurrentPage();
+        if (page != null && options != null && options.Length > 0)
+        {
+            var result = await page.DisplayActionSheet(title, "Cancel", null, options);
+            if (string.IsNullOrEmpty(result) || result == "Cancel")
+                return -1;
+
+            var index = Array.IndexOf(options, result);
+            return index;
+        }
+        return -1;
+    }
+
+    public async Task<DateTime?> ShowDatePickerAsync(string title, DateTime? initialDate = null, DateTime? minimumDate = null, DateTime? maximumDate = null)
+    {
+        var page = GetCurrentPage();
+        if (page == null)
+            return null;
+
+        var tcs = new TaskCompletionSource<DateTime?>();
+        var selectedDate = initialDate ?? DateTime.Now;
+        
+        var datePicker = new DatePicker
+        {
+            Date = selectedDate,
+            Format = "MM/dd/yyyy"
+        };
+
+        if (minimumDate.HasValue)
+            datePicker.MinimumDate = minimumDate.Value;
+        if (maximumDate.HasValue)
+            datePicker.MaximumDate = maximumDate.Value;
+
+        var confirmButton = new Button
+        {
+            Text = "OK",
+            BackgroundColor = Colors.Blue,
+            TextColor = Colors.White,
+            Margin = new Thickness(10, 5)
+        };
+        confirmButton.Clicked += async (s, e) =>
+        {
+            tcs.SetResult(datePicker.Date);
+            await page.Navigation.PopModalAsync();
+        };
+
+        var cancelButton = new Button
+        {
+            Text = "Cancel",
+            BackgroundColor = Colors.Gray,
+            TextColor = Colors.White,
+            Margin = new Thickness(10, 5)
+        };
+        cancelButton.Clicked += async (s, e) =>
+        {
+            tcs.SetResult(null);
+            await page.Navigation.PopModalAsync();
+        };
+
+        var datePickerPage = new ContentPage
+        {
+            Title = title,
+            BackgroundColor = Color.FromArgb("#80000000")
+        };
+
+        datePickerPage.Content = new Grid
+        {
+            Children =
+            {
+                new Border
+                {
+                    BackgroundColor = Colors.White,
+                    StrokeShape = new RoundRectangle() { CornerRadius = 10 },
+                    Padding = new Thickness(20),
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center,
+                    WidthRequest = 300,
+                    Content = new VerticalStackLayout
+                    {
+                        Spacing = 15,
+                        Children =
+                        {
+                            new Label
+                            {
+                                Text = title,
+                                FontSize = 18,
+                                FontAttributes = FontAttributes.Bold,
+                                HorizontalOptions = LayoutOptions.Center
+                            },
+                            datePicker,
+                            new HorizontalStackLayout
+                            {
+                                Spacing = 10,
+                                HorizontalOptions = LayoutOptions.Center,
+                                Children = { confirmButton, cancelButton }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        await page.Navigation.PushModalAsync(datePickerPage);
+        return await tcs.Task;
+    }
+
     
     public async Task ShowLoadingAsync(string message = "Loading...")
     {

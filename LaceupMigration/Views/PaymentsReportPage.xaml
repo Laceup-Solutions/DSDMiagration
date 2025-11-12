@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+             x:Class="LaceupMigration.Views.PaymentsReportPage"
+             Shell.TabBarIsVisible="False"
+             Title="Payments Report">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="16" Padding="16">
+        <Grid Grid.Row="0" ColumnDefinitions="*,*" ColumnSpacing="8">
+            <VerticalStackLayout Grid.Column="0" Spacing="4">
+                <Label Text="From Date:" FontSize="12" TextColor="Gray" />
+                <DatePicker Date="{Binding DateFrom}"
+                           Format="MM/dd/yyyy"
+                           IsEnabled="{Binding DateRangeEnabled}"
+                           MinimumDate="01/01/2000"
+                           MaximumDate="{Binding Source={x:Static sys:DateTime.Now}}" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Grid.Column="1" Spacing="4">
+                <Label Text="To Date:" FontSize="12" TextColor="Gray" />
+                <DatePicker Date="{Binding DateTo}"
+                           Format="MM/dd/yyyy"
+                           IsEnabled="{Binding DateRangeEnabled}"
+                           MinimumDate="{Binding DateFrom}"
+                           MaximumDate="{Binding Source={x:Static sys:DateTime.Now}}" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <HorizontalStackLayout Grid.Row="1" Spacing="8">
+            <Button Text="Run Report"
+                    Command="{Binding RunReportCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Send by Email"
+                    Command="{Binding SendByEmailCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    HorizontalOptions="FillAndExpand" />
+        </HorizontalStackLayout>
+
+        <ActivityIndicator Grid.Row="2"
+                           IsRunning="{Binding IsLoading}"
+                           IsVisible="{Binding IsLoading}"
+                           HeightRequest="50" />
+    </Grid>
+</ContentPage>
+

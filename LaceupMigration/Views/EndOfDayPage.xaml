@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.EndOfDayPage"
+             Shell.TabBarIsVisible="False"
+             Title="End of Day">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Button Text="Route Returns"
+                    Command="{Binding RouteReturnsCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12" />
+
+            <Button Text="End Inventory"
+                    Command="{Binding EndInventoryCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12" />
+
+            <Button Text="Cycle Count"
+                    Command="{Binding CycleCountCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12" />
+
+            <Button Text="Print Reports"
+                    Command="{Binding PrintReportsCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12" />
+
+            <Button Text="End of Day"
+                    Command="{Binding EndOfDayCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12" />
+
+            <Button Text="Load Order"
+                    Command="{Binding LoadOrderCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12" />
+
+            <Button Text="Set Par Level"
+                    Command="{Binding SetParLevelCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12" />
+
+            <Button Text="Clock Out"
+                    Command="{Binding ClockOutCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12" />
+
+            <Button Text="Route Expenses"
+                    Command="{Binding RouteExpensesCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    IsVisible="{Binding ShowExpenses}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

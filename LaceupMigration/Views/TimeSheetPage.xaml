@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.TimeSheetPage"
+             x:DataType="vm:TimeSheetPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Time Sheet">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <Label Text="{Binding GreetingText}"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}" />
+
+                <Button Text="{Binding ClockInOutButtonText}"
+                        Command="{Binding ClockInOutCommand}"
+                        Style="{StaticResource PrimaryButton}"
+                        Margin="0,8,0,0" />
+
+                <Button Text="{Binding BreakButtonText}"
+                        Command="{Binding BreakCommand}"
+                        IsEnabled="{Binding CanBreak}"
+                        IsVisible="{Binding ShowBreakButton}"
+                        Style="{StaticResource SecondaryButton}"
+                        Margin="0,8,0,0" />
+
+                <VerticalStackLayout IsVisible="{Binding ShowSessionInfo}"
+                                    Margin="0,16,0,0"
+                                    Spacing="8">
+                    <Label Text="{Binding SessionInfoText}"
+                           FontSize="14"
+                           TextColor="{StaticResource Gray600}" />
+
+                    <Label Text="{Binding SessionDurationText}"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource PrimaryDark}" />
+
+                    <Label Text="{Binding StartAddressText}"
+                           FontSize="13"
+                           TextColor="{StaticResource Gray600}" />
+
+                    <Button Text="View Location"
+                            Command="{Binding ViewLocationCommand}"
+                            IsVisible="{Binding ShowViewLocation}"
+                            Style="{StaticResource SecondaryButton}"
+                            Margin="0,8,0,0" />
+                </VerticalStackLayout>
+
+                <Label Text="Session Details:"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}"
+                       Margin="0,16,0,0"
+                       IsVisible="{Binding ShowSessionDetails}" />
+
+                <CollectionView ItemsSource="{Binding SessionDetails}"
+                                SelectionMode="None"
+                                IsVisible="{Binding ShowSessionDetails}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SessionDetailViewModel">
+                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" InputTransparent="True">
+                                    <Label Grid.Column="0" Grid.Row="0"
+                                           Text="{Binding CustomerName}"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Gray900}" />
+                                    <Label Grid.Column="1" Grid.Row="0"
+                                           Text="{Binding TypeText}"
+                                           HorizontalOptions="End"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Grid.Column="0" Grid.Row="1"
+                                           Text="{Binding TimeRangeText}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Grid.Column="1" Grid.Row="1"
+                                           Text="{Binding DurationText}"
+                                           HorizontalOptions="End"
+                                           FontSize="13"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Gray900}" />
+                                    <Label Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2"
+                                           Text="{Binding StatusText}"
+                                           IsVisible="{Binding ShowStatus}"
+                                           FontSize="12"
+                                           FontAttributes="Italic"
+                                           TextColor="{StaticResource Gray600}" />
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label Text="No session details available."
+                       IsVisible="{Binding ShowNoDetails}"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center"
+                       Margin="0,20,0,20"
+                       TextColor="{StaticResource Gray500}" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>

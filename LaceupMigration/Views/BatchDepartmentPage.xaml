@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.BatchDepartmentPage"
+             x:DataType="vm:BatchDepartmentPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Batch Department">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" Order="Primary" Priority="0">
+            <ToolbarItem.IconImageSource>
+                <FontImageSource FontFamily="MaterialOutlined" Glyph="&#xE5D2;" Size="24" Color="Black"/>
+            </ToolbarItem.IconImageSource>
+        </ToolbarItem>
+    </ContentPage.ToolbarItems>
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <Label Text="{Binding ClientName}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}" />
+
+                <Label Text="Select Department:"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}"
+                       Margin="0,8,0,0" />
+
+                <Picker ItemsSource="{Binding Departments}"
+                        SelectedItem="{Binding SelectedDepartment}"
+                        ItemDisplayBinding="{Binding Name}"
+                        IsEnabled="{Binding CanSelectDepartment}"
+                        Margin="0,8,0,0" />
+
+                <Button Text="Add Items"
+                        Command="{Binding AddItemsCommand}"
+                        IsEnabled="{Binding CanAddItems}"
+                        Style="{StaticResource PrimaryButton}"
+                        Margin="0,8,0,0" />
+
+                <Label Text="Orders:"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}"
+                       Margin="0,16,0,0" />
+
+                <CollectionView ItemsSource="{Binding Orders}"
+                                SelectionMode="Multiple"
+                                x:Name="OrdersCollectionView">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BatchDepartmentOrderViewModel">
+                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
+                                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" InputTransparent="True">
+                                    <CheckBox Grid.Column="0" Grid.RowSpan="2"
+                                              IsChecked="{Binding IsSelected}"
+                                              VerticalOptions="Center" />
+                                    <Label Grid.Column="1" Grid.Row="0"
+                                           Text="{Binding DepartmentName}"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Gray900}" />
+                                    <Label Grid.Column="1" Grid.Row="1"
+                                           Text="{Binding TotalText}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Grid.Column="2" Grid.Row="0"
+                                           Text="{Binding StatusText}"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           TextColor="{Binding StatusColor}"
+                                           HorizontalOptions="End" />
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,16,0,0">
+                    <Button Grid.Column="0"
+                            Text="Print"
+                            Command="{Binding PrintCommand}"
+                            IsEnabled="{Binding CanPrint}"
+                            Style="{StaticResource SecondaryButton}" />
+
+                    <Button Grid.Column="1"
+                            Text="Delete"
+                            Command="{Binding DeleteCommand}"
+                            IsEnabled="{Binding CanDelete}"
+                            IsVisible="{Binding ShowDelete}"
+                            Style="{StaticResource SecondaryButton}" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                    <Button Grid.Column="0"
+                            Text="Send"
+                            Command="{Binding SendCommand}"
+                            IsEnabled="{Binding CanSend}"
+                            Style="{StaticResource SecondaryButton}" />
+
+                    <Button Grid.Column="1"
+                            Text="Done"
+                            Command="{Binding DoneCommand}"
+                            Style="{StaticResource PrimaryButton}" />
+                </Grid>
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>

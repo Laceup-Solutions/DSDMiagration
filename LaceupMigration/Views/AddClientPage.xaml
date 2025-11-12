@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.AddClientPage"
+             Shell.TabBarIsVisible="False"
+             Title="Add Client">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Entry Text="{Binding Name}"
+                   Placeholder="Client Name *"
+                   FontSize="16" />
+
+            <Entry Text="{Binding Contact}"
+                   Placeholder="Contact"
+                   FontSize="16" />
+
+            <Entry Text="{Binding Phone}"
+                   Placeholder="Phone"
+                   Keyboard="Telephone"
+                   FontSize="16" />
+
+            <Entry Text="{Binding Email}"
+                   Placeholder="Email"
+                   Keyboard="Email"
+                   FontSize="16" />
+
+            <Entry Text="{Binding Address1}"
+                   Placeholder="Address 1"
+                   FontSize="16" />
+
+            <Entry Text="{Binding Address2}"
+                   Placeholder="Address 2"
+                   FontSize="16" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Entry Grid.Column="0"
+                       Text="{Binding City}"
+                       Placeholder="City"
+                       FontSize="16" />
+                <Entry Grid.Column="1"
+                       Text="{Binding State}"
+                       Placeholder="State"
+                       FontSize="16" />
+            </Grid>
+
+            <Entry Text="{Binding Zip}"
+                   Placeholder="Zip Code"
+                   FontSize="16" />
+
+            <Entry Text="{Binding License}"
+                   Placeholder="License"
+                   FontSize="16" />
+
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox IsChecked="{Binding CanChangePrices}" />
+                <Label Text="Can Change Prices"
+                       VerticalOptions="Center"
+                       FontSize="14" />
+            </HorizontalStackLayout>
+
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox IsChecked="{Binding Taxable}" />
+                <Label Text="Taxable"
+                       VerticalOptions="Center"
+                       FontSize="14" />
+            </HorizontalStackLayout>
+
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox IsChecked="{Binding OneDoc}" />
+                <Label Text="One Document"
+                       VerticalOptions="Center"
+                       FontSize="14" />
+            </HorizontalStackLayout>
+
+            <Entry Text="{Binding TaxRate}"
+                   Placeholder="Tax Rate"
+                   Keyboard="Numeric"
+                   FontSize="16" />
+
+            <Button Text="{Binding SelectedPriceLevel, StringFormat='Price Level: {0}'}"
+                    Command="{Binding SelectPriceLevelCommand}"
+                    HorizontalOptions="Fill" />
+
+            <Button Text="{Binding SelectedTerms, StringFormat='Terms: {0}'}"
+                    Command="{Binding SelectTermsCommand}"
+                    HorizontalOptions="Fill" />
+
+            <Button Text="Select Bill To"
+                    Command="{Binding SelectBillToCommand}"
+                    HorizontalOptions="Fill" />
+
+            <Editor Text="{Binding Comment}"
+                    Placeholder="Comments"
+                    HeightRequest="100"
+                    FontSize="16" />
+
+            <Button Text="Save"
+                    Command="{Binding SaveCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    Margin="0,20,0,0" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

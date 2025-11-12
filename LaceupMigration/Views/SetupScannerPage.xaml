@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.SetupScannerPage"
+             Shell.TabBarIsVisible="False"
+             Title="Scanner Setup">
+    <Grid RowDefinitions="Auto,*" RowSpacing="8">
+        <Label Grid.Row="0"
+               Text="{Binding CurrentStep, StringFormat='Step {0} of {1}'}"
+               FontSize="16"
+               FontAttributes="Bold"
+               HorizontalOptions="Center"
+               Margin="8" />
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20" Spacing="16">
+                <Label Text="{Binding StepTitle}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       HorizontalOptions="Center"
+                       Margin="0,0,0,20" />
+
+                <Label Text="{Binding StepDescription}"
+                       FontSize="14"
+                       TextColor="#666666"
+                       Margin="0,0,0,20" />
+
+                <ContentPresenter Content="{Binding StepContent}" />
+
+                <HorizontalStackLayout Spacing="8"
+                                     Margin="0,20,0,0">
+                    <Button Text="Previous"
+                            Command="{Binding PreviousStepCommand}"
+                            IsEnabled="{Binding CanGoPrevious}"
+                            HorizontalOptions="FillAndExpand" />
+                    <Button Text="{Binding NextButtonText}"
+                            Command="{Binding NextStepCommand}"
+                            HorizontalOptions="FillAndExpand"
+                            BackgroundColor="{StaticResource Primary}"
+                            TextColor="White" />
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>
+

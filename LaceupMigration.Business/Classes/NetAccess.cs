@@ -465,7 +465,7 @@ namespace LaceupMigration
             }
         }
 
-        internal static void UpdateClientNote(Client client)
+        public static void UpdateClientNote(Client client)
         {
             using (var access = new NetAccess())
             {

@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.BatchPage"
+             x:DataType="vm:BatchPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Batch">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" Order="Primary" Priority="0">
+            <ToolbarItem.IconImageSource>
+                <FontImageSource FontFamily="MaterialOutlined" Glyph="&#xE5D2;" Size="24" Color="Black"/>
+            </ToolbarItem.IconImageSource>
+        </ToolbarItem>
+    </ContentPage.ToolbarItems>
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <Label Text="{Binding ClientName}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}" />
+
+                <Label Text="{Binding ClockInText}"
+                       TextColor="{StaticResource Gray600}" />
+
+                <Label Text="{Binding ClockOutText}"
+                       IsVisible="{Binding ShowClockOut}"
+                       TextColor="{StaticResource Gray600}" />
+
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" 
+                      ColumnSpacing="12" RowSpacing="8"
+                      IsVisible="{Binding ShowTotals}">
+                    <Label Grid.Column="0" Grid.Row="0"
+                           Text="Amount:"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Gray900}" />
+                    <Label Grid.Column="1" Grid.Row="0"
+                           Text="{Binding AmountText}"
+                           HorizontalOptions="End"
+                           TextColor="{StaticResource Gray900}" />
+
+                    <Label Grid.Column="0" Grid.Row="1"
+                           Text="Qty Ordered:"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Gray900}" />
+                    <Label Grid.Column="1" Grid.Row="1"
+                           Text="{Binding QtyOrderedText}"
+                           HorizontalOptions="End"
+                           TextColor="{StaticResource Gray900}" />
+
+                    <Label Grid.Column="0" Grid.Row="2"
+                           Text="Qty Returned:"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Gray900}" />
+                    <Label Grid.Column="1" Grid.Row="2"
+                           Text="{Binding QtyReturnedText}"
+                           HorizontalOptions="End"
+                           TextColor="{StaticResource Gray900}" />
+
+                    <Label Grid.Column="0" Grid.Row="3"
+                           Text="Qty Dumped:"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Gray900}" />
+                    <Label Grid.Column="1" Grid.Row="3"
+                           Text="{Binding QtyDumpedText}"
+                           HorizontalOptions="End"
+                           TextColor="{StaticResource Gray900}" />
+                </Grid>
+
+                <Label Text="Orders:"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}"
+                       Margin="0,8,0,0" />
+
+                <CollectionView ItemsSource="{Binding Orders}"
+                                SelectionMode="None"
+                                x:Name="OrdersCollectionView">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BatchOrderViewModel">
+                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" InputTransparent="True">
+                                    <CheckBox Grid.Column="0" Grid.RowSpan="4"
+                                              IsChecked="{Binding IsSelected}"
+                                              VerticalOptions="Center"
+                                              IsEnabled="{Binding CanSelect}" />
+                                    <Label Grid.Column="1" Grid.Row="0"
+                                           Text="{Binding OrderTitle}"
+                                           FontAttributes="Bold"
+                                           TextColor="{Binding OrderTitleColor}" />
+                                    <Label Grid.Column="1" Grid.Row="1"
+                                           Text="{Binding CompanyText}"
+                                           IsVisible="{Binding ShowCompany}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Grid.Column="1" Grid.Row="2"
+                                           Text="{Binding TotalText}"
+                                           IsVisible="{Binding ShowTotal}"
+                                           FontSize="13"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Gray900}" />
+                                    <Label Grid.Column="1" Grid.Row="3"
+                                           Text="{Binding StatusText}"
+                                           IsVisible="{Binding ShowStatus}"
+                                           FontSize="13"
+                                           FontAttributes="Bold"
+                                           TextColor="{Binding StatusColor}" />
+                                    <Label Grid.Column="1" Grid.Row="4"
+                                           Text="{Binding PoNumberText}"
+                                           IsVisible="{Binding ShowPONumber}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Grid.Column="1" Grid.Row="5"
+                                           Text="{Binding AssetText}"
+                                           IsVisible="{Binding ShowAsset}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}" />
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <Button Grid.Column="0" Grid.Row="0"
+                            Text="Pick"
+                            Command="{Binding PickCommand}"
+                            IsEnabled="{Binding CanPick}"
+                            IsVisible="{Binding ShowPickButton}"
+                            Style="{StaticResource SecondaryButton}" />
+
+                    <Button Grid.Column="1" Grid.Row="0"
+                            Text="DEX"
+                            Command="{Binding DexCommand}"
+                            IsEnabled="{Binding CanDex}"
+                            IsVisible="{Binding ShowDexButton}"
+                            Style="{StaticResource SecondaryButton}" />
+
+                    <Button Grid.Column="0" Grid.Row="1"
+                            Text="Finalize"
+                            Command="{Binding FinalizeCommand}"
+                            IsEnabled="{Binding CanFinalize}"
+                            Style="{StaticResource PrimaryButton}" />
+
+                    <Button Grid.Column="1" Grid.Row="1"
+                            Text="Void"
+                            Command="{Binding VoidCommand}"
+                            IsEnabled="{Binding CanVoid}"
+                            Style="{StaticResource SecondaryButton}" />
+
+                    <Button Grid.Column="0" Grid.Row="2"
+                            Text="Reship"
+                            Command="{Binding ReshipCommand}"
+                            IsEnabled="{Binding CanReship}"
+                            IsVisible="{Binding ShowReshipButton}"
+                            Style="{StaticResource SecondaryButton}" />
+
+                    <Button Grid.Column="1" Grid.Row="2"
+                            Text="Print Label"
+                            Command="{Binding PrintLabelCommand}"
+                            IsEnabled="{Binding CanPrintLabel}"
+                            IsVisible="{Binding ShowPrintLabelButton}"
+                            Style="{StaticResource SecondaryButton}" />
+
+                    <Button Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="3"
+                            Text="Clock Out"
+                            Command="{Binding ClockOutCommand}"
+                            IsEnabled="{Binding CanClockOut}"
+                            Style="{StaticResource PrimaryButton}"
+                            Margin="0,8,0,0" />
+                </Grid>
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>

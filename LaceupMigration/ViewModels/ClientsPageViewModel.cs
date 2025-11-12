@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LaceupMigration.ViewModels
@@ -25,6 +26,7 @@ namespace LaceupMigration.ViewModels
 		private readonly ILaceupAppService _appService;
 
 		private readonly List<ClientEntry> _allEntries = new();
+		private CancellationTokenSource? _searchDebounceTokenSource;
 
 		private DisplayMode _displayMode;
 		private bool _initialized;
@@ -152,7 +154,11 @@ namespace LaceupMigration.ViewModels
 			}
 
 			var clientId = item.Client.ClientId;
-			await Shell.Current.GoToAsync($"//clientdetails?clientId={clientId}");
+			var parameters = new Dictionary<string, object>
+			{
+				{ "clientId", clientId }
+			};
+			await Shell.Current.GoToAsync("clientdetails", parameters);
 		}
 
 		[RelayCommand]
@@ -194,7 +200,7 @@ namespace LaceupMigration.ViewModels
 			if (!ShowMapRouteButton)
 				return;
 
-			await Shell.Current.GoToAsync("//maproutes");
+			await Shell.Current.GoToAsync("maproutes");
 		}
 
 		[RelayCommand]
@@ -244,7 +250,29 @@ namespace LaceupMigration.ViewModels
 
 		partial void OnSearchQueryChanged(string value)
 		{
-			ApplyFilter();
+			// Cancel any pending search operation
+			_searchDebounceTokenSource?.Cancel();
+			_searchDebounceTokenSource?.Dispose();
+			_searchDebounceTokenSource = new CancellationTokenSource();
+
+			var token = _searchDebounceTokenSource.Token;
+
+			// Debounce: Wait 300ms before executing the search
+			Task.Run(async () =>
+			{
+				try
+				{
+					await Task.Delay(300, token);
+					if (!token.IsCancellationRequested)
+					{
+						MainThread.BeginInvokeOnMainThread(() => ApplyFilter());
+					}
+				}
+				catch (TaskCanceledException)
+				{
+					// Expected when user types quickly
+				}
+			});
 		}
 
 		partial void OnUseGroupingChanged(bool value)
@@ -417,6 +445,7 @@ namespace LaceupMigration.ViewModels
 			var query = SearchQuery?.Trim() ?? string.Empty;
 			var comparer = StringComparison.InvariantCultureIgnoreCase;
 
+			// Filter entries (done off UI thread)
 			var filteredEntries = string.IsNullOrWhiteSpace(query)
 				? _allEntries.ToList()
 				: _allEntries.Where(entry =>
@@ -427,42 +456,68 @@ namespace LaceupMigration.ViewModels
 			var shouldGroup = !string.IsNullOrEmpty(Config.GroupClientsByCat) && _displayMode == DisplayMode.All && Client.Clients.Count > 0;
 			UseGrouping = shouldGroup;
 
+			// Pre-build view models off UI thread for better performance
+			List<ClientGroupViewModel>? groupViewModels = null;
+			List<ClientListItemViewModel>? flatViewModels = null;
+
+			if (shouldGroup)
+			{
+				// Create a dictionary for O(1) lookup instead of O(n) with FirstOrDefault
+				var filteredEntriesDict = filteredEntries.ToDictionary(x => x.Client.ClientId, x => x);
+
+				var dictionary = Client.GroupClients(Client.Clients.ToList());
+				groupViewModels = new List<ClientGroupViewModel>();
+
+				foreach (var group in dictionary)
+				{
+					var items = new List<ClientListItemViewModel>();
+					foreach (var client in group.Value)
+					{
+						// Use dictionary lookup instead of FirstOrDefault for O(1) performance
+						if (filteredEntriesDict.TryGetValue(client.ClientId, out var entry))
+						{
+							items.Add(CreateListItem(entry));
+						}
+						else if (string.IsNullOrWhiteSpace(query))
+						{
+							// Only create regular entry if no search query
+							items.Add(CreateListItem(ClientEntry.CreateRegular(client)));
+						}
+					}
+
+					if (items.Count > 0)
+					{
+						var groupVm = new ClientGroupViewModel(group.Key, new ObservableCollection<ClientListItemViewModel>(items));
+						if (query.Length > 0)
+							groupVm.IsExpanded = true;
+						groupViewModels.Add(groupVm);
+					}
+				}
+			}
+			else
+			{
+				// Pre-create view models off UI thread
+				flatViewModels = filteredEntries.Select(entry => CreateListItem(entry)).ToList();
+			}
+
+			// Update UI on main thread with pre-built view models
 			MainThread.BeginInvokeOnMainThread(() =>
 			{
 				Clients.Clear();
 				ClientGroups.Clear();
 
-				if (shouldGroup)
+				if (shouldGroup && groupViewModels != null)
 				{
-					var dictionary = Client.GroupClients(Client.Clients.ToList());
-					foreach (var group in dictionary)
+					foreach (var groupVm in groupViewModels)
 					{
-						var items = new ObservableCollection<ClientListItemViewModel>();
-						foreach (var client in group.Value)
-						{
-							var entry = filteredEntries.FirstOrDefault(x => x.Client.ClientId == client.ClientId)
-								?? ClientEntry.CreateRegular(client);
-
-							if (entry.MatchesQuery(query))
-							{
-								items.Add(CreateListItem(entry));
-							}
-						}
-
-						if (items.Count > 0)
-						{
-							var groupVm = new ClientGroupViewModel(group.Key, items);
-							if (query.Length > 0)
-								groupVm.IsExpanded = true;
-							ClientGroups.Add(groupVm);
-						}
+						ClientGroups.Add(groupVm);
 					}
 				}
-				else
+				else if (flatViewModels != null)
 				{
-					foreach (var entry in filteredEntries)
+					foreach (var vm in flatViewModels)
 					{
-						Clients.Add(CreateListItem(entry));
+						Clients.Add(vm);
 					}
 				}
 
@@ -542,9 +597,8 @@ namespace LaceupMigration.ViewModels
 
 		private void UpdateSearchVisibility()
 		{
-			IsSearchVisible = UseGrouping
-				? ClientGroups.Any(g => g.Clients.Any())
-				: Clients.Any();
+			// Show search bar when data is loaded and there are entries to search
+			IsSearchVisible = DataAccess.ReceivedData && _allEntries.Count > 0;
 		}
 
 		private void UpdateEditingState()

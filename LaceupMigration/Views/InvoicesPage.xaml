@@ -5,6 +5,13 @@
              x:Class="LaceupMigration.InvoicesPage"
              x:DataType="vm:InvoicesPageViewModel"
              Title="Open Inv">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" Order="Primary" Priority="0">
+            <ToolbarItem.IconImageSource>
+                <FontImageSource FontFamily="MaterialOutlined" Glyph="&#xE5D2;" Size="24" Color="Black"/>
+            </ToolbarItem.IconImageSource>
+        </ToolbarItem>
+    </ContentPage.ToolbarItems>
 
     <ContentPage.Resources>
         <Style TargetType="Button" x:Key="SmallButton">
@@ -23,10 +30,12 @@
                    Padding="12"
                    HasShadow="False"
                    BorderColor="#E0E0E0"
-                   CornerRadius="10">
+                   CornerRadius="10"
+                   InputTransparent="True">
                 <Grid ColumnDefinitions="Auto,*"
                       RowDefinitions="Auto,Auto,Auto"
-                      ColumnSpacing="12">
+                      ColumnSpacing="12"
+                      InputTransparent="True">
                     <CheckBox Grid.Row="0"
                               Grid.Column="0"
                               IsChecked="{Binding IsSelected}"

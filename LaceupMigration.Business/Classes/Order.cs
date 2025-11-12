@@ -1480,6 +1480,7 @@ namespace LaceupMigration
         {
             ImageList = new List<string>();
             PriceLevelId = -1;
+            SignaturePoints = new List<SixLabors.ImageSharp.Point>();
         }
 
         public Order(Client client, bool addDefault = true) : this()
@@ -2104,7 +2105,7 @@ namespace LaceupMigration
         {
 
             string pointsString = string.Empty;
-            if (SignaturePoints.Count > 0)
+            if (SignaturePoints != null && SignaturePoints.Count > 0)
                 pointsString = SerializeSignatureAsString(SignaturePoints);
 
             string commentTemp = this.Comments == null ? string.Empty : this.Comments.Replace((char)13, (char)32).Replace((char)10, (char)32);

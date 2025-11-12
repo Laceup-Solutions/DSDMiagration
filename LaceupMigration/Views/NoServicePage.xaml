@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.NoServicePage"
+             x:DataType="vm:NoServicePageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="No Service">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <Label Text="{Binding ClientName}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}" />
+
+                <Label Text="Reason:"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}"
+                       Margin="0,8,0,0" />
+
+                <Button Text="{Binding ReasonButtonText}"
+                        Command="{Binding SelectReasonCommand}"
+                        IsVisible="{Binding ShowReasonButton}"
+                        Style="{StaticResource SecondaryButton}"
+                        Margin="0,8,0,0" />
+
+                <Editor Text="{Binding ReasonText}"
+                        Placeholder="Enter reason for no service..."
+                        IsVisible="{Binding ShowReasonText}"
+                        HeightRequest="100"
+                        Margin="0,8,0,0" />
+
+                <Label Text="Images:"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}"
+                       Margin="0,16,0,0"
+                       IsVisible="{Binding ShowImages}" />
+
+                <Button Text="Take Photo"
+                        Command="{Binding TakePhotoCommand}"
+                        IsVisible="{Binding ShowImages}"
+                        Style="{StaticResource SecondaryButton}"
+                        Margin="0,8,0,0" />
+
+                <CollectionView ItemsSource="{Binding Images}"
+                                SelectionMode="None"
+                                IsVisible="{Binding ShowImages}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:NoServiceImageViewModel">
+                            <Grid Padding="8" Margin="0,0,0,8" InputTransparent="True">
+                                <Image Source="{Binding ImagePath}"
+                                       Aspect="AspectFill"
+                                       HeightRequest="200"
+                                       WidthRequest="200" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Button Text="Done"
+                        Command="{Binding DoneCommand}"
+                        IsEnabled="{Binding CanDone}"
+                        Style="{StaticResource PrimaryButton}"
+                        Margin="0,24,0,0" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>

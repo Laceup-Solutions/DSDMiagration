@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.PaymentSetValuesPage"
+             x:DataType="vm:PaymentSetValuesPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Collect Payment">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <!-- Client Name -->
+                <Label Text="{Binding ClientName}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}" />
+
+                <!-- Invoice/Order Numbers -->
+                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="#F5F5F5">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="{Binding DocNumbers}"
+                               FontSize="14" />
+                        <Label Text="{Binding CreditsDocNumbers}"
+                               FontSize="14"
+                               TextColor="Red"
+                               IsVisible="{Binding ShowCreditsDocNumbers}" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Amount Information -->
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                    <Label Grid.Row="0" Grid.Column="0" Text="Amount Owed:" FontSize="14" />
+                    <Label Grid.Row="0" Grid.Column="1" Text="{Binding AmountLabel}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" />
+
+                    <Label Grid.Row="1" Grid.Column="0" Text="Total Paid:" FontSize="14" />
+                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding PaidLabel}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" />
+
+                    <Label Grid.Row="2" Grid.Column="0" Text="Still Open:" FontSize="14" />
+                    <Label Grid.Row="2" Grid.Column="1" Text="{Binding OpenLabel}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" />
+
+                    <Label Grid.Row="3" Grid.Column="0" Text="Credit Amount:" FontSize="14" IsVisible="{Binding ShowCreditAmount}" />
+                    <Label Grid.Row="3" Grid.Column="1" Text="{Binding CreditAmountLabel}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" IsVisible="{Binding ShowCreditAmount}" />
+
+                    <Label Grid.Row="4" Grid.Column="0" Text="Discount:" FontSize="14" IsVisible="{Binding ShowDiscount}" />
+                    <Label Grid.Row="4" Grid.Column="1" Text="{Binding DiscountTotal}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" IsVisible="{Binding ShowDiscount}" />
+                </Grid>
+
+                <!-- Payment Components -->
+                <Label Text="Payment Methods:" FontSize="16" FontAttributes="Bold" />
+
+                <CollectionView ItemsSource="{Binding PaymentComponents}"
+                                SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PaymentComponentViewModel">
+                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                                    <Label Grid.Row="0" Grid.Column="0" Text="{Binding PaymentMethodText}" FontSize="14" FontAttributes="Bold" />
+                                    <Label Grid.Row="0" Grid.Column="1" Text="{Binding AmountText}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" />
+
+                                    <Label Grid.Row="1" Grid.Column="0" Text="{Binding Ref, StringFormat='Ref: {0}'}" FontSize="12" IsVisible="{Binding ShowRef}" />
+                                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding PostedDate, StringFormat='Posted: {0:d}'}" FontSize="12" IsVisible="{Binding ShowPostedDate}" HorizontalOptions="End" />
+
+                                    <Label Grid.Row="2" Grid.Column="0" Text="{Binding BankName, StringFormat='Bank: {0}'}" FontSize="12" IsVisible="{Binding ShowBank}" />
+                                    <Label Grid.Row="2" Grid.Column="1" Text="{Binding Comments, StringFormat='Comments: {0}'}" FontSize="12" HorizontalOptions="End" />
+
+                                    <HorizontalStackLayout Grid.Row="3" Grid.ColumnSpan="2" Spacing="8" HorizontalOptions="End">
+                                        <Button Text="Edit" Clicked="EditPayment_Clicked" 
+                                                Style="{StaticResource SecondaryButton}" />
+                                        <Button Text="Delete" Clicked="DeletePayment_Clicked" 
+                                                Style="{StaticResource DeleteButton}" />
+                                    </HorizontalStackLayout>
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- Action Buttons -->
+                <Button Text="Add Payment" Command="{Binding AddPaymentCommand}" IsEnabled="{Binding CanAddPayment}" Style="{StaticResource PrimaryButton}" />
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <Button Grid.Column="0" Text="Save" Command="{Binding SavePaymentCommand}" IsEnabled="{Binding CanSavePayment}" Style="{StaticResource PrimaryButton}" />
+                    <Button Grid.Column="1" Text="Print" Command="{Binding PrintPaymentCommand}" IsEnabled="{Binding CanPrintPayment}" Style="{StaticResource SecondaryButton}" />
+                </Grid>
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>
+

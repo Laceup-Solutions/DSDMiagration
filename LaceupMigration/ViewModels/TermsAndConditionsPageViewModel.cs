@@ -40,7 +40,7 @@ namespace LaceupMigration.ViewModels
 
 			if (!Config.EnableSelfServiceModule && Config.SignedIn && !isTimeOut)
 			{
-				await GoToAsyncOrMainAsync("//MainPage");
+				await GoToAsyncOrMainAsync("///MainPage");
 			}
 			else
 			{
@@ -64,7 +64,7 @@ namespace LaceupMigration.ViewModels
 			}
 			catch
 			{
-				await Shell.Current.GoToAsync("//MainPage");
+				await Shell.Current.GoToAsync("///MainPage");
 			}
 		}
 	}

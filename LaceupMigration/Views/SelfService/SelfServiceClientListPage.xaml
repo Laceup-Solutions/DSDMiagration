@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="LaceupMigration.Views.SelfService.SelfServiceClientListPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels.SelfService"
+             x:DataType="vm:SelfServiceClientListPageViewModel"
+             Title="{Binding CompanyName}">
+    <Grid RowDefinitions="Auto,*" Padding="10">
+        <SearchBar Grid.Row="0" 
+                   Placeholder="Search clients..."
+                   Text="{Binding SearchText}"
+                   TextChanged="OnSearchTextChanged"
+                   Margin="0,0,0,10"/>
+        
+        <CollectionView Grid.Row="1" 
+                        ItemsSource="{Binding FilteredClients}"
+                        SelectionMode="Single"
+                        SelectionChanged="OnClientSelected">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Padding="10" Margin="0,0,0,10" 
+                           BackgroundColor="White"
+                           BorderColor="LightBlue"
+                           HasShadow="True">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding ClientName}" 
+                                   FontSize="18" 
+                                   FontAttributes="Bold"/>
+                            <Label Text="{Binding ShipToAddress}" 
+                                   FontSize="14" 
+                                   TextColor="Gray"
+                                   IsVisible="{Binding ShowAddress}"/>
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

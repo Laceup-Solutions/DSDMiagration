@@ -4,6 +4,7 @@ using LaceupMigration.Controls;
 using LaceupMigration.Services;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System;
 
 namespace LaceupMigration.ViewModels
 {
@@ -222,8 +223,32 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			// TODO: Implement print functionality
-			await _dialogService.ShowAlertAsync("Print functionality to be implemented.", "Info", "OK");
+			try
+			{
+				PrinterProvider.PrintDocument((int copies) =>
+				{
+					IPrinter printer = PrinterProvider.CurrentPrinter();
+					bool allWent = true;
+
+					foreach (var invoice in SelectedInvoices)
+					{
+						for (int i = 0; i < copies; i++)
+						{
+							if (!printer.PrintOpenInvoice(invoice))
+								allWent = false;
+						}
+					}
+
+					if (!allWent)
+						return "Error printing invoices";
+					return string.Empty;
+				});
+			}
+			catch (Exception ex)
+			{
+				await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+				_appService.TrackError(ex);
+			}
 		}
 
 		[RelayCommand]
@@ -235,8 +260,31 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			// TODO: Implement send by email functionality
-			await _dialogService.ShowAlertAsync("Send by email functionality to be implemented.", "Info", "OK");
+			try
+			{
+				// Convert invoices to orders for email sending
+				var orders = new List<Order>();
+				foreach (var invoice in SelectedInvoices)
+				{
+					var order = Order.Orders.FirstOrDefault(x => x.PrintedOrderId == invoice.InvoiceNumber);
+					if (order != null)
+						orders.Add(order);
+				}
+
+				if (orders.Count == 0)
+				{
+					await _dialogService.ShowAlertAsync("No orders found for selected invoices.", "Alert", "OK");
+					return;
+				}
+
+				// TODO: Implement PdfHelper.SendOrdersByEmail when available
+				await _dialogService.ShowAlertAsync("Send by email functionality requires PdfHelper implementation.", "Info", "OK");
+			}
+			catch (Exception ex)
+			{
+				await _dialogService.ShowAlertAsync($"Error sending: {ex.Message}", "Error", "OK");
+				_appService.TrackError(ex);
+			}
 		}
 
 		private void RefreshUI()
@@ -706,7 +754,7 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task ViewDetails()
 		{
-			await Shell.Current.GoToAsync($"//invoicedetails?invoiceId={_invoice.InvoiceId}");
+			await Shell.Current.GoToAsync($"invoicedetails?invoiceId={_invoice.InvoiceId}");
 		}
 
 		public Invoice Invoice => _invoice;

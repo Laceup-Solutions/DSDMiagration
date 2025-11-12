@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.ManageRoutePage"
+             Shell.TabBarIsVisible="False"
+             Title="Route Management">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
+        <Grid Grid.Row="0" ColumnDefinitions="*,*" ColumnSpacing="8" Margin="8">
+            <Button Grid.Column="0"
+                    Text="{Binding SelectedDriver, StringFormat='Driver: {0}'}"
+                    Command="{Binding SelectDriverCommand}" />
+            <Button Grid.Column="1"
+                    Text="{Binding SelectedSalesman, StringFormat='Salesman: {0}'}"
+                    Command="{Binding SelectSalesmanCommand}" />
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="8,0">
+            <Button Grid.Column="0"
+                    Text="{Binding SelectedDate, StringFormat='Date: {0}'}"
+                    Command="{Binding SelectDateCommand}" />
+            <Button Grid.Column="1"
+                    Text="View Map"
+                    Command="{Binding ViewMapCommand}" />
+        </Grid>
+
+        <HorizontalStackLayout Grid.Row="2"
+                               Spacing="8"
+                               Margin="8,0">
+            <Button Text="Refresh"
+                    Command="{Binding RefreshCommand}"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Add Position"
+                    Command="{Binding AddPositionCommand}"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Add Order"
+                    Command="{Binding AddOrderCommand}"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Add Quotes"
+                    Command="{Binding AddQuotesCommand}"
+                    HorizontalOptions="FillAndExpand" />
+        </HorizontalStackLayout>
+
+        <HorizontalStackLayout Grid.Row="3"
+                               Spacing="8"
+                               Margin="8,0">
+            <Button Text="Save"
+                    Command="{Binding SaveCommand}"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Cancel"
+                    Command="{Binding CancelCommand}"
+                    HorizontalOptions="FillAndExpand" />
+        </HorizontalStackLayout>
+
+        <CollectionView Grid.Row="4"
+                        ItemsSource="{Binding RouteItems}"
+                        Margin="8"
+                        x:Name="RouteItemsCollectionView">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:RouteItemViewModel">
+                    <Frame Padding="12"
+                           Margin="0,4"
+                           BackgroundColor="{StaticResource Gray100}"
+                           HasShadow="False"
+                           CornerRadius="8">
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                            <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                <Label Text="{Binding ClientName}"
+                                       FontSize="16"
+                                       FontAttributes="Bold" />
+                                <Label Text="{Binding Address}"
+                                       FontSize="14"
+                                       TextColor="#666666" />
+                                <Label Text="{Binding Sequence, StringFormat='Sequence: {0}'}"
+                                       FontSize="14"
+                                       TextColor="#666666" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                <Button Text="↑"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.MoveItemUpCommand}"
+                                        CommandParameter="{Binding}"
+                                        FontSize="16"
+                                        WidthRequest="40"
+                                        HeightRequest="35"
+                                        Padding="0" />
+                                <Button Text="↓"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.MoveItemDownCommand}"
+                                        CommandParameter="{Binding}"
+                                        FontSize="16"
+                                        WidthRequest="40"
+                                        HeightRequest="35"
+                                        Padding="0" />
+                            </VerticalStackLayout>
+                            <Button Grid.Column="2"
+                                    Text="Delete"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteItemCommand}"
+                                    CommandParameter="{Binding}"
+                                    BackgroundColor="Red"
+                                    TextColor="White"
+                                    FontSize="12"
+                                    Padding="8,4" />
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

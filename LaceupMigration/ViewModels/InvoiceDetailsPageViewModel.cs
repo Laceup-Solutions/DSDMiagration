@@ -1,0 +1,324 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using LaceupMigration.Controls;
+using LaceupMigration.Services;
+using System;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace LaceupMigration.ViewModels
+{
+    public partial class InvoiceDetailsPageViewModel : ObservableObject
+    {
+        private readonly DialogService _dialogService;
+        private readonly ILaceupAppService _appService;
+        private Invoice? _invoice;
+        private bool _initialized;
+
+        public ObservableCollection<InvoiceDetailItemViewModel> InvoiceDetails { get; } = new();
+
+        [ObservableProperty]
+        private string _clientName = string.Empty;
+
+        [ObservableProperty]
+        private bool _showCompanyName;
+
+        [ObservableProperty]
+        private string _companyName = string.Empty;
+
+        [ObservableProperty]
+        private string _invoiceNumberText = string.Empty;
+
+        [ObservableProperty]
+        private string _datesText = string.Empty;
+
+        [ObservableProperty]
+        private string _totalText = string.Empty;
+
+        [ObservableProperty]
+        private bool _showTotal = true;
+
+        [ObservableProperty]
+        private string _discountText = string.Empty;
+
+        [ObservableProperty]
+        private bool _showDiscount;
+
+        [ObservableProperty]
+        private string _salesmanName = string.Empty;
+
+        [ObservableProperty]
+        private bool _showSalesmanName;
+
+        [ObservableProperty]
+        private string _comments = string.Empty;
+
+        [ObservableProperty]
+        private bool _hasComments;
+
+        public InvoiceDetailsPageViewModel(DialogService dialogService, ILaceupAppService appService)
+        {
+            _dialogService = dialogService;
+            _appService = appService;
+            ShowTotal = !Config.HidePriceInTransaction;
+        }
+
+        public async Task InitializeAsync(int invoiceId)
+        {
+            if (_initialized && _invoice?.InvoiceId == invoiceId)
+                return;
+
+            _invoice = Invoice.OpenInvoices.FirstOrDefault(x => x.InvoiceId == invoiceId);
+            if (_invoice == null)
+            {
+                await _dialogService.ShowAlertAsync("Invoice not found.", "Error");
+                return;
+            }
+
+            _invoice.Client.EnsureInvoicesAreLoaded();
+
+            LoadInvoiceDetails();
+            _initialized = true;
+        }
+
+        public async Task OnAppearingAsync()
+        {
+            if (!_initialized)
+                return;
+
+            LoadInvoiceDetails();
+            await Task.CompletedTask;
+        }
+
+        private void LoadInvoiceDetails()
+        {
+            if (_invoice == null)
+                return;
+
+            ClientName = $"Customer: {_invoice.Client.ClientName}";
+
+            if (!string.IsNullOrEmpty(_invoice.CompanyName) && CompanyInfo.Companies.Count > 1)
+            {
+                CompanyName = $"Company: {_invoice.CompanyName}";
+                ShowCompanyName = true;
+            }
+
+            InvoiceNumberText = _invoice.InvoiceType switch
+            {
+                1 => $"Credit Number: {_invoice.InvoiceNumber}",
+                2 => $"Quote Number: {_invoice.InvoiceNumber}",
+                3 => $"Sales Order Number: {_invoice.InvoiceNumber}",
+                _ => $"Invoice Number: {_invoice.InvoiceNumber}"
+            };
+
+            TotalText = _invoice.InvoiceType switch
+            {
+                1 => $"Credit Total: {_invoice.Amount.ToCustomString()}",
+                2 => $"Quote Total: {_invoice.Amount.ToCustomString()}",
+                3 => $"Sales Order Total: {_invoice.Amount.ToCustomString()}",
+                _ => $"Invoice Total: {_invoice.Amount.ToCustomString()}"
+            };
+
+            DatesText = $"Date: {_invoice.Date.ToShortDateString()} | Due: {_invoice.DueDate.ToShortDateString()}";
+
+            var details = _invoice.Details;
+            if (details.Count > 0 && !Config.HidePriceInTransaction)
+            {
+                var totalByDetails = details.Sum(x => x.Quantity * x.Price);
+                var discountAmount = Math.Round(totalByDetails - _invoice.Amount, 2);
+
+                if (Math.Round(totalByDetails, 2) != Math.Round(_invoice.Amount, 2) && discountAmount > 0)
+                {
+                    DiscountText = $"Discount: {discountAmount.ToCustomString()}";
+                    ShowDiscount = true;
+                }
+            }
+
+            var salesman = Salesman.List.FirstOrDefault(x => x.Id == _invoice.SalesmanId);
+            if (salesman != null)
+            {
+                SalesmanName = $"Salesman: {salesman.Name}";
+                ShowSalesmanName = true;
+            }
+
+            InvoiceDetails.Clear();
+            foreach (var detail in details)
+            {
+                if (detail.Product.Name == "PRODUCT NOT FOUND")
+                    continue;
+
+                InvoiceDetails.Add(new InvoiceDetailItemViewModel
+                {
+                    ProductName = detail.Product.Name,
+                    QuantityText = $"Qty: {detail.Quantity}",
+                    PriceText = $"Price: {detail.Price.ToCustomString()}",
+                    ShowPrice = !Config.HidePriceInTransaction,
+                    Notes = detail.Comments,
+                    HasNotes = !string.IsNullOrWhiteSpace(detail.Comments)
+                });
+            }
+
+            Comments = _invoice.Comments ?? string.Empty;
+            HasComments = !string.IsNullOrWhiteSpace(Comments);
+        }
+
+        [RelayCommand]
+        private async Task ShowMenuAsync()
+        {
+            if (_invoice == null)
+                return;
+
+            var options = BuildMenuOptions();
+            if (options.Count == 0)
+                return;
+
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.Select(o => o.Title).ToArray());
+            if (string.IsNullOrWhiteSpace(choice))
+                return;
+
+            var option = options.FirstOrDefault(o => o.Title == choice);
+            if (option?.Action != null)
+            {
+                await option.Action();
+            }
+        }
+
+        private List<MenuOption> BuildMenuOptions()
+        {
+            var options = new List<MenuOption>();
+
+            if (_invoice == null)
+                return options;
+
+            // Receive Payment / View Payment
+            if (Config.PaymentAvailable && !Config.HidePriceInTransaction)
+            {
+                var existPayment = InvoicePayment.List.Any(x => 
+                    x != null && 
+                    string.IsNullOrEmpty(x.OrderId) && 
+                    (x.Invoices().FirstOrDefault(y => y.InvoiceId == _invoice.InvoiceId) != null));
+
+                var title = existPayment ? "View Payment" : "Receive Payment";
+                var enabled = _invoice.Balance > 0;
+
+                if (enabled)
+                {
+                    options.Add(new MenuOption(title, async () =>
+                    {
+                        await Shell.Current.GoToAsync($"selectinvoice?clientId={_invoice.ClientId}&fromClientDetails=false");
+                    }));
+                }
+            }
+
+            // Print Copy
+            options.Add(new MenuOption("Print Copy", async () =>
+            {
+                await _dialogService.ShowAlertAsync("Print functionality is not yet fully implemented.", "Info");
+                // TODO: Implement printing
+            }));
+
+            // Convert to Sales Order
+            if (Config.UseQuote && _invoice.InvoiceType == 2 && _invoice.Details.Count > 0 && 
+                !Order.Orders.Any(x => x.FromInvoiceId == _invoice.InvoiceId))
+            {
+                options.Add(new MenuOption("Convert to Order", async () =>
+                {
+                    await _dialogService.ShowAlertAsync("Convert to Order functionality is not yet fully implemented.", "Info");
+                    // TODO: Implement conversion
+                }));
+
+                options.Add(new MenuOption("Convert to Invoice", async () =>
+                {
+                    await _dialogService.ShowAlertAsync("Convert to Invoice functionality is not yet fully implemented.", "Info");
+                    // TODO: Implement conversion
+                }));
+            }
+
+            // Send by Email
+            options.Add(new MenuOption("Send by Email", async () =>
+            {
+                await _dialogService.ShowAlertAsync("Send by Email functionality is not yet fully implemented.", "Info");
+                // TODO: Implement email sending
+            }));
+
+            // View Attached Photos
+            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.2.0"))
+            {
+                options.Add(new MenuOption("View Attached Photos", async () =>
+                {
+                    await _dialogService.ShowAlertAsync("View Attached Photos functionality is not yet fully implemented.", "Info");
+                    // TODO: Implement image viewing
+                }));
+            }
+
+            // Get Invoice Details
+            if (!(_invoice.Details.Count > 0))
+            {
+                options.Add(new MenuOption("Get Details", async () =>
+                {
+                    await _dialogService.ShowAlertAsync("Get Details functionality is not yet fully implemented.", "Info");
+                    // TODO: Implement getting invoice details from server
+                }));
+            }
+
+            // Advanced Options
+            options.Add(new MenuOption("Advanced Options", ShowAdvancedOptionsAsync));
+
+            return options;
+        }
+
+        private async Task ShowAdvancedOptionsAsync()
+        {
+            var options = new List<string>
+            {
+                "Update settings",
+                "Send log file",
+                "Export data",
+                "Remote control"
+            };
+
+            if (Config.GoToMain)
+            {
+                options.Add("Go to main activity");
+            }
+
+            var choice = await _dialogService.ShowActionSheetAsync("Advanced options", "Cancel", null, options.ToArray());
+            switch (choice)
+            {
+                case "Update settings":
+                    await _appService.UpdateSalesmanSettingsAsync();
+                    await _dialogService.ShowAlertAsync("Settings updated.", "Info");
+                    break;
+                case "Send log file":
+                    await _appService.SendLogAsync();
+                    await _dialogService.ShowAlertAsync("Log sent.", "Info");
+                    break;
+                case "Export data":
+                    await _appService.ExportDataAsync();
+                    await _dialogService.ShowAlertAsync("Data exported.", "Info");
+                    break;
+                case "Remote control":
+                    await _appService.RemoteControlAsync();
+                    break;
+                case "Go to main activity":
+                    await _appService.GoBackToMainAsync();
+                    break;
+            }
+        }
+    }
+
+    public record MenuOption(string Title, Func<Task> Action);
+
+
+    public class InvoiceDetailItemViewModel
+    {
+        public string ProductName { get; set; } = string.Empty;
+        public string QuantityText { get; set; } = string.Empty;
+        public string PriceText { get; set; } = string.Empty;
+        public bool ShowPrice { get; set; } = true;
+        public string Notes { get; set; } = string.Empty;
+        public bool HasNotes { get; set; }
+    }
+}
+

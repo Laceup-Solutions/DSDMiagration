@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="LaceupMigration.Views.SelfService.SelfServiceCheckOutPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels.SelfService"
+             x:DataType="vm:SelfServiceCheckOutPageViewModel"
+             Title="Checkout">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="10">
+        <Label Grid.Row="0" 
+               Text="{Binding ClientName}" 
+               FontSize="18" 
+               FontAttributes="Bold"
+               HorizontalOptions="Center"
+               Margin="0,0,0,10"/>
+        
+        <Grid Grid.Row="1" ColumnDefinitions="*,*,*" Margin="0,0,0,10">
+            <VerticalStackLayout Grid.Column="0">
+                <Label Text="{Binding LinesText}" FontSize="14"/>
+                <Label Text="{Binding QtyText}" FontSize="14"/>
+                <Label Text="{Binding TermText}" FontSize="14"/>
+            </VerticalStackLayout>
+            <VerticalStackLayout Grid.Column="1">
+                <Label Text="{Binding SubtotalText}" FontSize="14"/>
+                <Label Text="{Binding DiscountText}" FontSize="14"/>
+            </VerticalStackLayout>
+            <VerticalStackLayout Grid.Column="2">
+                <Label Text="{Binding TaxText}" FontSize="14"/>
+                <Label Text="{Binding TotalText}" FontSize="14" FontAttributes="Bold"/>
+            </VerticalStackLayout>
+        </Grid>
+
+        <Button Grid.Row="2" 
+                Text="Send Order" 
+                Command="{Binding SendOrderCommand}"
+                IsEnabled="{Binding CanSendOrder}"
+                Margin="0,0,0,10"/>
+
+        <CollectionView Grid.Row="3" 
+                        ItemsSource="{Binding OrderDetails}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Padding="10" Margin="0,0,0,10" 
+                           BackgroundColor="White"
+                           BorderColor="LightBlue"
+                           HasShadow="True">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout Grid.Column="0">
+                                <Label Text="{Binding ProductName}" 
+                                       FontSize="16" 
+                                       FontAttributes="Bold"/>
+                                <Label Text="{Binding PriceText}" FontSize="14"/>
+                                <Label Text="{Binding UomText}" FontSize="12" TextColor="Gray"/>
+                            </VerticalStackLayout>
+                            <Button Grid.Column="1" 
+                                    Text="{Binding QtyText}"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCheckOutPageViewModel}}, Path=EditQtyCommand}"
+                                    CommandParameter="{Binding .}"/>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

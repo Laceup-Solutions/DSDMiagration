@@ -36,7 +36,7 @@ namespace LaceupMigration.ViewModels
 		{
 			if (Config.SignedIn)
 			{
-				MainThread.BeginInvokeOnMainThread(async () => await GoToAsyncOrMainAsync("//MainPage"));
+				MainThread.BeginInvokeOnMainThread(async () => await GoToAsyncOrMainAsync("///MainPage"));
 			}
 		}
 
@@ -206,7 +206,7 @@ namespace LaceupMigration.ViewModels
 
 					if (Client.Clients.Count > 1)
 					{
-						await GoToAsyncOrMainAsync("//selfservice/clientlist");
+						await GoToAsyncOrMainAsync("selfservice/clientlist");
 					}
 					else
 					{
@@ -231,9 +231,8 @@ namespace LaceupMigration.ViewModels
 
 						UpdateOrderPrices();
 
-						// NOTE: In MAUI, pass parameters via query or a shared state. Placeholder route:
 						var route = order.Details.Count == 0 ? "//selfservice/template" : "//selfservice/checkout";
-						await GoToAsyncOrMainAsync(route);
+						await GoToAsyncOrMainAsync($"{route}?orderId={order.OrderId}");
 					}
 				}
 				catch
@@ -249,7 +248,7 @@ namespace LaceupMigration.ViewModels
 					Config.SaveSettings();
 				}
 
-				await GoToAsyncOrMainAsync($"//MainPage?downloadData=1");
+				await GoToAsyncOrMainAsync($"///MainPage?downloadData=1");
 			}
 		}
 
@@ -329,7 +328,7 @@ namespace LaceupMigration.ViewModels
 			}
 			catch
 			{
-				await Shell.Current.GoToAsync("//MainPage");
+				await Shell.Current.GoToAsync("///MainPage");
 			}
 		}
 

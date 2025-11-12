@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.ViewOrderStatusDetailsPage"
+             Shell.TabBarIsVisible="False"
+             Title="Order Status Details">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <!-- Client Name -->
+            <Label Text="{Binding ClientNameText}"
+                   FontSize="18"
+                   FontAttributes="Bold" />
+
+            <!-- Document Number -->
+            <Label Text="{Binding DocumentNumberText}"
+                   FontSize="16" />
+
+            <!-- Date -->
+            <Label Text="{Binding DateText}"
+                   FontSize="16" />
+
+            <!-- Order Total -->
+            <Label Text="{Binding OrderTotalText}"
+                   FontSize="16"
+                   FontAttributes="Bold"
+                   IsVisible="{Binding ShowTotal}" />
+
+            <!-- Status -->
+            <Label Text="{Binding StatusText}"
+                   FontSize="16"
+                   TextColor="{Binding StatusColor}"
+                   IsVisible="{Binding ShowStatus}" />
+
+            <!-- Comments -->
+            <Label Text="{Binding CommentsText}"
+                   FontSize="16"
+                   IsVisible="{Binding ShowComments}" />
+
+            <!-- Details List -->
+            <Label Text="Order Details"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   Margin="0,16,0,8" />
+
+            <CollectionView ItemsSource="{Binding OrderDetails}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:OrderStatusDetailViewModel">
+                        <Frame Padding="12"
+                               Margin="0,4"
+                               BackgroundColor="{StaticResource Gray100}"
+                               HasShadow="False"
+                               CornerRadius="8"
+                               InputTransparent="True">
+                            <VerticalStackLayout Spacing="4" InputTransparent="True">
+                                <Label Text="{Binding ProductName}"
+                                       FontSize="16"
+                                       FontAttributes="Bold" />
+                                <Label Text="{Binding QuantityText}"
+                                       FontSize="14"
+                                       TextColor="#666666" />
+                                <Label Text="{Binding PriceText}"
+                                       FontSize="14"
+                                       TextColor="#666666"
+                                       IsVisible="{Binding ShowPrice}" />
+                                <Label Text="{Binding TotalText}"
+                                       FontSize="14"
+                                       FontAttributes="Bold"
+                                       IsVisible="{Binding ShowPrice}" />
+                                <Label Text="{Binding UomText}"
+                                       FontSize="14"
+                                       TextColor="#666666"
+                                       IsVisible="{Binding ShowUom}" />
+                                <Label Text="{Binding LineStatusText}"
+                                       FontSize="14"
+                                       TextColor="#666666"
+                                       IsVisible="{Binding ShowLineStatus}" />
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+

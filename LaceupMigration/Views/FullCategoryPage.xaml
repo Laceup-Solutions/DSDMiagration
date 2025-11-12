@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.FullCategoryPage"
+             x:DataType="vm:FullCategoryPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="{Binding Title}">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" Order="Primary" Priority="0">
+            <ToolbarItem.IconImageSource>
+                <FontImageSource FontFamily="MaterialOutlined" Glyph="&#xE5D2;" Size="24" Color="Black"/>
+            </ToolbarItem.IconImageSource>
+        </ToolbarItem>
+    </ContentPage.ToolbarItems>
+    <ContentPage.Content>
+        <VerticalStackLayout Padding="16" Spacing="16">
+            <SearchBar Text="{Binding SearchQuery}"
+                       Placeholder="Search categories or products..."
+                       SearchButtonPressed="SearchBar_SearchButtonPressed"
+                       Margin="0,0,0,8" />
+
+            <RadioButton Content="Search by Category"
+                        IsChecked="{Binding SearchByCategory}"
+                        Margin="0,0,0,8" />
+
+            <RadioButton Content="Search by Product"
+                        IsChecked="{Binding SearchByProduct}"
+                        Margin="0,0,0,8" />
+
+            <Button Text="Scan Barcode"
+                    Command="{Binding ScanCommand}"
+                    Style="{StaticResource SecondaryButton}"
+                    Margin="0,0,0,8" />
+
+            <!-- Categories View -->
+            <Label Text="Categories:"
+                   FontSize="16"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource PrimaryDark}"
+                   Margin="0,8,0,0"
+                   IsVisible="{Binding ShowCategories}" />
+
+            <CollectionView x:Name="CategoriesCollectionView"
+                            ItemsSource="{Binding Categories}"
+                            SelectionMode="Single"
+                            IsVisible="{Binding ShowCategories}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CategoryViewModel">
+                        <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
+                            <VerticalStackLayout Spacing="4" InputTransparent="True">
+                                <Label Text="{Binding Name}"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource Gray900}" />
+                                <Label Text="{Binding SubcategoriesText}"
+                                       IsVisible="{Binding ShowSubcategories}"
+                                       FontSize="13"
+                                       TextColor="{StaticResource Gray600}" />
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- Products View -->
+            <Label Text="Products:"
+                   FontSize="16"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource PrimaryDark}"
+                   Margin="0,8,0,0"
+                   IsVisible="{Binding ShowProducts}" />
+
+            <CollectionView x:Name="ProductsCollectionView"
+                            ItemsSource="{Binding Products}"
+                            SelectionMode="Single"
+                            IsVisible="{Binding ShowProducts}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ProductViewModel">
+                        <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
+                            <VerticalStackLayout Spacing="4" InputTransparent="True">
+                                <Label Text="{Binding Name}"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource Gray900}" />
+                                <HorizontalStackLayout Spacing="8">
+                                    <Label Text="{Binding Upc, StringFormat='UPC: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Text="{Binding Price, StringFormat='Price: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Text="{Binding Inventory, StringFormat='Inv: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}" />
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Text="No items found."
+                   IsVisible="{Binding ShowNoCategories}"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center"
+                   Margin="0,20,0,20"
+                   TextColor="{StaticResource Gray500}" />
+        </VerticalStackLayout>
+    </ContentPage.Content>
+</ContentPage>

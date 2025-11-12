@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.InventorySummaryPage"
+             Shell.TabBarIsVisible="False"
+             Title="Inventory Summary">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
+        <Label Grid.Row="0"
+               Text="{Binding TotalQtyText}"
+               FontSize="16"
+               FontAttributes="Bold"
+               Margin="16,8"
+               HorizontalOptions="Center" />
+        <Label Grid.Row="1"
+               Text="{Binding TotalWeightText}"
+               FontSize="16"
+               FontAttributes="Bold"
+               Margin="16,0"
+               HorizontalOptions="Center"
+               IsVisible="{Binding ShowWeight}" />
+        <Label Grid.Row="2"
+               Text="{Binding TotalPriceText}"
+               FontSize="16"
+               FontAttributes="Bold"
+               Margin="16,0"
+               HorizontalOptions="Center"
+               IsVisible="{Binding ShowPrice}" />
+
+        <HorizontalStackLayout Grid.Row="3" Spacing="8" Margin="16,0">
+            <Button Text="Filter"
+                    Command="{Binding FilterCommand}"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Print"
+                    Command="{Binding PrintCommand}"
+                    HorizontalOptions="FillAndExpand"
+                    IsVisible="{Binding ShowPrintButton}" />
+        </HorizontalStackLayout>
+
+        <CollectionView Grid.Row="4"
+                        ItemsSource="{Binding Products}"
+                        Margin="16,0,16,8">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:InventorySummaryProductViewModel">
+                    <Frame Padding="12"
+                           Margin="0,4"
+                           BackgroundColor="{StaticResource Gray100}"
+                           HasShadow="False"
+                           CornerRadius="8"
+                           InputTransparent="True">
+                        <VerticalStackLayout Spacing="4" InputTransparent="True">
+                            <Label Text="{Binding ProductName}"
+                                   FontSize="16"
+                                   FontAttributes="Bold" />
+                            <Label Text="{Binding CurrentInventory, StringFormat='Qty: {0}'}"
+                                   FontSize="14"
+                                   TextColor="#666666" />
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

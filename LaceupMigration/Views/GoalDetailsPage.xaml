@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.GoalDetailsPage"
+             Shell.TabBarIsVisible="False"
+             Title="Goal Details">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+        <Frame Grid.Row="0"
+               Padding="16"
+               Margin="8"
+               BackgroundColor="{StaticResource Gray100}"
+               HasShadow="False"
+               CornerRadius="8">
+            <VerticalStackLayout Spacing="8">
+                <Label Text="{Binding GoalName}"
+                       FontSize="20"
+                       FontAttributes="Bold" />
+                <Label Text="{Binding GoalDescription}"
+                       FontSize="14"
+                       TextColor="#666666" />
+                <ProgressBar Progress="{Binding ProgressPercentage}"
+                            ProgressColor="{Binding ProgressColor}"
+                            Margin="0,8,0,0" />
+                <Label Text="{Binding ProgressText}"
+                       FontSize="14"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+        </Frame>
+
+        <HorizontalStackLayout Grid.Row="1"
+                               Spacing="8"
+                               Margin="8,0">
+            <DatePicker Date="{Binding StartDate}"
+                       Format="MM/dd/yyyy"
+                       HorizontalOptions="FillAndExpand" />
+            <Label Text="to"
+                   VerticalOptions="Center" />
+            <DatePicker Date="{Binding EndDate}"
+                       Format="MM/dd/yyyy"
+                       HorizontalOptions="FillAndExpand" />
+            <Button Text="Filter"
+                    Command="{Binding FilterCommand}"
+                    HorizontalOptions="FillAndExpand" />
+        </HorizontalStackLayout>
+
+        <SearchBar Grid.Row="2"
+                   Text="{Binding SearchText}"
+                   Placeholder="Search..."
+                   Margin="8,0"
+                   TextChanged="OnSearchTextChanged" />
+
+        <CollectionView Grid.Row="3"
+                        ItemsSource="{Binding GoalDetails}"
+                        Margin="8">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:GoalDetailItemViewModel">
+                    <Frame Padding="12"
+                           Margin="0,4"
+                           BackgroundColor="{StaticResource Gray100}"
+                           HasShadow="False"
+                           CornerRadius="8">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="{Binding ItemName}"
+                                   FontSize="16"
+                                   FontAttributes="Bold" />
+                            <Label Text="{Binding Progress, StringFormat='Progress: {0}'}"
+                                   FontSize="14"
+                                   TextColor="#666666" />
+                            <Label Text="{Binding Target, StringFormat='Target: {0}'}"
+                                   FontSize="14"
+                                   TextColor="#666666" />
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

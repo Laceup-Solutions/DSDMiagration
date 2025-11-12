@@ -5,7 +5,7 @@ using System.Text;
 
 namespace LaceupMigration
 {
-    class RetailPriceLevel
+    public class RetailPriceLevel
     {
         public int Id { get; set; }
         public string Name { get; set; }

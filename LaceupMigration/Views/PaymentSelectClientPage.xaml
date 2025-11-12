@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.PaymentSelectClientPage"
+             x:DataType="vm:PaymentSelectClientPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Select Client">
+    <ContentPage.Content>
+        <Grid RowDefinitions="Auto,*" Padding="16">
+            <Border Grid.Row="0"
+                    StrokeThickness="0"
+                    BackgroundColor="#F2F2F7"
+                    Padding="12,4"
+                    StrokeShape="RoundRectangle 12"
+                    Margin="0,0,0,12">
+                <SearchBar Placeholder="Search clients"
+                           FontSize="14"
+                           Text="{Binding SearchQuery}"
+                           SearchButtonPressed="SearchBar_SearchButtonPressed" />
+            </Border>
+
+            <CollectionView Grid.Row="1"
+                            ItemsSource="{Binding Clients}"
+                            SelectionMode="Single"
+                            SelectionChanged="CollectionView_SelectionChanged"
+                            EmptyView="No clients with open invoices available.">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ClientItemViewModel">
+                        <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                            <Label Text="{Binding ClientName}"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource Gray900}" />
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </ContentPage.Content>
+</ContentPage>
+

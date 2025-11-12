@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.WorkOrderPage"
+             x:DataType="vm:WorkOrderPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Work Order">
+    <ContentPage.Content>
+        <VerticalStackLayout Padding="16" Spacing="16">
+            <Label Text="{Binding ClientName}"
+                   FontSize="20"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource PrimaryDark}" />
+
+            <Label Text="Select Asset:"
+                   FontSize="16"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource PrimaryDark}"
+                   Margin="0,8,0,0" />
+
+            <Button Text="Select Asset"
+                    Command="{Binding SelectAssetCommand}"
+                    Style="{StaticResource PrimaryButton}"
+                    Margin="0,8,0,0" />
+
+            <Button Text="Scan Asset"
+                    Command="{Binding ScanAssetCommand}"
+                    IsEnabled="{Binding CanScan}"
+                    Style="{StaticResource SecondaryButton}"
+                    Margin="0,8,0,0" />
+
+            <Label Text="{Binding SelectedAssetText}"
+                   IsVisible="{Binding ShowSelectedAsset}"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray600}"
+                   Margin="0,8,0,0" />
+
+            <Label Text="Please select an asset to continue with the work order."
+                   IsVisible="{Binding ShowNoAssetMessage}"
+                   FontSize="14"
+                   FontAttributes="Italic"
+                   TextColor="{StaticResource Gray500}"
+                   Margin="0,16,0,0" />
+        </VerticalStackLayout>
+    </ContentPage.Content>
+</ContentPage>

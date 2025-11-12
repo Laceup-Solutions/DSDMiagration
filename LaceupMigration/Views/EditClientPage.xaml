@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.EditClientPage"
+             x:DataType="vm:EditClientPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Edit Customer">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <Entry Text="{Binding Name}"
+                       Placeholder="Customer Name"
+                       FontSize="16" />
+
+                <Entry Text="{Binding ContactName}"
+                       Placeholder="Contact Name" />
+
+                <Entry Text="{Binding Phone}"
+                       Placeholder="Phone"
+                       Keyboard="Telephone" />
+
+                <Entry Text="{Binding Email}"
+                       Placeholder="Email"
+                       Keyboard="Email" />
+
+                <Entry Text="{Binding Address1}"
+                       Placeholder="Address Line 1" />
+
+                <Entry Text="{Binding Address2}"
+                       Placeholder="Address Line 2" />
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <Entry Grid.Column="0" Text="{Binding City}" Placeholder="City" />
+                    <Entry Grid.Column="1" Text="{Binding State}" Placeholder="State" />
+                </Grid>
+
+                <Entry Text="{Binding Zip}"
+                       Placeholder="Zip Code" />
+
+                <Button Text="{Binding PriceLevelText}"
+                        Command="{Binding SelectPriceLevelCommand}"
+                        HorizontalOptions="Fill" />
+
+                <Button Text="{Binding TermsText}"
+                        Command="{Binding SelectTermsCommand}"
+                        IsVisible="{Binding ShowTerms}"
+                        HorizontalOptions="Fill" />
+
+                <CheckBox IsChecked="{Binding CanChangePrices}"
+                          IsVisible="{Binding ShowCanChangePrices}" />
+                <Label Text="Can Change Prices"
+                       IsVisible="{Binding ShowCanChangePrices}" />
+
+                <CheckBox IsChecked="{Binding Taxable}" />
+                <Label Text="Taxable" />
+
+                <Entry Text="{Binding TaxRate}"
+                       Placeholder="Tax Rate"
+                       IsEnabled="{Binding Taxable}"
+                       Keyboard="Numeric" />
+
+                <Entry Text="{Binding LicenseNumber}"
+                       Placeholder="License Number" />
+
+                <Button Text="Save"
+                        Command="{Binding SaveCommand}"
+                        Style="{StaticResource PrimaryButton}"
+                        Margin="0,16,0,0" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>
+

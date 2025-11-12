@@ -12,7 +12,7 @@ using System.Text;
 
 namespace LaceupMigration
 {
-    class TemporalInvoicePayment
+    public class TemporalInvoicePayment
     {
         public static List<TemporalInvoicePayment> List = new List<TemporalInvoicePayment>();
 

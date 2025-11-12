@@ -7,15 +7,24 @@ namespace LaceupMigration
 	public partial class ClientsPage : ContentPage
 	{
 		private readonly ClientsPageViewModel _viewModel;
+		private readonly MainPageViewModel _mainViewModel;
 
 		public ClientsPage()
 		{
 			InitializeComponent();
 
 			_viewModel = App.Services.GetRequiredService<ClientsPageViewModel>();
+			_mainViewModel = App.Services.GetRequiredService<MainPageViewModel>();
 			BindingContext = _viewModel;
 
 			_viewModel.SelectDateRequested += OnSelectDateRequested;
+
+			// Wire up menu toolbar item
+			var menuItem = ToolbarItems.FirstOrDefault();
+			if (menuItem != null)
+			{
+				menuItem.Command = _mainViewModel.ShowMenuCommand;
+			}
 		}
 
 		protected override async void OnAppearing()

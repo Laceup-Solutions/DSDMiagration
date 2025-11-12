@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.ManageDepartmentsPage"
+             x:DataType="vm:ManageDepartmentsPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Manage Departments">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <Label Text="{Binding ClientName}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}" />
+
+                <Button Text="Add Department"
+                        Command="{Binding AddDepartmentCommand}"
+                        Style="{StaticResource PrimaryButton}"
+                        Margin="0,8,0,0" />
+
+                <Label Text="Departments:"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}"
+                       Margin="0,16,0,0" />
+
+                <CollectionView ItemsSource="{Binding Departments}"
+                                SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DepartmentViewModel">
+                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
+                                <Label Text="{Binding Name}"
+                                       FontSize="16"
+                                       TextColor="{StaticResource Gray900}" />
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label Text="No departments found."
+                       IsVisible="{Binding ShowNoDepartments}"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center"
+                       Margin="0,20,0,20"
+                       TextColor="{StaticResource Gray500}" />
+
+                <Button Text="Save"
+                        Command="{Binding SaveCommand}"
+                        Style="{StaticResource PrimaryButton}"
+                        Margin="0,16,0,0" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>

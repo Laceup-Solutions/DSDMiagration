@@ -6,13 +6,22 @@ namespace LaceupMigration
 	public partial class OrdersPage : ContentPage
 	{
 		private readonly OrdersPageViewModel _viewModel;
+		private readonly MainPageViewModel _mainViewModel;
 
 		public OrdersPage()
 		{
 			InitializeComponent();
 
 			_viewModel = App.Services.GetRequiredService<OrdersPageViewModel>();
+			_mainViewModel = App.Services.GetRequiredService<MainPageViewModel>();
 			BindingContext = _viewModel;
+
+			// Wire up menu toolbar item
+			var menuItem = ToolbarItems.FirstOrDefault();
+			if (menuItem != null)
+			{
+				menuItem.Command = _mainViewModel.ShowMenuCommand;
+			}
 		}
 
 		protected override async void OnAppearing()

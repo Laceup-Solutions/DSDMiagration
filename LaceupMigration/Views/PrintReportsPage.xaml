@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.PrintReportsPage"
+             Shell.TabBarIsVisible="False"
+             Title="Print Reports">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Label Text="Select reports to print:"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   Margin="0,0,0,8" />
+
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox IsChecked="{Binding PrintSalesReport}"
+                          VerticalOptions="Center" />
+                <Label Text="Sales Report"
+                       VerticalOptions="Center"
+                       FontSize="16" />
+            </HorizontalStackLayout>
+
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox IsChecked="{Binding PrintPaymentsReport}"
+                          VerticalOptions="Center" />
+                <Label Text="Payments Report"
+                       VerticalOptions="Center"
+                       FontSize="16" />
+            </HorizontalStackLayout>
+
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox IsChecked="{Binding PrintInventoryReport}"
+                          VerticalOptions="Center" />
+                <Label Text="Inventory Report"
+                       VerticalOptions="Center"
+                       FontSize="16" />
+            </HorizontalStackLayout>
+
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox IsChecked="{Binding PrintCommissionReport}"
+                          VerticalOptions="Center" />
+                <Label Text="Commission Report"
+                       VerticalOptions="Center"
+                       FontSize="16" />
+            </HorizontalStackLayout>
+
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox IsChecked="{Binding PrintRouteReturnsReport}"
+                          VerticalOptions="Center" />
+                <Label Text="Route Returns Report"
+                       VerticalOptions="Center"
+                       FontSize="16" />
+            </HorizontalStackLayout>
+
+            <Button Text="Print Selected Reports"
+                    Command="{Binding PrintReportsCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    Margin="0,20,0,0" />
+
+            <Button Text="Cancel"
+                    Command="{Binding CancelCommand}"
+                    FontSize="16"
+                    Padding="16,12" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+

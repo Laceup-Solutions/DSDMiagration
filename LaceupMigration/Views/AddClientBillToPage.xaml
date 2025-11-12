@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.AddClientBillToPage"
+             Shell.TabBarIsVisible="False"
+             Title="Bill To Address">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Label Text="Enter Bill To Address:"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   Margin="0,0,0,8" />
+
+            <Entry Text="{Binding Address1}"
+                   Placeholder="Address 1 *"
+                   FontSize="16" />
+
+            <Entry Text="{Binding Address2}"
+                   Placeholder="Address 2"
+                   FontSize="16" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Entry Grid.Column="0"
+                       Text="{Binding City}"
+                       Placeholder="City *"
+                       FontSize="16" />
+                <Entry Grid.Column="1"
+                       Text="{Binding State}"
+                       Placeholder="State *"
+                       FontSize="16" />
+            </Grid>
+
+            <Entry Text="{Binding Zip}"
+                   Placeholder="Zip Code *"
+                   FontSize="16" />
+
+            <Entry Text="{Binding Country}"
+                   Placeholder="Country"
+                   FontSize="16" />
+
+            <Button Text="Save"
+                    Command="{Binding SaveCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    Margin="0,20,0,0" />
+
+            <Button Text="Cancel"
+                    Command="{Binding CancelCommand}"
+                    FontSize="16"
+                    Padding="16,12" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+

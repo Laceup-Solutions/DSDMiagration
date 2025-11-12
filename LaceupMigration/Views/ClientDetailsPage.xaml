@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.ClientDetailsPage"
+             x:DataType="vm:ClientDetailsPageViewModel"
+             Shell.TabBarIsVisible="False"
+             Shell.Title="Client Details">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" Order="Primary" Priority="0" />
+    </ContentPage.ToolbarItems>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16">
+            <Border BackgroundColor="#BA2D0B"
+                    StrokeShape="RoundRectangle 8"
+                    Padding="12"
+                    IsVisible="{Binding ShowOverCreditLimit}">
+                <Label Text="{Binding OverCreditLimitText}"
+                       TextColor="White"
+                       FontAttributes="Bold" />
+            </Border>
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <Label Text="{Binding ClientName}"
+                       FontSize="22"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}" />
+                <Button Grid.Column="1"
+                        Text="{Binding ClockInButtonText}"
+                        Command="{Binding ToggleClockInCommand}"
+                        IsVisible="{Binding ShowClockInButton}" />
+            </Grid>
+
+            <CollectionView x:Name="ClientDetailsCollection"
+                            ItemsSource="{Binding ClientDetails}"
+                            SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ClientDetailItemViewModel">
+                        <Label Text="{Binding Text}"
+                               TextColor="{StaticResource Gray900}"
+                               Margin="0,4" />
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Border Padding="12"
+                    BackgroundColor="{StaticResource colorLaceupLight}"
+                    StrokeShape="RoundRectangle 8"
+                    IsVisible="{Binding ShowGoal}">
+                <Label Text="{Binding GoalText}"
+                       TextColor="{StaticResource colorLaceupGreen}"
+                       FontAttributes="Bold" />
+            </Border>
+
+            <StackLayout IsVisible="{Binding ShowOrdersSection}" Spacing="8">
+                <Label Text="Transactions"
+                       FontAttributes="Bold"
+                       FontSize="18"
+                       TextColor="{StaticResource PrimaryDark}" />
+                <CollectionView x:Name="OrdersCollectionView"
+                                ItemsSource="{Binding Orders}"
+                                SelectionMode="Single">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ClientOrderViewModel">
+                            <Frame Padding="12"
+                                   Margin="0,0,0,8"
+                                   BackgroundColor="{StaticResource Gray100}"
+                                   HasShadow="False"
+                                   CornerRadius="8"
+                                   InputTransparent="False">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.HandleOrderSelectedCommand}" 
+                                                          CommandParameter="{Binding}" />
+                                </Frame.GestureRecognizers>
+                                <VerticalStackLayout Spacing="4" InputTransparent="False">
+                                    <Label Text="{Binding Title}"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Gray900}" />
+                                    <Label Text="{Binding Subtitle}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Text="{Binding Status}"
+                                           FontAttributes="Bold"
+                                           FontSize="13"
+                                           TextColor="{Binding StatusColor}" />
+                                </VerticalStackLayout>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </StackLayout>
+
+            <StackLayout Spacing="8">
+                <Label Text="Recent and Open Invoices"
+                       FontAttributes="Bold"
+                       FontSize="18"
+                       TextColor="{StaticResource PrimaryDark}" />
+                <SearchBar Placeholder="Search invoice number"
+                           Text="{Binding InvoiceSearchQuery}" />
+                <CollectionView x:Name="InvoicesCollectionView"
+                                ItemsSource="{Binding FilteredInvoices}"
+                                SelectionMode="Single"
+                                RemainingItemsThreshold="1"
+                                RemainingItemsThresholdReachedCommand="{Binding LoadMoreInvoicesCommand}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ClientInvoiceViewModel">
+                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
+                                <VerticalStackLayout Spacing="4" InputTransparent="True">
+                                    <Label Text="{Binding NumberText}"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Gray900}" />
+                                    <Label Text="{Binding CreatedText}" FontSize="13" TextColor="{StaticResource Gray600}" />
+                                    <Label Text="{Binding DueText}" FontSize="13" TextColor="{Binding DueTextColor}" />
+                                    <Label Text="{Binding TotalText}" FontSize="13" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowAmount}" />
+                                    <Label Text="{Binding OpenText}" FontSize="13" TextColor="{Binding OpenTextColor}" IsVisible="{Binding ShowAmount}" />
+                                    <Label Text="{Binding StatusText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray600}" IsVisible="{Binding HasStatus}" />
+                                    <Label Text="{Binding DiscountText}" FontSize="13" TextColor="{StaticResource colorLaceupGreen}" IsVisible="{Binding HasDiscount}" />
+                                    <Label Text="{Binding PastDueText}" FontSize="12" TextColor="{StaticResource colorLaceupRed}" IsVisible="{Binding ShowPastDue}" />
+                                    <StackLayout Orientation="Vertical"
+                                                 Spacing="2"
+                                                 IsVisible="{Binding ShowPaymentGoal}">
+                                        <Label Text="{Binding GoalPaymentText}" FontSize="12" TextColor="{StaticResource colorLaceupGreen}" />
+                                        <Label Text="{Binding PendingDaysText}" FontSize="12" TextColor="{StaticResource Gray600}" />
+                                    </StackLayout>
+                                </VerticalStackLayout>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+                <ActivityIndicator IsRunning="{Binding IsInvoiceLoading}"
+                                   IsVisible="{Binding IsInvoiceLoading}" />
+                <Label Text="No invoices found"
+                       HorizontalOptions="Center"
+                       TextColor="{StaticResource Gray500}"
+                       IsVisible="{Binding ShowNoInvoices}" />
+            </StackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

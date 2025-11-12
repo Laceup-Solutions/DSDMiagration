@@ -175,7 +175,7 @@ namespace LaceupMigration.Services
 				try
 				{
 					// Approximated: clear stack and go to Main
-					await Shell.Current.GoToAsync("//MainPage");
+					await Shell.Current.GoToAsync("///MainPage");
 				}
 				catch (Exception ex)
 				{

@@ -67,7 +67,7 @@ namespace LaceupMigration.ViewModels
 			}
 
 			// Navigate to AddClient page when created
-			await Shell.Current.GoToAsync("//addclient");
+			await Shell.Current.GoToAsync("addclient");
 		}
 
 		[RelayCommand]
@@ -112,7 +112,7 @@ namespace LaceupMigration.ViewModels
 			{
 				await _dialogService.ShowAlertAsync("Pending transfers must be submitted.", "Alert", "OK");
 				
-				await Shell.Current.GoToAsync("//transfer");
+				await Shell.Current.GoToAsync("transferonoff");
 				
 				return;
 			}
@@ -146,7 +146,7 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			await Shell.Current.GoToAsync("//sentorders");
+			await Shell.Current.GoToAsync("sentorders");
 		}
 
 		[RelayCommand]
@@ -160,7 +160,7 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			await Shell.Current.GoToAsync("//sentpayments");
+			await Shell.Current.GoToAsync("sentpayments");
 		}
 
 		[RelayCommand]
@@ -174,7 +174,8 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			await Shell.Current.GoToAsync("//productcatalog");
+			// Navigate to FullCategoryPage (same as product catalog)
+			await Shell.Current.GoToAsync("fullcategory");
 		}
 
 		[RelayCommand]
@@ -188,7 +189,7 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			await Shell.Current.GoToAsync("//vieworderstatus");
+			await Shell.Current.GoToAsync("vieworderstatus");
 		}
 
 		[RelayCommand]
@@ -201,7 +202,7 @@ namespace LaceupMigration.ViewModels
 			}
 
 			_appService.RecordEvent("mainMenuInventory menu");
-			await Shell.Current.GoToAsync("//inventory");
+			await Shell.Current.GoToAsync("inventory");
 		}
 
 		[RelayCommand]
@@ -230,7 +231,7 @@ namespace LaceupMigration.ViewModels
 		private async Task ShowReports()
 		{
 			_appService.RecordEvent("mainMenuShowReports menu");
-			await Shell.Current.GoToAsync("//reports");
+			await Shell.Current.GoToAsync("reports");
 		}
 
 		[RelayCommand]
@@ -250,7 +251,7 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task TimeSheet()
 		{
-			await Shell.Current.GoToAsync("//timesheet");
+			await Shell.Current.GoToAsync("timesheet");
 		}
 
 		[RelayCommand]
@@ -263,13 +264,13 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task RouteManagement()
 		{
-			await Shell.Current.GoToAsync("//routemanagement");
+			await Shell.Current.GoToAsync("routemanagement");
 		}
 
 		[RelayCommand]
 		private async Task Goals()
 		{
-			await Shell.Current.GoToAsync("//goals");
+			await Shell.Current.GoToAsync("goals");
 		}
 
 		[RelayCommand]
@@ -283,37 +284,70 @@ namespace LaceupMigration.ViewModels
 		{
 			var menuItems = new List<string>();
 			
+			// Match Xamarin OnPrepareOptionsMenu logic
 			if (Config.CanAddClient)
 				menuItems.Add("Add Client");
+			
 			menuItems.Add("Sync Data");
-			if (Config.UseClockInOut)
-				menuItems.Add("Clock Out");
-			if (Config.TrackInventory && !Config.HideProdOnHand)
-				menuItems.Add("Inventory");
-			if (Config.TrackInventory)
-				menuItems.Add("Reports");
-			if (!Config.TrackInventory || Config.PreSale)
-				menuItems.Add("Send All");
-			if (Config.ProductCatalog)
-				menuItems.Add("Product Catalog");
-			if (!Config.HidePriceInTransaction)
-				menuItems.Add("Sent Payments");
-			if (Config.ShowOrderStatus)
-				menuItems.Add("View Order Status");
-			if (Config.ShowReports)
-				menuItems.Add("Show Reports");
+			
+			menuItems.Add("Update Product Images");
+			
+			if (ShowAcceptLoadMenuItem)
+				menuItems.Add("Accept Load");
+			
 			if (Config.TimeSheetCustomization)
 				menuItems.Add("Time Sheet");
-			if (Config.RouteManagement)
-				menuItems.Add("Route Management");
+			
+			if (Config.UseClockInOut)
+				menuItems.Add("Clock Out");
+			
+			if (!Config.TrackInventory || Config.PreSale)
+			{
+				var sendAllText = Config.TrackInventory && Config.PreSale ? "Send Orders" : "Send All";
+				menuItems.Add(sendAllText);
+			}
+			
+			if (Config.TrackInventory)
+				menuItems.Add("Reports");
+			
+			if (Config.TrackInventory && !Config.HideProdOnHand)
+				menuItems.Add("Inventory");
+			
+			if (Config.ProductCatalog)
+				menuItems.Add("Product Catalog");
+			
 			if (Config.ViewGoals)
 				menuItems.Add("Goals");
+			
+			if (Config.ShowOrderStatus)
+				menuItems.Add("View Order Status");
+			
+			if (Config.ShowSentTransactions)
+			{
+				menuItems.Add("Sent Orders");
+				if (!Config.HidePriceInTransaction)
+					menuItems.Add("Sent Payments");
+			}
+			else if (!Config.HidePriceInTransaction)
+			{
+				menuItems.Add("Sent Payments");
+			}
+			
+			if (Config.ShowReports)
+				menuItems.Add("Show Reports");
+			
 			if (Config.SalesmanCanChangeSite && !Config.HideSelectSitesFromMenu)
 				menuItems.Add("Select Site");
-			if (Config.CanLogout && !Config.NeedAccessForConfiguration)
-				menuItems.Add("Sign Out");
+			
+			if (Config.RouteManagement)
+				menuItems.Add("Route Management");
+			
 			menuItems.Add("Advanced Options");
 			menuItems.Add("Configuration");
+			
+			if (Config.CanLogout && !Config.NeedAccessForConfiguration)
+				menuItems.Add("Sign Out");
+			
 			menuItems.Add("About");
 
 			var choice = await Application.Current!.MainPage!.DisplayActionSheet("Menu", "Cancel", null, menuItems.ToArray());
@@ -326,50 +360,60 @@ namespace LaceupMigration.ViewModels
 				case "Sync Data":
 					await SyncData();
 					break;
-				case "Clock Out":
-					await ClockOut();
+				case "Update Product Images":
+					await UpdateProductImages();
 					break;
-				case "Inventory":
-					await Inventory();
-					break;
-				case "Reports":
-					await Reports();
-					break;
-				case "Send All":
-					await SendAll();
-					break;
-				case "Product Catalog":
-					await ProductCatalog();
-					break;
-				case "Sent Payments":
-					await SentPayments();
-					break;
-				case "View Order Status":
-					await ViewOrderStatus();
-					break;
-				case "Show Reports":
-					await ShowReports();
+				case "Accept Load":
+					await AcceptLoad();
 					break;
 				case "Time Sheet":
 					await TimeSheet();
 					break;
-				case "Route Management":
-					await RouteManagement();
+				case "Clock Out":
+					await ClockOut();
+					break;
+				case "Send All":
+				case "Send Orders":
+					await SendAll();
+					break;
+				case "Reports":
+					await Reports();
+					break;
+				case "Inventory":
+					await Inventory();
+					break;
+				case "Product Catalog":
+					await ProductCatalog();
 					break;
 				case "Goals":
 					await Goals();
 					break;
+				case "View Order Status":
+					await ViewOrderStatus();
+					break;
+				case "Sent Orders":
+					await SentOrders();
+					break;
+				case "Sent Payments":
+					await SentPayments();
+					break;
+				case "Show Reports":
+					await ShowReports();
+					break;
 				case "Select Site":
 					await SelectSite();
 					break;
-				case "Sign Out":
-					await SignOut();
+				case "Route Management":
+					await RouteManagement();
 					break;
 				case "Advanced Options":
 					await AdvancedLog();
 					break;
 				case "Configuration":
 					await Configuration();
+					break;
+				case "Sign Out":
+					await SignOut();
 					break;
 				case "About":
 					await About();
@@ -634,7 +678,7 @@ namespace LaceupMigration.ViewModels
 					}
 				}
 
-				await Shell.Current.GoToAsync("//endofday");
+				await Shell.Current.GoToAsync("endofday");
 			}
 		}
 
@@ -653,7 +697,7 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			await Shell.Current.GoToAsync("//configuration");
+			await Shell.Current.GoToAsync("configuration");
 		}
 
 		private async Task MenuHandlerUpdateProductImagesAsync()
@@ -742,11 +786,11 @@ namespace LaceupMigration.ViewModels
 			}
 
 			if (isButler)
-				await Shell.Current.GoToAsync("//bottlelogin");
+				await Shell.Current.GoToAsync("bottlelogin");
 			else
 			{
 				var route = Config.EnableLogin ? "login" : (Config.EnableAdvancedLogin ? "newlogin" : "loginconfig");
-				await Shell.Current.GoToAsync($"//{route}");
+				await Shell.Current.GoToAsync(route);
 			}
 		}
 
@@ -768,7 +812,7 @@ namespace LaceupMigration.ViewModels
 		private async Task ContinueAcceptLoadAsync()
 		{
 			// Navigate to accept load page when created
-			await Shell.Current.GoToAsync("//acceptload");
+			await Shell.Current.GoToAsync("acceptload");
 		}
 
 		private async Task SelectSiteHandlerAsync()

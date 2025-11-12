@@ -5,6 +5,7 @@ using LaceupMigration.Services;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System;
+using System.Collections.Generic;
 
 namespace LaceupMigration.ViewModels
 {
@@ -106,7 +107,7 @@ namespace LaceupMigration.ViewModels
 		{
 			_appService.RecordEvent("AddPayments button");
 			// Navigate to payment selection page when created
-			await Shell.Current.GoToAsync("//paymentselectclient");
+			await Shell.Current.GoToAsync("paymentselectclient");
 		}
 
 		[RelayCommand]
@@ -118,8 +119,38 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			// TODO: Implement print functionality
-			await _dialogService.ShowAlertAsync("Print functionality to be implemented.", "Info", "OK");
+			try
+			{
+				PrinterProvider.PrintDocument((int copies) =>
+				{
+					CompanyInfo.SelectedCompany = CompanyInfo.Companies[0];
+					IPrinter printer = PrinterProvider.CurrentPrinter();
+					bool allWent = true;
+
+					foreach (var invoicePayment in SelectedPayments)
+					{
+						for (int i = 0; i < copies; i++)
+						{
+							if (!printer.PrintPayment(invoicePayment))
+								allWent = false;
+							else
+							{
+								invoicePayment.Printed = true;
+								invoicePayment.Save();
+							}
+						}
+					}
+
+					if (!allWent)
+						return "Error printing payments";
+					return string.Empty;
+				});
+			}
+			catch (Exception ex)
+			{
+				await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+				_appService.TrackError(ex);
+			}
 		}
 
 		[RelayCommand]
@@ -220,14 +251,14 @@ namespace LaceupMigration.ViewModels
 			}
 
 			// Navigate to create deposit page when created
-			await Shell.Current.GoToAsync("//createdeposit");
+			await Shell.Current.GoToAsync("createdeposit");
 		}
 
 		[RelayCommand]
 		private async Task Summary()
 		{
 			// Navigate to payment summary page when created
-			await Shell.Current.GoToAsync("//paymentsummary");
+			await Shell.Current.GoToAsync("paymentsummary");
 		}
 
 		[RelayCommand]
@@ -448,7 +479,7 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task ViewDetails()
 		{
-			var route = CompanyInfo.ShowNewPayments() ? "//paymentnew" : "//payment";
+			var route = CompanyInfo.ShowNewPayments() ? "paymentnew" : "payment";
 			await Shell.Current.GoToAsync($"{route}?paymentId={_payment.Id}&detailViewPayments=1&goBackToMain=1");
 		}
 
@@ -462,7 +493,6 @@ namespace LaceupMigration.ViewModels
 
 	public partial class PaymentComponentViewModel : ObservableObject
 	{
-		private readonly PaymentComponent _component;
 		private readonly InvoicePayment _payment;
 
 		public PaymentComponentViewModel(PaymentComponent component, InvoicePayment payment)
@@ -471,47 +501,13 @@ namespace LaceupMigration.ViewModels
 			_payment = payment;
 		}
 
-		public string PaymentMethodText
-		{
-			get
-			{
-				var text = GetPaymentMethodName(_component.PaymentMethod);
-				if (!string.IsNullOrEmpty(_component.BankName))
-					text += ", Bank";
-				if (!string.IsNullOrEmpty(_component.Comments))
-					text += ", Comments";
-				if (_component.ExtraFields.Contains("Image"))
-					text += ", Image";
-				return text;
-			}
-		}
-
-		public string AmountText => _component.Amount.ToCustomString();
-
-		private string GetPaymentMethodName(InvoicePaymentMethod method)
-		{
-			return method switch
-			{
-				InvoicePaymentMethod.Cash => "Cash",
-				InvoicePaymentMethod.Check => "Check",
-				InvoicePaymentMethod.Credit_Card => "Credit Card",
-				InvoicePaymentMethod.Money_Order => "Money Order",
-				InvoicePaymentMethod.Transfer => "Transfer",
-				InvoicePaymentMethod.Zelle_Transfer => "Zelle Transfer",
-				InvoicePaymentMethod.ACH => "ACH",
-				_ => "Cash"
-			};
-		}
-
 		[RelayCommand]
 		private async Task ViewDetails()
 		{
 			// Navigate to payment details using parent payment's ID
-			var route = CompanyInfo.ShowNewPayments() ? "//paymentnew" : "//payment";
+			var route = CompanyInfo.ShowNewPayments() ? "paymentnew" : "payment";
 			await Shell.Current.GoToAsync($"{route}?paymentId={_payment.Id}&detailViewPayments=1&goBackToMain=1");
 		}
-
-		public PaymentComponent Component => _component;
 	}
 }
 

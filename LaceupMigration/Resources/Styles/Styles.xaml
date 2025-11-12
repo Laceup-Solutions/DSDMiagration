@@ -448,4 +448,75 @@
         <Setter Property="SelectedTabColor" Value="{AppThemeBinding Light={StaticResource Gray950}, Dark={StaticResource Gray200}}" />
     </Style>
 
+    <!-- Button Styles -->
+    <Style TargetType="Button" x:Key="PrimaryButton">
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource White}}" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" />
+        <Setter Property="FontFamily" Value="OpenSansRegular"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="BorderWidth" Value="0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="14,10"/>
+        <Setter Property="MinimumHeightRequest" Value="44"/>
+        <Setter Property="MinimumWidthRequest" Value="44"/>
+    </Style>
+
+    <Style TargetType="Button" x:Key="SecondaryButton">
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource White}}" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Gray600}}" />
+        <Setter Property="BorderColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource Gray400}}" />
+        <Setter Property="BorderWidth" Value="1"/>
+        <Setter Property="FontFamily" Value="OpenSansRegular"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="14,10"/>
+        <Setter Property="MinimumHeightRequest" Value="44"/>
+        <Setter Property="MinimumWidthRequest" Value="44"/>
+    </Style>
+
+    <Style TargetType="Button" x:Key="SmallButton">
+        <Setter Property="Padding" Value="14,8" />
+        <Setter Property="Margin" Value="4,0" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Gray600}}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+        <Setter Property="BorderColor" Value="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray500}}" />
+        <Setter Property="BorderWidth" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="MinimumHeightRequest" Value="36"/>
+        <Setter Property="MinimumWidthRequest" Value="36"/>
+    </Style>
+
+    <Style TargetType="Button" x:Key="DeleteButton">
+        <Setter Property="Padding" Value="14,8" />
+        <Setter Property="Margin" Value="4,0" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="BackgroundColor" Value="#D32F2F" />
+        <Setter Property="TextColor" Value="White" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="MinimumHeightRequest" Value="36"/>
+        <Setter Property="MinimumWidthRequest" Value="36"/>
+    </Style>
+
+    <!-- Frame Styles -->
+    <Style TargetType="Frame" x:Key="CardFrameStyle">
+        <Setter Property="HasShadow" Value="False" />
+        <Setter Property="BorderColor" Value="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray950}}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}" />
+        <Setter Property="Padding" Value="12" />
+        <Setter Property="Margin" Value="0,4" />
+    </Style>
+
+    <!-- Border Styles -->
+    <Style TargetType="Border" x:Key="BadgeBorder">
+        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="StrokeShape">
+            <Setter.Value>
+                <RoundRectangle CornerRadius="12" />
+            </Setter.Value>
+        </Setter>
+        <Setter Property="MinimumHeightRequest" Value="20" />
+    </Style>
+
 </ResourceDictionary>

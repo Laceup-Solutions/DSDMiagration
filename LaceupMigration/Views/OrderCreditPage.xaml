@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.OrderCreditPage"
+             x:DataType="vm:OrderCreditPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Credit Order">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" Order="Primary" Priority="0">
+            <ToolbarItem.IconImageSource>
+                <FontImageSource FontFamily="MaterialOutlined" Glyph="&#xE5D2;" Size="24" Color="Black"/>
+            </ToolbarItem.IconImageSource>
+        </ToolbarItem>
+    </ContentPage.ToolbarItems>
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <Label Text="{Binding ClientName}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}" />
+
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" 
+                      ColumnSpacing="12" RowSpacing="8"
+                      IsVisible="{Binding ShowTotals}">
+                    <Label Grid.Column="0" Grid.Row="0"
+                           Text="Lines:"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Gray900}" />
+                    <Label Grid.Column="1" Grid.Row="0"
+                           Text="{Binding LinesText}"
+                           HorizontalOptions="End"
+                           TextColor="{StaticResource Gray900}" />
+
+                    <Label Grid.Column="0" Grid.Row="1"
+                           Text="Qty Sold:"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Gray900}" />
+                    <Label Grid.Column="1" Grid.Row="1"
+                           Text="{Binding QtySoldText}"
+                           HorizontalOptions="End"
+                           TextColor="{StaticResource Gray900}" />
+
+                    <Label Grid.Column="0" Grid.Row="2"
+                           Text="Discount:"
+                           FontAttributes="Bold"
+                           IsVisible="{Binding ShowDiscount}"
+                           TextColor="{StaticResource Gray900}" />
+                    <Label Grid.Column="1" Grid.Row="2"
+                           Text="{Binding DiscountText}"
+                           HorizontalOptions="End"
+                           IsVisible="{Binding ShowDiscount}"
+                           TextColor="{StaticResource Gray900}" />
+
+                    <Label Grid.Column="0" Grid.Row="3"
+                           Text="Total:"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource PrimaryDark}" />
+                    <Label Grid.Column="1" Grid.Row="3"
+                           Text="{Binding TotalText}"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           HorizontalOptions="End"
+                           TextColor="{StaticResource PrimaryDark}" />
+                </Grid>
+
+                <Label Text="Line Items:"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}"
+                       Margin="0,8,0,0" />
+
+                <CollectionView ItemsSource="{Binding LineItems}"
+                                SelectionMode="Single"
+                                SelectionChangedCommand="{Binding LineItemSelectedCommand}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:OrderCreditLineItemViewModel">
+                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" InputTransparent="True">
+                                    <Label Grid.Column="0" Grid.Row="0"
+                                           Text="{Binding ProductName}"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Gray900}" />
+                                    <Label Grid.Column="1" Grid.Row="0"
+                                           Text="{Binding AmountText}"
+                                           HorizontalOptions="End"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Gray900}" />
+                                    <Label Grid.Column="0" Grid.Row="1"
+                                           Text="{Binding QtyText}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Grid.Column="1" Grid.Row="1"
+                                           Text="{Binding PriceText}"
+                                           HorizontalOptions="End"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Grid.Column="0" Grid.Row="2"
+                                           Text="{Binding TypeText}"
+                                           IsVisible="{Binding ShowType}"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           TextColor="{Binding TypeColor}" />
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,16,0,0">
+                    <Button Grid.Column="0"
+                            Text="Add Product"
+                            Command="{Binding AddProductCommand}"
+                            IsEnabled="{Binding CanEdit}"
+                            IsVisible="{Binding ShowAddProduct}"
+                            Style="{StaticResource SecondaryButton}" />
+
+                    <Button Grid.Column="1"
+                            Text="View Categories"
+                            Command="{Binding ViewCategoriesCommand}"
+                            IsEnabled="{Binding CanEdit}"
+                            IsVisible="{Binding ShowViewCategories}"
+                            Style="{StaticResource SecondaryButton}" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                    <Button Grid.Column="0"
+                            Text="Search"
+                            Command="{Binding SearchCommand}"
+                            IsEnabled="{Binding CanEdit}"
+                            IsVisible="{Binding ShowSearch}"
+                            Style="{StaticResource SecondaryButton}" />
+
+                    <Button Grid.Column="1"
+                            Text="{Binding DoneButtonText}"
+                            Command="{Binding DoneCommand}"
+                            IsEnabled="{Binding CanEdit}"
+                            Style="{StaticResource PrimaryButton}" />
+                </Grid>
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>

@@ -7,18 +7,6 @@
     xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
     Title="LaceupMigration">
 
-    <Shell.ToolbarItems>
-        <ToolbarItem x:Name="MenuToolbarItem" Text="Menu" Order="Primary" Priority="0">
-            <ToolbarItem.IconImageSource>
-                <FontImageSource FontFamily="MaterialOutlined" 
-                                 Glyph="{mi:MaterialOutlined Icon=Menu}" 
-                                 Size="24"
-                                 Color="Black"/>
-                
-            </ToolbarItem.IconImageSource>
-        </ToolbarItem>
-    </Shell.ToolbarItems>
-
     <ShellContent
         Title="Splash"
         ContentTemplate="{DataTemplate local:SplashPage}"

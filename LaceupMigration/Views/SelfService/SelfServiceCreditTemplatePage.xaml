@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="LaceupMigration.Views.SelfService.SelfServiceCreditTemplatePage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels.SelfService"
+             x:DataType="vm:SelfServiceCreditTemplatePageViewModel"
+             Title="Credit Items">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" Padding="10">
+        <Label Grid.Row="0" 
+               Text="{Binding ClientName}" 
+               FontSize="18" 
+               FontAttributes="Bold"
+               HorizontalOptions="Center"
+               Margin="0,0,0,10"/>
+        
+        <Grid Grid.Row="1" ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="0,0,0,10">
+            <Label Grid.Column="0" 
+                   Text="{Binding LinesText}" 
+                   FontSize="14"/>
+            <Label Grid.Column="1" 
+                   Text="{Binding QtyText}" 
+                   FontSize="14"/>
+            <Label Grid.Column="2" 
+                   Text="{Binding TermText}" 
+                   FontSize="14"/>
+        </Grid>
+        
+        <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,0,0,10">
+            <Label Grid.Column="0" 
+                   Text="{Binding SubtotalText}" 
+                   FontSize="14"/>
+            <Label Grid.Column="1" 
+                   Text="{Binding DiscountText}" 
+                   FontSize="14"/>
+        </Grid>
+        
+        <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,0,0,10">
+            <Label Grid.Column="0" 
+                   Text="{Binding TaxText}" 
+                   FontSize="14"/>
+            <Label Grid.Column="1" 
+                   Text="{Binding TotalText}" 
+                   FontSize="16" 
+                   FontAttributes="Bold"/>
+        </Grid>
+        
+        <HorizontalStackLayout Grid.Row="4" Spacing="8" Margin="0,0,0,10">
+            <Button Text="History" 
+                    Command="{Binding HistoryCommand}"
+                    HorizontalOptions="FillAndExpand"/>
+            <Button Text="Catalog" 
+                    Command="{Binding CatalogCommand}"
+                    HorizontalOptions="FillAndExpand"/>
+            <Button Text="Search" 
+                    Command="{Binding SearchCommand}"
+                    HorizontalOptions="FillAndExpand"/>
+        </HorizontalStackLayout>
+        
+        <Button Grid.Row="5" 
+                Text="Send" 
+                Command="{Binding SendCommand}"
+                BackgroundColor="{StaticResource Primary}"
+                TextColor="White"
+                Margin="0,0,0,10"/>
+        
+        <CollectionView Grid.Row="6" 
+                        ItemsSource="{Binding OrderLines}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:OrderLineItemViewModel">
+                    <Frame Padding="12" 
+                           Margin="0,4" 
+                           BackgroundColor="{StaticResource Gray100}"
+                           HasShadow="False"
+                           CornerRadius="8">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                <Label Text="{Binding ProductName}" 
+                                       FontSize="16" 
+                                       FontAttributes="Bold"/>
+                                <Label Text="{Binding QtyText}" 
+                                       FontSize="14" 
+                                       TextColor="Gray"/>
+                                <Label Text="{Binding PriceText}" 
+                                       FontSize="14"/>
+                            </VerticalStackLayout>
+                            <Button Grid.Column="1" 
+                                    Text="Remove" 
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCreditTemplatePageViewModel}}, Path=RemoveLineCommand}"
+                                    CommandParameter="{Binding}"
+                                    BackgroundColor="Red"
+                                    TextColor="White"
+                                    WidthRequest="80"/>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

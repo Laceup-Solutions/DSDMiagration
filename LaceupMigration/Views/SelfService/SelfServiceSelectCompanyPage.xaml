@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="LaceupMigration.Views.SelfService.SelfServiceSelectCompanyPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels.SelfService"
+             x:DataType="vm:SelfServiceSelectCompanyPageViewModel"
+             Title="Select Company">
+    <Grid RowDefinitions="Auto,*" Padding="10">
+        <Button Grid.Row="0" 
+                Text="Add Company" 
+                Command="{Binding AddCompanyCommand}"
+                Margin="0,0,0,10"/>
+        
+        <CollectionView Grid.Row="1" 
+                        ItemsSource="{Binding Companies}"
+                        SelectionMode="Single"
+                        SelectionChanged="OnCompanySelected">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Padding="10" Margin="0,0,0,10" 
+                           BackgroundColor="White"
+                           BorderColor="LightBlue"
+                           HasShadow="True">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout Grid.Column="0">
+                                <Label Text="{Binding CompanyName}" 
+                                       FontSize="18" 
+                                       FontAttributes="Bold"/>
+                                <Label Text="{Binding CompanyAddress}" 
+                                       FontSize="14" 
+                                       TextColor="Gray"/>
+                                <Label Text="{Binding CompanyPhone}" 
+                                       FontSize="14" 
+                                       TextColor="Gray"/>
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

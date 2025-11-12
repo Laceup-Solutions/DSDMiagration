@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.RouteExpensesPage"
+             Shell.TabBarIsVisible="False"
+             Title="Route Expenses">
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+        <HorizontalStackLayout Grid.Row="0"
+                               Spacing="8"
+                               Margin="8">
+            <Button Text="Add Expense"
+                    Command="{Binding AddExpenseCommand}"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Save"
+                    Command="{Binding SaveCommand}"
+                    HorizontalOptions="FillAndExpand" />
+        </HorizontalStackLayout>
+
+        <Label Grid.Row="1"
+               Text="{Binding TotalExpenses, StringFormat='Total: ${0:F2}'}"
+               FontSize="16"
+               FontAttributes="Bold"
+               Margin="8,0"
+               HorizontalOptions="End" />
+
+        <CollectionView Grid.Row="2"
+                        ItemsSource="{Binding Expenses}"
+                        Margin="8">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:RouteExpenseViewModel">
+                    <Frame Padding="12"
+                           Margin="0,4"
+                           BackgroundColor="{StaticResource Gray100}"
+                           HasShadow="False"
+                           CornerRadius="8">
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                            <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                <Label Text="{Binding Description}"
+                                       FontSize="16"
+                                       FontAttributes="Bold" />
+                                <Label Text="{Binding Date, StringFormat='Date: {0:MM/dd/yyyy}'}"
+                                       FontSize="14"
+                                       TextColor="#666666" />
+                                <Label Text="{Binding Category}"
+                                       FontSize="14"
+                                       TextColor="#666666" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1"
+                                   Text="{Binding Amount, StringFormat='${0:F2}'}"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   VerticalOptions="Center" />
+                            <Button Grid.Column="2"
+                                    Text="Delete"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteExpenseCommand}"
+                                    CommandParameter="{Binding}"
+                                    BackgroundColor="Red"
+                                    TextColor="White" />
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

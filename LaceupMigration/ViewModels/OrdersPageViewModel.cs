@@ -5,6 +5,7 @@ using LaceupMigration.Services;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 
 namespace LaceupMigration.ViewModels
@@ -32,7 +33,7 @@ namespace LaceupMigration.ViewModels
 			InvoiceNum = 1
 		}
 
-		private readonly DialogService _dialogService;
+		public readonly DialogService _dialogService;
 		private readonly ILaceupAppService _appService;
 
 		private Dictionary<string, TransactionSection> _transactions = new();
@@ -197,8 +198,48 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			// TODO: Implement print functionality
-			await _dialogService.ShowAlertAsync("Print functionality to be implemented.", "Info", "OK");
+			try
+			{
+				PrinterProvider.PrintDocument((int copies) =>
+				{
+					CompanyInfo.SelectedCompany = CompanyInfo.Companies[0];
+					IPrinter printer = PrinterProvider.CurrentPrinter();
+					bool allWent = true;
+
+					foreach (var order in SelectedOrders)
+					{
+						for (int i = 0; i < copies; i++)
+						{
+							bool result = false;
+							if (order.OrderType == OrderType.Consignment)
+							{
+								if (Config.UseFullConsignment)
+									result = printer.PrintFullConsignment(order, !order.Finished);
+								else
+									result = printer.PrintConsignment(order, !order.Finished);
+							}
+							else
+							{
+								result = printer.PrintOrder(order, !order.Finished);
+							}
+
+							if (!result)
+								allWent = false;
+							else if (order.Finished)
+								order.PrintedCopies += 1;
+						}
+					}
+
+					if (!allWent)
+						return "Error printing transactions";
+					return string.Empty;
+				});
+			}
+			catch (Exception ex)
+			{
+				await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+				_appService.TrackError(ex);
+			}
 		}
 
 		[RelayCommand]
@@ -362,8 +403,17 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			// TODO: Implement send by email functionality
-			await _dialogService.ShowAlertAsync("Send by email functionality to be implemented.", "Info", "OK");
+			try
+			{
+				// TODO: Implement PdfHelper.SendOrdersByEmail when available
+				// For now, show info message
+				await _dialogService.ShowAlertAsync("Send by email functionality requires PdfHelper implementation.", "Info", "OK");
+			}
+			catch (Exception ex)
+			{
+				await _dialogService.ShowAlertAsync($"Error sending: {ex.Message}", "Error", "OK");
+				_appService.TrackError(ex);
+			}
 		}
 
 		private async Task SendToBackOfficeAsync()
@@ -396,8 +446,38 @@ namespace LaceupMigration.ViewModels
 					return;
 			}
 
-			// TODO: Implement send to back office functionality
-			await _dialogService.ShowAlertAsync("Send to back office functionality to be implemented.", "Info", "OK");
+			try
+			{
+				var orders = SelectedOrders.ToList();
+				
+				// Update order end dates if needed
+				foreach (var order in orders)
+				{
+					if (order.EndDate == DateTime.MinValue)
+						order.EndDate = DateTime.Now;
+
+					if (order.AsPresale && Config.GeneratePresaleNumber && string.IsNullOrEmpty(order.PrintedOrderId))
+						order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
+
+					order.Save();
+				}
+
+				var batches = Batch.List.Where(x => orders.Any(y => y.BatchId == x.Id));
+
+				// Send orders to back office
+				DataAccess.SendTheOrders(batches, orders.Select(x => x.OrderId.ToString()).ToList());
+
+				SelectedOrders.Clear();
+				RefreshListHeader();
+				RefreshUI();
+
+				await _dialogService.ShowAlertAsync("Orders sent successfully.", "Success", "OK");
+			}
+			catch (Exception ex)
+			{
+				await _dialogService.ShowAlertAsync($"Error sending orders: {ex.Message}", "Error", "OK");
+				_appService.TrackError(ex);
+			}
 		}
 
 		private void RefreshUI()
@@ -708,8 +788,163 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task ViewDetails()
 		{
-			// TODO: Navigate to order details based on order type
-			await Shell.Current.GoToAsync($"//orderdetails?orderId={_order.OrderId}");
+			await NavigateToOrderAsync(_order);
+		}
+
+		private async Task NavigateToOrderAsync(Order order)
+		{
+			var client = order.Client;
+			if (client == null)
+				return;
+
+			var batch = Batch.List.FirstOrDefault(x => x.Id == order.BatchId);
+			if (batch == null)
+			{
+				batch = new Batch(client);
+				batch.Client = client;
+				batch.ClockedIn = DateTime.Now;
+				batch.Save();
+				order.BatchId = batch.Id;
+				order.Save();
+			}
+
+			// Handle NoService orders
+			if (order.OrderType == OrderType.NoService)
+			{
+				if (Config.CaptureImages)
+				{
+					await Shell.Current.GoToAsync($"noservice?orderId={order.OrderId}");
+				}
+				return;
+			}
+
+			// Handle Consignment orders
+			if (order.OrderType == OrderType.Consignment)
+			{
+				await Shell.Current.GoToAsync($"consignment?orderId={order.OrderId}");
+				return;
+			}
+
+			// Handle Quote orders
+			if (order.OrderType == OrderType.Quote || order.IsQuote)
+			{
+				// TODO: Navigate to QuotePage when implemented
+				await _parent._dialogService.ShowAlertAsync("Quote viewing is not yet implemented in MAUI version.", "Info");
+				return;
+			}
+
+			// Handle finished orders (non-presale) - navigate to BatchPage
+			if (!order.AsPresale || order.Finished)
+			{
+				await Shell.Current.GoToAsync($"batch?batchId={batch.Id}");
+				return;
+			}
+
+			// Handle Credit or Return orders
+			if (order.OrderType == OrderType.Credit || order.OrderType == OrderType.Return)
+			{
+				await Shell.Current.GoToAsync($"ordercredit?orderId={order.OrderId}&asPresale=1");
+				return;
+			}
+
+			// Handle Full Template logic
+			if (Config.UseFullTemplateForClient(client) && !client.AllowOneDoc && !order.IsProjection)
+			{
+				// Create RelationUniqueId if not exists
+				if (string.IsNullOrEmpty(order.RelationUniqueId))
+				{
+					order.RelationUniqueId = Guid.NewGuid().ToString("N");
+					order.Save();
+				}
+
+				var batchOrders = batch.Orders().ToList();
+				int? orderId = null;
+				int? creditId = null;
+
+				if (batchOrders.Count == 1)
+				{
+					// Only one order - create complementary order
+					if (order.OrderType == OrderType.Order)
+					{
+						// Create credit order
+						var credit = new Order(client) { OrderType = OrderType.Credit };
+						credit.BatchId = batch.Id;
+						credit.AsPresale = true;
+						credit.RelationUniqueId = order.RelationUniqueId;
+
+						// Handle company selection
+						if (CompanyInfo.Companies.Count > 1 && CompanyInfo.SelectedCompany != null)
+						{
+							credit.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
+							credit.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
+						}
+						else
+						{
+							credit.CompanyName = string.Empty;
+						}
+
+						credit.Save();
+						orderId = order.OrderId;
+						creditId = credit.OrderId;
+					}
+					else if (order.OrderType == OrderType.Credit)
+					{
+						// Create order
+						var newOrder = new Order(client) { OrderType = OrderType.Order };
+						newOrder.BatchId = batch.Id;
+						newOrder.AsPresale = true;
+						newOrder.RelationUniqueId = order.RelationUniqueId;
+
+						// Handle company selection
+						if (CompanyInfo.Companies.Count > 1 && CompanyInfo.SelectedCompany != null)
+						{
+							newOrder.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
+							newOrder.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
+						}
+						else
+						{
+							newOrder.CompanyName = string.Empty;
+						}
+
+						newOrder.Save();
+						orderId = newOrder.OrderId;
+						creditId = order.OrderId;
+					}
+				}
+				else
+				{
+					// Multiple orders - find order and credit from batch
+					foreach (var item in batchOrders)
+					{
+						if (item.OrderType == OrderType.Credit)
+							creditId = item.OrderId;
+						else if (item.OrderType == OrderType.Order)
+							orderId = item.OrderId;
+					}
+				}
+
+				// Navigate to SuperOrderTemplate with both orders
+				var route = $"superordertemplate?asPresale=1";
+				if (orderId.HasValue)
+					route += $"&orderId={orderId.Value}";
+				if (creditId.HasValue)
+					route += $"&creditId={creditId.Value}";
+				
+				await Shell.Current.GoToAsync(route);
+				return;
+			}
+
+			// Handle SalesByDepartment
+			if (Config.SalesByDepartment)
+			{
+				await Shell.Current.GoToAsync($"batchdepartment?clientId={client.ClientId}&batchId={batch.Id}");
+				return;
+			}
+
+			// Default: Navigate to OrderDetailsPage
+			// Note: ActivityProvider logic would determine if it's PreviouslyOrderedTemplateActivity
+			// but in MAUI we use OrderDetailsPage as the base
+			await Shell.Current.GoToAsync($"orderdetails?orderId={order.OrderId}&asPresale=1");
 		}
 
 		public Order Order => _order;

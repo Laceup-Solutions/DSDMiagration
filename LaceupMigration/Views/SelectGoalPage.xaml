@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.SelectGoalPage"
+             Shell.TabBarIsVisible="False"
+             Title="Goals">
+    <Grid RowDefinitions="*">
+        <ActivityIndicator IsRunning="{Binding IsLoading}"
+                           IsVisible="{Binding IsLoading}"
+                           Color="{StaticResource Primary}"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center" />
+
+        <CollectionView ItemsSource="{Binding Goals}"
+                        Margin="8">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:GoalItemViewModel">
+                    <Frame Padding="16"
+                           Margin="0,4"
+                           BackgroundColor="{StaticResource Gray100}"
+                           HasShadow="False"
+                           CornerRadius="8"
+                           InputTransparent="True">
+                        <Frame.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectGoalCommand}" 
+                                                  CommandParameter="{Binding}" />
+                        </Frame.GestureRecognizers>
+                        <VerticalStackLayout Spacing="4" InputTransparent="True">
+                            <Label Text="{Binding Name}"
+                                   FontSize="16"
+                                   FontAttributes="Bold" />
+                            <Label Text="{Binding Description}"
+                                   FontSize="14"
+                                   TextColor="#666666" />
+                            <Label Text="{Binding Progress}"
+                                   FontSize="14"
+                                   TextColor="#666666" />
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

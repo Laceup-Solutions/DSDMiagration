@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.LoadOrderReportPage"
+             Shell.TabBarIsVisible="False"
+             Title="Load Order Report">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="16" Padding="16">
+        <Grid Grid.Row="0" ColumnDefinitions="*,*" ColumnSpacing="8">
+            <Button Grid.Column="0"
+                    Text="{Binding DateFromText, StringFormat='From: {0}'}"
+                    Command="{Binding SelectDateFromCommand}"
+                    IsEnabled="{Binding DateRangeEnabled}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White" />
+            <Button Grid.Column="1"
+                    Text="{Binding DateToText, StringFormat='To: {0}'}"
+                    Command="{Binding SelectDateToCommand}"
+                    IsEnabled="{Binding DateRangeEnabled}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White" />
+        </Grid>
+
+        <HorizontalStackLayout Grid.Row="1" Spacing="8">
+            <Button Text="Run Report"
+                    Command="{Binding RunReportCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Send by Email"
+                    Command="{Binding SendByEmailCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    HorizontalOptions="FillAndExpand" />
+        </HorizontalStackLayout>
+
+        <ActivityIndicator Grid.Row="2"
+                           IsRunning="{Binding IsLoading}"
+                           IsVisible="{Binding IsLoading}"
+                           HeightRequest="50" />
+    </Grid>
+</ContentPage>
+

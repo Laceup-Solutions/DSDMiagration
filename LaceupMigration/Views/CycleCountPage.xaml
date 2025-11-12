@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.CycleCountPage"
+             Shell.TabBarIsVisible="False"
+             Title="Cycle Count">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+        <SearchBar Grid.Row="0"
+                   Text="{Binding SearchQuery}"
+                   Placeholder="Search product name..."
+                   Margin="16,8" />
+
+        <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="16,0">
+            <Button Text="Filter"
+                    Command="{Binding FilterCommand}"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Save"
+                    Command="{Binding SaveCommand}"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Print"
+                    Command="{Binding PrintCommand}"
+                    HorizontalOptions="FillAndExpand"
+                    IsVisible="{Binding ShowPrintButton}" />
+        </HorizontalStackLayout>
+
+        <CollectionView Grid.Row="2"
+                        ItemsSource="{Binding CycleCountLines}"
+                        Margin="16,0,16,8">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:CycleCountLineViewModel">
+                    <Frame Padding="12"
+                           Margin="0,4"
+                           BackgroundColor="{StaticResource Gray100}"
+                           HasShadow="False"
+                           CornerRadius="8"
+                           InputTransparent="True">
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" InputTransparent="True">
+                            <VerticalStackLayout Grid.Column="0" Spacing="4" InputTransparent="True">
+                                <Label Text="{Binding ProductName}"
+                                       FontSize="16"
+                                       FontAttributes="Bold" />
+                                <Label Text="{Binding BeginningInventory, StringFormat='Beginning: {0}'}"
+                                       FontSize="13"
+                                       TextColor="#666666" />
+                                <Label Text="{Binding CurrentInventory, StringFormat='Current: {0}'}"
+                                       FontSize="13"
+                                       TextColor="#666666" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1"
+                                   Text="{Binding Real, StringFormat='Count: {0}'}"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   VerticalOptions="Center" />
+                            <Entry Grid.Column="2"
+                                   Text="{Binding Real, StringFormat='{0:F2}'}"
+                                   WidthRequest="100"
+                                   Keyboard="Numeric" />
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

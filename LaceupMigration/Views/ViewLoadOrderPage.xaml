@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+             x:Class="LaceupMigration.Views.ViewLoadOrderPage"
+             Shell.TabBarIsVisible="False"
+             Title="Load Orders">
+    <Grid RowDefinitions="Auto,*" RowSpacing="8">
+        <VerticalStackLayout Grid.Row="0" Spacing="4" Margin="16,8">
+            <Label Text="Select Date:" FontSize="12" TextColor="Gray" />
+            <DatePicker Date="{Binding SelectedDate}"
+                       Format="MM/dd/yyyy"
+                       MinimumDate="01/01/2000"
+                       MaximumDate="{Binding Source={x:Static sys:DateTime.Now}}" />
+        </VerticalStackLayout>
+
+        <CollectionView Grid.Row="1"
+                        ItemsSource="{Binding LoadOrders}"
+                        Margin="16,0,16,8">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:LoadOrderItemViewModel">
+                    <Frame Padding="12"
+                           Margin="0,4"
+                           BackgroundColor="{StaticResource Gray100}"
+                           HasShadow="False"
+                           CornerRadius="8"
+                           InputTransparent="False">
+                        <Frame.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ViewLoadOrderCommand}" 
+                                                  CommandParameter="{Binding}" />
+                        </Frame.GestureRecognizers>
+                        <VerticalStackLayout Spacing="4" InputTransparent="False">
+                            <Label Text="{Binding OrderNumberText}"
+                                   FontSize="16"
+                                   FontAttributes="Bold" />
+                            <Label Text="{Binding ClientName}"
+                                   FontSize="14"
+                                   TextColor="#666666" />
+                            <Label Text="{Binding DateText}"
+                                   FontSize="13"
+                                   TextColor="#666666" />
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

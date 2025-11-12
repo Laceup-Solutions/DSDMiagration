@@ -43,6 +43,19 @@ namespace LaceupMigration
         
         public static bool PendingLoadToAccept { get; set; }
 
+        private static ActivityProvider _activityProvider;
+        public static ActivityProvider ActivityProvider
+        {
+            get
+            {
+                if (_activityProvider == null)
+                {
+                    _activityProvider = new ActivityProvider();
+                }
+                return _activityProvider;
+            }
+        }
+
         public static bool ReceivedData { get; set; }
 
         public static double LastLongitude { get; set; }

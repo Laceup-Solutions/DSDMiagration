@@ -5,6 +5,13 @@
              x:Class="LaceupMigration.ClientsPage"
              x:DataType="vm:ClientsPageViewModel"
              Title="Customers">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" Order="Primary" Priority="0">
+            <ToolbarItem.IconImageSource>
+                <FontImageSource FontFamily="MaterialOutlined" Glyph="&#xE5D2;" Size="24" Color="Black"/>
+            </ToolbarItem.IconImageSource>
+        </ToolbarItem>
+    </ContentPage.ToolbarItems>
 
     <ContentPage.Resources>
         <Style TargetType="Button" x:Key="SmallButton">
@@ -32,11 +39,13 @@
             <Frame Margin="0,4"
                    Padding="12"
                    HasShadow="False"
+                   InputTransparent="True"
                    BorderColor="#E0E0E0"
                    CornerRadius="10">
                 <Grid ColumnDefinitions="Auto,*"
                       RowDefinitions="Auto,Auto,Auto"
-                      ColumnSpacing="12">
+                      ColumnSpacing="12"
+                      InputTransparent="True">
                     <Border StrokeThickness="0"
                             BackgroundColor="{Binding StopBadgeBackground}"
                             IsVisible="{Binding ShowStop}"
@@ -127,12 +136,6 @@
                     Style="{StaticResource SmallButton}"
                     Command="{Binding OpenMapRouteCommand}"
                     IsVisible="{Binding ShowMapRouteButton}" />
-
-            <Button Text="Search"
-                    Style="{StaticResource SmallButton}"
-                    Command="{Binding OpenSearchDialogCommand}"
-                    IsEnabled="{Binding SearchButtonEnabled}"
-                    IsVisible="{Binding ShowSearchButton}" />
 
             <Button Text="{Binding ViewButtonText}"
                     Style="{StaticResource SmallButton}"

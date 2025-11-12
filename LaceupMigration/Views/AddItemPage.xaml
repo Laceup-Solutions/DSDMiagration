@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.AddItemPage"
+             x:DataType="vm:AddItemPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Add Item">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <!-- Product Info -->
+                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="{Binding ProductName}"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Gray900}" />
+                        <Label Text="{Binding ProductUpc, StringFormat='UPC: {0}'}"
+                               FontSize="14"
+                               TextColor="{StaticResource Gray600}" />
+                        <Label Text="{Binding ListPriceText}"
+                               FontSize="14"
+                               TextColor="{StaticResource Gray600}" />
+                        <Label Text="{Binding OnHandText}"
+                               FontSize="14"
+                               TextColor="{StaticResource Gray600}" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Quantity (for non-weight items) -->
+                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}"
+                       IsVisible="{Binding ShowQuantity}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Quantity"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Gray900}" />
+                        <Entry Text="{Binding QuantityText}"
+                               Keyboard="Numeric"
+                               Placeholder="Enter quantity" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Weight (for weight items) -->
+                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}"
+                       IsVisible="{Binding ShowWeight}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Weight"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Gray900}" />
+                        <Entry Text="{Binding WeightText}"
+                               Keyboard="Numeric"
+                               Placeholder="Enter weight" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Unit of Measure -->
+                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}"
+                       IsVisible="{Binding ShowUom}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Unit of Measure"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Gray900}" />
+                        <Picker ItemsSource="{Binding UnitOfMeasures}"
+                                SelectedItem="{Binding SelectedUom}"
+                                ItemDisplayBinding="{Binding Name}" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Price -->
+                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}"
+                       IsVisible="{Binding ShowPrice}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Price"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Gray900}" />
+                        <Entry Text="{Binding PriceText}"
+                               Keyboard="Numeric"
+                               Placeholder="Enter price" />
+                        <Label Text="Price can be edited"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               IsVisible="{Binding CanEditPrice}" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Lot -->
+                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}"
+                       IsVisible="{Binding ShowLot}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Lot"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Gray900}" />
+                        <Entry Text="{Binding LotText}"
+                               Placeholder="Enter lot number" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Comments -->
+                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}"
+                       IsVisible="{Binding ShowComments}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Comments"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Gray900}" />
+                        <Editor Text="{Binding CommentsText}"
+                                Placeholder="Enter comments"
+                                HeightRequest="100" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Free Item Checkbox -->
+                <HorizontalStackLayout IsVisible="{Binding ShowPrice}" Spacing="8">
+                    <CheckBox IsChecked="{Binding IsFreeItem}" />
+                    <Label Text="Free Item"
+                           VerticalOptions="Center"
+                           FontSize="14"
+                           TextColor="{StaticResource Gray900}" />
+                </HorizontalStackLayout>
+
+                <!-- Total -->
+                <Label Text="{Binding TotalText}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}"
+                       HorizontalOptions="Center"
+                       Margin="0,8,0,8" />
+
+                <!-- Buttons -->
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                    <Button Text="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Grid.Column="0" />
+                    <Button Text="Add to Order"
+                            Command="{Binding AddToOrderCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Grid.Column="1" />
+                </Grid>
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>
+

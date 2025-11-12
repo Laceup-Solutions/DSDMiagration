@@ -75,7 +75,7 @@ namespace LaceupMigration.ViewModels
 					}
 					else
 					{
-						await GoToAsyncOrMainAsync("//MainPage");
+						await GoToAsyncOrMainAsync("///MainPage");
 					}
 
 					DataAccess.WaitBeforeStart = 1;
@@ -104,7 +104,7 @@ namespace LaceupMigration.ViewModels
 				}
 				else
 				{
-					await GoToAsyncOrMainAsync("//MainPage");
+					await GoToAsyncOrMainAsync("///MainPage");
 				}
 			}
 			else
@@ -133,7 +133,7 @@ namespace LaceupMigration.ViewModels
 			catch(Exception ex)
 			{
 				// Fallback if route isn't registered yet
-				await Shell.Current.GoToAsync("//MainPage");
+				await Shell.Current.GoToAsync("///MainPage");
 			}
 		}
 	}

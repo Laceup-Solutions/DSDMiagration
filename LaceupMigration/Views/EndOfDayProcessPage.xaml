@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.EndOfDayProcessPage"
+             Shell.TabBarIsVisible="False"
+             Title="End of Day Process">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Label Text="End of Day Process"
+                   FontSize="20"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   Margin="0,0,0,20" />
+
+            <Frame Padding="16"
+                   BackgroundColor="{StaticResource Gray100}"
+                   HasShadow="False"
+                   CornerRadius="8">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Validation Checklist:"
+                           FontSize="16"
+                           FontAttributes="Bold" />
+
+                    <HorizontalStackLayout Spacing="8">
+                        <CheckBox IsChecked="{Binding HasRouteReturns}"
+                                  VerticalOptions="Center" />
+                        <Label Text="Route Returns Completed"
+                               VerticalOptions="Center"
+                               FontSize="14" />
+                    </HorizontalStackLayout>
+
+                    <HorizontalStackLayout Spacing="8">
+                        <CheckBox IsChecked="{Binding HasEndInventory}"
+                                  VerticalOptions="Center" />
+                        <Label Text="End Inventory Entered"
+                               VerticalOptions="Center"
+                               FontSize="14" />
+                    </HorizontalStackLayout>
+
+                    <HorizontalStackLayout Spacing="8">
+                        <CheckBox IsChecked="{Binding HasExpenses}"
+                                  VerticalOptions="Center" />
+                        <Label Text="Route Expenses Entered"
+                               VerticalOptions="Center"
+                               FontSize="14" />
+                    </HorizontalStackLayout>
+
+                    <HorizontalStackLayout Spacing="8">
+                        <CheckBox IsChecked="{Binding HasReportsPrinted}"
+                                  VerticalOptions="Center" />
+                        <Label Text="Reports Printed"
+                               VerticalOptions="Center"
+                               FontSize="14" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Label Text="{Binding StatusMessage}"
+                   FontSize="14"
+                   TextColor="{Binding StatusColor}"
+                   Margin="0,8" />
+
+            <Button Text="Process End of Day"
+                    Command="{Binding ProcessEndOfDayCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    Margin="0,20,0,0"
+                    IsEnabled="{Binding CanProcess}" />
+
+            <Button Text="Cancel"
+                    Command="{Binding CancelCommand}"
+                    FontSize="16"
+                    Padding="16,12" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+

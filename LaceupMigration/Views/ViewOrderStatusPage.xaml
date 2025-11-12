@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.ViewOrderStatusPage"
+             Shell.TabBarIsVisible="False"
+             Title="View Order Status">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Style TargetType="Button">
+                <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
+                <Setter Property="TextColor" Value="White" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="CornerRadius" Value="8" />
+            </Style>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
+        <!-- Search Bar -->
+        <SearchBar Grid.Row="0"
+                   Text="{Binding SearchQuery}"
+                   Placeholder="Search..."
+                   IsVisible="{Binding IsSearchVisible}"
+                   Margin="8,8,8,0" />
+
+        <!-- Transaction Type Filter -->
+        <Picker Grid.Row="1"
+                ItemsSource="{Binding TransactionTypeOptions}"
+                SelectedItem="{Binding SelectedTransactionType}"
+                Margin="8,0"
+                IsVisible="{Binding IsSearchVisible}" />
+
+        <!-- Buttons Layout -->
+        <HorizontalStackLayout Grid.Row="2"
+                               Spacing="8"
+                               Margin="8,0"
+                               IsVisible="{Binding ShowButtonsLayout}">
+            <Button Text="Print"
+                    Command="{Binding PrintCommand}"
+                    HorizontalOptions="FillAndExpand" />
+        </HorizontalStackLayout>
+
+        <!-- Select All Layout -->
+        <Frame Grid.Row="3"
+               Padding="12"
+               Margin="8,0"
+               HasShadow="False"
+               BackgroundColor="{StaticResource Gray100}"
+               IsVisible="{Binding ShowSelectAllLayout}">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <CheckBox Grid.Column="0"
+                          IsChecked="{Binding IsSelectAllChecked}"
+                          CheckedChanged="CheckBox_CheckedChanged"
+                          VerticalOptions="Center" />
+                <Grid Grid.Column="1" ColumnDefinitions="*,Auto">
+                    <Label Grid.Column="0"
+                           Text="{Binding SelectAllText}"
+                           VerticalOptions="Center"
+                           FontSize="14" />
+                    <Label Grid.Column="1"
+                           Text="{Binding TotalText}"
+                           FontAttributes="Bold"
+                           FontSize="14"
+                           IsVisible="{Binding ShowTotal}"
+                           VerticalOptions="Center" />
+                </Grid>
+            </Grid>
+        </Frame>
+
+        <!-- Status Sections List -->
+        <CollectionView Grid.Row="4"
+                        ItemsSource="{Binding StatusSections}"
+                        Margin="8,0,8,8">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:StatusSectionViewModel">
+                    <VerticalStackLayout Spacing="8" Margin="0,0,0,16">
+                        <!-- Section Header -->
+                        <Frame Padding="12"
+                               BackgroundColor="{StaticResource Gray100}"
+                               HasShadow="False">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Grid.Column="0"
+                                       Text="{Binding SectionName}"
+                                       FontAttributes="Bold"
+                                       FontSize="16" />
+                                <Label Grid.Column="1"
+                                       Text="{Binding Total, StringFormat='Total: {0}'}"
+                                       FontAttributes="Bold"
+                                       FontSize="14"
+                                       IsVisible="{Binding ShowTotal}" />
+                            </Grid>
+                        </Frame>
+
+                        <!-- Client Groups -->
+                        <CollectionView ItemsSource="{Binding ClientGroups}">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ClientOrderGroupViewModel">
+                                    <VerticalStackLayout Spacing="4" Margin="0,0,0,8">
+                                        <!-- Client Name -->
+                                        <Frame Padding="10"
+                                               BackgroundColor="{StaticResource Gray200}"
+                                               HasShadow="False">
+                                            <Label Text="{Binding ClientName}"
+                                                   FontAttributes="Bold"
+                                                   FontSize="15" />
+                                        </Frame>
+
+                                        <!-- Orders -->
+                                        <CollectionView ItemsSource="{Binding Orders}">
+                                            <CollectionView.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:OrderStatusItemViewModel">
+                                                    <Frame Padding="12"
+                                                           Margin="0,4"
+                                                           BackgroundColor="{StaticResource Gray100}"
+                                                           HasShadow="False"
+                                                           CornerRadius="8"
+                                                           InputTransparent="False">
+                                                        <Frame.GestureRecognizers>
+                                                            <TapGestureRecognizer Command="{Binding ViewDetailsCommand}" />
+                                                        </Frame.GestureRecognizers>
+                                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" InputTransparent="False">
+                                                            <CheckBox Grid.Column="0"
+                                                                      IsChecked="{Binding IsSelected}"
+                                                                      VerticalOptions="Center" />
+
+                                                            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" InputTransparent="False">
+                                                                <VerticalStackLayout Grid.Column="0" Spacing="4" InputTransparent="False">
+                                                                    <Label Text="{Binding OrderNumberText}"
+                                                                           FontSize="16"
+                                                                           FontAttributes="Bold" />
+                                                                    <Label Text="{Binding DateText}"
+                                                                           FontSize="13"
+                                                                           TextColor="#666666" />
+                                                                    <Label Text="{Binding TotalText}"
+                                                                           FontSize="13"
+                                                                           IsVisible="{Binding ShowTotal}" />
+                                                                    <Label Text="{Binding StatusText}"
+                                                                           FontSize="13"
+                                                                           TextColor="{Binding StatusColor}"
+                                                                           IsVisible="{Binding ShowStatus}" />
+                                                                    <Label Text="{Binding SalesmanText}"
+                                                                           FontSize="13"
+                                                                           TextColor="#666666"
+                                                                           IsVisible="{Binding ShowSalesman}" />
+                                                                </VerticalStackLayout>
+                                                                <Button Grid.Column="1"
+                                                                        Text="→"
+                                                                        FontSize="18"
+                                                                        BackgroundColor="Transparent"
+                                                                        TextColor="#1976D2"
+                                                                        Command="{Binding ViewDetailsCommand}"
+                                                                        WidthRequest="40"
+                                                                        HeightRequest="40"
+                                                                        Padding="0" />
+                                                            </Grid>
+                                                        </Grid>
+                                                    </Frame>
+                                                </DataTemplate>
+                                            </CollectionView.ItemTemplate>
+                                        </CollectionView>
+                                    </VerticalStackLayout>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </VerticalStackLayout>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

@@ -5,6 +5,13 @@
              x:Class="LaceupMigration.OrdersPage"
              x:DataType="vm:OrdersPageViewModel"
              Title="Transactions">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" Order="Primary" Priority="0">
+            <ToolbarItem.IconImageSource>
+                <FontImageSource FontFamily="MaterialOutlined" Glyph="&#xE5D2;" Size="24" Color="Black"/>
+            </ToolbarItem.IconImageSource>
+        </ToolbarItem>
+    </ContentPage.ToolbarItems>
 
     <ContentPage.Resources>
         <Style TargetType="Button" x:Key="SmallButton">
@@ -23,10 +30,15 @@
                    Padding="12"
                    HasShadow="False"
                    BorderColor="#E0E0E0"
-                   CornerRadius="10">
+                   CornerRadius="10"
+                   InputTransparent="False">
+                <Frame.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ViewDetailsCommand}" />
+                </Frame.GestureRecognizers>
                 <Grid ColumnDefinitions="Auto,*"
                       RowDefinitions="Auto"
-                      ColumnSpacing="12">
+                      ColumnSpacing="12"
+                      InputTransparent="False">
                     <CheckBox Grid.Row="0"
                               Grid.Column="0"
                               IsChecked="{Binding IsSelected}"

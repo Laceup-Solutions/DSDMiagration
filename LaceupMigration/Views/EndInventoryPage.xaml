@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.EndInventoryPage"
+             Shell.TabBarIsVisible="False"
+             Title="End Inventory">
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+        <HorizontalStackLayout Grid.Row="0"
+                               Spacing="8"
+                               Margin="8">
+            <Button Text="Save"
+                    Command="{Binding SaveCommand}"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Print"
+                    Command="{Binding PrintCommand}"
+                    HorizontalOptions="FillAndExpand" />
+        </HorizontalStackLayout>
+
+        <SearchBar Grid.Row="1"
+                   Text="{Binding SearchText}"
+                   Placeholder="Search products..."
+                   Margin="8,0"
+                   TextChanged="OnSearchTextChanged" />
+
+        <CollectionView Grid.Row="2"
+                        ItemsSource="{Binding InventoryItems}"
+                        Margin="8">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:EndInventoryItemViewModel">
+                    <Frame Padding="12"
+                           Margin="0,4"
+                           BackgroundColor="{StaticResource Gray100}"
+                           HasShadow="False"
+                           CornerRadius="8">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                <Label Text="{Binding ProductName}"
+                                       FontSize="16"
+                                       FontAttributes="Bold" />
+                                <Label Text="{Binding CurrentQuantity, StringFormat='Current: {0:F2}'}"
+                                       FontSize="14"
+                                       TextColor="#666666" />
+                            </VerticalStackLayout>
+                            <Entry Grid.Column="1"
+                                   Text="{Binding EndingQuantity, StringFormat='{0:F2}'}"
+                                   WidthRequest="100"
+                                   Keyboard="Numeric"
+                                   TextChanged="OnQuantityChanged"
+                                   Placeholder="End Qty" />
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+
