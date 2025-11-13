@@ -27,6 +27,12 @@ namespace LaceupMigration.ViewModels
         private string _clientName = string.Empty;
 
         [ObservableProperty]
+        private string _companyText = string.Empty;
+
+        [ObservableProperty]
+        private bool _showCompany;
+
+        [ObservableProperty]
         private string _orderTypeText = string.Empty;
 
         [ObservableProperty]
@@ -64,6 +70,24 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private string _totalQtyText = "Total Qty: 0";
+
+        [ObservableProperty]
+        private string _linesText = "Lines: 0";
+
+        [ObservableProperty]
+        private string _qtySoldText = "Qty Sold: 0";
+
+        [ObservableProperty]
+        private string _orderAmountText = "Order: $0.00";
+
+        [ObservableProperty]
+        private string _creditAmountText = "Credit: $0.00";
+
+        [ObservableProperty]
+        private string _sortByText = "Sort By: Product Name";
+
+        [ObservableProperty]
+        private bool _showSendButton = true;
 
         [ObservableProperty]
         private bool _showTotals = true;
@@ -270,7 +294,29 @@ namespace LaceupMigration.ViewModels
             TotalText = $"Total: {total.ToCustomString()}";
             TotalQtyText = $"Total Qty: {totalQty}";
 
+            // Order summary for catalog view
+            LinesText = $"Lines: {_order.Details.Count}";
+            QtySoldText = $"Qty Sold: {totalQty}";
+            
+            // Calculate order and credit amounts
+            var orderAmount = _order.Details.Where(x => !x.IsCredit).Sum(x => x.Qty * x.Price);
+            var creditAmount = _order.Details.Where(x => x.IsCredit).Sum(x => x.Qty * x.Price);
+            OrderAmountText = $"Order: {orderAmount.ToCustomString()}";
+            CreditAmountText = $"Credit: {creditAmount.ToCustomString()}";
+
+            // Company info
+            if (!string.IsNullOrEmpty(_order.CompanyName))
+            {
+                CompanyText = $"Company: {_order.CompanyName}";
+                ShowCompany = true;
+            }
+            else
+            {
+                ShowCompany = false;
+            }
+
             ShowAddProduct = CanEdit && !_order.Finished && !_order.Voided;
+            ShowSendButton = _order.AsPresale;
         }
 
         private OrderLineItemViewModel CreateLineItemViewModel(OrderDetail detail)
@@ -346,15 +392,23 @@ namespace LaceupMigration.ViewModels
 
             return order.OrderType.ToString();
         }
-
+        
         [RelayCommand]
         private async Task LineItemSelectedAsync(OrderLineItemViewModel? item)
         {
-            if (item == null || item.Detail == null)
+            if (item == null || item.Detail == null || _order == null)
                 return;
-
-            // TODO: Navigate to line item detail/edit page
-            await _dialogService.ShowAlertAsync($"Selected: {item.ProductName}", "Info");
+            
+            if (Config.UseCatalog)
+            {
+                // Navigate to AddItemPage to edit/add quantity
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&orderDetailId={item.Detail.OrderDetailId}");
+            }
+            else
+            {
+                // Both configs OFF - navigate to AddItemPage (default behavior)
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&orderDetailId={item.Detail.OrderDetailId}");
+            }
         }
 
         [RelayCommand]
@@ -393,20 +447,43 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return;
 
-            // Equivalent to ViewCats_Click and ShowCategoryActivity
-            if (Category.Categories.Count == 1)
+            if (Config.UseCatalog)
             {
-                // Single category - go directly to product list
-                var category = Category.Categories.FirstOrDefault();
-                if (category != null)
+                // Navigate to categories first
+                if (Category.Categories.Count == 1)
                 {
-                    await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&categoryId={category.CategoryId}");
+                    // Single category - go directly to ProductCatalog
+                    var category = Category.Categories.FirstOrDefault();
+                    if (category != null)
+                    {
+                        await Shell.Current.GoToAsync($"productcatalog?orderId={_order.OrderId}&categoryId={category.CategoryId}");
+                    }
+                }
+                else
+                {
+                    // Multiple categories - show category selection (FullCategoryPage in category mode)
+                    // FullCategoryPage will redirect to ProductCatalog when a category is selected
+                    await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}");
                 }
             }
             else
             {
-                // Multiple categories - show category selection (FullCategoryPage in category mode)
-                await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}");
+                // Both configs OFF - navigate to FullCategoryPage (default behavior)
+                // FullCategoryPage will navigate to AddItemPage when product is selected
+                if (Category.Categories.Count == 1)
+                {
+                    // Single category - go directly to product list
+                    var category = Category.Categories.FirstOrDefault();
+                    if (category != null)
+                    {
+                        await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&categoryId={category.CategoryId}");
+                    }
+                }
+                else
+                {
+                    // Multiple categories - show category selection (FullCategoryPage in category mode)
+                    await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}");
+                }
             }
         }
 

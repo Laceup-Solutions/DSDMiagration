@@ -79,6 +79,45 @@ namespace LaceupMigration.ViewModels
                     return;
                 }
                 _client = _order.Client;
+
+                // Check config to determine which catalog to use
+                if (Config.UseLaceupAdvancedCatalog)
+                {
+                    // Redirect to AdvancedCatalog
+                    var route = $"advancedcatalog?orderId={orderId.Value}";
+                    if (categoryId.HasValue)
+                        route += $"&categoryId={categoryId.Value}";
+                    if (!string.IsNullOrEmpty(productSearch))
+                        route += $"&search={Uri.EscapeDataString(productSearch)}";
+                    if (asCreditItem)
+                        route += "&itemType=1"; // 0=Sales, 1=Dump, 2=Return
+                    if (asReturnItem)
+                        route += "&itemType=2";
+                    await Shell.Current.GoToAsync(route);
+                    return;
+                }
+                else if (Config.UseCatalog)
+                {
+                    // Redirect to ProductCatalog
+                    var route = $"productcatalog?orderId={orderId.Value}";
+                    if (categoryId.HasValue)
+                        route += $"&categoryId={categoryId.Value}";
+                    if (!string.IsNullOrEmpty(productSearch))
+                        route += $"&productSearch={Uri.EscapeDataString(productSearch)}";
+                    if (comingFromSearch)
+                        route += "&comingFromSearch=yes";
+                    if (asCreditItem)
+                        route += "&asCreditItem=1";
+                    if (asReturnItem)
+                        route += "&asReturnItem=1";
+                    if (productId.HasValue)
+                        route += $"&productId={productId.Value}";
+                    if (consignmentCounting)
+                        route += "&consignmentCounting=1";
+                    await Shell.Current.GoToAsync(route);
+                    return;
+                }
+
                 _initialized = true;
                 ShowCategories = false;
                 ShowProducts = true;
@@ -236,6 +275,13 @@ namespace LaceupMigration.ViewModels
             if (item == null || item.Category == null)
                 return;
 
+            if (Config.UseCatalog && _orderId.HasValue)
+            {
+                await Shell.Current.GoToAsync($"productcatalog?orderId={_orderId.Value}&categoryId={item.Category.CategoryId}");
+                return;
+            }
+
+            // Both configs OFF - navigate to FullCategoryPage with products (default behavior)
             // If we have subcategories, show them or navigate to products
             if (item.Subcategories.Count > 0)
             {
@@ -270,6 +316,17 @@ namespace LaceupMigration.ViewModels
             if (item == null || item.Product == null || _order == null)
                 return;
 
+            if (Config.UseCatalog)
+            {
+                // Navigate to ProductCatalogPage with the selected product
+                var route = $"productcatalog?orderId={_order.OrderId}&productId={item.Product.ProductId}";
+                if (_categoryId.HasValue)
+                    route += $"&categoryId={_categoryId.Value}";
+                await Shell.Current.GoToAsync(route);
+                return;
+            }
+
+            // Both configs OFF - navigate to AddItemPage (default behavior)
             // Check inventory
             if (item.Product.GetInventory(_order.AsPresale) <= 0)
             {
@@ -277,8 +334,7 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // Navigate to AddItemPage (or create the item directly)
-            // For now, navigate to AddItemPage - we'll need to create it
+            // Navigate to AddItemPage
             // But first, let's check if it's a credit item and needs type selection
             if (_asCreditItem)
             {

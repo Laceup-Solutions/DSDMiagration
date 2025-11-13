@@ -5,14 +5,11 @@
              x:Class="LaceupMigration.Views.ConsignmentPage"
              x:DataType="vm:ConsignmentPageViewModel"
              Shell.NavBarIsVisible="True"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              Shell.TabBarIsVisible="False"
              Title="{Binding PageTitle}">
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Menu" Order="Primary" Priority="0">
-            <ToolbarItem.IconImageSource>
-                <FontImageSource FontFamily="MaterialOutlined" Glyph="&#xE5D2;" Size="24" Color="Black"/>
-            </ToolbarItem.IconImageSource>
-        </ToolbarItem>
+            <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <ScrollView>

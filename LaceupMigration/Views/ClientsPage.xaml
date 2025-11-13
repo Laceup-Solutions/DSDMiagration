@@ -4,13 +4,10 @@
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.ClientsPage"
              x:DataType="vm:ClientsPageViewModel"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              Title="Customers">
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Menu" Order="Primary" Priority="0">
-            <ToolbarItem.IconImageSource>
-                <FontImageSource FontFamily="MaterialOutlined" Glyph="&#xE5D2;" Size="24" Color="Black"/>
-            </ToolbarItem.IconImageSource>
-        </ToolbarItem>
+            <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
     </ContentPage.ToolbarItems>
 
     <ContentPage.Resources>

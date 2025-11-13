@@ -93,7 +93,7 @@ namespace LaceupMigration.ViewModels
                 .ToList();
         }
 
-        private void LoadOrderData()
+        private async void LoadOrderData()
         {
             if (_order == null || _client == null)
                 return;
@@ -112,7 +112,7 @@ namespace LaceupMigration.ViewModels
                     ShowNoAssetMessage = false;
 
                     // Navigate to order details
-                    NavigateToOrderDetails();
+                    await NavigateToOrderDetailsAsync();
                 }
             }
             else
@@ -210,10 +210,10 @@ namespace LaceupMigration.ViewModels
             _order.AssetId = asset.Id;
             _order.Save();
 
-            NavigateToOrderDetails();
+            await NavigateToOrderDetailsAsync();
         }
 
-        private void NavigateToOrderDetails()
+        private async Task NavigateToOrderDetailsAsync()
         {
             if (_order == null)
                 return;
@@ -221,7 +221,20 @@ namespace LaceupMigration.ViewModels
             // Navigate to appropriate order detail page
             if (_order.OrderType == OrderType.Credit || _order.OrderType == OrderType.Return)
             {
-                Shell.Current.GoToAsync($"ordercredit?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
+                // Navigate to advancedcatalog, previouslyorderedtemplate, or orderdetails
+                if (Config.UseLaceupAdvancedCatalog)
+                {
+                    await Shell.Current.GoToAsync($"advancedcatalog?orderId={_order.OrderId}");
+                }
+                else if (Config.UseCatalog)
+                {
+                    await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
+                }
+                else
+                {
+                    await Shell.Current.GoToAsync($"orderdetails?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
+                }
+                return;
             }
             else if (Config.UseFullTemplateForClient(_order.Client) && !_order.Client.AllowOneDoc)
             {
@@ -245,7 +258,19 @@ namespace LaceupMigration.ViewModels
             }
             else
             {
-                Shell.Current.GoToAsync($"orderdetails?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
+                // Navigate based on config
+                if (Config.UseLaceupAdvancedCatalog)
+                {
+                    Shell.Current.GoToAsync($"advancedcatalog?orderId={_order.OrderId}");
+                }
+                else if (Config.UseCatalog)
+                {
+                    Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
+                }
+                else
+                {
+                    Shell.Current.GoToAsync($"orderdetails?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
+                }
             }
         }
 

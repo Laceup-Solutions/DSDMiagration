@@ -922,6 +922,7 @@ namespace LaceupMigration
             ParLevelHistoryNumVisit = Preferences.Get(ParLevelHistoryNumVisitKey, 0);
             AutoGenerateLoadOrder = Preferences.Get(AutoGenerateLoadOrderKey, false);
             ApplyDiscountAfterTaxes = Preferences.Get(ApplyDiscountAfterTaxesKey, false);
+            UseCatalog = Preferences.Get(UseCatalogKey, false);
 
             var autoEndInventory = Preferences.Get(AutoEndInventoryKey, false);
             if (autoEndInventory)
@@ -987,6 +988,7 @@ namespace LaceupMigration
             var salesman = Salesman.List.FirstOrDefault(x => x.Id == SalesmanId);
             if (salesman != null && !Config.CanChangeSalesmanName) VendorName = salesman.Name;
 
+            Preferences.Set(UseCatalogKey, UseCatalog);
             Preferences.Set(IgnoreDiscountInCreditsKey, IgnoreDiscountInCredits);
             Preferences.Set(CheckInventoryInPreSaleKey, CheckInventoryInPreSale);
             Preferences.Set(AlwaysUpdateNewParKey, AlwaysUpdateNewPar);
@@ -1792,7 +1794,7 @@ namespace LaceupMigration
             SortClient = string.Empty;
             TrackTermsPaymentBotton = string.Empty;
             SalesReportTotalCreditsSubstracted = false;
-            useCatalog = null;
+            UseCatalog = false;
             ShowWarehouseInvInSummary = false;
             HidePriceInSelfService = true;
             HideOHinSelfService = true;
@@ -6648,17 +6650,6 @@ namespace LaceupMigration
                 }
             }
 
-            if (AddItemInDefaultUoM)
-            {
-                useCatalog = false;
-                UseLaceupAdvancedCatalog = false;
-            }
-
-            if (UseFullTemplate && !Config.UseCatalogWithFullTemplate)
-            {
-                UseCatalog = false;
-            }
-
             if (Config.UseCatalogWithFullTemplate && Config.UseFullTemplate) UseCatalog = true;
 
             if (UseVisitsTemplateInSales) UseLaceupAdvancedCatalog = true;
@@ -9701,17 +9692,7 @@ namespace LaceupMigration
 
             CanChangeSalesmanId = !MasterDevice;
         }
-
-        static bool? useCatalog = null;
-
-        public static bool UseCatalog
-        {
-            get
-            {
-                return useCatalog.Value;
-            }
-            set { useCatalog = value; }
-        }
+        
 
         #endregion
 

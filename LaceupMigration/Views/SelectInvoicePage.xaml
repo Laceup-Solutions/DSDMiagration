@@ -29,8 +29,8 @@
                                 x:Name="InvoiceCollectionView">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="vm:SelectInvoiceItemViewModel">
-                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
-                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" InputTransparent="True">
+                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12">
                                     <CheckBox Grid.Column="0" Grid.RowSpan="3"
                                               IsChecked="{Binding IsSelected}"
                                               VerticalOptions="Center" />

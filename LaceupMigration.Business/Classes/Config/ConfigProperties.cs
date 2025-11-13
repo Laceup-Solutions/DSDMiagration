@@ -381,7 +381,7 @@ public partial class Config
     public static bool UseOffersInCredit { get; private set; }
     public static bool UseLaceupAdvancedCatalog { get; private set; }
     public static bool SelfServiceUser { get; private set; }
-    public static bool UseClientSort { get; private set; }
+    public static bool UseClientSort { get; set; }
     public static bool UseDisolSurvey { get; private set; }
     public static string DisolSurveyProducts { get; private set; }
     public static bool ShowListPriceInAddItem { get; private set; }
@@ -812,6 +812,7 @@ public partial class Config
     public static bool ScanBasedTrading { get; set; }
     public static bool SelfService { get; set; }
     public static bool BetaFragments { get; set; }
+    public static bool UseCatalog { get; set; }
 
     public static string DeviceId { get; set; }
 

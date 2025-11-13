@@ -37,6 +37,9 @@ namespace LaceupMigration.ViewModels
         private string _amountText = "Amount: $0.00";
 
         [ObservableProperty]
+        private string _totalText = "Total: ($0.00)";
+
+        [ObservableProperty]
         private string _qtyOrderedText = "Qty Ordered: 0";
 
         [ObservableProperty]
@@ -44,6 +47,18 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private string _qtyDumpedText = "Qty Dumped: 0";
+
+        [ObservableProperty]
+        private string _salesQtyText = "Sales Qty: 0";
+
+        [ObservableProperty]
+        private string _returnQtyText = "Return Qty: 0";
+
+        [ObservableProperty]
+        private string _dumpQtyText = "Dump Qty: 0";
+
+        [ObservableProperty]
+        private bool _canPrint;
 
         [ObservableProperty]
         private bool _showTotals = true;
@@ -173,6 +188,10 @@ namespace LaceupMigration.ViewModels
             }
 
             AmountText = $"Amount: {totalAmount.ToCustomString()}";
+            TotalText = $"Total: {totalAmount.ToCustomString()}";
+            SalesQtyText = $"Sales Qty: {qtyOrdered:F0}";
+            ReturnQtyText = $"Return Qty: {qtyReturned:F0}";
+            DumpQtyText = $"Dump Qty: {qtyDumped:F0}";
             QtyOrderedText = $"Qty Ordered: {qtyOrdered}";
             QtyReturnedText = $"Qty Returned: {qtyReturned}";
             QtyDumpedText = $"Qty Dumped: {qtyDumped}";
@@ -246,7 +265,7 @@ namespace LaceupMigration.ViewModels
 
             var canSelect = !order.Voided || Config.CanVoidFOrders;
 
-            return new BatchOrderViewModel
+            return new BatchOrderViewModel(this)
             {
                 Order = order,
                 OrderTitle = title,
@@ -263,7 +282,10 @@ namespace LaceupMigration.ViewModels
                 AssetText = assetText,
                 ShowAsset = !string.IsNullOrEmpty(assetText),
                 CanSelect = canSelect,
-                IsSelected = false
+                IsSelected = false,
+                ClientName = order.Client?.ClientName ?? "Unknown Client",
+                InvoiceAmountText = $"Invoice # Amount: {order.OrderTotalCost().ToCustomString()}",
+                TermText = $"Term: {order.Term}"
             };
         }
 
@@ -295,7 +317,11 @@ namespace LaceupMigration.ViewModels
             CanReship = Config.UseReship && selectedOrders.Count > 0 && 
                        selectedOrders.Any(x => RouteEx.Routes.Any(r => r.Order != null && r.Order.OrderId == x.OrderId && !r.Order.Finished));
             CanPrintLabel = ShowPrintLabelButton && activeOrders.Count > 0;
-            CanClockOut = true;
+            CanPrint = activeOrders.Count > 0 && !Config.HidePrintBatch;
+            
+            // Clock Out should be enabled only if all orders are finalized or voided
+            var allOrders = Orders.Select(x => x.Order).ToList();
+            CanClockOut = allOrders.Count > 0 && allOrders.All(x => x.Voided || x.Finished);
         }
 
         public BatchPageViewModel(DialogService dialogService, ILaceupAppService appService)
@@ -322,6 +348,32 @@ namespace LaceupMigration.ViewModels
                     }
                 }
             };
+        }
+
+        [RelayCommand]
+        private async Task PrintAsync()
+        {
+            var selectedOrders = GetSelectedActiveOrders();
+            if (selectedOrders.Count == 0)
+            {
+                // If no orders selected, use all active orders
+                selectedOrders = Orders.Where(x => !x.Order.Voided && !x.Order.Finished).Select(x => x.Order).ToList();
+            }
+
+            if (selectedOrders.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("No orders to print.", "Alert");
+                return;
+            }
+
+            var copies = await _dialogService.ShowPromptAsync("Copies to Print", "Enter number of copies:", initialValue: "1", keyboard: Keyboard.Numeric);
+            if (string.IsNullOrWhiteSpace(copies) || !int.TryParse(copies, out var copiesCount) || copiesCount < 1)
+            {
+                await _dialogService.ShowAlertAsync("Please enter a valid number of copies.", "Alert");
+                return;
+            }
+
+            await PrintBatchAsync(selectedOrders, copiesCount, false);
         }
 
         [RelayCommand]
@@ -643,13 +695,9 @@ namespace LaceupMigration.ViewModels
             var orders = _batch.Orders().ToList();
             var hasActiveOrders = orders.Any(x => !x.Voided && !x.Finished);
             var isLocked = _batch.Status == BatchStatus.Locked;
-            var creditTemplate = DataAccess.ActivityProvider.CreateActivity(ActivityNames.OrderCreditActivity);
-            // Check if it's FullTemplateActivity - in MAUI, this would be SuperOrderTemplatePage
-            // The check is based on the activity type name from Xamarin
-            var useFullTemplate = Config.UseFullTemplateForClient(_batch.Client) && 
-                DataAccess.ActivityProvider.IsFullTemplateActivity(creditTemplate);
 
-            // Credit Order
+            var useFullTemplate = Config.UseFullTemplateForClient(_batch.Client);
+
             if (Config.AllowCreditOrders && !useFullTemplate)
             {
                 options.Add(new MenuOption("Credit Invoice", async () =>
@@ -961,15 +1009,28 @@ namespace LaceupMigration.ViewModels
             await Shell.Current.GoToAsync($"consignment?orderId={order.OrderId}&counting={(isCounting ? "1" : "0")}");
         }
 
-        private async Task NavigateToOrderAsync(Order order)
+        public async Task NavigateToOrderAsync(Order order)
         {
             if (_batch == null)
                 return;
 
-            // Handle Credit or Return orders
+            // Handle Credit or Return orders - navigate to advancedcatalog, previouslyorderedtemplate, or orderdetails
             if (order.OrderType == OrderType.Credit || order.OrderType == OrderType.Return)
             {
-                await Shell.Current.GoToAsync($"ordercredit?orderId={order.OrderId}&asPresale=0");
+                // Use the same navigation logic as regular orders
+                // The target page will detect OrderType.Credit and hide Sales button
+                if (Config.UseLaceupAdvancedCatalog)
+                {
+                    await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
+                }
+                else if (Config.UseCatalog)
+                {
+                    await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=0");
+                }
+                else
+                {
+                    await Shell.Current.GoToAsync($"orderdetails?orderId={order.OrderId}&asPresale=0");
+                }
                 return;
             }
 
@@ -981,6 +1042,27 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
+            // Handle SalesByDepartment
+            if (Config.SalesByDepartment)
+            {
+                await Shell.Current.GoToAsync($"batchdepartment?clientId={_batch.Client.ClientId}&batchId={_batch.Id}");
+                return;
+            }
+            
+            // If UseLaceupAdvancedCatalog is TRUE
+            if (Config.UseLaceupAdvancedCatalog)
+            {
+                await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
+                return;
+            }
+
+            // If UseCatalog is TRUE (and UseLaceupAdvancedCatalog is FALSE)
+            if (Config.UseCatalog)
+            {
+                await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=0");
+                return;
+            }
+            
             // Default: Navigate to OrderDetailsPage
             await Shell.Current.GoToAsync($"orderdetails?orderId={order.OrderId}&asPresale=0");
         }
@@ -1027,6 +1109,13 @@ namespace LaceupMigration.ViewModels
 
     public partial class BatchOrderViewModel : ObservableObject
     {
+        private readonly BatchPageViewModel _parent;
+
+        public BatchOrderViewModel(BatchPageViewModel parent)
+        {
+            _parent = parent;
+        }
+
         [ObservableProperty]
         private bool _isSelected;
 
@@ -1072,7 +1161,25 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _canSelect = true;
 
+        [ObservableProperty]
+        private string _clientName = string.Empty;
+
+        [ObservableProperty]
+        private string _invoiceAmountText = string.Empty;
+
+        [ObservableProperty]
+        private string _termText = string.Empty;
+
         public Order Order { get; set; } = null!;
+
+        [RelayCommand]
+        private async Task ViewOrderAsync()
+        {
+            if (Order != null && _parent != null)
+            {
+                await _parent.NavigateToOrderAsync(Order);
+            }
+        }
     }
 }
 

@@ -4,13 +4,10 @@
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.PaymentsPage"
              x:DataType="vm:PaymentsPageViewModel"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              Title="Payments">
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Menu" Order="Primary" Priority="0">
-            <ToolbarItem.IconImageSource>
-                <FontImageSource FontFamily="MaterialOutlined" Glyph="&#xE5D2;" Size="24" Color="Black"/>
-            </ToolbarItem.IconImageSource>
-        </ToolbarItem>
+            <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
     </ContentPage.ToolbarItems>
 
     <ContentPage.Resources>
@@ -60,12 +57,13 @@
                    Padding="12"
                    HasShadow="False"
                    BorderColor="#E0E0E0"
-                   CornerRadius="10"
-                   InputTransparent="True">
+                   CornerRadius="10">
+                <Frame.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ViewDetailsCommand}" />
+                </Frame.GestureRecognizers>
                 <Grid RowDefinitions="Auto,Auto,Auto"
                       ColumnDefinitions="Auto,*"
-                      ColumnSpacing="12"
-                      InputTransparent="True">
+                      ColumnSpacing="12">
                     <CheckBox Grid.Row="0"
                               Grid.Column="0"
                               IsChecked="{Binding IsSelected}"

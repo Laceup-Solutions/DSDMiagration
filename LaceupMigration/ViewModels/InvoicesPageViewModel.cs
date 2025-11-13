@@ -44,6 +44,7 @@ namespace LaceupMigration.ViewModels
 		private string _searchCriteria = string.Empty;
 		private SearchBy _searchBy = SearchBy.ClientName;
 		private bool _needRefresh = false;
+		private bool _isUpdatingSelectAll = false;
 
 		[ObservableProperty] private ObservableCollection<ClientInvoiceGroupViewModel> _clientGroups = new();
 		[ObservableProperty] private ObservableCollection<string> _dateRangeOptions = new() { "All", "1-30", "31-60", "61-90", "90+" };
@@ -116,42 +117,64 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private void SelectAll()
 		{
-			if (!IsSelectAllChecked)
-			{
-				SelectedInvoices.Clear();
-			}
-			else
-			{
-				var toShow = GetCurrentDictionary();
-				if (toShow != null)
-				{
-					var invoicesToAdd = new List<Invoice>();
-					foreach (var item in toShow)
-						invoicesToAdd.AddRange(item.Value);
-
-					if (!string.IsNullOrEmpty(_searchCriteria))
-					{
-						if (_searchBy == SearchBy.ClientName)
-							invoicesToAdd = invoicesToAdd.Where(x => x.Client.ClientName.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant())).ToList();
-						else
-							invoicesToAdd = invoicesToAdd.Where(x => x.InvoiceNumber.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant())).ToList();
-					}
-
-					SelectedInvoices.Clear();
-					SelectedInvoices.AddRange(invoicesToAdd);
-				}
-			}
-
-			RefreshListHeader();
-			UpdateSelectAllState();
+			if (_isUpdatingSelectAll) return;
 			
-			// Update all invoice items' selection state
-			foreach (var group in ClientGroups)
+			_isUpdatingSelectAll = true;
+			try
 			{
-				foreach (var item in group.Invoices)
+				// When user clicks checkbox, it's already toggled, so we use the current state
+				// If checked, select all; if unchecked, clear all
+				if (IsSelectAllChecked)
 				{
-					item.IsSelected = SelectedInvoices.Contains(item.Invoice);
+					// Select all invoices
+					var toShow = GetCurrentDictionary();
+					if (toShow != null)
+					{
+						var invoicesToAdd = new List<Invoice>();
+						foreach (var item in toShow)
+							invoicesToAdd.AddRange(item.Value);
+
+						if (!string.IsNullOrEmpty(_searchCriteria))
+						{
+							if (_searchBy == SearchBy.ClientName)
+								invoicesToAdd = invoicesToAdd.Where(x => x.Client.ClientName.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant())).ToList();
+							else
+								invoicesToAdd = invoicesToAdd.Where(x => x.InvoiceNumber.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant())).ToList();
+						}
+
+						SelectedInvoices.Clear();
+						SelectedInvoices.AddRange(invoicesToAdd);
+					}
 				}
+				else
+				{
+					// Clear all selections
+					SelectedInvoices.Clear();
+				}
+
+				// Update all invoice items' selection state (skip handler to prevent recursive calls)
+				foreach (var group in ClientGroups)
+				{
+					foreach (var item in group.Invoices)
+					{
+						var shouldBeSelected = SelectedInvoices.Contains(item.Invoice);
+						item.SetIsSelected(shouldBeSelected, skipHandler: true);
+					}
+				}
+				
+				RefreshListHeader();
+				// Don't update IsSelectAllChecked here - it's already set by the user's click
+				// Just verify it matches the actual state
+				var totalInvoices = ClientGroups.Sum(g => g.Invoices.Count);
+				var shouldBeChecked = totalInvoices > 0 && SelectedInvoices.Count == totalInvoices;
+				if (IsSelectAllChecked != shouldBeChecked)
+				{
+					IsSelectAllChecked = shouldBeChecked;
+				}
+			}
+			finally
+			{
+				_isUpdatingSelectAll = false;
 			}
 		}
 
@@ -524,7 +547,11 @@ namespace LaceupMigration.ViewModels
 		private void UpdateSelectAllState()
 		{
 			var totalInvoices = ClientGroups.Sum(g => g.Invoices.Count);
-			IsSelectAllChecked = totalInvoices > 0 && SelectedInvoices.Count == totalInvoices;
+			var shouldBeChecked = totalInvoices > 0 && SelectedInvoices.Count == totalInvoices;
+			if (IsSelectAllChecked != shouldBeChecked)
+			{
+				IsSelectAllChecked = shouldBeChecked;
+			}
 		}
 
 		private Dictionary<Client, List<Invoice>> GetCurrentDictionary()
@@ -553,8 +580,7 @@ namespace LaceupMigration.ViewModels
 					realBalance += inv.Balance;
 				}
 
-				IsSelectAllChecked = SelectedInvoices.Count > 0;
-				if (IsSelectAllChecked)
+				if (SelectedInvoices.Count > 0)
 				{
 					SelectAllText = $"Selected Invoices: {SelectedInvoices.Count}";
 					TotalText = $"Total: {realBalance.ToCustomString()}";
@@ -569,8 +595,7 @@ namespace LaceupMigration.ViewModels
 			}
 			else
 			{
-				IsSelectAllChecked = SelectedInvoices.Count > 0;
-				if (IsSelectAllChecked)
+				if (SelectedInvoices.Count > 0)
 				{
 					SelectAllText = $"Selected Invoices: {SelectedInvoices.Count}";
 					TotalText = $"Total: {SelectedInvoices.Sum(x => x.Balance).ToCustomString()}";
@@ -597,14 +622,19 @@ namespace LaceupMigration.ViewModels
 			RefreshListHeader();
 			UpdateSelectAllState();
 			
-			// Update the invoice item's selection state
+			// Update the invoice item's selection state (skip handler to prevent infinite loop)
+			// Only update if the value is actually different
 			foreach (var group in ClientGroups)
 			{
 				foreach (var item in group.Invoices)
 				{
 					if (item.Invoice == invoice)
 					{
-						item.IsSelected = SelectedInvoices.Contains(invoice);
+						var shouldBeSelected = SelectedInvoices.Contains(invoice);
+						if (item.IsSelected != shouldBeSelected)
+						{
+							item.SetIsSelected(shouldBeSelected, skipHandler: true);
+						}
 						break;
 					}
 				}
@@ -622,6 +652,7 @@ namespace LaceupMigration.ViewModels
 	{
 		private readonly Invoice _invoice;
 		private readonly InvoicesPageViewModel _parent;
+		private bool _isUpdatingSelection = false;
 
 		[ObservableProperty] private bool _isSelected;
 
@@ -742,13 +773,30 @@ namespace LaceupMigration.ViewModels
 				ShowGoalInfo = false;
 			}
 
-			// Update selection state
-			IsSelected = _parent.SelectedInvoices.Contains(_invoice);
+			// Update selection state (skip handler during initialization)
+			SetIsSelected(_parent.SelectedInvoices.Contains(_invoice), skipHandler: true);
 		}
 
 		partial void OnIsSelectedChanged(bool value)
 		{
-			_parent.ToggleInvoiceSelection(_invoice);
+			if (!_isUpdatingSelection)
+			{
+				_parent.ToggleInvoiceSelection(_invoice);
+			}
+		}
+
+		public void SetIsSelected(bool value, bool skipHandler = false)
+		{
+			if (skipHandler)
+			{
+				_isUpdatingSelection = true;
+				IsSelected = value;
+				_isUpdatingSelection = false;
+			}
+			else
+			{
+				IsSelected = value;
+			}
 		}
 
 		[RelayCommand]

@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.ProductCatalogPage"
+             x:DataType="vm:ProductCatalogPageViewModel"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Product Catalog">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Add to Order" Command="{Binding AddToOrderCommand}" Order="Primary" Priority="0" />
+    </ContentPage.ToolbarItems>
+    <ContentPage.Content>
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- Search and Controls -->
+            <VerticalStackLayout Grid.Row="0" Padding="16" Spacing="8">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                    <Button Text="Search"
+                            Command="{Binding SearchCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Grid.Column="0" />
+                    <Button Text="Scan"
+                            Command="{Binding ScanCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Grid.Column="1" />
+                    <Button Text="View"
+                            Command="{Binding ToggleViewTypeCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Grid.Column="2" />
+                </Grid>
+            </VerticalStackLayout>
+
+            <!-- Product List -->
+            <CollectionView Grid.Row="1"
+                            ItemsSource="{Binding FilteredProducts}"
+                            SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CatalogItemViewModel">
+                        <Frame Padding="12" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12">
+                                <!-- Product Image (if available) -->
+                                <Image Source="dotnet_bot.png"
+                                       WidthRequest="60"
+                                       HeightRequest="60"
+                                       Grid.Row="0" Grid.Column="0"
+                                       Grid.RowSpan="3"
+                                       IsVisible="{Binding HasImage}" />
+
+                                <!-- Product Info -->
+                                <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="4">
+                                    <Label Text="{Binding ProductName}"
+                                           FontSize="16"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Gray900}" />
+                                    <Label Text="{Binding OnHandText}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Text="{Binding UomText, StringFormat='UoM: {0}'}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Text="{Binding ListPriceText}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Text="{Binding AvgSaleText}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}" />
+                                </VerticalStackLayout>
+
+                                <!-- Add Button -->
+                                <Button Text="Add"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ProductCatalogPageViewModel}}, Path=AddButtonClickCommand}"
+                                        CommandParameter="{Binding .}"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Grid.Row="0" Grid.Column="2"
+                                        Grid.RowSpan="3"
+                                        VerticalOptions="Center"
+                                        WidthRequest="80" />
+
+                                <!-- Values (existing order details) -->
+                                <CollectionView Grid.Row="1" Grid.Column="1"
+                                                ItemsSource="{Binding Values}"
+                                                SelectionMode="None">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Frame Padding="8" Margin="0,2" HasShadow="False" CornerRadius="4" BackgroundColor="{StaticResource Gray50}">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <Label FontSize="12"
+                                                           TextColor="{StaticResource Gray700}">
+                                                        <Label.Text>
+                                                            <MultiBinding StringFormat="Qty: {0} | Price: {1}">
+                                                                <Binding Path="Qty" />
+                                                                <Binding Path="Price" />
+                                                            </MultiBinding>
+                                                        </Label.Text>
+                                                    </Label>
+                                                </Grid>
+                                            </Frame>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                </CollectionView>
+
+                                <!-- Total -->
+                                <Label Text="{Binding TotalText, StringFormat='Total: {0}'}"
+                                       FontSize="14"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource PrimaryDark}"
+                                       Grid.Row="2" Grid.Column="1" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- Empty State -->
+            <Label Grid.Row="1"
+                   Text="No products found."
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center"
+                   TextColor="{StaticResource Gray500}" />
+        </Grid>
+    </ContentPage.Content>
+</ContentPage>

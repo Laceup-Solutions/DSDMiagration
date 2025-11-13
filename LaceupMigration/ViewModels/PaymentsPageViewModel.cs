@@ -23,6 +23,7 @@ namespace LaceupMigration.ViewModels
 		private Dictionary<Client, List<InvoicePayment>> _payments = new();
 		private string _searchCriteria = string.Empty;
 		private SearchBy _searchBy = SearchBy.ClientName;
+		private bool _isUpdatingSelectAll = false;
 
 		[ObservableProperty] private ObservableCollection<ClientPaymentGroupViewModel> _clientGroups = new();
 		[ObservableProperty] private string _searchQuery = string.Empty;
@@ -77,29 +78,50 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private void SelectAll()
 		{
-			if (!IsSelectAllChecked)
+			if (_isUpdatingSelectAll) return;
+			
+			_isUpdatingSelectAll = true;
+			try
 			{
-				SelectedPayments.Clear();
-			}
-			else
-			{
-				var paymentsToAdd = InvoicePayment.List.ToList();
-
-				if (!string.IsNullOrEmpty(_searchCriteria))
+				// When user clicks checkbox, it's already toggled, so we use the current state
+				// If checked, select all; if unchecked, clear all
+				if (IsSelectAllChecked)
 				{
-					if (_searchBy == SearchBy.ClientName)
-						paymentsToAdd = paymentsToAdd.Where(x => x.Client.ClientName.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant())).ToList();
-					else
-						paymentsToAdd = paymentsToAdd.Where(x => x.Orders().Any(y => y.PrintedOrderId.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant()))).ToList();
+					// Select all payments
+					var paymentsToAdd = InvoicePayment.List.ToList();
+
+					if (!string.IsNullOrEmpty(_searchCriteria))
+					{
+						if (_searchBy == SearchBy.ClientName)
+							paymentsToAdd = paymentsToAdd.Where(x => x.Client.ClientName.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant())).ToList();
+						else
+							paymentsToAdd = paymentsToAdd.Where(x => x.Orders().Any(y => y.PrintedOrderId.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant()))).ToList();
+					}
+
+					SelectedPayments.Clear();
+					SelectedPayments.AddRange(paymentsToAdd);
+				}
+				else
+				{
+					// Clear all selections
+					SelectedPayments.Clear();
 				}
 
-				SelectedPayments.Clear();
-				SelectedPayments.AddRange(paymentsToAdd);
+				// RefreshClientGroups will recreate items with correct selection state
+				RefreshClientGroups();
+				RefreshListHeader();
+				// Verify IsSelectAllChecked matches the actual state
+				var totalPayments = ClientGroups.Sum(g => g.Payments.Count);
+				var shouldBeChecked = totalPayments > 0 && SelectedPayments.Count == totalPayments;
+				if (IsSelectAllChecked != shouldBeChecked)
+				{
+					IsSelectAllChecked = shouldBeChecked;
+				}
 			}
-
-			RefreshListHeader();
-			UpdateSelectAllState();
-			RefreshClientGroups();
+			finally
+			{
+				_isUpdatingSelectAll = false;
+			}
 		}
 
 		[RelayCommand]
@@ -375,13 +397,16 @@ namespace LaceupMigration.ViewModels
 		private void UpdateSelectAllState()
 		{
 			var totalPayments = ClientGroups.Sum(g => g.Payments.Count);
-			IsSelectAllChecked = totalPayments > 0 && SelectedPayments.Count == totalPayments;
+			var shouldBeChecked = totalPayments > 0 && SelectedPayments.Count == totalPayments;
+			if (IsSelectAllChecked != shouldBeChecked)
+			{
+				IsSelectAllChecked = shouldBeChecked;
+			}
 		}
 
 		private void RefreshListHeader()
 		{
-			IsSelectAllChecked = SelectedPayments.Count > 0;
-			if (IsSelectAllChecked)
+			if (SelectedPayments.Count > 0)
 			{
 				SelectAllText = $"Selected Payments: {SelectedPayments.Count}";
 				TotalText = $"Total: {SelectedPayments.Sum(x => x.TotalPaid).ToCustomString()}";
@@ -412,7 +437,24 @@ namespace LaceupMigration.ViewModels
 
 			RefreshListHeader();
 			UpdateSelectAllState();
-			RefreshClientGroups();
+			
+			// Update the payment item's selection state (skip handler to prevent infinite loop)
+			// Only update if the value is actually different
+			foreach (var group in ClientGroups)
+			{
+				foreach (var item in group.Payments)
+				{
+					if (item.Payment == payment)
+					{
+						var shouldBeSelected = SelectedPayments.Contains(payment);
+						if (item.IsSelected != shouldBeSelected)
+						{
+							item.SetIsSelected(shouldBeSelected, skipHandler: true);
+						}
+						break;
+					}
+				}
+			}
 		}
 	}
 
@@ -426,6 +468,7 @@ namespace LaceupMigration.ViewModels
 	{
 		private readonly InvoicePayment _payment;
 		private readonly PaymentsPageViewModel _parent;
+		private bool _isUpdatingSelection = false;
 
 		[ObservableProperty] private bool _isSelected;
 
@@ -433,7 +476,7 @@ namespace LaceupMigration.ViewModels
 		{
 			_payment = payment;
 			_parent = parent;
-			IsSelected = _parent.SelectedPayments.Contains(_payment);
+			SetIsSelected(_parent.SelectedPayments.Contains(_payment), skipHandler: true);
 
 			// Populate components
 			foreach (var component in _payment.Components)
@@ -473,14 +516,30 @@ namespace LaceupMigration.ViewModels
 
 		partial void OnIsSelectedChanged(bool value)
 		{
-			_parent.TogglePaymentSelection(_payment);
+			if (!_isUpdatingSelection)
+			{
+				_parent.TogglePaymentSelection(_payment);
+			}
+		}
+
+		public void SetIsSelected(bool value, bool skipHandler = false)
+		{
+			if (skipHandler)
+			{
+				_isUpdatingSelection = true;
+				IsSelected = value;
+				_isUpdatingSelection = false;
+			}
+			else
+			{
+				IsSelected = value;
+			}
 		}
 
 		[RelayCommand]
 		private async Task ViewDetails()
 		{
-			var route = CompanyInfo.ShowNewPayments() ? "paymentnew" : "payment";
-			await Shell.Current.GoToAsync($"{route}?paymentId={_payment.Id}&detailViewPayments=1&goBackToMain=1");
+			await Shell.Current.GoToAsync($"paymentsetvalues?paymentId={_payment.Id}&detailViewPayments=1&goBackToMain=1");
 		}
 
 		public InvoicePayment Payment => _payment;
@@ -505,8 +564,7 @@ namespace LaceupMigration.ViewModels
 		private async Task ViewDetails()
 		{
 			// Navigate to payment details using parent payment's ID
-			var route = CompanyInfo.ShowNewPayments() ? "paymentnew" : "payment";
-			await Shell.Current.GoToAsync($"{route}?paymentId={_payment.Id}&detailViewPayments=1&goBackToMain=1");
+			await Shell.Current.GoToAsync($"paymentsetvalues?paymentId={_payment.Id}&detailViewPayments=1&goBackToMain=1");
 		}
 	}
 }

@@ -80,6 +80,8 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.OrderCreditPageViewModel>();
 		builder.Services.AddTransient<SuperOrderTemplatePage>();
 		builder.Services.AddTransient<ViewModels.SuperOrderTemplatePageViewModel>();
+		builder.Services.AddTransient<PreviouslyOrderedTemplatePage>();
+		builder.Services.AddTransient<ViewModels.PreviouslyOrderedTemplatePageViewModel>();
 		builder.Services.AddTransient<BatchDepartmentPage>();
 		builder.Services.AddTransient<ViewModels.BatchDepartmentPageViewModel>();
 		builder.Services.AddTransient<WorkOrderPage>();
@@ -98,6 +100,10 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.FullCategoryPageViewModel>();
 		builder.Services.AddTransient<AddItemPage>();
 		builder.Services.AddTransient<ViewModels.AddItemPageViewModel>();
+		builder.Services.AddTransient<AdvancedCatalogPage>();
+		builder.Services.AddTransient<ViewModels.AdvancedCatalogPageViewModel>();
+		builder.Services.AddTransient<ProductCatalogPage>();
+		builder.Services.AddTransient<ViewModels.ProductCatalogPageViewModel>();
 		builder.Services.AddTransient<TimeSheetPage>();
 		builder.Services.AddTransient<ViewModels.TimeSheetPageViewModel>();
 		

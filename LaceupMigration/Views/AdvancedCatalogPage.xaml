@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.AdvancedCatalogPage"
+             x:DataType="vm:AdvancedCatalogPageViewModel"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Sales Order">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="MENU" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
+    </ContentPage.ToolbarItems>
+    <ContentPage.Content>
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+            <!-- Item Type Buttons (Sales, Dumps, Returns, Send) -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*" ColumnSpacing="4" Padding="8,8,8,4">
+                <Button Text="Sales"
+                        Command="{Binding SelectItemTypeCommand}"
+                        CommandParameter="Sales"
+                        BackgroundColor="{Binding SalesButtonColor}"
+                        TextColor="White"
+                        IsVisible="{Binding ShowSalesButton}"
+                        Grid.Column="0" />
+                <Button Text="Dumps"
+                        Command="{Binding SelectItemTypeCommand}"
+                        CommandParameter="Dumps"
+                        BackgroundColor="{Binding DumpsButtonColor}"
+                        TextColor="White"
+                        IsVisible="{Binding ShowDumpsButton}"
+                        Grid.Column="1" />
+                <Button Text="Returns"
+                        Command="{Binding SelectItemTypeCommand}"
+                        CommandParameter="Returns"
+                        BackgroundColor="{Binding ReturnsButtonColor}"
+                        TextColor="White"
+                        IsVisible="{Binding ShowReturnsButton}"
+                        Grid.Column="2" />
+                <Button Text="Send"
+                        Command="{Binding SendOrderCommand}"
+                        IsVisible="{Binding ShowSendButton}"
+                        IsEnabled="{Binding CanEdit}"
+                        BackgroundColor="{StaticResource PrimaryDark}"
+                        TextColor="White"
+                        Grid.Column="3" />
+            </Grid>
+
+            <!-- Client Name -->
+            <Label Grid.Row="1"
+                   Text="{Binding ClientName}"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource PrimaryDark}"
+                   Padding="16,8" />
+
+            <!-- Order Summary -->
+            <Frame Grid.Row="2" Padding="12" Margin="16,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource Gray100}">
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="4">
+                    <Label Text="{Binding ItemsTotalText}"
+                           FontSize="14"
+                           TextColor="{StaticResource Gray900}"
+                           Grid.Row="0" Grid.Column="0" />
+                    <Label Text="{Binding SubtotalText, StringFormat='Subtotal:{0}'}"
+                           FontSize="14"
+                           TextColor="{StaticResource Gray900}"
+                           IsVisible="{Binding ShowPrices}"
+                           Grid.Row="1" Grid.Column="0" />
+                    <Label Text="{Binding TaxText, StringFormat='Tax:{0}'}"
+                           FontSize="14"
+                           TextColor="{StaticResource Gray900}"
+                           IsVisible="{Binding ShowPrices}"
+                           Grid.Row="2" Grid.Column="0" />
+                    <Label Text="{Binding TermsText, StringFormat='Term:{0}'}"
+                           FontSize="14"
+                           TextColor="{StaticResource Gray900}"
+                           Grid.Row="3" Grid.Column="0" />
+                    <Label Text="{Binding DiscountText, StringFormat='Discount:{0}'}"
+                           FontSize="14"
+                           TextColor="{StaticResource Gray900}"
+                           IsVisible="{Binding ShowPrices}"
+                           Grid.Row="4" Grid.Column="0" />
+                    <Label Text="{Binding TotalText, StringFormat='Total:{0}'}"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Gray900}"
+                           IsVisible="{Binding ShowPrices}"
+                           Grid.Row="4" Grid.Column="1" />
+                </Grid>
+            </Frame>
+
+            <!-- Search and Sort -->
+            <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="16,8">
+                <SearchBar Grid.Column="0"
+                           Text="{Binding SearchQuery}"
+                           Placeholder="Search products..." />
+                <Button Grid.Column="1"
+                        Text="{Binding SortByText}"
+                        Command="{Binding SortCommand}"
+                        Style="{StaticResource SecondaryButton}"
+                        WidthRequest="120" />
+            </Grid>
+
+            <!-- Product List -->
+            <CollectionView Grid.Row="4"
+                            ItemsSource="{Binding FilteredItems}"
+                            SelectionMode="None">
+                <CollectionView.EmptyView>
+                    <Label Text="No products found."
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           TextColor="{StaticResource Gray500}" />
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AdvancedCatalogItemViewModel">
+                        <Frame Padding="12" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12">
+                                <!-- Product Image -->
+                                <Image Source="{Binding ProductImagePath}"
+                                       WidthRequest="60"
+                                       HeightRequest="60"
+                                       Grid.Row="0" Grid.Column="0"
+                                       Grid.RowSpan="4"
+                                       Aspect="AspectFill"
+                                       IsVisible="{Binding HasImage}" />
+
+                                <!-- Product Info -->
+                                <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="4">
+                                    <Label Text="{Binding ProductDisplayName}"
+                                           FontSize="14"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Gray900}" />
+                                    <Label Text="{Binding OnHandText}"
+                                           FontSize="12"
+                                           TextColor="Green" />
+                                    <Label Text="{Binding ListPriceText}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}"
+                                           IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=ShowPrices}" />
+                                </VerticalStackLayout>
+
+                                <!-- Price -->
+                                <Label Grid.Row="0" Grid.Column="2"
+                                       Text="{Binding CurrentPriceText}"
+                                       FontSize="14"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource PrimaryDark}"
+                                       HorizontalOptions="End"
+                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=ShowPrices}" />
+
+                                <!-- History -->
+                                <VerticalStackLayout Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Spacing="2">
+                                    <Label Text="Previously Ordered:"
+                                           FontSize="11"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Gray700}"
+                                           IsVisible="{Binding HasHistory}" />
+                                    <Label Text="{Binding HistoryText}"
+                                           FontSize="11"
+                                           TextColor="{StaticResource Gray600}"
+                                           IsVisible="{Binding HasHistory}" />
+                                    <Label Text="No previous orders"
+                                           FontSize="11"
+                                           TextColor="{StaticResource Gray600}"
+                                           IsVisible="{Binding HasNoHistory}" />
+                                </VerticalStackLayout>
+
+                                <!-- Quantity Controls and Free Item -->
+                                <Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                                    <Grid Grid.Column="0" ColumnDefinitions="Auto,*">
+                                        <CheckBox Grid.Column="0"
+                                                  IsChecked="{Binding IsFreeItem}"
+                                                  CheckedChanged="FreeItemCheckBox_CheckedChanged"
+                                                  VerticalOptions="Center" />
+                                        <Label Grid.Column="1"
+                                               Text="Free Item"
+                                               FontSize="12"
+                                               TextColor="{StaticResource Gray700}"
+                                               VerticalOptions="Center"
+                                               Margin="8,0,0,0" />
+                                    </Grid>
+                                    <Button Text="-"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=DecrementItemQuantityCommand}"
+                                            CommandParameter="{Binding .}"
+                                            WidthRequest="40"
+                                            HeightRequest="40"
+                                            FontSize="18"
+                                            Grid.Column="1" />
+                                    <Label Text="{Binding QuantityText}"
+                                           FontSize="16"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource PrimaryDark}"
+                                           VerticalOptions="Center"
+                                           HorizontalOptions="Center"
+                                           Grid.Column="2"
+                                           Padding="12,0">
+                                        <Label.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=EditItemQuantityCommand}"
+                                                                  CommandParameter="{Binding .}" />
+                                        </Label.GestureRecognizers>
+                                    </Label>
+                                    <Button Text="+"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=IncrementItemQuantityCommand}"
+                                            CommandParameter="{Binding .}"
+                                            WidthRequest="40"
+                                            HeightRequest="40"
+                                            FontSize="18"
+                                            Grid.Column="3" />
+                                </Grid>
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </ContentPage.Content>
+</ContentPage>

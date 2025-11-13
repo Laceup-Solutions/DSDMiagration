@@ -4,13 +4,10 @@
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.InvoicesPage"
              x:DataType="vm:InvoicesPageViewModel"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              Title="Open Inv">
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Menu" Order="Primary" Priority="0">
-            <ToolbarItem.IconImageSource>
-                <FontImageSource FontFamily="MaterialOutlined" Glyph="&#xE5D2;" Size="24" Color="Black"/>
-            </ToolbarItem.IconImageSource>
-        </ToolbarItem>
+        <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
     </ContentPage.ToolbarItems>
 
     <ContentPage.Resources>
@@ -30,12 +27,10 @@
                    Padding="12"
                    HasShadow="False"
                    BorderColor="#E0E0E0"
-                   CornerRadius="10"
-                   InputTransparent="True">
+                   CornerRadius="10">
                 <Grid ColumnDefinitions="Auto,*"
                       RowDefinitions="Auto,Auto,Auto"
-                      ColumnSpacing="12"
-                      InputTransparent="True">
+                      ColumnSpacing="12">
                     <CheckBox Grid.Row="0"
                               Grid.Column="0"
                               IsChecked="{Binding IsSelected}"
@@ -44,6 +39,9 @@
                     <Grid Grid.Row="0"
                           Grid.Column="1"
                           ColumnDefinitions="*,Auto">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ViewDetailsCommand}" />
+                        </Grid.GestureRecognizers>
                         <VerticalStackLayout Grid.Column="0"
                                              Spacing="4">
                             <Label Text="{Binding InvoiceNumberText}"

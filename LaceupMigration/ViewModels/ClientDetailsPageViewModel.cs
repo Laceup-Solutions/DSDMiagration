@@ -1154,10 +1154,23 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // Handle Credit or Return orders
+            // Handle Credit or Return orders - navigate to advancedcatalog, previouslyorderedtemplate, or orderdetails
             if (order.OrderType == OrderType.Credit || order.OrderType == OrderType.Return)
             {
-                await Shell.Current.GoToAsync($"ordercredit?orderId={order.OrderId}&asPresale=1");
+                // Use the same navigation logic as regular orders
+                // The target page will detect OrderType.Credit and hide Sales button
+                if (Config.UseLaceupAdvancedCatalog)
+                {
+                    await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
+                }
+                else if (Config.UseCatalog)
+                {
+                    await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=1");
+                }
+                else
+                {
+                    await Shell.Current.GoToAsync($"orderdetails?orderId={order.OrderId}&asPresale=1");
+                }
                 return;
             }
 
@@ -1254,11 +1267,32 @@ namespace LaceupMigration.ViewModels
                 await Shell.Current.GoToAsync($"batchdepartment?clientId={_client.ClientId}&batchId={batch.Id}");
                 return;
             }
+            
+            // If UseLaceupAdvancedCatalog is TRUE
+            if (Config.UseLaceupAdvancedCatalog)
+            {
+                await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
+                return;
+            }
 
-            // Default: Navigate to OrderDetailsPage
-            // Note: ActivityProvider logic would determine if it's PreviouslyOrderedTemplateActivity
-            // but in MAUI we use OrderDetailsPage as the base
+            // If UseCatalog is TRUE (and UseLaceupAdvancedCatalog is FALSE)
+            if (Config.UseCatalog)
+            {
+                await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=1");
+                return;
+            }
+            
             await Shell.Current.GoToAsync($"orderdetails?orderId={order.OrderId}&asPresale=1");
+        }
+        
+        private bool HasClientOrderHistory(Client client)
+        {
+            if (client == null)
+                return false;
+
+            // Check if client has any previous order history
+            var orderedItems = InvoiceDetail.ClientOrderedItemsEx(client.ClientId, forOrders: true);
+            return orderedItems != null && orderedItems.Count > 0;
         }
 
         private async Task SelectOrderSalesmanAsync(Batch batch, Order order)

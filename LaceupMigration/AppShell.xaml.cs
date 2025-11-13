@@ -32,6 +32,7 @@ namespace LaceupMigration
 		Routing.RegisterRoute("orderdetails", typeof(OrderDetailsPage));
 		Routing.RegisterRoute("ordercredit", typeof(OrderCreditPage));
 		Routing.RegisterRoute("superordertemplate", typeof(SuperOrderTemplatePage));
+		Routing.RegisterRoute("previouslyorderedtemplate", typeof(PreviouslyOrderedTemplatePage));
 		Routing.RegisterRoute("batchdepartment", typeof(BatchDepartmentPage));
 		Routing.RegisterRoute("workorder", typeof(WorkOrderPage));
 		Routing.RegisterRoute("consignment", typeof(ConsignmentPage));
@@ -42,6 +43,8 @@ namespace LaceupMigration
 		Routing.RegisterRoute("clientimages", typeof(ClientImagesPage));
 		Routing.RegisterRoute("fullcategory", typeof(FullCategoryPage));
 		Routing.RegisterRoute("additem", typeof(AddItemPage));
+		Routing.RegisterRoute("advancedcatalog", typeof(AdvancedCatalogPage));
+		Routing.RegisterRoute("productcatalog", typeof(ProductCatalogPage));
 		Routing.RegisterRoute("timesheet", typeof(TimeSheetPage));
 		
 		// Menu routes

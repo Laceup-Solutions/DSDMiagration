@@ -41,6 +41,7 @@ namespace LaceupMigration.ViewModels
 		private SelectedOption _whatIsVisible = SelectedOption.All;
 		private string _searchCriteria = string.Empty;
 		private SearchBy _searchBy = SearchBy.ClientName;
+		private bool _isUpdatingSelectAll = false;
 
 		[ObservableProperty] private ObservableCollection<TransactionSectionViewModel> _transactionSections = new();
 		[ObservableProperty] private ObservableCollection<string> _transactionTypeOptions = new();
@@ -159,34 +160,55 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private void SelectAll()
 		{
-			if (!IsSelectAllChecked)
+			if (_isUpdatingSelectAll) return;
+			
+			_isUpdatingSelectAll = true;
+			try
 			{
-				SelectedOrders.Clear();
-			}
-			else
-			{
-				var ordersToAdd = new List<Order>();
-				var sections = GetCurrentSections();
-				foreach (var section in sections.Values)
+				// When user clicks checkbox, it's already toggled, so we use the current state
+				// If checked, select all; if unchecked, clear all
+				if (IsSelectAllChecked)
 				{
-					ordersToAdd.AddRange(section.GetOrders());
+					// Select all orders
+					var ordersToAdd = new List<Order>();
+					var sections = GetCurrentSections();
+					foreach (var section in sections.Values)
+					{
+						ordersToAdd.AddRange(section.GetOrders());
+					}
+
+					if (!string.IsNullOrEmpty(_searchCriteria))
+					{
+						if (_searchBy == SearchBy.ClientName)
+							ordersToAdd = ordersToAdd.Where(x => x.Client.ClientName.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant())).ToList();
+						else
+							ordersToAdd = ordersToAdd.Where(x => !string.IsNullOrEmpty(x.PrintedOrderId) && x.PrintedOrderId.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant())).ToList();
+					}
+
+					SelectedOrders.Clear();
+					SelectedOrders.AddRange(ordersToAdd);
+				}
+				else
+				{
+					// Clear all selections
+					SelectedOrders.Clear();
 				}
 
-				if (!string.IsNullOrEmpty(_searchCriteria))
+				// RefreshTransactionSections will recreate items with correct selection state
+				RefreshTransactionSections();
+				RefreshListHeader();
+				// Verify IsSelectAllChecked matches the actual state
+				var totalOrders = TransactionSections.Sum(s => s.ClientGroups.Sum(g => g.Orders.Count));
+				var shouldBeChecked = totalOrders > 0 && SelectedOrders.Count == totalOrders;
+				if (IsSelectAllChecked != shouldBeChecked)
 				{
-					if (_searchBy == SearchBy.ClientName)
-						ordersToAdd = ordersToAdd.Where(x => x.Client.ClientName.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant())).ToList();
-					else
-						ordersToAdd = ordersToAdd.Where(x => !string.IsNullOrEmpty(x.PrintedOrderId) && x.PrintedOrderId.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant())).ToList();
+					IsSelectAllChecked = shouldBeChecked;
 				}
-
-				SelectedOrders.Clear();
-				SelectedOrders.AddRange(ordersToAdd);
 			}
-
-			RefreshListHeader();
-			UpdateSelectAllState();
-			RefreshTransactionSections();
+			finally
+			{
+				_isUpdatingSelectAll = false;
+			}
 		}
 
 		[RelayCommand]
@@ -712,13 +734,16 @@ namespace LaceupMigration.ViewModels
 		private void UpdateSelectAllState()
 		{
 			var totalOrders = TransactionSections.Sum(s => s.ClientGroups.Sum(g => g.Orders.Count));
-			IsSelectAllChecked = totalOrders > 0 && SelectedOrders.Count == totalOrders;
+			var shouldBeChecked = totalOrders > 0 && SelectedOrders.Count == totalOrders;
+			if (IsSelectAllChecked != shouldBeChecked)
+			{
+				IsSelectAllChecked = shouldBeChecked;
+			}
 		}
 
 		private void RefreshListHeader()
 		{
-			IsSelectAllChecked = SelectedOrders.Count > 0;
-			if (IsSelectAllChecked)
+			if (SelectedOrders.Count > 0)
 			{
 				SelectAllText = $"Selected Transactions: {SelectedOrders.Count}";
 				TotalText = $"Total: {SelectedOrders.Sum(x => x.OrderTotalCost()).ToCustomString()}";
@@ -743,7 +768,27 @@ namespace LaceupMigration.ViewModels
 
 			RefreshListHeader();
 			UpdateSelectAllState();
-			RefreshTransactionSections();
+			
+			// Update the order item's selection state (skip handler to prevent infinite loop)
+			// Only update if the value is actually different
+			foreach (var section in TransactionSections)
+			{
+				foreach (var group in section.ClientGroups)
+				{
+					foreach (var item in group.Orders)
+					{
+						if (item.Order == order)
+						{
+							var shouldBeSelected = SelectedOrders.Contains(order);
+							if (item.IsSelected != shouldBeSelected)
+							{
+								item.SetIsSelected(shouldBeSelected, skipHandler: true);
+							}
+							return;
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -765,6 +810,7 @@ namespace LaceupMigration.ViewModels
 	{
 		private readonly Order _order;
 		private readonly OrdersPageViewModel _parent;
+		private bool _isUpdatingSelection = false;
 
 		[ObservableProperty] private bool _isSelected;
 
@@ -772,7 +818,7 @@ namespace LaceupMigration.ViewModels
 		{
 			_order = order;
 			_parent = parent;
-			IsSelected = _parent.SelectedOrders.Contains(_order);
+			SetIsSelected(_parent.SelectedOrders.Contains(_order), skipHandler: true);
 		}
 
 		public string OrderNumberText => !string.IsNullOrEmpty(_order.PrintedOrderId) ? _order.PrintedOrderId : $"Order #{_order.OrderId}";
@@ -782,9 +828,26 @@ namespace LaceupMigration.ViewModels
 
 		partial void OnIsSelectedChanged(bool value)
 		{
-			_parent.ToggleOrderSelection(_order);
+			if (!_isUpdatingSelection)
+			{
+				_parent.ToggleOrderSelection(_order);
+			}
 		}
 
+		public void SetIsSelected(bool value, bool skipHandler = false)
+		{
+			if (skipHandler)
+			{
+				_isUpdatingSelection = true;
+				IsSelected = value;
+				_isUpdatingSelection = false;
+			}
+			else
+			{
+				IsSelected = value;
+			}
+		}
+		
 		[RelayCommand]
 		private async Task ViewDetails()
 		{
@@ -840,10 +903,23 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			// Handle Credit or Return orders
+			// Handle Credit or Return orders - navigate to advancedcatalog, previouslyorderedtemplate, or orderdetails
 			if (order.OrderType == OrderType.Credit || order.OrderType == OrderType.Return)
 			{
-				await Shell.Current.GoToAsync($"ordercredit?orderId={order.OrderId}&asPresale=1");
+				// Use the same navigation logic as regular orders
+				// The target page will detect OrderType.Credit and hide Sales button
+				if (Config.UseLaceupAdvancedCatalog)
+				{
+					await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
+				}
+				else if (Config.UseCatalog)
+				{
+					await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=1");
+				}
+				else
+				{
+					await Shell.Current.GoToAsync($"orderdetails?orderId={order.OrderId}&asPresale=1");
+				}
 				return;
 			}
 
@@ -940,12 +1016,24 @@ namespace LaceupMigration.ViewModels
 				await Shell.Current.GoToAsync($"batchdepartment?clientId={client.ClientId}&batchId={batch.Id}");
 				return;
 			}
+			
+			// If UseLaceupAdvancedCatalog is TRUE
+			if (Config.UseLaceupAdvancedCatalog)
+			{
+				await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
+				return;
+			}
 
-			// Default: Navigate to OrderDetailsPage
-			// Note: ActivityProvider logic would determine if it's PreviouslyOrderedTemplateActivity
-			// but in MAUI we use OrderDetailsPage as the base
+			// If UseCatalog is TRUE (and UseLaceupAdvancedCatalog is FALSE)
+			if (Config.UseCatalog)
+			{
+				await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=1");
+				return;
+			}
+			
 			await Shell.Current.GoToAsync($"orderdetails?orderId={order.OrderId}&asPresale=1");
 		}
+
 
 		public Order Order => _order;
 	}
