@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
+﻿using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace LaceupMigration
 {
-    public sealed class NetAccess : IDisposable
+  public sealed class NetAccess : IDisposable
     {
         bool OpenConnectionAsync(string connectTo, int remotePort, int i = 1)
         {
@@ -106,18 +101,12 @@ namespace LaceupMigration
             try
             {
                 NetworkStream networkstream = tcpc.GetStream();
-
-                // Convert STRING ➜ ASCII bytes
-                byte[] bytes = Encoding.ASCII.GetBytes(toWrite);
-
-                // Write bytes to stream
-                networkstream.Write(bytes, 0, bytes.Length);
-
-                // Add CRLF
+                foreach (char c in toWrite.ToCharArray())
+                    networkstream.WriteByte(Convert.ToByte(c));
                 networkstream.WriteByte(13);
                 networkstream.WriteByte(10);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 ////Logger.CreateLog(e);
 

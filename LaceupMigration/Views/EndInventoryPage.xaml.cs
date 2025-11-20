@@ -19,6 +19,14 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
+        protected override bool OnBackButtonPressed()
+        {
+            // Handle back button - call ViewModel's OnBackButtonPressed
+            // Return true to prevent default back navigation, false to allow it
+            bool preventNavigation = _viewModel.OnBackButtonPressed().GetAwaiter().GetResult();
+            return preventNavigation;
+        }
+
         private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
         {
             _viewModel.FilterInventory(e.NewTextValue);
@@ -30,7 +38,7 @@ namespace LaceupMigration.Views
             {
                 if (float.TryParse(e.NewTextValue, out var qty))
                 {
-                    itemViewModel.EndingQuantity = qty;
+                    _viewModel.UpdateQuantity(itemViewModel, qty);
                 }
             }
         }

@@ -111,6 +111,10 @@ namespace LaceupMigration.ViewModels
                     return string.Empty;
                 });
                 
+                // Create flag file to indicate reports were printed
+                var reportsPrintedFile = Path.Combine(Config.DataPath, "reportsPrinted.flag");
+                File.WriteAllText(reportsPrintedFile, DateTime.Now.ToString());
+                
                 await _dialogService.ShowAlertAsync("Reports printed successfully.", "Success", "OK");
                 await Shell.Current.GoToAsync("..");
             }

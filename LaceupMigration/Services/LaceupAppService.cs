@@ -23,8 +23,17 @@ namespace LaceupMigration.Services
 					PlatformAppCenter.InitializeAndHookCrash();
 
 					Logger.CreateLog("Initialized in MAUI");
-					DataAccess.Initialize();
+					DataAccessEx.Initialize();
 					ActivityState.Load();
+					
+					//clear previous Data (empty batches and orders)
+					var orders = Order.Orders.Where(x => x.OrderType != OrderType.NoService && x.Details.Count == 0 && string.IsNullOrEmpty(x.PrintedOrderId)).ToList();
+					foreach (var order in orders)
+						order.Delete();
+
+					var batches = Batch.List.Where(x => x.Orders().Count == 0).ToList();
+					foreach (var batch in batches)
+						batch.Delete();
 
 					BackgroundDataSync.StartThreadh();
 

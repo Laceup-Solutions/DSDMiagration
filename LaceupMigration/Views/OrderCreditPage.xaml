@@ -6,138 +6,175 @@
              x:DataType="vm:OrderCreditPageViewModel"
              Shell.NavBarIsVisible="True"
              Shell.TabBarIsVisible="False"
-             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
-             Title="Credit Order">
+             Title="Add Credit Items">
     <ContentPage.ToolbarItems>
-            <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
+        <ToolbarItem Text="MENU" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
-        <ScrollView>
-            <VerticalStackLayout Padding="16" Spacing="16">
-                <Label Text="{Binding ClientName}"
-                       FontSize="20"
-                       FontAttributes="Bold"
-                       TextColor="{StaticResource PrimaryDark}" />
+        <Grid RowDefinitions="Auto,Auto,Auto,*">
+            <!-- Action Buttons -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*" ColumnSpacing="4" Padding="8,8,8,4">
+                <Button Text="Prod"
+                        Command="{Binding AddProductCommand}"
+                        IsEnabled="{Binding CanEdit}"
+                        BackgroundColor="{StaticResource PrimaryDark}"
+                        TextColor="White"
+                        Grid.Column="0" />
+                <Button Text="Cats"
+                        Command="{Binding ViewCategoriesCommand}"
+                        IsEnabled="{Binding CanEdit}"
+                        BackgroundColor="{StaticResource PrimaryDark}"
+                        TextColor="White"
+                        Grid.Column="1" />
+                <Button Text="Search"
+                        Command="{Binding SearchCommand}"
+                        IsEnabled="{Binding CanEdit}"
+                        BackgroundColor="{StaticResource PrimaryDark}"
+                        TextColor="White"
+                        Grid.Column="2" />
+                <Button Text="{Binding DoneButtonText}"
+                        Command="{Binding DoneCommand}"
+                        IsEnabled="{Binding CanEdit}"
+                        BackgroundColor="{StaticResource PrimaryDark}"
+                        TextColor="White"
+                        Grid.Column="3" />
+            </Grid>
 
-                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" 
-                      ColumnSpacing="12" RowSpacing="8"
-                      IsVisible="{Binding ShowTotals}">
-                    <Label Grid.Column="0" Grid.Row="0"
-                           Text="Lines:"
-                           FontAttributes="Bold"
-                           TextColor="{StaticResource Gray900}" />
-                    <Label Grid.Column="1" Grid.Row="0"
-                           Text="{Binding LinesText}"
-                           HorizontalOptions="End"
-                           TextColor="{StaticResource Gray900}" />
-
-                    <Label Grid.Column="0" Grid.Row="1"
-                           Text="Qty Sold:"
-                           FontAttributes="Bold"
-                           TextColor="{StaticResource Gray900}" />
-                    <Label Grid.Column="1" Grid.Row="1"
-                           Text="{Binding QtySoldText}"
-                           HorizontalOptions="End"
-                           TextColor="{StaticResource Gray900}" />
-
-                    <Label Grid.Column="0" Grid.Row="2"
-                           Text="Discount:"
-                           FontAttributes="Bold"
-                           IsVisible="{Binding ShowDiscount}"
-                           TextColor="{StaticResource Gray900}" />
-                    <Label Grid.Column="1" Grid.Row="2"
-                           Text="{Binding DiscountText}"
-                           HorizontalOptions="End"
-                           IsVisible="{Binding ShowDiscount}"
-                           TextColor="{StaticResource Gray900}" />
-
-                    <Label Grid.Column="0" Grid.Row="3"
-                           Text="Total:"
-                           FontSize="18"
+            <!-- Customer and Order Summary -->
+            <Frame Grid.Row="1" Padding="16" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,*,*" ColumnSpacing="12" RowSpacing="8">
+                    <!-- Customer Name -->
+                    <Label Grid.Row="0" Grid.ColumnSpan="3"
+                           Text="{Binding ClientName}"
+                           FontSize="16"
                            FontAttributes="Bold"
                            TextColor="{StaticResource PrimaryDark}" />
-                    <Label Grid.Column="1" Grid.Row="3"
-                           Text="{Binding TotalText}"
-                           FontSize="18"
-                           FontAttributes="Bold"
-                           HorizontalOptions="End"
-                           TextColor="{StaticResource PrimaryDark}" />
+                    
+                    <!-- Company -->
+                    <Label Grid.Row="1" Grid.ColumnSpan="3"
+                           Text="{Binding CompanyText}"
+                           FontSize="14"
+                           TextColor="{StaticResource Gray600}"
+                           IsVisible="{Binding ShowCompany}" />
+                    
+                    <!-- Order Metrics (Left Column) -->
+                    <VerticalStackLayout Grid.Row="2" Grid.Column="0" Spacing="4">
+                        <Label Text="{Binding LinesText}"
+                               FontSize="14"
+                               TextColor="{StaticResource Gray900}" />
+                        <Label Text="{Binding QtySoldText}"
+                               FontSize="14"
+                               TextColor="{StaticResource Gray900}" />
+                    </VerticalStackLayout>
+                    
+                    <!-- Order Financials (Middle Column) -->
+                    <VerticalStackLayout Grid.Row="2" Grid.Column="1" Spacing="4">
+                        <Label Text="{Binding SubtotalText}"
+                               FontSize="14"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Gray900}"
+                               IsVisible="{Binding ShowTotals}" />
+                    </VerticalStackLayout>
+                    
+                    <!-- Order Financials (Right Column) -->
+                    <VerticalStackLayout Grid.Row="2" Grid.Column="2" Spacing="4">
+                        <Label Text="{Binding DiscountText}"
+                               FontSize="14"
+                               TextColor="{StaticResource Gray900}"
+                               IsVisible="{Binding ShowDiscount}" />
+                        <Label Text="{Binding TaxText}"
+                               FontSize="14"
+                               TextColor="{StaticResource Gray900}"
+                               IsVisible="{Binding ShowTotals}" />
+                        <Label Text="{Binding TotalText}"
+                               FontSize="14"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource PrimaryDark}"
+                               IsVisible="{Binding ShowTotals}" />
+                    </VerticalStackLayout>
                 </Grid>
+            </Frame>
 
-                <Label Text="Line Items:"
-                       FontSize="16"
-                       FontAttributes="Bold"
+            <!-- Sort By -->
+            <Grid Grid.Row="2" Padding="8,4,16,4">
+                <Label Text="{Binding SortByText}"
+                       FontSize="14"
                        TextColor="{StaticResource PrimaryDark}"
-                       Margin="0,8,0,0" />
+                       HorizontalOptions="End"
+                       VerticalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding SortByCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </Grid>
 
-                <CollectionView ItemsSource="{Binding LineItems}"
-                                SelectionMode="Single"
-                                SelectionChangedCommand="{Binding LineItemSelectedCommand}">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:OrderCreditLineItemViewModel">
-                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
-                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" InputTransparent="True">
-                                    <Label Grid.Column="0" Grid.Row="0"
-                                           Text="{Binding ProductName}"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource Gray900}" />
-                                    <Label Grid.Column="1" Grid.Row="0"
-                                           Text="{Binding AmountText}"
-                                           HorizontalOptions="End"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource Gray900}" />
-                                    <Label Grid.Column="0" Grid.Row="1"
-                                           Text="{Binding QtyText}"
+            <!-- Credit Items List -->
+            <CollectionView Grid.Row="3"
+                            ItemsSource="{Binding LineItems}"
+                            SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:OrderCreditLineItemViewModel">
+                        <Frame Padding="12" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="4">
+                                <!-- Product Name and OH -->
+                                <Label Grid.Column="0" Grid.Row="0"
+                                       Text="{Binding ProductName}"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       TextColor="{Binding TypeColor}" />
+                                <Label Grid.Column="1" Grid.Row="0"
+                                       Text="{Binding OnHandText}"
+                                       FontSize="14"
+                                       TextColor="{Binding OnHandColor}"
+                                       HorizontalOptions="End" />
+                                
+                                <!-- Product Details (Left) -->
+                                <VerticalStackLayout Grid.Column="0" Grid.Row="1" Spacing="2">
+                                    <Label Text="{Binding ListPriceText}"
                                            FontSize="13"
                                            TextColor="{StaticResource Gray600}" />
-                                    <Label Grid.Column="1" Grid.Row="1"
-                                           Text="{Binding PriceText}"
-                                           HorizontalOptions="End"
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray600}" />
-                                    <Label Grid.Column="0" Grid.Row="2"
-                                           Text="{Binding TypeText}"
+                                    <Label Text="{Binding TypeText}"
                                            IsVisible="{Binding ShowType}"
                                            FontSize="12"
                                            FontAttributes="Bold"
-                                           TextColor="{Binding TypeColor}" />
-                                </Grid>
-                            </Frame>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
-
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,16,0,0">
-                    <Button Grid.Column="0"
-                            Text="Add Product"
-                            Command="{Binding AddProductCommand}"
-                            IsEnabled="{Binding CanEdit}"
-                            IsVisible="{Binding ShowAddProduct}"
-                            Style="{StaticResource SecondaryButton}" />
-
-                    <Button Grid.Column="1"
-                            Text="View Categories"
-                            Command="{Binding ViewCategoriesCommand}"
-                            IsEnabled="{Binding CanEdit}"
-                            IsVisible="{Binding ShowViewCategories}"
-                            Style="{StaticResource SecondaryButton}" />
-                </Grid>
-
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
-                    <Button Grid.Column="0"
-                            Text="Search"
-                            Command="{Binding SearchCommand}"
-                            IsEnabled="{Binding CanEdit}"
-                            IsVisible="{Binding ShowSearch}"
-                            Style="{StaticResource SecondaryButton}" />
-
-                    <Button Grid.Column="1"
-                            Text="{Binding DoneButtonText}"
-                            Command="{Binding DoneCommand}"
-                            IsEnabled="{Binding CanEdit}"
-                            Style="{StaticResource PrimaryButton}" />
-                </Grid>
-            </VerticalStackLayout>
-        </ScrollView>
+                                           TextColor="{Binding TypeColor}"
+                                           TextDecorations="Underline" />
+                                    <Label Text="{Binding PriceText}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}" />
+                                    <Label Text="{Binding TotalText}"
+                                           FontSize="14"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource PrimaryDark}" />
+                                </VerticalStackLayout>
+                                
+                                <!-- Quantity Button (Right) -->
+                                <Button Grid.Column="1" Grid.Row="1"
+                                        Text="{Binding QuantityButtonText}"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:OrderCreditPageViewModel}}, Path=EditLineItemCommand}"
+                                        CommandParameter="{Binding .}"
+                                        WidthRequest="50"
+                                        HeightRequest="50"
+                                        BackgroundColor="{StaticResource PrimaryDark}"
+                                        TextColor="White"
+                                        FontSize="18"
+                                        FontAttributes="Bold"
+                                        CornerRadius="4"
+                                        VerticalOptions="Start"
+                                        HorizontalOptions="End" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+                <CollectionView.EmptyView>
+                    <Label Text="No credit items added yet."
+                           FontSize="16"
+                           TextColor="{StaticResource Gray600}"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           Margin="0,50,0,0" />
+                </CollectionView.EmptyView>
+            </CollectionView>
+        </Grid>
     </ContentPage.Content>
 </ContentPage>

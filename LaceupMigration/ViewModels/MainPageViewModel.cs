@@ -315,7 +315,7 @@ namespace LaceupMigration.ViewModels
 			}
 			
 			if (Config.TrackInventory)
-				menuItems.Add("Reports");
+				menuItems.Add("End Of Day Close");
 			
 			if (Config.TrackInventory && !Config.HideProdOnHand)
 				menuItems.Add("Inventory");
@@ -383,7 +383,7 @@ namespace LaceupMigration.ViewModels
 				case "Send Orders":
 					await SendAll();
 					break;
-				case "Reports":
+				case "End Of Day Close":
 					await Reports();
 					break;
 				case "Inventory":
