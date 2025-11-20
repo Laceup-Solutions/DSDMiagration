@@ -1,4 +1,5 @@
 using LaceupMigration.ViewModels;
+using Microsoft.Maui.ApplicationModel;
 
 namespace LaceupMigration.Views
 {
@@ -17,6 +18,15 @@ namespace LaceupMigration.Views
         {
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
+        }
+        
+        protected override bool OnBackButtonPressed()
+        {
+            // Handle back button - call ViewModel's OnBackButtonPressed
+            // Return true to prevent default back navigation, false to allow it
+            // Note: We need to block here because OnBackButtonPressed must return synchronously
+            bool preventNavigation = _viewModel.OnBackButtonPressed().GetAwaiter().GetResult();
+            return preventNavigation;
         }
 
         private void OnSearchTextChanged(object sender, TextChangedEventArgs e)

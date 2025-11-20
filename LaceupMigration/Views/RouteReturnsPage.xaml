@@ -9,19 +9,29 @@
         <HorizontalStackLayout Grid.Row="0"
                                Spacing="8"
                                Margin="8">
-            <Button Text="Add Return"
-                    Command="{Binding AddReturnCommand}"
-                    HorizontalOptions="FillAndExpand" />
-            <Button Text="Save"
+            <Button Text="{Binding SaveButtonText}"
                     Command="{Binding SaveCommand}"
+                    HorizontalOptions="FillAndExpand"
+                    IsEnabled="{Binding IsSaved, Converter={StaticResource InvertedBoolConverter}}" />
+            <Button Text="{Binding FilterButtonText}"
+                    Command="{Binding ToggleFilterCommand}"
+                    HorizontalOptions="FillAndExpand"
+                    IsEnabled="{Binding IsSaved, Converter={StaticResource InvertedBoolConverter}}" />
+            <Button Text="Print"
+                    Command="{Binding PrintCommand}"
                     HorizontalOptions="FillAndExpand" />
+            <Button Text="Done"
+                    Command="{Binding DoneCommand}"
+                    HorizontalOptions="FillAndExpand"
+                    IsVisible="{Binding IsSaved}" />
         </HorizontalStackLayout>
 
         <SearchBar Grid.Row="1"
                    Text="{Binding SearchText}"
                    Placeholder="Search products..."
                    Margin="8,0"
-                   TextChanged="OnSearchTextChanged" />
+                   TextChanged="OnSearchTextChanged"
+                   IsEnabled="{Binding IsSaved, Converter={StaticResource InvertedBoolConverter}}" />
 
         <CollectionView Grid.Row="2"
                         ItemsSource="{Binding Returns}"
@@ -33,27 +43,94 @@
                            BackgroundColor="{StaticResource Gray100}"
                            HasShadow="False"
                            CornerRadius="8">
-                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                            <VerticalStackLayout Grid.Column="0" Spacing="4">
+                        <VerticalStackLayout Spacing="8">
+                            <!-- Product Name and Details -->
+                            <VerticalStackLayout Spacing="4">
                                 <Label Text="{Binding ProductName}"
                                        FontSize="16"
                                        FontAttributes="Bold" />
-                                <Label Text="{Binding ClientName}"
-                                       FontSize="14"
-                                       TextColor="#666666" />
+                                <HorizontalStackLayout Spacing="8">
+                                    <Label Text="{Binding Lot, StringFormat='Lot: {0}'}"
+                                           FontSize="12"
+                                           TextColor="#666666"
+                                           IsVisible="{Binding Lot, Converter={StaticResource IsStringNotEmptyConverter}}" />
+                                    <Label Text="{Binding Weight, StringFormat='Weight: {0:F2}'}"
+                                           FontSize="12"
+                                           TextColor="#666666"
+                                           IsVisible="{Binding Weight, Converter={StaticResource IsNotZeroConverter}}" />
+                                </HorizontalStackLayout>
                             </VerticalStackLayout>
-                            <Entry Grid.Column="1"
-                                   Text="{Binding Quantity, StringFormat='{0:F2}'}"
-                                   WidthRequest="100"
-                                   Keyboard="Numeric"
-                                   TextChanged="OnQuantityChanged" />
-                            <Button Grid.Column="2"
-                                    Text="Delete"
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteReturnCommand}"
-                                    CommandParameter="{Binding}"
-                                    BackgroundColor="Red"
-                                    TextColor="White" />
-                        </Grid>
+                            
+                            <!-- Quantities Row -->
+                            <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="4">
+                                <!-- Reships (read-only) -->
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <Label Text="Reships"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           HorizontalOptions="Center" />
+                                    <Label Text="{Binding Reships, StringFormat='{0:F2}'}"
+                                           FontSize="14"
+                                           HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                                
+                                <!-- Dumps (read-only) -->
+                                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                    <Label Text="Dumps"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           HorizontalOptions="Center" />
+                                    <Label Text="{Binding Dumps, StringFormat='{0:F2}'}"
+                                           FontSize="14"
+                                           HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                                
+                                <!-- Returns (read-only) -->
+                                <VerticalStackLayout Grid.Column="2" Spacing="2">
+                                    <Label Text="Returns"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           HorizontalOptions="Center" />
+                                    <Label Text="{Binding Returns, StringFormat='{0:F2}'}"
+                                           FontSize="14"
+                                           HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                                
+                                <!-- Damaged (button) -->
+                                <VerticalStackLayout Grid.Column="3" Spacing="2">
+                                    <Label Text="Damaged"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           HorizontalOptions="Center" />
+                                    <Button Text="{Binding DamagedInTruck, StringFormat='{0:F2}'}"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditDamagedCommand}"
+                                            CommandParameter="{Binding}"
+                                            BackgroundColor="{StaticResource Gray300}"
+                                            TextColor="Black"
+                                            FontSize="12"
+                                            HeightRequest="30"
+                                            WidthRequest="60"
+                                            IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.IsSaved, Converter={StaticResource InvertedBoolConverter}}" />
+                                </VerticalStackLayout>
+                                
+                                <!-- Unload (button) -->
+                                <VerticalStackLayout Grid.Column="4" Spacing="2">
+                                    <Label Text="Unload"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           HorizontalOptions="Center" />
+                                    <Button Text="{Binding Unload, StringFormat='{0:F2}'}"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditUnloadCommand}"
+                                            CommandParameter="{Binding}"
+                                            BackgroundColor="{StaticResource Gray300}"
+                                            TextColor="Black"
+                                            FontSize="12"
+                                            HeightRequest="30"
+                                            WidthRequest="60"
+                                            IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.IsSaved, Converter={StaticResource InvertedBoolConverter}}" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </VerticalStackLayout>
                     </Frame>
                 </DataTemplate>
             </CollectionView.ItemTemplate>

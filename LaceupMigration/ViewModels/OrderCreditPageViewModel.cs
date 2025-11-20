@@ -26,13 +26,23 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty] private string _clientName = string.Empty;
 
+        [ObservableProperty] private string _companyText = string.Empty;
+
+        [ObservableProperty] private bool _showCompany = false;
+
         [ObservableProperty] private string _linesText = "Lines: 0";
 
         [ObservableProperty] private string _qtySoldText = "Qty Sold: 0";
 
+        [ObservableProperty] private string _subtotalText = "Subtotal: $0.00";
+
         [ObservableProperty] private string _discountText = "Discount: $0.00";
 
+        [ObservableProperty] private string _taxText = "Tax: $0.00";
+
         [ObservableProperty] private string _totalText = "Total: $0.00";
+
+        [ObservableProperty] private string _sortByText = "Sort By: Product Name";
 
         [ObservableProperty] private bool _showTotals = true;
 
@@ -144,6 +154,17 @@ namespace LaceupMigration.ViewModels
 
             ClientName = _order.Client?.ClientName ?? "Unknown Client";
 
+            // Company info
+            if (!string.IsNullOrEmpty(_order.CompanyName))
+            {
+                CompanyText = $"Company: {_order.CompanyName}";
+                ShowCompany = true;
+            }
+            else
+            {
+                ShowCompany = false;
+            }
+
             CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
             ShowAddProduct = CanEdit;
             ShowViewCategories = CanEdit && !_order.Dexed;
@@ -174,20 +195,36 @@ namespace LaceupMigration.ViewModels
             if (_order == null) return;
 
             var details = _order.Details;
+            // Lines count shows all details (matching Xamarin)
             LinesText = $"Lines: {details.Count}";
 
+            // Qty Sold shows only non-credit items (matching Xamarin)
             var qtySold = details.Where(x => !x.IsCredit).Sum(x => x.Qty);
             QtySoldText = $"Qty Sold: {qtySold}";
+
+            var subtotal = _order.OrderTotalCost();
+            SubtotalText = $"Subtotal: {subtotal.ToCustomString()}";
 
             var discount = Math.Abs(_order.CalculateDiscount());
             DiscountText = $"Discount: {discount.ToCustomString()}";
 
+            var tax = _order.CalculateTax();
+            TaxText = $"Tax: {tax.ToCustomString()}";
+
             var total = _order.OrderTotalCost();
             TotalText = $"Total: {total.ToCustomString()}";
 
-            // Load line items - only credit items
+            // Load line items - only credit items (matching Xamarin's SyncLinesWithOrder)
+            // Xamarin shows only items with OrderDetail != null if order has details
             LineItems.Clear();
             var creditDetails = details.Where(x => x.IsCredit).ToList();
+            
+            // If order has details, only show items that have OrderDetail (matching Xamarin logic)
+            if (details.Count > 0)
+            {
+                creditDetails = creditDetails.Where(x => x != null).ToList();
+            }
+            
             var sortedDetails = SortDetails.SortedDetails(creditDetails).ToList();
 
             foreach (var detail in sortedDetails)
@@ -199,12 +236,30 @@ namespace LaceupMigration.ViewModels
 
         private OrderCreditLineItemViewModel CreateLineItemViewModel(OrderDetail detail)
         {
+            if (_order == null || detail == null || detail.Product == null)
+                return new OrderCreditLineItemViewModel();
+
             var qtyText = detail.Product.SoldByWeight && detail.Weight > 0
                 ? $"Qty: {detail.Qty} (Weight: {detail.Weight})"
                 : $"Qty: {detail.Qty}";
 
-            var priceText = detail.Price > 0 ? $"Price: {detail.Price.ToCustomString()}" : string.Empty;
+            // Get on hand inventory
+            var onHand = detail.Product.GetInventory(_order.AsPresale);
+            var onHandText = $"OH:{onHand}";
+            var onHandColor = onHand <= 0 ? Colors.Red : Colors.Orange;
 
+            // List price
+            var listPrice = Product.GetPriceForProduct(detail.Product, _order, true, false);
+            var listPriceText = $"List Price: ({listPrice.ToCustomString()})";
+
+            // Current price
+            var priceText = detail.Price > 0 ? $"Price:({detail.Price.ToCustomString()})" : string.Empty;
+
+            // Total for this line
+            var total = detail.Qty * detail.Price;
+            var totalText = $"Total:({total.ToCustomString()})";
+
+            // Type (Return/Dump)
             var typeText = string.Empty;
             var typeColor = Colors.Transparent;
             var showType = false;
@@ -216,15 +271,23 @@ namespace LaceupMigration.ViewModels
                 showType = true;
             }
 
+            // Quantity button text
+            var qtyButtonText = detail.Qty > 0 ? detail.Qty.ToString("F0") : "+";
+
             return new OrderCreditLineItemViewModel
             {
                 Detail = detail,
                 ProductName = detail.Product.Name,
+                OnHandText = onHandText,
+                OnHandColor = onHandColor,
+                ListPriceText = listPriceText,
                 QtyText = qtyText,
                 PriceText = priceText,
+                TotalText = totalText,
                 TypeText = typeText,
                 TypeColor = typeColor,
-                ShowType = showType
+                ShowType = showType,
+                QuantityButtonText = qtyButtonText
             };
         }
 
@@ -233,8 +296,49 @@ namespace LaceupMigration.ViewModels
         {
             if (item == null || item.Detail == null) return;
 
-            // TODO: Navigate to line item detail/edit page
-            await _dialogService.ShowAlertAsync($"Selected: {item.ProductName}", "Info");
+            // Navigate to AddItemPage to edit the credit item
+            await Shell.Current.GoToAsync($"additem?orderId={_order?.OrderId}&orderDetailId={item.Detail.OrderDetailId}&asCreditItem=1");
+        }
+
+        [RelayCommand]
+        private async Task EditLineItemAsync(OrderCreditLineItemViewModel? item)
+        {
+            if (item == null || item.Detail == null || _order == null) return;
+
+            // Show popup to edit quantity (similar to PreviouslyOrderedTemplate)
+            var defaultQty = item.Detail.Qty > 0 ? item.Detail.Qty.ToString() : "1";
+            var qtyInput = await _dialogService.ShowPromptAsync(
+                $"Enter Quantity for {item.ProductName}",
+                "Quantity",
+                "OK",
+                "Cancel",
+                defaultQty,
+                keyboard: Keyboard.Numeric);
+
+            double qty = 0;
+            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out qty) || qty <= 0)
+            {
+                // If quantity is 0, remove the item
+                if (qty == 0)
+                {
+                    _order.DeleteDetail(item.Detail);
+                    _order.Save();
+                    LoadOrderData();
+                }
+                return;
+            }
+
+            // Update quantity
+            _order.UpdateInventory(item.Detail, (int)item.Detail.Qty);
+            item.Detail.Qty = (float)qty;
+            _order.UpdateInventory(item.Detail, -(int)qty);
+
+            // Recalculate discounts
+            _order.RecalculateDiscounts();
+            _order.Save();
+
+            // Refresh UI
+            LoadOrderData();
         }
 
         [RelayCommand]
@@ -256,7 +360,7 @@ namespace LaceupMigration.ViewModels
 
             if (lastDetail != null)
             {
-                var route = $"fullcategory?orderId={_order.OrderId}&categoryId={lastDetail.Product.CategoryId}&productId={lastDetail.Product.ProductId}&asCreditItem=1";
+                var route = $"fullcategory?orderId={_order.OrderId}&categoryId={lastDetail.Product.CategoryId}&productId={lastDetail.Product.ProductId}&asCreditItem=1&comingFrom=Credit";
                 if ((Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order)) && !lastDetail.Damaged)
                 {
                     route += "&asReturnItem=1";
@@ -275,12 +379,13 @@ namespace LaceupMigration.ViewModels
             if (_order == null) return;
 
             // Equivalent to ShowCategoryActivity
+            // Pass comingFrom=Credit so ProductCatalog knows to prompt for Credit/Return
             if (Category.Categories.Count == 1)
             {
                 var category = Category.Categories.FirstOrDefault();
                 if (category != null)
                 {
-                    var route = $"fullcategory?orderId={_order.OrderId}&categoryId={category.CategoryId}&asCreditItem=1";
+                    var route = $"fullcategory?orderId={_order.OrderId}&categoryId={category.CategoryId}&asCreditItem=1&comingFrom=Credit";
                     if ((Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order)) && _isReturn)
                     {
                         route += "&asReturnItem=1";
@@ -290,7 +395,7 @@ namespace LaceupMigration.ViewModels
             }
             else
             {
-                var route = $"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}&asCreditItem=1";
+                var route = $"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}&asCreditItem=1&comingFrom=Credit";
                 if ((Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order)) && _isReturn)
                 {
                     route += "&asReturnItem=1";
@@ -354,7 +459,7 @@ namespace LaceupMigration.ViewModels
                 }
 
                 // Navigate to FullCategoryPage with search
-                var route = $"fullcategory?orderId={_order.OrderId}&productSearch={searchTerm}&comingFromSearch=yes&asCreditItem=1";
+                var route = $"fullcategory?orderId={_order.OrderId}&productSearch={searchTerm}&comingFromSearch=yes&asCreditItem=1&comingFrom=Credit";
                 if ((Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order)) && _isReturn)
                 {
                     route += "&asReturnItem=1";
@@ -363,7 +468,7 @@ namespace LaceupMigration.ViewModels
             }
             else
             {
-                var route = $"fullcategory?orderId={_order.OrderId}&productSearch={searchTerm}&comingFromSearch=yes&asCreditItem=1";
+                var route = $"fullcategory?orderId={_order.OrderId}&productSearch={searchTerm}&comingFromSearch=yes&asCreditItem=1&comingFrom=Credit";
                 if ((Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order)) && _isReturn)
                 {
                     route += "&asReturnItem=1";
@@ -676,6 +781,20 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
+        private async Task SortByAsync()
+        {
+            var sortOptions = new[] { "Product Name", "Product Code", "Last Visit" };
+            var choice = await _dialogService.ShowActionSheetAsync("Sort By", "Cancel", null, sortOptions);
+            
+            if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
+                return;
+
+            // TODO: Implement sorting logic
+            SortByText = $"Sort By: {choice}";
+            await Task.CompletedTask;
+        }
+
+        [RelayCommand]
         async Task ShowMenuAsync()
         {
             if (_order == null) return;
@@ -883,17 +1002,27 @@ namespace LaceupMigration.ViewModels
     {
         [ObservableProperty] private string _productName = string.Empty;
 
+        [ObservableProperty] private string _onHandText = "OH:0";
+
+        [ObservableProperty] private Color _onHandColor = Colors.Orange;
+
+        [ObservableProperty] private string _listPriceText = string.Empty;
+
         [ObservableProperty] private string _qtyText = string.Empty;
 
         [ObservableProperty] private string _priceText = string.Empty;
 
         [ObservableProperty] private string _amountText = string.Empty;
 
+        [ObservableProperty] private string _totalText = string.Empty;
+
         [ObservableProperty] private string _typeText = string.Empty;
 
         [ObservableProperty] private Color _typeColor;
 
         [ObservableProperty] private bool _showType;
+
+        [ObservableProperty] private string _quantityButtonText = "+";
 
         public OrderDetail Detail { get; set; } = null!;
     }

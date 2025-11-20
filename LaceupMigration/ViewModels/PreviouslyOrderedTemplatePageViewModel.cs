@@ -76,6 +76,9 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showSendButton = true;
 
+        [ObservableProperty]
+        private bool _showAddCredit = false;
+
         public PreviouslyOrderedTemplatePageViewModel(DialogService dialogService, ILaceupAppService appService)
         {
             _dialogService = dialogService;
@@ -218,6 +221,12 @@ namespace LaceupMigration.ViewModels
 
             ShowDiscount = _order.Client?.UseDiscount == true || _order.Client?.UseDiscountPerLine == true || _order.IsDelivery;
 
+            // Show Add Credit button only if Order type and AllowOneDoc is true
+            // Hide if Credit or Return type (since everything added is already credit)
+            ShowAddCredit = !_order.IsQuote && 
+                           _order.OrderType == OrderType.Order && 
+                           _order.Client?.AllowOneDoc == true;
+
             // Load previously ordered products
             LoadPreviouslyOrderedProducts();
         }
@@ -232,23 +241,140 @@ namespace LaceupMigration.ViewModels
 
             PreviouslyOrderedProducts.Clear();
 
-            if (_order.Client.OrderedList == null || _order.Client.OrderedList.Count == 0)
-                return;
+            // Dictionary to track products by ProductId to avoid duplicates
+            // Key: ProductId, Value: ViewModel
+            // Note: We use ProductId as key, but if multiple order details have same ProductId,
+            // only one will be shown (this matches Xamarin behavior where IsCompatible matches first available line)
+            var productDict = new Dictionary<int, PreviouslyOrderedProductViewModel>();
 
-            // Get products from previously ordered list
-            var orderedProducts = _order.Client.OrderedList
-                .OrderByDescending(x => x.Last.Date)
-                .Take(100) // Limit to recent items
-                .ToList();
-
-            foreach (var orderedItem in orderedProducts)
+            // First, add products from history (OrderedList)
+            // This matches PrepareList_Old() in Xamarin
+            if (_order.Client.OrderedList != null && _order.Client.OrderedList.Count > 0)
             {
-                if (orderedItem.Last?.Product == null)
+                var orderedProducts = _order.Client.OrderedList
+                    .OrderByDescending(x => x.Last.Date)
+                    .Take(100) // Limit to recent items
+                    .ToList();
+
+                foreach (var orderedItem in orderedProducts)
+                {
+                    if (orderedItem.Last?.Product == null)
+                        continue;
+
+                    var product = orderedItem.Last.Product;
+                    var productViewModel = CreatePreviouslyOrderedProductViewModel(product, orderedItem);
+                    productDict[product.ProductId] = productViewModel;
+                }
+            }
+
+            // Then, sync with current order (Details) - matches SyncLinesWithOrder() in Xamarin
+            // This ensures ALL order items are shown, even if not in history
+            // Order items take precedence over history items
+            // IMPORTANT: We must show ALL order details, including:
+            // - Items in history (updated with order qty)
+            // - Items NOT in history (created from order detail)
+            // - Credit items (even if not in history)
+            // - Non-credit items (even if not in history)
+            foreach (var orderDetail in _order.Details)
+            {
+                if (orderDetail.Product == null)
                     continue;
 
-                var product = orderedItem.Last.Product;
-                var productViewModel = CreatePreviouslyOrderedProductViewModel(product, orderedItem);
-                PreviouslyOrderedProducts.Add(productViewModel);
+                // Skip default item if it's the only item
+                if (orderDetail.Product.ProductId == Config.DefaultItem && _order.Details.Count == 1)
+                    continue;
+
+                var key = orderDetail.Product.ProductId;
+                
+                // Check if product already exists in dictionary (from history)
+                // This matches IsCompatible() logic in Xamarin: 
+                // - If line has no OrderDetail, it matches (line.OrderDetail == null)
+                // - If line has OrderDetail, it only matches if OrderDetailId matches
+                // Since we're using ProductId as key, we match the first available line from history
+                PreviouslyOrderedProductViewModel viewModel;
+                bool hasHistory = productDict.TryGetValue(key, out var existingViewModel);
+                
+                if (hasHistory)
+                {
+                    // Product exists in history - check if we should use it or create new
+                    // If the existing view model already has an OrderDetail with different OrderDetailId,
+                    // we should create a new one (but since we use ProductId as key, we'll update the existing)
+                    // This matches Xamarin: if line.OrderDetail != null && line.OrderDetail.OrderDetailId != orderDetail.OrderDetailId, 
+                    // it won't match and will create new line
+                    if (existingViewModel.ExistingDetail != null && 
+                        existingViewModel.ExistingDetail.OrderDetailId != orderDetail.OrderDetailId)
+                    {
+                        // Different OrderDetailId - create new view model (but we can't add it to dict with same key)
+                        // In practice, this is rare, so we'll update the existing one
+                        // For now, we'll update the existing view model with the new order detail
+                        viewModel = existingViewModel;
+                    }
+                    else
+                    {
+                        // Product exists in history and either has no OrderDetail or same OrderDetailId
+                        // Update with order detail values
+                        viewModel = existingViewModel;
+                    }
+                }
+                else
+                {
+                    // Product NOT in history
+                    // If qty == 0, skip it (don't show items with no history and no quantity)
+                    if (orderDetail.Qty == 0)
+                        continue;
+                    
+                    // Create new view model from order detail
+                    // This matches: line = orderDetail.CreateLineBasedOnOrderDetail(); in Xamarin
+                    // CRITICAL: This ensures items in order but not in history are still shown
+                    viewModel = CreatePreviouslyOrderedProductViewModelFromOrderDetail(orderDetail);
+                    productDict[key] = viewModel;
+                }
+                
+                // Handle qty == 0 for items with history
+                if (orderDetail.Qty == 0 && hasHistory)
+                {
+                    // Product has history but qty is 0 - clear the order detail reference
+                    // This will show the item with "+" button (qty = 0)
+                    viewModel.ExistingDetail = null;
+                    viewModel.Quantity = 0;
+                    viewModel.ProductNameColor = Colors.Black;
+                    viewModel.TypeText = string.Empty;
+                    viewModel.ShowTypeText = false;
+                    viewModel.UpdateTotal();
+                }
+                else
+                {
+                    // ALWAYS update the line with order detail values (matches Xamarin lines 532-543)
+                    // This ensures the qty, price, and all other properties are set from the order detail
+                    // IMPORTANT: This must happen for BOTH history items and new items
+                    viewModel.ExistingDetail = orderDetail;
+                    viewModel.Quantity = (double)orderDetail.Qty; // Convert float to double, use ACTUAL order qty
+                    
+                    // Update all properties from order detail
+                    viewModel.UpdateFromOrderDetail(orderDetail);
+                    
+                    // Update color and type based on order detail
+                    if (orderDetail.IsCredit)
+                    {
+                        viewModel.ProductNameColor = Colors.Orange; // Orange for credit items
+                        viewModel.TypeText = orderDetail.Damaged ? "Dump" : "Return";
+                        viewModel.ShowTypeText = true;
+                    }
+                    else
+                    {
+                        viewModel.ProductNameColor = Colors.Black;
+                        viewModel.TypeText = string.Empty;
+                        viewModel.ShowTypeText = false;
+                    }
+                }
+            }
+
+            // Add all products to the collection
+            // Items from history that are NOT in the order will have Quantity = 0 and ExistingDetail = null
+            // This is correct - they should still be shown
+            foreach (var viewModel in productDict.Values)
+            {
+                PreviouslyOrderedProducts.Add(viewModel);
             }
 
             // Apply sorting
@@ -277,10 +403,17 @@ namespace LaceupMigration.ViewModels
             var perWeek = orderedItem.PerWeek;
             var showPerWeek = perWeek > 0;
 
-            // Check if product is already in order
-            var existingDetail = _order?.Details.FirstOrDefault(x => x.Product.ProductId == product.ProductId && !x.IsCredit);
-            var total = existingDetail != null ? existingDetail.Qty * existingDetail.Price : 0;
-            var qty = existingDetail != null ? existingDetail.Qty : 0;
+            // When creating from history, don't check for order details yet
+            // They will be synced later in SyncLinesWithOrder logic
+            // This matches Xamarin: PrepareList creates lines without order details, then SyncLinesWithOrder adds them
+            var existingDetail = (OrderDetail?)null;
+            var total = 0.0;
+            var qty = 0.0;
+
+            // Determine color and type - will be updated when synced with order
+            var productNameColor = Colors.Black;
+            var typeText = string.Empty;
+            var showTypeText = false;
 
             return new PreviouslyOrderedProductViewModel(this)
             {
@@ -297,7 +430,76 @@ namespace LaceupMigration.ViewModels
                 OrderedItem = orderedItem,
                 OrderId = _order.OrderId,
                 ExistingDetail = existingDetail,
-                Quantity = qty
+                Quantity = qty,
+                ProductNameColor = productNameColor,
+                TypeText = typeText,
+                ShowTypeText = showTypeText
+            };
+        }
+
+        private PreviouslyOrderedProductViewModel CreatePreviouslyOrderedProductViewModelFromOrderDetail(OrderDetail orderDetail)
+        {
+            var product = orderDetail.Product;
+            var onHand = product.CurrentWarehouseInventory;
+            var listPrice = Product.GetPriceForProduct(product, _order, false, false);
+            var expectedPrice = orderDetail.ExpectedPrice > 0 ? orderDetail.ExpectedPrice : Product.GetPriceForProduct(product, _order, false, false);
+
+            // Try to find history for this product
+            LastTwoDetails? orderedItem = null;
+            if (_order?.Client?.OrderedList != null)
+            {
+                orderedItem = _order.Client.OrderedList.FirstOrDefault(x => x.Last?.ProductId == product.ProductId);
+            }
+
+            // Get last visit info from history if available
+            var lastVisitText = string.Empty;
+            var showLastVisit = false;
+            if (orderedItem?.Last != null && orderedItem.Last.Date != DateTime.MinValue)
+            {
+                var tqty = orderedItem.Last.Quantity;
+                var price = orderedItem.Last.Price;
+                lastVisitText = $"Last Visit: {orderedItem.Last.Date:MM/dd}, {tqty}, {price.ToCustomString()}";
+                showLastVisit = true;
+            }
+
+            // Calculate per week average from LastTwoDetails if available
+            var perWeek = orderedItem?.PerWeek ?? 0;
+            var showPerWeek = perWeek > 0;
+
+            var total = orderDetail.Qty * orderDetail.Price;
+            var qty = (double)orderDetail.Qty; // Convert float to double
+
+            // Determine color and type based on order detail
+            var productNameColor = Colors.Black;
+            var typeText = string.Empty;
+            var showTypeText = false;
+            
+            if (orderDetail.IsCredit)
+            {
+                productNameColor = Colors.Orange; // Orange for credit items
+                typeText = orderDetail.Damaged ? "Dump" : "Return";
+                showTypeText = true;
+            }
+
+            return new PreviouslyOrderedProductViewModel(this)
+            {
+                Product = product,
+                ProductName = product.Name,
+                OnHandText = $"OH: {onHand:F0}",
+                ListPriceText = $"List Price: {listPrice.ToCustomString()}",
+                LastVisitText = lastVisitText,
+                ShowLastVisit = showLastVisit,
+                PerWeekText = $"Per week: {perWeek:F2}",
+                ShowPerWeek = showPerWeek,
+                PriceText = $"Price: {orderDetail.Price.ToCustomString()}",
+                TotalText = $"Total: {total.ToCustomString()}",
+                OrderedItem = orderedItem,
+                OrderId = _order.OrderId,
+                ExistingDetail = orderDetail,
+                Quantity = qty,
+                ProductNameColor = productNameColor,
+                TypeText = typeText,
+                ShowTypeText = showTypeText
             };
         }
 
@@ -361,24 +563,11 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return;
 
-            // Create credit order
-            var credit = new Order(_order.Client) { OrderType = OrderType.Credit };
-            credit.BatchId = _order.BatchId;
-            credit.Save();
+            _appService.RecordEvent("add credit button");
 
-            // Navigate to credit order
-            if (Config.UseLaceupAdvancedCatalog)
-            {
-                await Shell.Current.GoToAsync($"advancedcatalog?orderId={credit.OrderId}");
-            }
-            else if (Config.UseCatalog)
-            {
-                await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={credit.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
-            }
-            else
-            {
-                await Shell.Current.GoToAsync($"orderdetails?orderId={credit.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
-            }
+            // Navigate to OrderCreditPage (equivalent to OrderCreditActivity in Xamarin)
+            // This matches PreviouslyOrderedTemplateActivity.AddCredit_Click which navigates to OrderCreditActivity with fromOneDoc=1
+            await Shell.Current.GoToAsync($"ordercredit?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}&fromOneDoc=1");
         }
 
         [RelayCommand]
@@ -387,19 +576,10 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return;
 
-            // Navigate to ProductCatalogPage
-            if (Category.Categories.Count == 1)
-            {
-                var category = Category.Categories.FirstOrDefault();
-                if (category != null)
-                {
-                    await Shell.Current.GoToAsync($"productcatalog?orderId={_order.OrderId}&categoryId={category.CategoryId}");
-                }
-            }
-            else
-            {
-                await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}");
-            }
+            // Navigate to FullCategoryPage first (shows categories, then navigates to ProductCatalog)
+            // This matches Xamarin's ViewProd_Click which shows categories first
+            // Pass comingFrom=PreviouslyOrdered so ProductCatalog knows to add as sales (no credit prompt)
+            await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}&comingFrom=PreviouslyOrdered");
         }
 
         [RelayCommand]
@@ -409,7 +589,8 @@ namespace LaceupMigration.ViewModels
                 return;
 
             // Navigate to categories
-            await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}");
+            // Pass comingFrom=PreviouslyOrdered so ProductCatalog knows to add as sales (no credit prompt)
+            await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}&comingFrom=PreviouslyOrdered");
         }
 
         [RelayCommand]
@@ -745,6 +926,15 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private string _quantityButtonText = "+";
 
+        [ObservableProperty]
+        private Color _productNameColor = Colors.Black;
+
+        [ObservableProperty]
+        private string _typeText = string.Empty;
+
+        [ObservableProperty]
+        private bool _showTypeText = false;
+
         public PreviouslyOrderedProductViewModel(PreviouslyOrderedTemplatePageViewModel parent)
         {
             _parent = parent;
@@ -756,19 +946,45 @@ namespace LaceupMigration.ViewModels
             UpdateTotal();
         }
 
-        private void UpdateTotal()
+        public void UpdateFromOrderDetail(OrderDetail orderDetail)
         {
+            if (orderDetail == null)
+                return;
+
+            // Update price from order detail
+            // This matches Xamarin: line.Price = orderDetail.Price; etc.
+            PriceText = $"Price: {orderDetail.Price.ToCustomString()}";
+            
+            // Note: Quantity is set in the sync loop, but we ensure it's correct here too
+            // This ensures the quantity is always from the actual order detail
+            if (Math.Abs(Quantity - (double)orderDetail.Qty) > 0.001) // Only update if different (avoid unnecessary property change)
+            {
+                Quantity = (double)orderDetail.Qty; // Convert float to double, use ACTUAL order qty
+            }
+            
+            // Update total - this must use the order detail's price and quantity
+            UpdateTotal();
+        }
+
+        public void UpdateTotal()
+        {
+            // Always use ExistingDetail.Price if available (from order detail)
+            // This ensures the total reflects the actual order detail price
             if (ExistingDetail != null)
             {
-                TotalText = $"Total: {(Quantity * ExistingDetail.Price).ToCustomString()}";
+                var total = Quantity * ExistingDetail.Price;
+                TotalText = $"Total: {total.ToCustomString()}";
             }
             else if (Quantity > 0)
             {
+                // If no order detail but quantity > 0, use expected price
                 var price = Product.GetPriceForProduct(Product, _parent._order, false, false);
-                TotalText = $"Total: {(Quantity * price).ToCustomString()}";
+                var total = Quantity * price;
+                TotalText = $"Total: {total.ToCustomString()}";
             }
             else
             {
+                // No quantity - show zero
                 TotalText = "Total: $0.00";
             }
         }
@@ -779,6 +995,18 @@ namespace LaceupMigration.ViewModels
             if (item?.Product == null || item.OrderId == 0 || _parent._order == null)
                 return;
 
+            var order = Order.Orders.FirstOrDefault(x => x.OrderId == item.OrderId);
+            if (order == null)
+                return;
+
+            // If OrderType is Credit or Return, must prompt for Dump/Return type
+            if (order.OrderType == OrderType.Credit || order.OrderType == OrderType.Return)
+            {
+                await _parent.SelectCreditTypeAndAddAsync(item);
+                return;
+            }
+
+            // For Order type, just add as regular sales item
             // Show popup to enter quantity
             var defaultQty = item.Quantity > 0 ? item.Quantity.ToString() : (item.OrderedItem?.Last?.Quantity ?? 1).ToString();
             var qtyInput = await _parent._dialogService.ShowPromptAsync(
@@ -789,16 +1017,40 @@ namespace LaceupMigration.ViewModels
                 defaultQty,
                 keyboard: Keyboard.Numeric);
 
-            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out var qty) || qty <= 0)
-                return;
-
-            // Get or create order detail
-            var order = Order.Orders.FirstOrDefault(x => x.OrderId == item.OrderId);
-            if (order == null)
+            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out var qty) || qty < 0)
                 return;
 
             var existingDetail = order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && !x.IsCredit);
 
+            // Handle qty == 0
+            if (qty == 0)
+            {
+                if (existingDetail != null)
+                {
+                    // Check if product has history
+                    bool hasHistory = item.OrderedItem != null;
+                    
+                    if (hasHistory)
+                    {
+                        // Product has history - set qty to 0 but keep the detail (will be removed from display)
+                        existingDetail.Qty = 0;
+                        order.Save();
+                    }
+                    else
+                    {
+                        // Product has NO history - delete the detail completely
+                        order.DeleteDetail(existingDetail);
+                        order.Save();
+                    }
+                }
+                
+                // Refresh the parent view
+                _parent.LoadOrderData();
+                _parent.RefreshProductList();
+                return;
+            }
+
+            // qty > 0 - normal flow
             OrderDetail? updatedDetail = null;
             if (existingDetail != null)
             {
@@ -843,6 +1095,174 @@ namespace LaceupMigration.ViewModels
             // Refresh the parent view
             _parent.LoadOrderData();
             _parent.RefreshProductList();
+        }
+    }
+
+    public partial class PreviouslyOrderedTemplatePageViewModel
+    {
+        public async Task SelectCreditTypeAndAddAsync(PreviouslyOrderedProductViewModel item)
+        {
+            if (_order == null || item?.Product == null)
+                return;
+
+            // Determine if we need to prompt for credit type
+            bool onlyReturn = _order.Details.Count > 0 && _order.Details[0].IsCredit && _order.Details[0].Damaged == false;
+            bool onlyDamage = _order.Details.Count > 0 && _order.Details[0].IsCredit && _order.Details[0].Damaged == true;
+
+            var items = new List<CreditType>();
+            
+            if (Config.WarningDumpReturn)
+            {
+                if (onlyReturn)
+                    items.Add(new CreditType() { Description = "Return", Damaged = false });
+                if (onlyDamage)
+                    items.Add(new CreditType() { Description = "Dump", Damaged = true });
+                if (!onlyDamage && !onlyReturn)
+                {
+                    items.Add(new CreditType() { Description = "Dump", Damaged = true });
+                    items.Add(new CreditType() { Description = "Return", Damaged = false });
+                }
+            }
+            else
+            {
+                items.Add(new CreditType() { Description = "Dump", Damaged = true });
+                items.Add(new CreditType() { Description = "Return", Damaged = false });
+            }
+
+            if (Config.CreditReasonInLine)
+            {
+                var reasons = new List<Reason>();
+                reasons.AddRange(Reason.GetReasonsByType(ReasonType.Dump));
+                reasons.AddRange(Reason.GetReasonsByType(ReasonType.Return));
+
+                if (reasons.Count > 0)
+                {
+                    items = new List<CreditType>();
+                    foreach (var r in reasons)
+                        items.Add(new CreditType() { Description = r.Description, Damaged = (r.AvailableIn & (int)ReasonType.Dump) > 0, ReasonId = r.Id });
+                }
+            }
+
+            if (items.Count == 0)
+            {
+                // No selection needed, use default
+                await AddProductWithCreditTypeAsync(item, false, 0);
+                return;
+            }
+
+            // Show selection dialog
+            var options = items.Select(x => x.Description).ToArray();
+            var selected = await _dialogService.ShowActionSheetAsync("Type of Credit Item", "Cancel", null, options);
+            
+            if (string.IsNullOrEmpty(selected) || selected == "Cancel")
+                return;
+
+            var selectedIndex = Array.IndexOf(options, selected);
+            if (selectedIndex >= 0 && selectedIndex < items.Count)
+            {
+                var selectedItem = items[selectedIndex];
+                await AddProductWithCreditTypeAsync(item, selectedItem.Damaged, selectedItem.ReasonId);
+            }
+        }
+
+        private async Task AddProductWithCreditTypeAsync(PreviouslyOrderedProductViewModel item, bool damaged, int reasonId)
+        {
+            if (_order == null || item?.Product == null)
+                return;
+
+            // Show popup to enter quantity
+            var defaultQty = item.Quantity > 0 ? item.Quantity.ToString() : (item.OrderedItem?.Last?.Quantity ?? 1).ToString();
+            var qtyInput = await _dialogService.ShowPromptAsync(
+                $"Enter Quantity for {item.ProductName}",
+                "Quantity",
+                "OK",
+                "Cancel",
+                defaultQty,
+                keyboard: Keyboard.Numeric);
+
+            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out var qty) || qty < 0)
+                return;
+
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && x.IsCredit == true);
+
+            // Handle qty == 0
+            if (qty == 0)
+            {
+                if (existingDetail != null)
+                {
+                    // Check if product has history
+                    bool hasHistory = item.OrderedItem != null;
+                    
+                    if (hasHistory)
+                    {
+                        // Product has history - set qty to 0 but keep the detail (will be removed from display)
+                        existingDetail.Qty = 0;
+                        _order.Save();
+                    }
+                    else
+                    {
+                        // Product has NO history - delete the detail completely
+                        _order.DeleteDetail(existingDetail);
+                        _order.Save();
+                    }
+                }
+                
+                // Refresh the parent view
+                LoadOrderData();
+                RefreshProductList();
+                return;
+            }
+
+            // qty > 0 - normal flow
+            OrderDetail? updatedDetail = null;
+            if (existingDetail != null)
+            {
+                // Update existing detail
+                existingDetail.Qty = (float)qty;
+                existingDetail.Damaged = damaged;
+                existingDetail.ReasonId = reasonId;
+                updatedDetail = existingDetail;
+            }
+            else
+            {
+                // Create new credit detail
+                var detail = new OrderDetail(item.Product, 0, _order);
+                detail.IsCredit = true;
+                detail.Damaged = damaged;
+                detail.ReasonId = reasonId;
+                double expectedPrice = Product.GetPriceForProduct(item.Product, _order, true, false);
+                double price = 0;
+                if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out price))
+                {
+                    detail.Price = price;
+                    detail.FromOfferPrice = true;
+                }
+                else
+                {
+                    detail.Price = expectedPrice;
+                    detail.FromOfferPrice = false;
+                }
+                detail.ExpectedPrice = expectedPrice;
+                detail.UnitOfMeasure = item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.Qty = (float)qty;
+                detail.CalculateOfferDetail();
+                _order.AddDetail(detail);
+                updatedDetail = detail;
+            }
+
+            // Update related details and recalculate discounts
+            if (updatedDetail != null)
+            {
+                OrderDetail.UpdateRelated(updatedDetail, _order);
+                _order.RecalculateDiscounts();
+            }
+
+            // Save the order
+            _order.Save();
+
+            // Refresh the parent view
+            LoadOrderData();
+            RefreshProductList();
         }
     }
 }

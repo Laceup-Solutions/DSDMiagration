@@ -17,6 +17,7 @@
                 <Button Text="Add Credit"
                         Command="{Binding AddCreditCommand}"
                         IsEnabled="{Binding CanEdit}"
+                        IsVisible="{Binding ShowAddCredit}"
                         BackgroundColor="{StaticResource PrimaryDark}"
                         TextColor="White"
                         Grid.Column="0" />
@@ -136,7 +137,7 @@
                                        Text="{Binding ProductName}"
                                        FontSize="16"
                                        FontAttributes="Bold"
-                                       TextColor="{StaticResource PrimaryDark}" />
+                                       TextColor="{Binding ProductNameColor}" />
                                 <Label Grid.Column="1" Grid.Row="0"
                                        Text="{Binding OnHandText}"
                                        FontSize="14"
@@ -148,6 +149,11 @@
                                     <Label Text="{Binding ListPriceText}"
                                            FontSize="13"
                                            TextColor="{StaticResource Gray600}" />
+                                    <Label Text="{Binding TypeText}"
+                                           FontSize="13"
+                                           FontAttributes="Bold"
+                                           TextColor="{Binding ProductNameColor}"
+                                           IsVisible="{Binding ShowTypeText}" />
                                     <Label Text="{Binding LastVisitText}"
                                            FontSize="13"
                                            TextColor="{StaticResource Gray600}"
@@ -172,7 +178,7 @@
                                     <Button Text="{Binding QuantityButtonText}"
                                             Command="{Binding AddProductCommand}"
                                             CommandParameter="{Binding .}"
-                                            WidthRequest="40"
+                                            WidthRequest="60"
                                             HeightRequest="40"
                                             BackgroundColor="{StaticResource PrimaryDark}"
                                             TextColor="White"

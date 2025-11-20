@@ -74,6 +74,7 @@ namespace LaceupMigration.Views
             bool asReturnItem = false;
             int? productId = null;
             bool consignmentCounting = false;
+            string? comingFrom = null;
 
             if (query.TryGetValue("clientId", out var clientValue) && clientValue != null)
             {
@@ -124,6 +125,11 @@ namespace LaceupMigration.Views
                 consignmentCounting = countingValue.ToString() == "1" || countingValue.ToString().ToLowerInvariant() == "true";
             }
 
+            if (query.TryGetValue("comingFrom", out var fromValue) && fromValue != null)
+            {
+                comingFrom = fromValue.ToString();
+            }
+
             Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(
                 clientId: clientId,
                 orderId: orderId,
@@ -133,7 +139,8 @@ namespace LaceupMigration.Views
                 asCreditItem: asCreditItem,
                 asReturnItem: asReturnItem,
                 productId: productId,
-                consignmentCounting: consignmentCounting));
+                consignmentCounting: consignmentCounting,
+                comingFrom: comingFrom));
         }
 
         protected override async void OnAppearing()

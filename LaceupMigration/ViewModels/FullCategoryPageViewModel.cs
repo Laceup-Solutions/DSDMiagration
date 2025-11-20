@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
 using LaceupMigration.Services;
+using Microsoft.Maui.ApplicationModel;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -25,6 +26,7 @@ namespace LaceupMigration.ViewModels
         private bool _asReturnItem;
         private int? _productId;
         private bool _consignmentCounting;
+        private string? _comingFrom; // "Credit" or "PreviouslyOrdered"
 
         public ObservableCollection<CategoryViewModel> Categories { get; } = new();
         public ObservableCollection<ProductViewModel> Products { get; } = new();
@@ -59,7 +61,7 @@ namespace LaceupMigration.ViewModels
 
         public async Task InitializeAsync(int? clientId = null, int? orderId = null, int? categoryId = null, 
             string? productSearch = null, bool comingFromSearch = false, bool asCreditItem = false, 
-            bool asReturnItem = false, int? productId = null, bool consignmentCounting = false)
+            bool asReturnItem = false, int? productId = null, bool consignmentCounting = false, string? comingFrom = null)
         {
             _orderId = orderId;
             _categoryId = categoryId;
@@ -69,6 +71,7 @@ namespace LaceupMigration.ViewModels
             _asReturnItem = asReturnItem;
             _productId = productId;
             _consignmentCounting = consignmentCounting;
+            _comingFrom = comingFrom;
 
             if (orderId.HasValue)
             {
@@ -98,31 +101,40 @@ namespace LaceupMigration.ViewModels
                 }
                 else if (Config.UseCatalog)
                 {
-                    // Redirect to ProductCatalog
-                    var route = $"productcatalog?orderId={orderId.Value}";
-                    if (categoryId.HasValue)
-                        route += $"&categoryId={categoryId.Value}";
-                    if (!string.IsNullOrEmpty(productSearch))
-                        route += $"&productSearch={Uri.EscapeDataString(productSearch)}";
-                    if (comingFromSearch)
-                        route += "&comingFromSearch=yes";
-                    if (asCreditItem)
-                        route += "&asCreditItem=1";
-                    if (asReturnItem)
-                        route += "&asReturnItem=1";
-                    if (productId.HasValue)
-                        route += $"&productId={productId.Value}";
-                    if (consignmentCounting)
-                        route += "&consignmentCounting=1";
-                    await Shell.Current.GoToAsync(route);
-                    return;
+                    // If categoryId is provided, navigate directly to ProductCatalog
+                    // Otherwise, show categories first (don't redirect)
+                    if (categoryId.HasValue || !string.IsNullOrEmpty(productSearch) || comingFromSearch)
+                    {
+                        // Redirect to ProductCatalog
+                        var route = $"productcatalog?orderId={orderId.Value}";
+                        if (categoryId.HasValue)
+                            route += $"&categoryId={categoryId.Value}";
+                        if (!string.IsNullOrEmpty(productSearch))
+                            route += $"&productSearch={Uri.EscapeDataString(productSearch)}";
+                        if (comingFromSearch)
+                            route += "&comingFromSearch=yes";
+                        if (asCreditItem)
+                            route += "&asCreditItem=1";
+                        if (asReturnItem)
+                            route += "&asReturnItem=1";
+                        if (productId.HasValue)
+                            route += $"&productId={productId.Value}";
+                        if (consignmentCounting)
+                            route += "&consignmentCounting=1";
+                        if (!string.IsNullOrEmpty(_comingFrom))
+                            route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
+                        await Shell.Current.GoToAsync(route);
+                        return;
+                    }
+                    // Otherwise, show categories (fall through to show categories)
                 }
 
+                // Always show categories when orderId is provided (not products)
                 _initialized = true;
-                ShowCategories = false;
-                ShowProducts = true;
-                Title = "Products";
-                LoadProducts();
+                ShowCategories = true;
+                ShowProducts = false;
+                Title = "Categories";
+                LoadCategories();
             }
             else if (clientId.HasValue)
             {
@@ -161,10 +173,21 @@ namespace LaceupMigration.ViewModels
 
         private async Task RefreshAsync()
         {
-            if (ShowProducts)
-                LoadProducts();
-            else
+            // Always show categories when initialized with orderId (unless categoryId/productSearch is provided)
+            if (_orderId.HasValue && !_categoryId.HasValue && string.IsNullOrEmpty(_productSearch) && !_comingFromSearch)
+            {
+                ShowCategories = true;
+                ShowProducts = false;
                 LoadCategories();
+            }
+            else if (ShowProducts)
+            {
+                LoadProducts();
+            }
+            else
+            {
+                LoadCategories();
+            }
             await Task.CompletedTask;
         }
 
@@ -254,7 +277,23 @@ namespace LaceupMigration.ViewModels
 
         partial void OnSearchQueryChanged(string value)
         {
-            LoadCategories();
+            if (SearchByCategory)
+            {
+                LoadCategories();
+            }
+            else if (SearchByProduct && !string.IsNullOrWhiteSpace(value) && _orderId.HasValue)
+            {
+                // When searching by product, navigate to ProductCatalog with search term
+                // This matches Xamarin's SearchView_QueryTextSubmit behavior
+                var route = $"productcatalog?orderId={_orderId.Value}&productSearch={Uri.EscapeDataString(value)}&comingFromSearch=yes";
+                if (_asCreditItem)
+                    route += "&asCreditItem=1";
+                if (_asReturnItem)
+                    route += "&asReturnItem=1";
+                if (!string.IsNullOrEmpty(_comingFrom))
+                    route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
+                MainThread.BeginInvokeOnMainThread(async () => await Shell.Current.GoToAsync(route));
+            }
         }
 
         partial void OnSearchByCategoryChanged(bool value)
@@ -277,7 +316,14 @@ namespace LaceupMigration.ViewModels
 
             if (Config.UseCatalog && _orderId.HasValue)
             {
-                await Shell.Current.GoToAsync($"productcatalog?orderId={_orderId.Value}&categoryId={item.Category.CategoryId}");
+                var route = $"productcatalog?orderId={_orderId.Value}&categoryId={item.Category.CategoryId}";
+                if (!string.IsNullOrEmpty(_comingFrom))
+                    route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
+                if (_asCreditItem)
+                    route += "&asCreditItem=1";
+                if (_asReturnItem)
+                    route += "&asReturnItem=1";
+                await Shell.Current.GoToAsync(route);
                 return;
             }
 

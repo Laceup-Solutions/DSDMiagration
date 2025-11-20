@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Services;
+using Microsoft.Maui.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -26,10 +27,13 @@ namespace LaceupMigration.ViewModels
         private bool _asReturnItem;
         private int? _productId;
         private bool _consignmentCounting;
+        private string? _comingFrom; // "Credit" or "PreviouslyOrdered"
         private string _searchCriteria = string.Empty;
         private bool _isCreating = false;
         private bool _atLeastOneImage = false;
         private ViewTypes _currentViewType = ViewTypes.Normal;
+        private bool _onlyReturn = false;
+        private bool _onlyDamage = false;
 
         public ObservableCollection<CatalogItemViewModel> Products { get; } = new();
         public ObservableCollection<CatalogItemViewModel> FilteredProducts { get; } = new();
@@ -99,6 +103,11 @@ namespace LaceupMigration.ViewModels
                 _consignmentCounting = countingValue.ToString() == "1" || countingValue.ToString().ToLowerInvariant() == "true";
             }
 
+            if (query.TryGetValue("comingFrom", out var fromValue) && fromValue != null)
+            {
+                _comingFrom = fromValue.ToString();
+            }
+
             MainThread.BeginInvokeOnMainThread(async () => await InitializeAsync(orderId));
         }
 
@@ -116,6 +125,10 @@ namespace LaceupMigration.ViewModels
                 await _dialogService.ShowAlertAsync("Order not found.", "Error");
                 return;
             }
+
+            // Set onlyReturn and onlyDamage based on existing order details (matching Xamarin logic)
+            _onlyReturn = _order.Details.Count > 0 && _order.Details[0].IsCredit && _order.Details[0].Damaged == false;
+            _onlyDamage = _order.Details.Count > 0 && _order.Details[0].IsCredit && _order.Details[0].Damaged == true;
 
             _initialized = true;
             PrepareProductList();
@@ -251,7 +264,15 @@ namespace LaceupMigration.ViewModels
                     catalogItem.Values.Add(odLine);
                 }
 
+                // Update display after adding values
+                catalogItem.UpdateDisplay();
                 catalogItems.Add(catalogItem);
+            }
+
+            // Update display for all items after populating values
+            foreach (var item in catalogItems)
+            {
+                item.UpdateDisplay();
             }
 
             // Sort products - convert to CatalogItem for sorting
@@ -264,6 +285,12 @@ namespace LaceupMigration.ViewModels
             var sorted = SortDetails.SortedDetailsInProduct(catalogItemsForSort).ToList();
             
             // Rebuild ViewModels from sorted items maintaining order
+            // Update display for each item after sorting
+            foreach (var item in catalogItems)
+            {
+                item.UpdateDisplay();
+            }
+            
             var sortedViewModels = new List<CatalogItemViewModel>();
             foreach (var sortedItem in sorted)
             {
@@ -399,13 +426,262 @@ namespace LaceupMigration.ViewModels
             if (_order == null || item.Product == null)
                 return;
 
-            // Navigate to AddItemPage for this product
-            var route = $"additem?orderId={_order.OrderId}&productId={item.Product.ProductId}";
-            if (_asCreditItem)
-                route += "&asCreditItem=1";
-            if (_consignmentCounting)
-                route += "&consignmentCounting=1";
+            _appService.RecordEvent("AddButton_Click Product Catalog");
+
+            if (_order.OrderType == OrderType.Load)
+            {
+                // Handle Load order type separately
+                await RestOfTheAddDialogLoadAsync(item);
+                return;
+            }
+
+            // If coming from Credit page, prompt for credit type (Dump/Return) first
+            // If coming from PreviouslyOrdered, just add as sales (no prompt needed)
+            if (_comingFrom == "Credit" || _asCreditItem)
+            {
+                // Check conditions for default type selection
+                int defaultType = 0;
+                
+                if (_order.AsPresale && (Config.UseReturnOrder && _order != null && _order.OrderType != OrderType.Order))
+                {
+                    defaultType = !_asReturnItem ? 1 : 2;
+                }
+                else if ((Config.UseReturnInvoice || _order.IsExchange) && _order.OrderType == OrderType.Credit)
+                {
+                    defaultType = !_asReturnItem ? 1 : 2;
+                }
+                else if (!string.IsNullOrEmpty(Config.DefaultCreditDetType))
+                {
+                    defaultType = Config.DefaultCreditDetType.ToLower() == "dump" ? 1 : 2;
+                }
+
+                // Select credit type (Dump or Return)
+                await SelectCreditTypeAsync(item, false, defaultType);
+                return;
+            }
+
+            // For PreviouslyOrdered (sales items), show popup to enter quantity (same as PreviouslyOrderedTemplatePage)
+            await AddProductWithPopupAsync(item);
+        }
+
+        private async Task SelectCreditTypeAsync(CatalogItemViewModel item, bool fromEdit, int defaultType = 0)
+        {
+            if (_order == null || item.Product == null)
+                return;
+
+            var items = new List<CreditType>();
             
+            if (defaultType == 0)
+            {
+                if (Config.WarningDumpReturn) // After picking Return || Damage only lets you pick only the same
+                {
+                    if (_onlyReturn)
+                        items.Add(new CreditType() { Description = "Return", Damaged = false });
+                    if (_onlyDamage)
+                        items.Add(new CreditType() { Description = "Dump", Damaged = true });
+                    if (!_onlyDamage && !_onlyReturn)
+                    {
+                        items.Add(new CreditType() { Description = "Dump", Damaged = true });
+                        items.Add(new CreditType() { Description = "Return", Damaged = false });
+                    }
+                }
+                else
+                {
+                    items.Add(new CreditType() { Description = "Dump", Damaged = true });
+                    items.Add(new CreditType() { Description = "Return", Damaged = false });
+                }
+            }
+
+            if (Config.CreditReasonInLine)
+            {
+                var reasons = new List<Reason>();
+                if (defaultType == 0 || defaultType == 1)
+                    reasons.AddRange(Reason.GetReasonsByType(ReasonType.Dump));
+                if (defaultType == 0 || defaultType == 2)
+                    reasons.AddRange(Reason.GetReasonsByType(ReasonType.Return));
+
+                if (reasons.Count > 0)
+                {
+                    items = new List<CreditType>();
+                    foreach (var r in reasons)
+                        items.Add(new CreditType() { Description = r.Description, Damaged = (r.AvailableIn & (int)ReasonType.Dump) > 0, ReasonId = r.Id });
+                }
+            }
+
+            if (items.Count == 0)
+            {
+                // No selection needed, proceed with default
+                await RestOfTheAddDialogAsync(item, defaultType == 1, fromEdit, 0);
+                return;
+            }
+
+            // Show selection dialog
+            var options = items.Select(x => x.Description).ToArray();
+            var selected = await _dialogService.ShowActionSheetAsync("Type of Credit Item", "Cancel", null, options);
+            
+            if (string.IsNullOrEmpty(selected) || selected == "Cancel")
+                return;
+
+            var selectedIndex = Array.IndexOf(options, selected);
+            if (selectedIndex >= 0 && selectedIndex < items.Count)
+            {
+                var selectedItem = items[selectedIndex];
+                await RestOfTheAddDialogAsync(item, selectedItem.Damaged, fromEdit, selectedItem.ReasonId);
+            }
+        }
+
+        private async Task RestOfTheAddDialogAsync(CatalogItemViewModel item, bool damaged, bool fromEdit, int reasonId)
+        {
+            if (_order == null || item.Product == null)
+                return;
+
+            // Show popup to enter quantity for credit item
+            var defaultQty = "1";
+            if (item.Values.Count > 0 && item.Values[0].Qty > 0)
+                defaultQty = item.Values[0].Qty.ToString();
+            
+            var qtyInput = await _dialogService.ShowPromptAsync(
+                $"Enter Quantity for {item.Product.Name}",
+                "Quantity",
+                "OK",
+                "Cancel",
+                defaultQty,
+                keyboard: Keyboard.Numeric);
+
+            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out var qty) || qty <= 0)
+                return;
+
+            // Get or create order detail
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && x.IsCredit == true);
+
+            OrderDetail? updatedDetail = null;
+            if (existingDetail != null)
+            {
+                // Update existing detail
+                existingDetail.Qty = (float)qty;
+                existingDetail.Damaged = damaged;
+                existingDetail.ReasonId = reasonId;
+                updatedDetail = existingDetail;
+            }
+            else
+            {
+                // Create new credit detail
+                var detail = new OrderDetail(item.Product, 0, _order);
+                detail.IsCredit = true;
+                detail.Damaged = damaged;
+                detail.ReasonId = reasonId;
+                double expectedPrice = Product.GetPriceForProduct(item.Product, _order, true, false);
+                double price = 0;
+                if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out price))
+                {
+                    detail.Price = price;
+                    detail.FromOfferPrice = true;
+                }
+                else
+                {
+                    detail.Price = expectedPrice;
+                    detail.FromOfferPrice = false;
+                }
+                detail.ExpectedPrice = expectedPrice;
+                detail.UnitOfMeasure = item.Line.UoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.Qty = (float)qty;
+                detail.CalculateOfferDetail();
+                _order.AddDetail(detail);
+                updatedDetail = detail;
+            }
+
+            // Update related details and recalculate discounts
+            if (updatedDetail != null)
+            {
+                OrderDetail.UpdateRelated(updatedDetail, _order);
+                _order.RecalculateDiscounts();
+            }
+
+            // Save the order
+            _order.Save();
+
+            // Refresh the product list
+            PrepareProductList();
+            Filter();
+        }
+
+        private async Task AddProductWithPopupAsync(CatalogItemViewModel item)
+        {
+            if (_order == null || item.Product == null)
+                return;
+
+            // Show popup to enter quantity (same as PreviouslyOrderedTemplatePage)
+            var defaultQty = "1";
+            if (item.Values.Count > 0 && item.Values[0].Qty > 0)
+                defaultQty = item.Values[0].Qty.ToString();
+            
+            var qtyInput = await _dialogService.ShowPromptAsync(
+                $"Enter Quantity for {item.Product.Name}",
+                "Quantity",
+                "OK",
+                "Cancel",
+                defaultQty,
+                keyboard: Keyboard.Numeric);
+
+            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out var qty) || qty <= 0)
+                return;
+
+            // Get or create order detail
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && !x.IsCredit);
+
+            OrderDetail? updatedDetail = null;
+            if (existingDetail != null)
+            {
+                // Update existing detail
+                existingDetail.Qty = (float)qty;
+                updatedDetail = existingDetail;
+            }
+            else
+            {
+                // Create new detail
+                var detail = new OrderDetail(item.Product, 0, _order);
+                double expectedPrice = Product.GetPriceForProduct(item.Product, _order, false, false);
+                double price = 0;
+                if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out price))
+                {
+                    detail.Price = price;
+                    detail.FromOfferPrice = true;
+                }
+                else
+                {
+                    detail.Price = expectedPrice;
+                    detail.FromOfferPrice = false;
+                }
+                detail.ExpectedPrice = expectedPrice;
+                detail.UnitOfMeasure = item.Line.UoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.Qty = (float)qty;
+                detail.CalculateOfferDetail();
+                _order.AddDetail(detail);
+                updatedDetail = detail;
+            }
+
+            // Update related details and recalculate discounts
+            if (updatedDetail != null)
+            {
+                OrderDetail.UpdateRelated(updatedDetail, _order);
+                _order.RecalculateDiscounts();
+            }
+
+            // Save the order
+            _order.Save();
+
+            // Refresh the product list
+            PrepareProductList();
+            Filter();
+        }
+
+        private async Task RestOfTheAddDialogLoadAsync(CatalogItemViewModel item)
+        {
+            if (_order == null || item.Product == null)
+                return;
+
+            // Handle Load order type - navigate to AddItemPage
+            var route = $"additem?orderId={_order.OrderId}&productId={item.Product.ProductId}";
             await Shell.Current.GoToAsync(route);
         }
 
@@ -535,15 +811,10 @@ namespace LaceupMigration.ViewModels
 
             _order.Save();
 
-            // Navigate back to order template
-            var targetRoute = Config.UseFullTemplateForClient(_order.Client) && !_order.Client.AllowOneDoc && _order.OrderType != OrderType.Load
-                ? $"superordertemplate?asPresale=0&orderId={_order.OrderId}"
-                : $"orderdetails?orderId={_order.OrderId}&asPresale=0";
-
-            if (oneDetail != null)
-                targetRoute += $"&productId={oneDetail.Product.ProductId}";
-
-            await Shell.Current.GoToAsync(targetRoute);
+            // Pop ProductCatalog and Categories pages from navigation stack
+            // This will return us to the source page (OrderCreditPage or PreviouslyOrderedTemplatePage)
+            await Shell.Current.GoToAsync(".."); // Pop ProductCatalog
+            await Shell.Current.GoToAsync(".."); // Pop Categories (FullCategory)
         }
 
         private async Task AddToLoadOrderAsync()
@@ -594,6 +865,20 @@ namespace LaceupMigration.ViewModels
                 route += "&lastDetail=0";
 
             await Shell.Current.GoToAsync(route);
+        }
+
+        [RelayCommand]
+        private async Task DoneAsync()
+        {
+            // Same as AddToOrder - pop pages and go back
+            await AddToOrderAsync();
+        }
+
+        [RelayCommand]
+        private async Task ShowMenuAsync()
+        {
+            // TODO: Implement menu options
+            await Task.CompletedTask;
         }
 
         [RelayCommand]
@@ -664,25 +949,77 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _hasImage = false;
 
-        private void UpdateDisplay()
+        [ObservableProperty]
+        private string _quantityButtonText = "+";
+
+        [ObservableProperty]
+        private bool _hasValues = false;
+
+        [ObservableProperty]
+        private string _priceText = string.Empty;
+
+        [ObservableProperty]
+        private string _typeText = string.Empty;
+
+        [ObservableProperty]
+        private bool _showTypeText = false;
+
+        [ObservableProperty]
+        private Color _productNameColor = Colors.Black;
+
+        public void UpdateDisplay()
         {
             if (Product == null || Line == null)
                 return;
 
             // Update on hand
-            // This would need order context - simplified for now
-            OnHandText = $"OH: {Product.CurrentWarehouseInventory:F2}";
+            // Format as integer (matching screenshot: OH:93, OH:94, etc.)
+            var oh = (int)Product.CurrentWarehouseInventory;
+            OnHandText = $"OH:{oh}";
 
             // Update UoM
             UomText = Line.UoM != null ? Line.UoM.Name : string.Empty;
 
             // Update list price
             // This would need order context - simplified for now
-            ListPriceText = $"List: {Line.ExpectedPrice:C}";
+            ListPriceText = $"List Price: {Line.ExpectedPrice.ToCustomString()}";
 
             // Update total
             var total = Values.Sum(v => v.Qty * v.Price);
-            TotalText = total.ToString("C");
+            TotalText = $"Total: {total.ToCustomString()}";
+
+            // Update quantity button text
+            var totalQty = Values.Sum(v => v.Qty);
+            QuantityButtonText = totalQty > 0 ? totalQty.ToString("F0") : "+";
+
+            // Update has values
+            HasValues = Values.Count > 0 && Values.Any(v => v.Qty > 0);
+
+            // Update price and type text from first value with Qty > 0
+            var firstValue = Values.FirstOrDefault(v => v.Qty > 0);
+            if (firstValue != null)
+            {
+                PriceText = $"Price: {firstValue.Price.ToCustomString()}";
+                if (firstValue.IsCredit)
+                {
+                    TypeText = $"Type:{(firstValue.Damaged ? "Dump" : "Return")}";
+                    ShowTypeText = true;
+                    ProductNameColor = Colors.Orange; // Orange for credit items
+                }
+                else
+                {
+                    TypeText = string.Empty;
+                    ShowTypeText = false;
+                    ProductNameColor = Colors.Black; // Black for regular items
+                }
+            }
+            else
+            {
+                PriceText = string.Empty;
+                TypeText = string.Empty;
+                ShowTypeText = false;
+                ProductNameColor = Colors.Black;
+            }
 
             // Update avg sale
             if (Config.ShowAvgInCatalog)

@@ -12,6 +12,9 @@
             <Button Text="Save"
                     Command="{Binding SaveCommand}"
                     HorizontalOptions="FillAndExpand" />
+            <Button Text="{Binding FilterButtonText}"
+                    Command="{Binding ToggleFilterCommand}"
+                    HorizontalOptions="FillAndExpand" />
             <Button Text="Print"
                     Command="{Binding PrintCommand}"
                     HorizontalOptions="FillAndExpand" />
@@ -41,6 +44,16 @@
                                 <Label Text="{Binding CurrentQuantity, StringFormat='Current: {0:F2}'}"
                                        FontSize="14"
                                        TextColor="#666666" />
+                                <HorizontalStackLayout Spacing="8">
+                                    <Label Text="{Binding Lot, StringFormat='Lot: {0}'}"
+                                           FontSize="12"
+                                           TextColor="#666666"
+                                           IsVisible="{Binding Lot, Converter={StaticResource IsStringNotEmptyConverter}}" />
+                                    <Label Text="{Binding Weight, StringFormat='Weight: {0:F2}'}"
+                                           FontSize="12"
+                                           TextColor="#666666"
+                                           IsVisible="{Binding Weight, Converter={StaticResource IsNotZeroConverter}}" />
+                                </HorizontalStackLayout>
                             </VerticalStackLayout>
                             <Entry Grid.Column="1"
                                    Text="{Binding EndingQuantity, StringFormat='{0:F2}'}"

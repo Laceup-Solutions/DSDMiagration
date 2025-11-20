@@ -5,63 +5,62 @@
              x:Class="LaceupMigration.Views.EndOfDayPage"
              Shell.TabBarIsVisible="False"
              Title="End of Day">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" 
+                     Command="{Binding ShowMenuCommand}"
+                     Order="Primary"
+                     Priority="0" />
+    </ContentPage.ToolbarItems>
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
-            <Button Text="Route Returns"
-                    Command="{Binding RouteReturnsCommand}"
+            <!-- Order matches Xamarin endofdaylayout.axml -->
+            <Button Text="Set Par Level"
+                    Command="{Binding SetParLevelCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
                     FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="End Inventory"
-                    Command="{Binding EndInventoryCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="Cycle Count"
-                    Command="{Binding CycleCountCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="Print Reports"
-                    Command="{Binding PrintReportsCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="End of Day"
-                    Command="{Binding EndOfDayCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
+                    Padding="16,12"
+                    IsVisible="{Binding ShowSetParLevel}" />
 
             <Button Text="Load Order"
                     Command="{Binding LoadOrderCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
                     FontSize="16"
-                    Padding="16,12" />
+                    Padding="16,12"
+                    IsVisible="{Binding ShowLoadOrder}" />
 
-            <Button Text="Set Par Level"
-                    Command="{Binding SetParLevelCommand}"
+            <Button Text="Route Returns"
+                    Command="{Binding RouteReturnsCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
                     FontSize="16"
-                    Padding="16,12" />
+                    Padding="16,12"
+                    IsVisible="{Binding ShowRouteReturns}" />
+
+            <Button Text="End Inventory"
+                    Command="{Binding EndInventoryCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    IsVisible="{Binding ShowEndInventory}" />
+
+            <Button Text="Cycle Count"
+                    Command="{Binding CycleCountCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    IsVisible="{Binding ShowCycleCount}" />
 
             <Button Text="Clock Out"
                     Command="{Binding ClockOutCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
                     FontSize="16"
-                    Padding="16,12" />
+                    Padding="16,12"
+                    IsVisible="{Binding ShowClockOut}" />
 
             <Button Text="Route Expenses"
                     Command="{Binding RouteExpensesCommand}"
@@ -70,6 +69,21 @@
                     FontSize="16"
                     Padding="16,12"
                     IsVisible="{Binding ShowExpenses}" />
+
+            <Button Text="Print Reports"
+                    Command="{Binding PrintReportsCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    IsVisible="{Binding ShowPrintReports}" />
+
+            <Button Text="End of Day"
+                    Command="{Binding EndOfDayCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
