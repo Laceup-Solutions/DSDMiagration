@@ -263,6 +263,7 @@ public class InterfaceHelper : IInterfaceHelper
     public void ViewPdf(string filepath)
     {
         Java.IO.File file = new Java.IO.File(filepath);
+        
         Context context = Android.App.Application.Context;
 
         try
