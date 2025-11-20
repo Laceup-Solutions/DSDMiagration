@@ -6,7 +6,7 @@
              x:Class="LaceupMigration.Views.SalesReportPage"
              Shell.TabBarIsVisible="False"
              Title="Sales Report">
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="16" Padding="16">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*" RowSpacing="16" Padding="16">
         <Grid Grid.Row="0" ColumnDefinitions="*,*" ColumnSpacing="8">
             <VerticalStackLayout Grid.Column="0" Spacing="4">
                 <Label Text="From Date:" FontSize="12" TextColor="Gray" />
@@ -26,20 +26,44 @@
             </VerticalStackLayout>
         </Grid>
 
-        <HorizontalStackLayout Grid.Row="1" Spacing="8">
+        <VerticalStackLayout Grid.Row="1" Spacing="4" IsVisible="{Binding ShowSalesmanSelection}">
+            <Label Text="Salesman:" FontSize="12" TextColor="Gray" />
+            <Button Text="{Binding SelectedSalesman}"
+                    Command="{Binding SelectSalesmanCommand}"
+                    BackgroundColor="{StaticResource Gray200}"
+                    TextColor="Black"
+                    HorizontalOptions="FillAndExpand" />
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Row="2" Spacing="4">
+            <Label Text="Commission Percent:" FontSize="12" TextColor="Gray" />
+            <Entry Text="{Binding Commission}"
+                   Keyboard="Numeric"
+                   Placeholder="0" />
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Row="3" Spacing="8">
             <Button Text="Run Report"
                     Command="{Binding RunReportCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
                     HorizontalOptions="FillAndExpand" />
-            <Button Text="Send by Email"
-                    Command="{Binding SendByEmailCommand}"
+            <Button Text="Run Report With Details"
+                    Command="{Binding RunReportWithDetailsCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
-                    HorizontalOptions="FillAndExpand" />
-        </HorizontalStackLayout>
+                    HorizontalOptions="FillAndExpand"
+                    IsVisible="{Binding ShowWithDetailsButton}" />
+        </VerticalStackLayout>
 
-        <ActivityIndicator Grid.Row="2"
+        <Button Grid.Row="4"
+                Text="Send by Email"
+                Command="{Binding SendByEmailCommand}"
+                BackgroundColor="{StaticResource Primary}"
+                TextColor="White"
+                HorizontalOptions="FillAndExpand" />
+
+        <ActivityIndicator Grid.Row="5"
                            IsRunning="{Binding IsLoading}"
                            IsVisible="{Binding IsLoading}"
                            HeightRequest="50" />

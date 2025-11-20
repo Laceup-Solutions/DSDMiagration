@@ -125,8 +125,8 @@
           Padding="16"
           RowSpacing="12">
         <Border Grid.Row="0"
-                StrokeThickness="0"
-                BackgroundColor="#F2F2F7"
+                StrokeThickness="1"
+                BackgroundColor="White"
                 IsVisible="{Binding IsSearchVisible}"
                 Padding="12,4"
                 StrokeShape="RoundRectangle 12">

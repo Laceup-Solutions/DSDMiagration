@@ -29,7 +29,8 @@
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
 
 		<!-- Splash Screen -->
-		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+		<MauiSplashScreen Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" Include="Resources\Splash\splash.svg" Color="#FFFFFF" BaseSize="256,256" />
+		<MauiSplashScreen Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'" Include="Resources\Splash\splash.svg" BaseSize="256, 110" Color="#FFFFFF" />
 
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />
@@ -55,18 +56,21 @@
         </Reference>
 	</ItemGroup>
 
+	<ItemGroup Condition="'$(TargetFramework)' != 'net9.0-ios' OR ('$(RuntimeIdentifier)' != 'iossimulator-arm64' AND '$(RuntimeIdentifier)' != 'iossimulator-x64')">
+		<PackageReference Include="Microsoft.AppCenter" Version="5.0.7" />
+		<PackageReference Include="Microsoft.AppCenter.Analytics" Version="5.0.7" />
+		<PackageReference Include="Microsoft.AppCenter.Crashes" Version="5.0.7" />
+		<PackageReference Include="SocketMobile.Capture" Version="1.7.112.395" />
+	</ItemGroup>
+	
 	<ItemGroup>
 		<PackageReference Include="AathifMahir.Maui.MauiIcons.Core" Version="5.0.0" />
 		<PackageReference Include="AathifMahir.Maui.MauiIcons.Material.Outlined" Version="5.0.0" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="12.3.0" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-		<PackageReference Include="Microsoft.AppCenter" Version="5.0.7" />
-		<PackageReference Include="Microsoft.AppCenter.Analytics" Version="5.0.7" />
-		<PackageReference Include="Microsoft.AppCenter.Crashes" Version="5.0.7" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.120" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
 		<PackageReference Include="SharpZipLib" Version="1.4.2" />
-		<PackageReference Include="SocketMobile.Capture" Version="1.7.112.395" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -75,6 +79,14 @@
 
 	<ItemGroup>
 	  <Folder Include="UtilDlls\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Remove="Platforms\Android\Resources\xml\file_paths.xml" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<AndroidResource Include="Platforms\Android\Resources\xml\file_paths.xml" />
 	</ItemGroup>
 
 </Project>

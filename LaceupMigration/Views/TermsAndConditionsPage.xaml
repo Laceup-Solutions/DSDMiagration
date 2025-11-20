@@ -5,7 +5,7 @@
 			 Shell.NavBarIsVisible="False"
 			 Shell.BackButtonBehavior="{x:Null}">
 	<ContentPage.Content>
-		<Grid Padding="20" RowDefinitions="Auto,*,Auto">
+		<Grid Padding="20" RowDefinitions="Auto,*">
 			<Label Text="Terms and Conditions"
 				   FontSize="24"
 				   FontAttributes="Bold"
@@ -13,17 +13,18 @@
 				   Margin="0,0,0,12" />
 
 			<ScrollView Grid.Row="1">
-				<Label Text="{Binding TermsContent}"
-					   LineBreakMode="WordWrap"
-					   FontSize="14" />
+				<VerticalStackLayout Spacing="16">
+					<Label Text="{Binding TermsContent}"
+						   LineBreakMode="WordWrap"
+						   FontSize="14" />
+					
+					<Button Text="Accept Terms and Conditions"
+							Command="{Binding AcceptCommand}"
+							Padding="16"
+							Margin="0,24,0,0"
+							HorizontalOptions="Center" />
+				</VerticalStackLayout>
 			</ScrollView>
-
-			<Button Grid.Row="2"
-					Text="Accept Terms and Conditions"
-					Command="{Binding AcceptCommand}"
-					Padding="16"
-					Margin="0,16,0,0"
-					HorizontalOptions="Center" />
 		</Grid>
 	</ContentPage.Content>
 </ContentPage>

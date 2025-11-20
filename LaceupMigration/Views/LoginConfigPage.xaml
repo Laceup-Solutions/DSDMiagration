@@ -4,56 +4,81 @@
 			 x:Class="LaceupMigration.LoginConfigPage"
 			 Shell.NavBarIsVisible="False"
 			 Shell.BackButtonBehavior="{x:Null}">
-	<ScrollView>
-		<VerticalStackLayout Padding="24" Spacing="16">
-			<Image Source="appicon.svg"
-				   WidthRequest="100"
-				   HeightRequest="100"
-				   HorizontalOptions="Center"
-				   Margin="0,50,0,0" />
+	<Grid x:Name="RootGrid">
+		<ScrollView>
+			<VerticalStackLayout Padding="24" >
+				<Image Source="icon144x144.png"
+					   WidthRequest="100"
+					   HeightRequest="100"
+					   HorizontalOptions="Center"
+					   Margin="0,50,0,30" />
 
-			<Label Text="Welcome to Laceup"
-				   HorizontalOptions="Center"
-				   FontAttributes="Bold"
-				   TextColor="{DynamicResource PrimaryTextColor}"
-				   FontSize="20" />
+				<Label Text="Welcome To LaceUp"
+					   HorizontalOptions="Center"
+					   FontAttributes="Bold"
+					   TextColor="{DynamicResource PrimaryTextColor}"
+					   FontSize="20"
+					   Margin="0,0,0,0" />
 
-			<Button Text="Support Contact"
-					Command="{Binding SupportContactCommand}"
-					HorizontalOptions="Center" />
+				<Label HorizontalOptions="Center"
+					   FontSize="14"
+					   Margin="0,0,0,15">
+					<Label.FormattedText>
+						<FormattedString>
+							<Span Text="Support Contact: " />
+							<Span Text="1(786) 437-4380"
+								  TextDecorations="Underline"
+								  TextColor="{StaticResource colorLaceupDark}">
+								<Span.GestureRecognizers>
+									<TapGestureRecognizer Command="{Binding SupportContactCommand}" />
+								</Span.GestureRecognizers>
+							</Span>
+						</FormattedString>
+					</Label.FormattedText>
+				</Label>
 
-			<Grid ColumnDefinitions="*,*"
-				  IsVisible="{Binding IsBusy}">
-				<ActivityIndicator Grid.ColumnSpan="2" IsRunning="True" IsVisible="True" />
-			</Grid>
+				<Grid ColumnDefinitions="*,*"
+					  IsVisible="{Binding IsBusy}">
+					<ActivityIndicator Grid.ColumnSpan="2" IsRunning="True" IsVisible="True" />
+				</Grid>
 
-			<Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
-				  WidthRequest="300"
-				  HorizontalOptions="Center">
-				<Entry Grid.Row="0"
-					   Text="{Binding ServerAddress}"
-					   Placeholder="Server Address"
-					   HorizontalTextAlignment="Center" />
-				<Entry Grid.Row="1"
-					   Text="{Binding Port}"
-					   Keyboard="Numeric"
-					   Placeholder="Company Id"
-					   HorizontalTextAlignment="Center" />
-				<Entry Grid.Row="2"
-					   Text="{Binding SalesmanId}"
-					   Keyboard="Numeric"
-					   Placeholder="Salesman Id"
-					   HorizontalTextAlignment="Center" />
-				<Button Grid.Row="3"
-						Text="Sign In"
-						Command="{Binding SignInCommand}" />
-				<Button Grid.Row="4"
-						Text="Need help?"
-						Command="{Binding NeedHelpCommand}"
-						HorizontalOptions="Center" />
-			</Grid>
-		</VerticalStackLayout>
-	</ScrollView>
+				<Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto,Auto,Auto"
+					  WidthRequest="300"
+					  HorizontalOptions="Center">
+					<Entry Grid.Row="0"
+						   Text="{Binding ServerAddress}"
+						   Placeholder="Server Address"
+						   HorizontalTextAlignment="Center" />
+					<Entry Grid.Row="1"
+						   Text="{Binding Port}"
+						   Keyboard="Numeric"
+						   Placeholder="Port"
+						   HorizontalTextAlignment="Center" />
+					<Entry Grid.Row="2"
+						   Text="{Binding SalesmanId}"
+						   Keyboard="Numeric"
+						   Placeholder="Salesman Id"
+						   HorizontalTextAlignment="Center"
+						   Margin="0,0,0,16" />
+					<Button Grid.Row="3"
+							Text="Sign In"
+							Margin="0,10,0,0" 
+							Command="{Binding SignInCommand}"
+							BackgroundColor="{StaticResource colorLaceupDark}"
+							TextColor="White" />
+				</Grid>
+				
+				<Label Text="Need help?"
+					   HorizontalOptions="Center"
+					   TextColor="{StaticResource colorLaceupDark}"
+					   Margin="0,15,0,0">
+					<Label.GestureRecognizers>
+						<TapGestureRecognizer Command="{Binding NeedHelpCommand}" />
+					</Label.GestureRecognizers>
+				</Label>
+			</VerticalStackLayout>
+		</ScrollView>
+	</Grid>
 </ContentPage>
 
 

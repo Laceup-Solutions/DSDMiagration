@@ -2,10 +2,14 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:converters="clr-namespace:LaceupMigration.Converters"
              x:Class="LaceupMigration.Views.ClientDetailsPage"
              x:DataType="vm:ClientDetailsPageViewModel"
              Shell.TabBarIsVisible="False"
              Shell.Title="Client Details">
+    <ContentPage.Resources>
+        <converters:IsStringNotEmptyConverter x:Key="IsStringNotEmptyConverter" />
+    </ContentPage.Resources>
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Menu" Order="Primary" Priority="0" />
     </ContentPage.ToolbarItems>
@@ -92,20 +96,44 @@
             </StackLayout>
 
             <StackLayout Spacing="8">
-                <Label Text="Recent and Open Invoices"
+                <Label Text="Recent and Open Transactions"
                        FontAttributes="Bold"
-                       FontSize="18"
+                       FontSize="14"
                        TextColor="{StaticResource PrimaryDark}" />
                 <SearchBar Placeholder="Search invoice number"
-                           Text="{Binding InvoiceSearchQuery}" />
+                           Text="{Binding InvoiceSearchQuery}"/>
+                <!-- [MIGRATION]: CollectionView with grouping enabled, matching Xamarin ListView IsGroupingEnabled="True" -->
+                <!-- Groups invoices by CompanyName, exactly like Xamarin ClientInvoicesAdapter -->
                 <CollectionView x:Name="InvoicesCollectionView"
                                 ItemsSource="{Binding FilteredInvoices}"
+                                IsGrouped="True"
                                 SelectionMode="Single"
                                 RemainingItemsThreshold="1"
                                 RemainingItemsThresholdReachedCommand="{Binding LoadMoreInvoicesCommand}">
+                    <!-- [MIGRATION]: GroupHeaderTemplate matches Xamarin headerLayout.xml style -->
+                    <!-- Xamarin: gray background (#EEEEEE), bold text, 18dp, padding 5dp -->
+                    <!-- [MIGRATION]: Hide header when empty (matches Xamarin - invoices without CompanyName have no header) -->
+                    <CollectionView.GroupHeaderTemplate>
+                        <DataTemplate x:DataType="vm:InvoiceGroup">
+                            <Border BackgroundColor="#EEEEEE"
+                                    Padding="5"
+                                    Margin="0,8,0,0"
+                                    IsVisible="{Binding Header, Converter={StaticResource IsStringNotEmptyConverter}}">
+                                <Label Text="{Binding Header}"
+                                       FontSize="18"
+                                       FontAttributes="Bold"
+                                       TextColor="#333333" />
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.GroupHeaderTemplate>
+                    <!-- [MIGRATION]: ItemTemplate receives ClientInvoiceViewModel items from the group -->
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="vm:ClientInvoiceViewModel">
                             <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={x:Reference InvoicesCollectionView}, Path=BindingContext.HandleInvoiceSelectedCommand}" 
+                                                          CommandParameter="{Binding}" />
+                                </Frame.GestureRecognizers>
                                 <VerticalStackLayout Spacing="4" InputTransparent="True">
                                     <Label Text="{Binding NumberText}"
                                            FontAttributes="Bold"

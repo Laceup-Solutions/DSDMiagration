@@ -9,37 +9,67 @@ namespace LaceupMigration.ViewModels
 {
     public partial class TransmissionReportPageViewModel : BaseReportPageViewModel
     {
+        [ObservableProperty] private bool _onlyFinal;
+        [ObservableProperty] private bool _showClientAddr;
+        [ObservableProperty] private bool _onlyBills;
+
         public TransmissionReportPageViewModel(DialogService dialogService, ILaceupAppService appService)
             : base(dialogService, appService)
         {
         }
 
-        protected override async Task RunReport()
+        protected override string GetBaseCommand()
         {
-            IsLoading = true;
+            var endDate = DateTo.AddDays(1).AddMinutes(-1);
+            var date = endDate.ToString();
+            
+            // Handle Spanish AM/PM format
+            if (date.Contains("p. m.") || date.Contains("a. m."))
+            {
+                date = date.Replace("p. m.", "PM");
+                date = date.Replace("a. m.", "AM");
+            }
+
+            var cmd = DateFromText + "|" + date;
+            cmd += "|" + Config.SalesmanId;
+            cmd += "|" + (OnlyFinal ? "1" : "0");
+            cmd += "|" + (ShowClientAddr ? "1" : "0");
+            cmd += "|" + (OnlyBills ? "1" : "0");
+
+            if (Config.DaysToRunReports > 0)
+            {
+                var dateFrom = DateTime.Now.Date.AddDays(-Config.DaysToRunReports);
+                var dateTo = DateTime.Now.Date;
+                cmd += "|" + (long)dateFrom.Ticks + "|" + (long)dateTo.Ticks;
+            }
+            else
+            {
+                cmd += "|" + (long)DateFrom.Ticks + "|" + (long)endDate.Ticks;
+            }
+
+            return cmd;
+        }
+
+        protected override string GetReport(string command)
+        {
             try
             {
-                // TODO: Implement report generation
-                await _dialogService.ShowAlertAsync("Report generation to be implemented.", "Info", "OK");
+                return DataAccess.GetTransmissionReport(command);
             }
-            finally
+            catch
             {
-                IsLoading = false;
+                throw;
             }
+        }
+
+        protected override async Task RunReport()
+        {
+            await RunReportInternal();
         }
 
         protected override async Task SendByEmail()
         {
-            IsLoading = true;
-            try
-            {
-                // TODO: Implement email sending
-                await _dialogService.ShowAlertAsync("Email sending to be implemented.", "Info", "OK");
-            }
-            finally
-            {
-                IsLoading = false;
-            }
+            await SendByEmailInternal();
         }
     }
 }

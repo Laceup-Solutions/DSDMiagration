@@ -320,7 +320,16 @@ namespace LaceupMigration
         private void EnsureFileNameCreated()
         {
             if (string.IsNullOrEmpty(fileName))
+            {
+                // [MIGRATION]: Ensure SessionPath directory exists before creating file path
+                // This prevents "Could not find a part of the path" errors on Android tablet emulators
+                // where directories might not be initialized the same way as phone emulators
+                if (!Directory.Exists(Config.SessionPath))
+                {
+                    Directory.CreateDirectory(Config.SessionPath);
+                }
                 this.fileName = Path.Combine(Config.SessionPath, "SessionFile.cvs");
+            }
         }
 
         private void SerializeSession(StreamWriter stream)
@@ -379,6 +388,13 @@ namespace LaceupMigration
             Session.session = null;
             Session.sessionDetails.Clear();
 
+            // [MIGRATION]: Ensure SessionPath directory exists before accessing SessionFile
+            // This prevents "Could not find a part of the path" errors on Android tablet emulators
+            if (!Directory.Exists(Config.SessionPath))
+            {
+                Directory.CreateDirectory(Config.SessionPath);
+            }
+
             var path = Path.Combine(Config.SessionPath, "SessionFile.cvs");
             if (File.Exists(path))
                 File.Delete(path);
@@ -389,6 +405,13 @@ namespace LaceupMigration
         {
             try
             {
+                // [MIGRATION]: Ensure SessionPath directory exists before accessing SessionFile
+                // This prevents "Could not find a part of the path" errors on Android tablet emulators
+                if (!Directory.Exists(Config.SessionPath))
+                {
+                    Directory.CreateDirectory(Config.SessionPath);
+                }
+
                 string filepath;
                 if (File.Exists(Path.Combine(Config.SessionPath, "SessionFile.cvs")))
                 {
@@ -419,6 +442,13 @@ namespace LaceupMigration
 
             try
             {
+                // [MIGRATION]: Ensure SessionPath directory exists before accessing SessionFile
+                // This prevents "Could not find a part of the path" errors on Android tablet emulators
+                if (!Directory.Exists(Config.SessionPath))
+                {
+                    Directory.CreateDirectory(Config.SessionPath);
+                }
+
                 bool success = DataAccess.SendCurrentSession(Path.Combine(Config.SessionPath, "SessionFile.cvs"));
 
                 if (success == true)

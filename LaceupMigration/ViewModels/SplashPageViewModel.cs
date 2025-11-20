@@ -14,6 +14,37 @@ namespace LaceupMigration.ViewModels
 			_appService = appService;
 		}
 
+		// [MIGRATION]: Sign Out fix - immediately redirect to login when signed out
+		// This allows ///Splash navigation to clear stack, then immediately go to login page
+		// Must check Terms first - if not accepted, redirect to Terms page instead
+		public async Task RedirectToLoginAsync()
+		{
+			// [MIGRATION]: Check Terms first (matches RouteNextAsync logic)
+			// If Terms not accepted, redirect to Terms page instead of login
+			if (!Config.AcceptedTermsAndConditions)
+			{
+				Console.WriteLine("[DEBUG] SplashPage redirecting to Terms (not accepted yet)");
+				await Shell.Current.GoToAsync("termsandconditions");
+				return;
+			}
+
+			// Determine target login page based on configuration (matches MainPageViewModel sign-out logic)
+			string targetRoute = "loginconfig"; // Default: LoginConfigActivity
+
+			if (Config.EnableLogin)
+				targetRoute = "login"; // LoginActivity
+
+			if (Config.EnableAdvancedLogin)
+				targetRoute = "newlogin"; // NewLoginActivity
+
+			if (Config.ButlerCustomization)
+				targetRoute = "bottlelogin";
+
+			// Navigate directly to login page (Splash acts as transparent redirect)
+			Console.WriteLine("[DEBUG] SplashPage redirecting to login: " + targetRoute);
+			await Shell.Current.GoToAsync(targetRoute);
+		}
+
 		[RelayCommand]
 		private async Task Initialize()
 		{

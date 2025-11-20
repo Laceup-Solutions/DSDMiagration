@@ -106,12 +106,18 @@ namespace LaceupMigration
             try
             {
                 NetworkStream networkstream = tcpc.GetStream();
-                foreach (char c in toWrite.ToCharArray())
-                    networkstream.WriteByte(Convert.ToByte(c));
+
+                // Convert STRING ➜ ASCII bytes
+                byte[] bytes = Encoding.ASCII.GetBytes(toWrite);
+
+                // Write bytes to stream
+                networkstream.Write(bytes, 0, bytes.Length);
+
+                // Add CRLF
                 networkstream.WriteByte(13);
                 networkstream.WriteByte(10);
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 ////Logger.CreateLog(e);
 

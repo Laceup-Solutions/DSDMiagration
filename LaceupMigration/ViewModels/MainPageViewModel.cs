@@ -31,6 +31,13 @@ namespace LaceupMigration.ViewModels
 		{
 			var company = CompanyInfo.GetMasterCompany();
 			CompanyName = company?.CompanyName ?? "Laceup";
+			
+			// [MIGRATION]: Update Shell title with company name (matches Xamarin MainActivity.UpdateCompanyName)
+			// This ensures the company name appears in the header across all pages
+			if (Shell.Current is AppShell appShell)
+			{
+				appShell.UpdateCompanyName();
+			}
 		}
 
 		private void RefreshMenuVisibility()
@@ -495,8 +502,10 @@ namespace LaceupMigration.ViewModels
 			await DownloadDataAsync(!inventoryModified);
 		}
 
-		public async Task DownloadDataAsync(bool updateInventory, int oldScanner = 0)
+		public async Task DownloadDataAsync(bool updateInventory, int oldScanner = 0, bool isAutomatic = false)
 		{
+			// [MIGRATION]: Auto sync logic from Xamarin
+			// Matches Xamarin MainActivity.DownloadData() method (line 1574-1707)
 			await _dialogService.ShowLoadingAsync("Downloading data...");
 			string responseMessage = null;
 			bool errorDownloadingData = false;
@@ -520,13 +529,33 @@ namespace LaceupMigration.ViewModels
 						if (!DataAccess.CheckSyncAuthInfo())
 							throw new Exception("Wait before sync");
 
+						Logger.CreateLog("called MenuHandlerSyncData");
+
 						responseMessage = DataAccessEx.DownloadData(true, !Config.TrackInventory || updateInventory);
+
+						// [MIGRATION]: Auto sync logic from Xamarin
+						// Matches Xamarin MainActivity.DownloadData() lines 1628-1636
+						// When called automatically after sign-in, save vendor name
+						if (isAutomatic)
+						{
+							var salesman = Salesman.List.FirstOrDefault(x => x.Id == Config.SalesmanId);
+							if (salesman != null)
+							{
+								Config.VendorName = salesman.Name;
+								Config.SaveSystemSettings();
+							}
+						}
 					}
 					catch (Exception ee)
 					{
 						errorDownloadingData = true;
 						Logger.CreateLog(ee);
-						responseMessage = ee.Message.Replace("(305)-381-1123", "(786) 437-4380");
+						
+						var message = ee.Message;
+						if (message.Contains("Invalid auth info"))
+							message = "Not authorized";
+						
+						responseMessage = message.Replace("(305)-381-1123", "(786) 437-4380");
 					}
 				});
 			}
@@ -543,6 +572,31 @@ namespace LaceupMigration.ViewModels
 
 			RefreshMenuVisibility();
 			UpdateCompanyName();
+			
+			// [MIGRATION]: Auto sync logic from Xamarin
+			// Matches Xamarin MainActivity.DownloadData() line 1687
+			// Subscribe to notifications after successful sync
+			if (!errorDownloadingData)
+			{
+				SubscribeToNotifications();
+			}
+		}
+		
+		// [MIGRATION]: Auto sync logic from Xamarin
+		// Matches Xamarin MainActivity.SubscribeToNotifications() method (line 1709-1722)
+		private void SubscribeToNotifications()
+		{
+			if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "29.94"))
+			{
+				if (Config.EnableLiveData || Config.AllowWorkOrder || Config.AllowNotifications)
+				{
+					DataAccessEx.GetTopic();
+				}
+				else
+				{
+					DataAccessEx.Unsubscribe();
+				}
+			}
 		}
 
 		private async Task ClockOutHandlerAsync()
@@ -730,67 +784,135 @@ namespace LaceupMigration.ViewModels
 			await _dialogService.ShowAlertAsync(message, title, "OK");
 		}
 
+		// [MIGRATION]: Sign Out logic from Xamarin
+		// This method replicates Xamarin MainActivity.MenuHandlerSignOut() exactly
+		// Xamarin source: MainActivity.cs lines 474-569
 		private async Task MenuHandlerSignOutAsync()
 		{
-			var orderCount = Order.Orders.Count(x => x.OrderType == OrderType.NoService || x.Details.Count() > 0) + InvoicePayment.List.Count;
-			if (orderCount > 0)
+			// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 476-482
+			// Check if orders exist - must send all transactions before signing out
+			int c = Order.Orders.Count(x => x.OrderType == OrderType.NoService || x.Details.Count() > 0) + InvoicePayment.List.Count;
+
+			if (c > 0)
 			{
 				await _dialogService.ShowAlertAsync("You must send all transactions before signing out.", "Alert", "OK");
 				return;
 			}
 
+			// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() line 485
+			// Show progress dialog
 			await _dialogService.ShowLoadingAsync("Signing out...");
 			bool isButler = false;
 
+			// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() line 487
+			// ThreadPool.QueueUserWorkItem for background work
+			bool signOutError = false;
 			try
 			{
 				await Task.Run(() =>
 				{
 					try
 					{
+						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 491-500
+						// Save configuration values before clearing (preserve all required values)
 						isButler = Config.ButlerCustomization;
+
 						var acceptedTerms = Config.AcceptedTermsAndConditions;
-						var enabledLogin = Config.EnableLogin;
+						var enabledlogin = Config.EnableLogin;
+						var butlerCustomization = Config.ButlerCustomization; // Preserve ButlerCustomization
+
 						var serverAdd = Config.IPAddressGateway;
 						var lanAdd = Config.LanAddress;
 						var port = Config.Port;
 						var salesmanId = Config.SalesmanId;
 						var advancedLogin = Config.EnableAdvancedLogin;
+						var ssid = Config.SSID; // Preserve SSID - needed for ConnectionAddress (WhichAddressToUse)
 
+						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() line 502
 						BackgroundDataSync.ForceBackup();
+
+						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() line 504
 						ActivityState.RemoveAll();
+
+						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() line 506
 						Config.ClearSettings();
+
+						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() line 508
 						DataAccess.ClearData();
+
+						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 509-510
 						Config.Initialize();
 						DataAccess.Initialize();
 
+						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 512-520
+						// Restore saved configuration values (must restore before SaveSettings)
+						// These values are required for NetAccess.OpenConnection() to work correctly
 						Config.AcceptedTermsAndConditions = acceptedTerms;
-						Config.EnableLogin = enabledLogin;
-						Config.IPAddressGateway = serverAdd;
-						Config.LanAddress = lanAdd;
-						Config.Port = port;
-						Config.SalesmanId = salesmanId;
-						Config.ButlerSignedIn = false;
+						Config.EnableLogin = enabledlogin;
 						Config.EnableAdvancedLogin = advancedLogin;
+						Config.IPAddressGateway = serverAdd; // Required for ConnectionAddress
+						Config.LanAddress = lanAdd; // Required for ConnectionAddress (if SSID matches)
+						Config.Port = port; // Required for OpenConnection
+						Config.SalesmanId = salesmanId; // Required for authentication
+						Config.SSID = ssid; // Required for ConnectionAddress (WhichAddressToUse)
+						Config.ButlerCustomization = butlerCustomization; // Restore ButlerCustomization
+						Config.ButlerSignedIn = false;
+
+						// [MIGRATION]: Explicitly set SignedIn to false (ensures clean sign-out state)
+						// This matches the intent of Xamarin's sign-out flow
+						Config.SignedIn = false;
+
+						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() line 521
+						// SaveSettings must be called AFTER restoring all values
 						Config.SaveSettings();
 					}
 					catch (Exception ee)
 					{
+						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 523-534
+						// Error handling - hide dialog and show error message
+						signOutError = true;
 						Logger.CreateLog(ee);
+
+						MainThread.BeginInvokeOnMainThread(async () =>
+						{
+							await _dialogService.HideLoadingAsync();
+							await _dialogService.ShowAlertAsync("An error ocurred trying to sing out. Please try again.", "Alert", "OK");
+						});
 					}
 				});
 			}
 			finally
 			{
+				// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 535-567
+				// Hide progress dialog
 				await _dialogService.HideLoadingAsync();
 			}
 
-			if (isButler)
-				await Shell.Current.GoToAsync("bottlelogin");
-			else
+			// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 535-567
+			// Navigate to login page (done outside finally to avoid return statement issue)
+			if (!signOutError)
 			{
-				var route = Config.EnableLogin ? "login" : (Config.EnableAdvancedLogin ? "newlogin" : "loginconfig");
-				await Shell.Current.GoToAsync(route);
+				// [MIGRATION]: Ensure ShouldGetPinBeforeSync is also reset
+				Config.ShouldGetPinBeforeSync = false;
+				Config.SaveSettings();
+
+				// [MIGRATION]: Debug log before navigation
+				Console.WriteLine("[DEBUG] Sign out complete. Config.SignedIn = " + Config.SignedIn + ", navigating to login...");
+
+				// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 537-566
+				// Use MainThread.BeginInvokeOnMainThread to ensure navigation happens synchronously
+				// This prevents OnAppearing logic from running before navigation completes
+				// Xamarin uses RunOnUiThread to ensure UI operations happen on main thread
+				MainThread.BeginInvokeOnMainThread(async () =>
+				{
+					// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 556-563
+					// Navigate to Splash using absolute route to clear entire navigation stack
+					// SplashPage will detect Config.SignedIn = false and immediately redirect to login
+					// This provides absolute routing (///Splash) while going directly to login page
+					Console.WriteLine("[DEBUG] Before navigation to Splash (will redirect to login). Config.SignedIn = " + Config.SignedIn);
+					await Shell.Current.GoToAsync("///Splash");
+					Console.WriteLine("[DEBUG] After navigation to Splash (should have redirected to login).");
+				});
 			}
 		}
 

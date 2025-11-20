@@ -15,7 +15,7 @@
     <Color x:Key="Tertiary">#3498db</Color>
 
     <Color x:Key="colorLaceupLight">#b6e3f1</Color>
-    <Color x:Key="colorLaceupDark">#0f76dd</Color>
+    <Color x:Key="colorLaceupDark">#0379cb</Color>
     <Color x:Key="colorLaceupDisable">#b3d6ef</Color>
     <Color x:Key="colorLaceupGray">#c4c4c4</Color>
     <Color x:Key="colorWhite">#FFFFFF</Color>

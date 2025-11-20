@@ -10,10 +10,10 @@ namespace LaceupMigration.ViewModels
 	{
 		private readonly ILaceupAppService _appService;
 
-		[ObservableProperty]
-		private string _termsContent = string.Empty;
+	[ObservableProperty]
+	private string _termsContent = string.Empty;
 
-		public bool CanNavigateBack => Config.AcceptedTermsAndConditions;
+	public bool CanNavigateBack => Config.AcceptedTermsAndConditions;
 
 		public TermsAndConditionsPageViewModel(ILaceupAppService appService)
 		{

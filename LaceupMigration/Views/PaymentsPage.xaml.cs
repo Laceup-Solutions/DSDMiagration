@@ -27,6 +27,15 @@ namespace LaceupMigration
 		protected override async void OnAppearing()
 		{
 			base.OnAppearing();
+			
+			// [MIGRATION]: Update page title with company name (matches Xamarin UpdateCompanyName)
+			// This ensures the company name appears in the header, just like Xamarin Activity.Title
+			var company = CompanyInfo.GetMasterCompany();
+			if (company != null && !string.IsNullOrEmpty(company.CompanyName))
+				Title = company.CompanyName;
+			else
+				Title = "Payments";
+			
 			await _viewModel.OnAppearingAsync();
 		}
 

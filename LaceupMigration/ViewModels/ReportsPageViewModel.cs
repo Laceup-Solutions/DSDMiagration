@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
 using LaceupMigration.Services;
+using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 
@@ -53,64 +54,144 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SelectReport(ReportItemViewModel report)
         {
-            if (report != null)
+            if (report != null && report.Action != null)
             {
-                report.Action?.Invoke();
+                try
+                {
+                    await report.Action();
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex);
+                    await _dialogService.ShowAlertAsync("Error navigating to report", "Error", "OK");
+                }
             }
         }
 
-        private async void SalesReport()
+        private async Task SalesReport()
         {
-            await Shell.Current.GoToAsync("salesreport");
+            try
+            {
+                await Shell.Current.GoToAsync("salesreport");
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error navigating to Sales Report", "Error", "OK");
+            }
         }
 
-        private async void PaymentsReport()
+        private async Task PaymentsReport()
         {
-            await Shell.Current.GoToAsync("paymentsreport");
+            try
+            {
+                await Shell.Current.GoToAsync("paymentsreport");
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error navigating to Payments Report", "Error", "OK");
+            }
         }
 
-        private async void CommissionReport()
+        private async Task CommissionReport()
         {
-            await Shell.Current.GoToAsync("commissionreport");
+            try
+            {
+                await Shell.Current.GoToAsync("commissionreport");
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error navigating to Commission Report", "Error", "OK");
+            }
         }
 
-        private async void SalesmenCommissionReport()
+        private async Task SalesmenCommissionReport()
         {
-            await Shell.Current.GoToAsync("salesmencommissionreport");
+            try
+            {
+                await Shell.Current.GoToAsync("salesmencommissionreport");
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error navigating to Salesmen Commission Report", "Error", "OK");
+            }
         }
 
-        private async void QtyProdSalesReport()
+        private async Task QtyProdSalesReport()
         {
-            await Shell.Current.GoToAsync("qtyprodsalesreport");
+            try
+            {
+                await Shell.Current.GoToAsync("qtyprodsalesreport");
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error navigating to Qty Prod Sales Report", "Error", "OK");
+            }
         }
 
-        private async void SalesProductCatReport()
+        private async Task SalesProductCatReport()
         {
-            await Shell.Current.GoToAsync("salesproductcatreport");
+            try
+            {
+                await Shell.Current.GoToAsync("salesproductcatreport");
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error navigating to Sales Product Cat Report", "Error", "OK");
+            }
         }
 
-        private async void TransmissionReport()
+        private async Task TransmissionReport()
         {
-            await Shell.Current.GoToAsync("transmissionreport");
+            try
+            {
+                await Shell.Current.GoToAsync("transmissionreport");
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error navigating to Transmission Report", "Error", "OK");
+            }
         }
 
-        private async void LoadOrderReport()
+        private async Task LoadOrderReport()
         {
-            await Shell.Current.GoToAsync("loadorderreport");
+            try
+            {
+                await Shell.Current.GoToAsync("loadorderreport");
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error navigating to Load Order Report", "Error", "OK");
+            }
         }
 
-        private async void SAPOrderReport()
+        private async Task SAPOrderReport()
         {
-            await Shell.Current.GoToAsync("saporderreport");
+            try
+            {
+                await Shell.Current.GoToAsync("saporderreport");
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error navigating to SAP Order Report", "Error", "OK");
+            }
         }
     }
 
     public partial class ReportItemViewModel : ObservableObject
     {
         [ObservableProperty] private string _name = string.Empty;
-        public System.Action? Action { get; set; }
+        public Func<Task>? Action { get; set; }
 
-        public ReportItemViewModel(string name, System.Action action)
+        public ReportItemViewModel(string name, Func<Task> action)
         {
             Name = name;
             Action = action;

@@ -4,10 +4,12 @@ namespace LaceupMigration.Controls;
 
 // In your MAUI project
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.ApplicationModel;
 
 public class DialogService : IDialogService
 {
     private ContentPage _loadingPage;
+    private Label _loadingLabel;
 
     public async Task ShowAlertAsync(string message, string title = "Alert", string acceptText = "OK")
     {
@@ -167,6 +169,14 @@ public class DialogService : IDialogService
         if (_loadingPage != null)
             return; // Already showing
 
+        _loadingLabel = new Label
+        {
+            Text = message,
+            FontSize = 14,
+            TextColor = Colors.Gray,
+            HorizontalOptions = LayoutOptions.Center
+        };
+
         _loadingPage = new ContentPage
         {
             BackgroundColor = Colors.Transparent
@@ -199,13 +209,7 @@ public class DialogService : IDialogService
                                 WidthRequest = 30,
                                 HeightRequest = 30
                             },
-                            new Label
-                            {
-                                Text = message,
-                                FontSize = 14,
-                                TextColor = Colors.Gray,
-                                HorizontalOptions = LayoutOptions.Center
-                            }
+                            _loadingLabel
                         }
                     }
                 }
@@ -231,6 +235,23 @@ public class DialogService : IDialogService
         }
 
         _loadingPage = null;
+        _loadingLabel = null;
+    }
+
+    public async Task UpdateLoadingMessageAsync(string message)
+    {
+        if (_loadingLabel != null)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                _loadingLabel.Text = message;
+            });
+        }
+        else
+        {
+            // If loading page doesn't exist, show it with the new message
+            await ShowLoadingAsync(message);
+        }
     }
     
     private Page GetCurrentPage()

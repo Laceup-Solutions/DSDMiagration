@@ -2,6 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
 	<application tools:replace="android:label,android:allowBackup,android:debuggable"  android:allowBackup="false" android:fullBackupOnly="false" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true"  android:usesCleartextTraffic="true">
         <uses-library android:name="com.symbol.emdk" android:required="false"/>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
     <uses-permission android:name="com.honeywell.decode.permission.DECODE"/>
     <uses-permission android:name="android.permission.LOCAL_MAC_ADDRESS"/>
