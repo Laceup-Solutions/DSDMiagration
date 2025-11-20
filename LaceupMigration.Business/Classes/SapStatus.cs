@@ -14,7 +14,7 @@ using System.Text;
 
 namespace LaceupMigration
 {
-    internal class SapStatus
+    public class SapStatus
     {
         public static string StatusesAsString { get; set; }
 

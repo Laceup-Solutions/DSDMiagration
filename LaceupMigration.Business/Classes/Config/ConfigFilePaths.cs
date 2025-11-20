@@ -1,4 +1,6 @@
-﻿namespace LaceupMigration;
+﻿using Microsoft.Maui.Storage;
+
+namespace LaceupMigration;
 
 public partial class Config
 {
@@ -96,7 +98,9 @@ public partial class Config
         }
     }
 
-    public static string BasePath => Environment.GetFolderPath(Environment.SpecialFolder.Personal);
+    // [MIGRATION]: Use MAUI FileSystem.AppDataDirectory instead of Environment.SpecialFolder.Personal
+    // This ensures proper file path resolution in .NET MAUI
+    public static string BasePath => FileSystem.AppDataDirectory;
 
     public static string CompanyLogosPath
     {

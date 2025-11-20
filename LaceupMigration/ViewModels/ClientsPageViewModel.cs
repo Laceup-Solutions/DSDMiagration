@@ -108,6 +108,15 @@ namespace LaceupMigration.ViewModels
 
 		public async Task OnAppearingAsync()
 		{
+			// [MIGRATION]: Sign Out fix - prevent OnAppearing logic from running after sign-out
+			// Check if user is signed out - if so, return immediately to prevent sync alerts
+			// This matches Xamarin behavior where Finish() prevents OnResume from running
+			if (!Config.SignedIn)
+			{
+				Console.WriteLine("[DEBUG] ClientsPage.OnAppearingAsync: User not signed in, skipping logic.");
+				return;
+			}
+
 			if (!_initialized)
 			{
 				_initialized = true;
@@ -288,6 +297,13 @@ namespace LaceupMigration.ViewModels
 
 		private async Task RefreshAsync(bool updateList, bool displayMessage)
 		{
+			// [MIGRATION]: Sign Out fix - prevent RefreshAsync logic from running after sign-out
+			if (!Config.SignedIn)
+			{
+				Console.WriteLine("[DEBUG] ClientsPage.RefreshAsync: User not signed in, skipping refresh.");
+				return;
+			}
+
 			if (!_initialized)
 				return;
 

@@ -179,6 +179,13 @@ namespace LaceupMigration
 
                     if (Session.session != null && LastSessionSent.Ticks < Session.session.LastModifiedSync.Ticks)
                     {
+                        // [MIGRATION]: Ensure SessionPath directory exists before accessing SessionFile
+                        // This prevents "Could not find a part of the path" errors on Android tablet emulators
+                        if (!Directory.Exists(Config.SessionPath))
+                        {
+                            Directory.CreateDirectory(Config.SessionPath);
+                        }
+
                         DataAccess.SendCurrentSession(Path.Combine(Config.SessionPath, "SessionFile.cvs"));
                         LastSessionSent = DateTime.Now;
                     }

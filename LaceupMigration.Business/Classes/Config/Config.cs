@@ -25,7 +25,8 @@ namespace LaceupMigration
                 AssignValues();
 
                 // Move from the OLD format to the new one
-                var codebase = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
+                // [MIGRATION]: Use MAUI FileSystem.AppDataDirectory instead of Environment.SpecialFolder.Personal
+                var codebase = FileSystem.AppDataDirectory;
                 var oldData = Path.Combine(codebase, "Data");
                 if (Directory.Exists(oldData))
                 {
@@ -434,7 +435,7 @@ namespace LaceupMigration
             Config.RouteName = Preferences.Get(RouteNameKey, "");
             Config.VendorName = Preferences.Get(VendorNameKey, "");
 #if DEBUG
-            Config.Port = Preferences.Get(PortKey, 947);
+            Config.Port = Preferences.Get(PortKey, 9284);
             Config.IPAddressGateway = Preferences.Get(IPAddressGatewayKey, "192.168.1.59");
 #else
             Config.Port = Preferences.Get(PortKey, 9999);

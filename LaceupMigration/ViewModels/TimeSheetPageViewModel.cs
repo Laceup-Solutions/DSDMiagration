@@ -310,6 +310,13 @@ namespace LaceupMigration.ViewModels
 
                 try
                 {
+                    // [MIGRATION]: Ensure SessionPath directory exists before accessing SessionFile
+                    // This prevents "Could not find a part of the path" errors on Android tablet emulators
+                    if (!System.IO.Directory.Exists(Config.SessionPath))
+                    {
+                        System.IO.Directory.CreateDirectory(Config.SessionPath);
+                    }
+
                     bool success = DataAccess.SendCurrentSession(System.IO.Path.Combine(Config.SessionPath, "SessionFile.cvs"));
                     if (success)
                     {

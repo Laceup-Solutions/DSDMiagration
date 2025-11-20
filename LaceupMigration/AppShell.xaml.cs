@@ -12,6 +12,9 @@ namespace LaceupMigration
             InitializeComponent();
 
             _mainPageViewModel = mainPageViewModel;
+            
+            // [MIGRATION]: Update company name in header (matches Xamarin UpdateCompanyName)
+            UpdateCompanyName();
 
 		Routing.RegisterRoute("loginconfig", typeof(LoginConfigPage));
 		Routing.RegisterRoute("termsandconditions", typeof(TermsAndConditionsPage));
@@ -102,6 +105,17 @@ namespace LaceupMigration
 		Routing.RegisterRoute("selfservice/categories", typeof(Views.SelfService.SelfServiceCategoriesPage));
 		Routing.RegisterRoute("selfservice/collectpayment", typeof(Views.SelfService.SelfServiceCollectPaymentPage));
 		Routing.RegisterRoute("selfservice/credittemplate", typeof(Views.SelfService.SelfServiceCreditTemplatePage));
+        }
+
+        // [MIGRATION]: Update company name in header (matches Xamarin MainActivity.UpdateCompanyName)
+        // This method sets the Shell title to the company name, just like Xamarin sets Activity.Title
+        public void UpdateCompanyName()
+        {
+            var company = CompanyInfo.GetMasterCompany();
+            if (company != null && !string.IsNullOrEmpty(company.CompanyName))
+                Title = company.CompanyName;
+            else
+                Title = "Laceup";
         }
     }
 }

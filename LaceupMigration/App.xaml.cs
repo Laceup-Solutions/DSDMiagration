@@ -23,6 +23,20 @@ namespace LaceupMigration
 			Config.helper = serviceProvider.GetService<IInterfaceHelper>();
 			CurrentScanner.scanner = serviceProvider.GetService<IScannerService>();
 			DialogHelper._dialogService = serviceProvider.GetService<IDialogService>();
+
+			// [MIGRATION]: Initialize Config at app startup (matches Xamarin LaceupActivity.InitializeApplication)
+			// This creates ALL directories (SessionPath, InvoicesPath, DataPath, etc.) BEFORE any pages load
+			// This prevents "Could not find a part of the path" errors on Android tablet emulators
+			// Must be called synchronously here to ensure directories exist before any file operations
+			try
+			{
+				Config.Initialize();
+			}
+			catch (Exception ex)
+			{
+				// Log but don't crash - directories will be created on-demand if this fails
+				System.Diagnostics.Debug.WriteLine($"[MIGRATION] Config.Initialize() error: {ex.Message}");
+			}
 		}
 
 		protected override Window CreateWindow(IActivationState? activationState)

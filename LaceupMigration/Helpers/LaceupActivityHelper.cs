@@ -2,118 +2,37 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Maui.ApplicationModel.Communication;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.ApplicationModel.Communication;
+using Microsoft.Maui.Devices;
 
-namespace LaceupMigration
+namespace LaceupMigration.Helpers
 {
-    public static class Logger
+    /// <summary>
+    /// Helper class that contains common functionality from Xamarin's LaceupActivity
+    /// </summary>
+    public static class LaceupActivityHelper
     {
-        static object syncObject = new object();
-
-        static public void ClearFile()
+        /// <summary>
+        /// Sends the log file. Matches LaceupActivity.SendLog() logic exactly.
+        /// </summary>
+        public static void SendLog()
         {
-            try
-            {
-                if (File.Exists(Config.LogFile))
-                    File.Delete(Config.LogFile);
-            }
-            catch { }
-        }
-
-        static private void MaintainFiles()
-        {
-            try
-            {
-                if (File.Exists(Config.LogFile))
-                {
-                    FileInfo fi = new FileInfo(Config.LogFile);
-                    if (fi.Length > 500 * 1024)
-                    {
-                        //move it to the prev file
-                        if (File.Exists(Config.LogFilePrevious))
-                            File.Delete(Config.LogFilePrevious);
-                        File.Move(Config.LogFile, Config.LogFilePrevious);
-                    }
-                }
-            }
-            catch { }
-        }
-
-        static public void CreateLog(Exception exception)
-        {
-            lock (FileOperationsLocker.lockFilesObject)
+            // Ensure log file exists (create empty if it doesn't) - same behavior as when Logger writes to it
+            if (!File.Exists(Config.LogFile))
             {
                 try
                 {
-                    //FileOperationsLocker.InUse = true;
-                    
-                    lock (syncObject)
-                    {
-                        if (exception == null)
-                            return;
-                        try
-                        {
-                            MaintainFiles();
-                            using (StreamWriter writer = new StreamWriter(Config.LogFile, true))
-                            {
-                                List<string> list = new List<string>();
-                                LogException(exception, list);
-                                foreach (string line in list)
-                                    writer.WriteLine(line);
-                            }
-                        }
-                        catch
-                        {
-                        }
-                    }
+                    var logDir = Path.GetDirectoryName(Config.LogFile);
+                    if (!string.IsNullOrEmpty(logDir) && !Directory.Exists(logDir))
+                        Directory.CreateDirectory(logDir);
+                    File.Create(Config.LogFile).Close();
                 }
-                finally
-                {
-                    //FileOperationsLocker.InUse = false;
-                }
+                catch { }
             }
-        }
 
-        static public void CreateLog(string msg)
-        {
-            lock (FileOperationsLocker.lockFilesObject)
-            {
-                try
-                {
-                    //FileOperationsLocker.InUse = true;
-                    
-                    lock (syncObject)
-                    {
-                        MaintainFiles();
-                        using (StreamWriter writer = new StreamWriter(Config.LogFile, true))
-                        {
-                            writer.WriteLine(String.Format(CultureInfo.InvariantCulture, "Date:{0} , MSG:{1}", DateTime.Now.ToString(), msg));
-                            writer.Close();
-                        }
-                    }
-                }
-                finally
-                {
-                    //FileOperationsLocker.InUse = false;
-                }
-            }
-        }
-
-        private static void LogException(Exception e, List<string> messages)
-        {
-            try
-            {
-                if (e.InnerException != null)
-                    LogException(e.InnerException, messages);
-                messages.Add(string.Format(CultureInfo.InvariantCulture, "ERROR Date:{0} , MSG:{1}  ST:{2}", DateTime.Now.ToString(), e.Message, e.StackTrace));
-            }
-            catch { }
-        }
-
-        public static void SendLogFile()
-        {
             if (Config.SendLogByEmail)
                 try
                 {
@@ -137,7 +56,7 @@ namespace LaceupMigration
                     Thread.Sleep(1000);
                     access.CloseConnection();
 
-                    DialogHelper._dialogService.ShowAlertAsync("Log Sent");
+                    DialogHelper._dialogService.ShowAlertAsync("Log Sent", "Info", "OK");
                 }
             else
                 try
@@ -159,14 +78,17 @@ namespace LaceupMigration
                     Thread.Sleep(1000);
                     access.CloseConnection();
 
-                    DialogHelper._dialogService.ShowAlertAsync("Log Sent");
+                    DialogHelper._dialogService.ShowAlertAsync("Log Sent", "Info", "OK");
                 }
                 catch (Exception ee)
                 {
-                    DialogHelper._dialogService.ShowAlertAsync("Error sending log " + ee.Message);
+                    DialogHelper._dialogService.ShowAlertAsync("Error sending log file: " + ee.Message, "Alert", "OK");
                 }
         }
 
+        /// <summary>
+        /// Sends log by email. Matches LaceupActivity.SendLogByEmail() logic.
+        /// </summary>
         private static void SendLogByEmail()
         {
             try
@@ -195,7 +117,6 @@ namespace LaceupMigration
 
                 // Try to send email - this will open the email client
                 // If it fails, the catch block will fall back to network send
-                // Use GetAwaiter().GetResult() to make it synchronous like Xamarin
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     try
@@ -213,6 +134,60 @@ namespace LaceupMigration
                 Logger.CreateLog(ee);
                 throw; // Re-throw to trigger fallback to network send
             }
+        }
+
+        /// <summary>
+        /// Remote control functionality. Matches LaceupActivity.RemoteControl() logic exactly.
+        /// </summary>
+        public static async Task RemoteControl()
+        {
+            try
+            {
+                if (DeviceInfo.Platform == DevicePlatform.Android)
+                {
+                    // Try to open TeamViewer app first (matches Xamarin Intent)
+                    try
+                    {
+                        await Launcher.OpenAsync(new Uri("com.teamviewer.quicksupport.market"));
+                        return;
+                    }
+                    catch
+                    {
+                        // If app not found, fall back to Play Store
+                    }
+                    
+                    // Fall back to Play Store URL
+                    await Launcher.OpenAsync(new Uri("https://play.google.com/store/apps/details?id=com.teamviewer.quicksupport.market"));
+                }
+                else if (DeviceInfo.Platform == DevicePlatform.iOS)
+                {
+                    await Launcher.OpenAsync(new Uri("https://apps.apple.com/app/id661649585"));
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                // Try Play Store as final fallback
+                try
+                {
+                    if (DeviceInfo.Platform == DevicePlatform.Android)
+                    {
+                        await Launcher.OpenAsync(new Uri("https://play.google.com/store/apps/details?id=com.teamviewer.quicksupport.market"));
+                    }
+                }
+                catch
+                {
+                    // Ignore
+                }
+            }
+        }
+
+        /// <summary>
+        /// Export data functionality. Matches LaceupActivity.ExportData() logic.
+        /// </summary>
+        public static void ExportData(string subject = "")
+        {
+            DataAccessEx.ExportData(subject);
         }
     }
 }

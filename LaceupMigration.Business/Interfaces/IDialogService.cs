@@ -14,6 +14,7 @@ public interface IDialogService
     
     Task ShowLoadingAsync(string message = "Loading...");
     Task HideLoadingAsync();
+    Task UpdateLoadingMessageAsync(string message);
 }
 
 public class DialogHelper

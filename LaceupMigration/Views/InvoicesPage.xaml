@@ -111,14 +111,15 @@
           Padding="16"
           RowSpacing="12">
         <Border Grid.Row="0"
-                StrokeThickness="0"
-                BackgroundColor="#F2F2F7"
+                StrokeThickness="1"
+                BackgroundColor="white"
                 IsVisible="{Binding IsSearchVisible}"
                 Padding="12,4"
                 StrokeShape="RoundRectangle 12">
             <Grid ColumnDefinitions="*,Auto">
                 <SearchBar Grid.Column="0"
                            Placeholder="Search invoices"
+                           BackgroundColor="White"
                            FontSize="14"
                            Text="{Binding SearchQuery}"
                            SearchButtonPressed="SearchBar_SearchButtonPressed" />

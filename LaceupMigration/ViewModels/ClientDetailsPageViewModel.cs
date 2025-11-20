@@ -29,7 +29,7 @@ namespace LaceupMigration.ViewModels
 
         public ObservableCollection<ClientDetailItemViewModel> ClientDetails { get; } = new();
         public ObservableCollection<ClientOrderViewModel> Orders { get; } = new();
-        public ObservableCollection<ClientInvoiceViewModel> FilteredInvoices { get; } = new();
+        public ObservableCollection<InvoiceGroup> FilteredInvoices { get; } = new();
 
         [ObservableProperty]
         private string _clientName = string.Empty;
@@ -131,10 +131,10 @@ namespace LaceupMigration.ViewModels
             if (_client == null)
                 return;
 
-            if (!Config.TimeSheetCustomization)
-            {
-                ClientDetails.Add(new ClientDetailItemViewModel(_client.ClientName));
-            }
+            // if (!Config.TimeSheetCustomization)
+            // {
+            //     ClientDetails.Add(new ClientDetailItemViewModel(_client.ClientName));
+            // }
 
             if (!string.IsNullOrWhiteSpace(_client.ContactName))
             {
@@ -479,21 +479,8 @@ namespace LaceupMigration.ViewModels
 
                 _displayedInvoices.AddRange(nextItems);
 
-                if (string.IsNullOrWhiteSpace(InvoiceSearchQuery))
-                {
-                    MainThread.BeginInvokeOnMainThread(() =>
-                    {
-                        foreach (var invoice in nextItems)
-                        {
-                            FilteredInvoices.Add(invoice);
-                        }
-                        ShowNoInvoices = FilteredInvoices.Count == 0;
-                    });
-                }
-                else
-                {
-                    ApplyInvoiceFilter();
-                }
+                // Always regroup after adding new items (matches Xamarin grouping behavior)
+                ApplyInvoiceFilter();
             }
             finally
             {
@@ -501,39 +488,63 @@ namespace LaceupMigration.ViewModels
             }
         }
 
+        // [MIGRATION]: ApplyInvoiceFilter now groups invoices by CompanyName, matching Xamarin ClientInvoicesAdapter
+        // Groups invoices exactly like Xamarin: invoices.GroupBy(invoice => invoice.CompanyName)
+        // Invoices without CompanyName appear as individual items at the top (no group header)
         private void ApplyInvoiceFilter()
         {
             var query = InvoiceSearchQuery?.Trim() ?? string.Empty;
+            List<ClientInvoiceViewModel> invoicesToGroup;
 
             if (!string.IsNullOrWhiteSpace(query))
             {
                 var comparer = StringComparison.InvariantCultureIgnoreCase;
-                var matches = _allInvoices
+                invoicesToGroup = _allInvoices
                     .Where(x => x.InvoiceNumber?.Contains(query, comparer) == true)
                     .ToList();
-
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    FilteredInvoices.Clear();
-                    foreach (var invoice in matches)
-                    {
-                        FilteredInvoices.Add(invoice);
-                    }
-                    ShowNoInvoices = FilteredInvoices.Count == 0;
-                });
             }
             else
             {
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    FilteredInvoices.Clear();
-                    foreach (var invoice in _displayedInvoices)
-                    {
-                        FilteredInvoices.Add(invoice);
-                    }
-                    ShowNoInvoices = FilteredInvoices.Count == 0;
-                });
+                invoicesToGroup = _displayedInvoices.ToList();
             }
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                FilteredInvoices.Clear();
+
+                // [MIGRATION]: Separate invoices with and without CompanyName (matches Xamarin behavior)
+                // Invoices without CompanyName appear as individual items at the top, with NO group header
+                var invoicesWithoutCompany = invoicesToGroup
+                    .Where(invoice => string.IsNullOrEmpty(invoice.CompanyName))
+                    .ToList();
+
+                var invoicesWithCompany = invoicesToGroup
+                    .Where(invoice => !string.IsNullOrEmpty(invoice.CompanyName))
+                    .ToList();
+
+                // Add invoices without CompanyName as individual groups with empty header (header will be hidden in XAML)
+                // These appear at the top of the list, matching Xamarin behavior
+                foreach (var invoice in invoicesWithoutCompany)
+                {
+                    var singleItemGroup = new InvoiceGroup(string.Empty, new[] { invoice });
+                    FilteredInvoices.Add(singleItemGroup);
+                }
+
+                // Group invoices with CompanyName by CompanyName (matches Xamarin ClientInvoicesAdapter grouping)
+                var grouped = invoicesWithCompany
+                    .GroupBy(invoice => invoice.CompanyName ?? string.Empty)
+                    .Select(group => new InvoiceGroup(
+                        header: group.Key, // CompanyName as the header
+                        items: group.ToList()))
+                    .ToList();
+
+                foreach (var group in grouped)
+                {
+                    FilteredInvoices.Add(group);
+                }
+
+                ShowNoInvoices = FilteredInvoices.Count == 0;
+            });
         }
 
         private void UpdateClockInText()
@@ -1576,6 +1587,7 @@ namespace LaceupMigration.ViewModels
             await NavigateToOrderAsync(orderViewModel.Order, orderViewModel.Batch);
         }
 
+        [RelayCommand]
         public async Task HandleInvoiceSelectedAsync(ClientInvoiceViewModel? invoiceViewModel)
         {
             if (invoiceViewModel?.Invoice == null)
@@ -1861,6 +1873,7 @@ namespace LaceupMigration.ViewModels
             GoalPaymentText = goalPaymentText;
             PendingDaysText = pendingDaysText;
             Invoice = invoice;
+            CompanyName = invoice.CompanyName ?? string.Empty;
         }
 
         public string NumberText { get; }
@@ -1882,5 +1895,19 @@ namespace LaceupMigration.ViewModels
         public string GoalPaymentText { get; }
         public string PendingDaysText { get; }
         public Invoice Invoice { get; }
+        public string CompanyName { get; }
+    }
+
+    // [MIGRATION]: InvoiceGroup class matches Xamarin Section structure
+    // Groups invoices by CompanyName, exactly like Xamarin ClientInvoicesAdapter
+    public class InvoiceGroup : List<ClientInvoiceViewModel>
+    {
+        public string Header { get; set; } = string.Empty;
+
+        public InvoiceGroup(string header, IEnumerable<ClientInvoiceViewModel> items)
+        {
+            Header = header;
+            AddRange(items);
+        }
     }
 }
