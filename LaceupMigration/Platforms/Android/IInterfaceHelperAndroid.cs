@@ -268,7 +268,7 @@ public class InterfaceHelper : IInterfaceHelper
 
         try
         {
-            var appPackageName = context.ApplicationInfo.PackageName + ".provider";
+            var appPackageName = context.ApplicationInfo.PackageName + ".fileprovider";
             var apkURI = FileProvider.GetUriForFile(context, appPackageName, file);
 
             Intent target = new Intent(Intent.ActionView);
@@ -285,6 +285,49 @@ public class InterfaceHelper : IInterfaceHelper
         catch (Exception ex)
         {
             Logger.CreateLog("Error opening pdf file ==>" + ex.ToString());
+        }
+    }
+
+    public void SendReportByEmail(string pdfFile)
+    {
+        if (string.IsNullOrEmpty(pdfFile))
+        {
+            return;
+        }
+
+        Context context = Android.App.Application.Context;
+
+        try
+        {
+            string toAddress = null;
+
+            using (var emailIntent = new Intent(Intent.ActionSend))
+            {
+                string subj = "Report Attached";
+                string text = "";
+
+                Java.IO.File file = new Java.IO.File(pdfFile);
+
+                var appPackageName = context.ApplicationInfo.PackageName + ".fileprovider";
+                var apkURI = FileProvider.GetUriForFile(context, appPackageName, file);
+
+                emailIntent.PutExtra(Intent.ExtraSubject, subj);
+                emailIntent.PutExtra(Intent.ExtraText, text);
+
+                if (!string.IsNullOrEmpty(toAddress))
+                    emailIntent.PutExtra(Intent.ExtraEmail, new string[] { toAddress.ToLowerInvariant() });
+
+                emailIntent.SetType("application/pdf");
+                emailIntent.PutExtra(Intent.ExtraStream, apkURI);
+                emailIntent.AddFlags(ActivityFlags.GrantReadUriPermission);
+                emailIntent.AddFlags(ActivityFlags.NewTask);
+
+                context.StartActivity(emailIntent);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.CreateLog("Error sending report by email ==>" + ex.ToString());
         }
     }
 

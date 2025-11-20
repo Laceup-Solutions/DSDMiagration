@@ -4,7 +4,7 @@
         <uses-library android:name="com.symbol.emdk" android:required="false"/>
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.provider"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

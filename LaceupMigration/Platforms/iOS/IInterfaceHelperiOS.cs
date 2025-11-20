@@ -204,6 +204,58 @@ public class InterfaceHelper : IInterfaceHelper
         });
     }
 
+    public void SendReportByEmail(string pdfFile)
+    {
+        if (string.IsNullOrEmpty(pdfFile))
+        {
+            return;
+        }
+
+        try
+        {
+            var window = UIApplication.SharedApplication.KeyWindow;
+            var viewController = window.RootViewController;
+
+            // Ensure we get the topmost view controller
+            while (viewController.PresentedViewController != null)
+            {
+                viewController = viewController.PresentedViewController;
+            }
+
+            if (MFMailComposeViewController.CanSendMail)
+            {
+                var mailComposer = new MFMailComposeViewController();
+                mailComposer.SetSubject("Report Attached");
+                mailComposer.SetMessageBody("", false);
+
+                var fileData = NSData.FromFile(pdfFile);
+                if (fileData != null)
+                {
+                    mailComposer.AddAttachmentData(fileData, "application/pdf", Path.GetFileName(pdfFile));
+                }
+
+                mailComposer.Finished += (sender, e) =>
+                {
+                    mailComposer.DismissViewController(true, null);
+                };
+
+                viewController.PresentViewController(mailComposer, true, null);
+            }
+            else
+            {
+                // Fallback to UIDocumentInteractionController if mail is not configured
+                var viewer = UIDocumentInteractionController.FromUrl(NSUrl.FromFilename(pdfFile));
+                viewer.PresentOptionsMenu(
+                    new CoreGraphics.CGRect(0, 0, viewController.View.Frame.Width, viewController.View.Frame.Height),
+                    viewController.View, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.CreateLog("Error sending report by email ==>" + ex.ToString());
+        }
+    }
+
     public void SubscribeToTopic(string topic)
     {
     }
