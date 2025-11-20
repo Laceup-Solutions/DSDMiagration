@@ -7,7 +7,7 @@
 	<Grid RowDefinitions="*,Auto,*" ColumnDefinitions="*">
 		<Grid Grid.Row="1" Padding="24" RowSpacing="16" ColumnDefinitions="*">
 			<VerticalStackLayout Spacing="16" HorizontalOptions="Center" VerticalOptions="Center">
-				<Image Source="dotnet_bot.png" WidthRequest="120" HeightRequest="120" Aspect="AspectFit" />
+				<Image Source="splash.svg" WidthRequest="120" HeightRequest="120" Aspect="AspectFit" />
 				<ActivityIndicator IsRunning="True" IsVisible="True" Color="{DynamicResource Primary}" />
 			</VerticalStackLayout>
 		</Grid>

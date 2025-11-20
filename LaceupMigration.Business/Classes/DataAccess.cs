@@ -5828,6 +5828,21 @@ namespace LaceupMigration
                     netaccess.WriteStringToNetwork("Goodbye");
                     netaccess.CloseConnection();
 
+                    if (errorProd)
+                    {
+                        Logger.CreateLog("Error downloading SAP report - ReceiveFile returned 0");
+                        // Delete the temp file if it exists but is invalid
+                        if (File.Exists(fullPath))
+                        {
+                            try
+                            {
+                                File.Delete(fullPath);
+                            }
+                            catch { }
+                        }
+                        return string.Empty;
+                    }
+
                     return fullPath;
                 }
             }

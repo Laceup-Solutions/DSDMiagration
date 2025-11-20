@@ -155,17 +155,28 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task RunReportWithDetails()
         {
-            IsLoading = true;
             string responseMessage = null;
             string pdfFile = "";
 
             try
             {
-                ProgressDialogHelper.Show("Downloading Report...");
+                ProgressDialogHelper.Show("Generating Report...");
+                await Task.Yield(); // Ensure UI updates before blocking operation
 
+                // Run GetReportWithDetails on background thread to avoid blocking UI
                 var startTime = DateTime.Now;
                 string command = GetBaseCommand();
-                pdfFile = GetReportWithDetails(command);
+                
+                try
+                {
+                    pdfFile = await Task.Run(() => GetReportWithDetails(command));
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex);
+                    responseMessage = "Error downloading report";
+                    return; // Exit early, finally block will hide dialog
+                }
 
                 if (string.IsNullOrEmpty(pdfFile) || !System.IO.File.Exists(pdfFile))
                 {
@@ -194,12 +205,12 @@ namespace LaceupMigration.ViewModels
             }
             finally
             {
+                // CRITICAL: Always hide dialog, even on error
                 ProgressDialogHelper.Hide();
-                IsLoading = false;
 
                 if (!string.IsNullOrEmpty(responseMessage))
                 {
-                    await _dialogService.ShowAlertAsync(responseMessage, "OK", null);
+                    await _dialogService.ShowAlertAsync(responseMessage, "Alert", "OK");
                 }
             }
         }
@@ -233,17 +244,28 @@ namespace LaceupMigration.ViewModels
 
         private async Task SendByEmailWithDetails()
         {
-            IsLoading = true;
             string responseMessage = null;
             string pdfFile = "";
 
             try
             {
-                ProgressDialogHelper.Show("Downloading Report...");
+                ProgressDialogHelper.Show("Generating Report...");
+                await Task.Yield(); // Ensure UI updates before blocking operation
 
+                // Run GetReportWithDetails on background thread to avoid blocking UI
                 var startTime = DateTime.Now;
                 string command = GetBaseCommand();
-                pdfFile = GetReportWithDetails(command);
+                
+                try
+                {
+                    pdfFile = await Task.Run(() => GetReportWithDetails(command));
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex);
+                    responseMessage = "Error downloading report";
+                    return; // Exit early, finally block will hide dialog
+                }
 
                 if (string.IsNullOrEmpty(pdfFile) || !System.IO.File.Exists(pdfFile))
                 {
@@ -272,8 +294,8 @@ namespace LaceupMigration.ViewModels
             }
             finally
             {
+                // CRITICAL: Always hide dialog, even on error
                 ProgressDialogHelper.Hide();
-                IsLoading = false;
 
                 if (!string.IsNullOrEmpty(responseMessage))
                 {

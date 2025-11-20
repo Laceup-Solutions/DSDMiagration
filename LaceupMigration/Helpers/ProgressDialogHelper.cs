@@ -98,32 +98,31 @@ namespace LaceupMigration.Helpers
         /// Finds RootGrid by name, or creates one if page content is not already a Grid.
         /// This is called ONCE per page - never reparents existing content.
         /// </summary>
+        
         private static Grid? FindOrCreateRootGrid(ContentPage page)
         {
-            // Try to find RootGrid by name
+            // Try to find RootGrid by name first (for optimized pages)
             var rootGrid = page.FindByName<Grid>("RootGrid");
             if (rootGrid != null)
                 return rootGrid;
 
-            // If page content is already a Grid, use it as RootGrid
-            if (page.Content is Grid existingGrid)
-            {
-                // This Grid will be used as RootGrid
-                // Note: If it has x:Name="RootGrid" in XAML, FindByName would have found it above
-                return existingGrid;
-            }
-
-            // Page content is not a Grid - wrap it ONCE
-            // This only happens once at first Show() call
+            // Always wrap the content to ensure full-page coverage
+            // Don't try to reuse existing Grids - they might not fill the entire page
             var originalContent = page.Content;
             if (originalContent == null)
                 return null;
 
-            // Create RootGrid and wrap original content
-            var newRootGrid = new Grid();
+            // Create a new RootGrid that explicitly fills the entire page
+            var newRootGrid = new Grid
+            {
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Fill
+            };
+            
+            // Wrap the original content
             newRootGrid.Children.Add(originalContent);
 
-            // Set as page content (only happens once)
+            // Replace page content with our wrapper (only happens once per page)
             page.Content = newRootGrid;
 
             return newRootGrid;

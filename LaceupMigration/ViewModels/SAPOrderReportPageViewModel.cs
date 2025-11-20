@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using System;
 using System.Linq;
@@ -15,7 +16,7 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private bool _showSalesmanSelection = false;
         [ObservableProperty] private string _selectedClient = "All";
         [ObservableProperty] private int _selectedClientId = 0;
-        [ObservableProperty] private string _selectedStatus = "All";
+        [ObservableProperty] private string _selectedStatus = string.Empty; // Empty string for "All" (matches Xamarin)
         [ObservableProperty] private string _selectedStatusDisplay = "All";
 
         public SAPOrderReportPageViewModel(DialogService dialogService, ILaceupAppService appService)
@@ -124,20 +125,24 @@ namespace LaceupMigration.ViewModels
 
         protected override string GetBaseCommand()
         {
+            // Match Xamarin SAPOrderStatusReport.GetCommand() exactly
             var dateTime = DateFrom;
             var cmd = dateTime.ToString("MM/dd/yyyy");
 
             int slm = 0;
-            if (ShowSalesmanSelection && SelectedSalesman != "All Salesmen")
+            // Match Xamarin: if (salesman != null) ... else cmd += "|" + Config.SalesmanId;
+            if (ShowSalesmanSelection)
             {
-                slm = SelectedSalesmanId;
+                if (SelectedSalesman != "All Salesmen")
+                {
+                    slm = SelectedSalesmanId;
+                }
+                cmd += "|" + slm;
             }
-            else if (!ShowSalesmanSelection)
+            else
             {
-                slm = Config.SalesmanId;
+                cmd += "|" + Config.SalesmanId;
             }
-
-            cmd += "|" + slm;
 
             if (Config.DaysToRunReports > 0)
             {
@@ -151,6 +156,8 @@ namespace LaceupMigration.ViewModels
                 cmd += "|" + (long)DateTo.Ticks;
             }
 
+            // Match Xamarin: if (ClientSpinner != null) { ... cmd += "|" + client; }
+            // Client is always shown in UI, so always add it
             int client = 0;
             if (SelectedClient != "All")
             {
@@ -158,6 +165,8 @@ namespace LaceupMigration.ViewModels
             }
             cmd += "|" + client;
 
+            // Match Xamarin: if (StatusSpinner != null) { ... cmd += "|" + selectedStatus; }
+            // Status is always shown in UI, so always add it
             cmd += "|" + SelectedStatus;
 
             return cmd;

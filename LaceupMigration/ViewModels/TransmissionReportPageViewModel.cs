@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using System;
 using System.Threading.Tasks;
@@ -20,16 +21,21 @@ namespace LaceupMigration.ViewModels
 
         protected override string GetBaseCommand()
         {
+            // Match Xamarin logic: Convert DateTo to DateTime, add 1 day and subtract 1 minute
             var endDate = DateTo.AddDays(1).AddMinutes(-1);
-            var date = endDate.ToString();
             
-            // Handle Spanish AM/PM format
+            // Format the end date as string (matches Xamarin endDate.ToString())
+            string date = endDate.ToString("M/d/yyyy h:mm:ss tt", System.Globalization.CultureInfo.InvariantCulture);
+            
+            // Handle Spanish AM/PM format (matches Xamarin logic)
             if (date.Contains("p. m.") || date.Contains("a. m."))
             {
                 date = date.Replace("p. m.", "PM");
                 date = date.Replace("a. m.", "AM");
             }
 
+            // Build command: dateFromText|endDateString|salesmanId|onlyFinal|showClientAddr|onlyBills|dateFromTicks|endDateTicks
+            // Matches Xamarin: dateFromReport.Text + "|" + date.ToString()
             var cmd = DateFromText + "|" + date;
             cmd += "|" + Config.SalesmanId;
             cmd += "|" + (OnlyFinal ? "1" : "0");
@@ -44,6 +50,7 @@ namespace LaceupMigration.ViewModels
             }
             else
             {
+                // Match Xamarin: (long)dateFromReport.Tag + "|" + (long)endDate.Ticks
                 cmd += "|" + (long)DateFrom.Ticks + "|" + (long)endDate.Ticks;
             }
 
