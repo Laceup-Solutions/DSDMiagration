@@ -48,6 +48,8 @@ namespace LaceupMigration
             Routing.RegisterRoute("additem", typeof(AddItemPage));
             Routing.RegisterRoute("advancedcatalog", typeof(AdvancedCatalogPage));
             Routing.RegisterRoute("productcatalog", typeof(ProductCatalogPage));
+            Routing.RegisterRoute("productimage", typeof(ProductImagePage));
+            Routing.RegisterRoute("productdetails", typeof(ProductDetailsPage));
             Routing.RegisterRoute("timesheet", typeof(TimeSheetPage));
 
             // Menu routes

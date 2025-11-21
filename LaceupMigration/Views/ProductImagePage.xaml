@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.ProductImagePage"
+             x:DataType="vm:ProductImagePageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Product Image"
+             BackgroundColor="White">
+    <ContentPage.Content>
+        <Grid>
+            <ScrollView>
+                <Image Source="{Binding ImagePath}"
+                       Aspect="AspectFit"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center"
+                       IsVisible="{Binding HasImage}" />
+            </ScrollView>
+            
+            <Label Text="No image available"
+                   IsVisible="{Binding ShowNoImage}"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center"
+                   TextColor="{StaticResource Gray600}"
+                   FontSize="16" />
+        </Grid>
+    </ContentPage.Content>
+</ContentPage>
+

@@ -12,98 +12,205 @@
         <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
-        <VerticalStackLayout Padding="16" Spacing="16">
-            <SearchBar Text="{Binding SearchQuery}"
-                       Placeholder="Search categories or products..."
-                       SearchButtonPressed="SearchBar_SearchButtonPressed"
-                       Margin="0,0,0,8" />
+        <Grid RowDefinitions="Auto,Auto,*" Padding="5">
+            <!-- Search Bar with Barcode Icon (matches Xamarin layout) -->
+            <Frame Grid.Row="0" Margin="5,10,5,0" Padding="0" HasShadow="False" BorderColor="{StaticResource Gray300}" BackgroundColor="{StaticResource White}">
+                <Grid ColumnDefinitions="*,Auto" Padding="8,0">
+                    <SearchBar Grid.Column="0"
+                               Text="{Binding SearchQuery}"
+                               Placeholder="Search categories or products..."
+                               SearchButtonPressed="SearchBar_SearchButtonPressed"
+                               BackgroundColor="Transparent"
+                               Margin="0" />
+                    <ImageButton Grid.Column="1"
+                                 Source="{mi:MaterialOutlined Icon=QrCode, IconColor=Black}"
+                                 WidthRequest="40"
+                                 HeightRequest="40"
+                                 BackgroundColor="Transparent"
+                                 IsEnabled="False"
+                                 Opacity="0.6"
+                                 VerticalOptions="Center"
+                                 HorizontalOptions="Center" />
+                </Grid>
+            </Frame>
 
-            <RadioButton Content="Search by Category"
-                        IsChecked="{Binding SearchByCategory}"
-                        Margin="0,0,0,8" />
+            <!-- Radio Buttons (horizontal) - Only show when displaying categories (matches FullCategoryActivity) -->
+            <HorizontalStackLayout Grid.Row="1" 
+                                   Spacing="16" 
+                                   HorizontalOptions="Center" 
+                                   Margin="0,8,0,0"
+                                   IsVisible="{Binding ShowCategories}">
+                <RadioButton Content="By Category"
+                             IsChecked="{Binding SearchByCategory}"
+                             GroupName="SearchType" />
+                <RadioButton Content="By Product"
+                             IsChecked="{Binding SearchByProduct}"
+                             GroupName="SearchType" />
+            </HorizontalStackLayout>
 
-            <RadioButton Content="Search by Product"
-                        IsChecked="{Binding SearchByProduct}"
-                        Margin="0,0,0,8" />
-
-            <Button Text="Scan Barcode"
-                    Command="{Binding ScanCommand}"
-                    Style="{StaticResource SecondaryButton}"
-                    Margin="0,0,0,8" />
-
-            <!-- Categories View -->
-            <Label Text="Categories:"
-                   FontSize="16"
-                   FontAttributes="Bold"
-                   TextColor="{StaticResource PrimaryDark}"
-                   Margin="0,8,0,0"
-                   IsVisible="{Binding ShowCategories}" />
-
+            <!-- Categories ListView (matches Xamarin layout - fills remaining space) -->
             <CollectionView x:Name="CategoriesCollectionView"
+                            Grid.Row="2"
                             ItemsSource="{Binding Categories}"
-                            SelectionMode="Single"
+                            SelectionMode="None"
+                            Margin="0,20,0,0"
                             IsVisible="{Binding ShowCategories}">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:CategoryViewModel">
-                        <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
-                            <VerticalStackLayout Spacing="4" InputTransparent="True">
-                                <Label Text="{Binding Name}"
+                        <Grid RowDefinitions="Auto,Auto" Padding="12" Margin="0,0,0,1" BackgroundColor="{StaticResource White}">
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="Category_Tapped" />
+                            </Grid.GestureRecognizers>
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                <Label Grid.Column="0"
+                                       Text="{Binding Name}"
                                        FontSize="16"
-                                       FontAttributes="Bold"
-                                       TextColor="{StaticResource Gray900}" />
-                                <Label Text="{Binding SubcategoriesText}"
+                                       TextColor="{StaticResource Gray900}"
+                                       VerticalOptions="Center" />
+                                <Image Grid.Column="1"
+                                       Source="{mi:MaterialOutlined Icon=ExpandMore, IconColor=Gray}"
+                                       WidthRequest="24"
+                                       HeightRequest="24"
                                        IsVisible="{Binding ShowSubcategories}"
-                                       FontSize="13"
-                                       TextColor="{StaticResource Gray600}" />
+                                       VerticalOptions="Center" />
+                            </Grid>
+                            <!-- Subcategories (expandable) -->
+                            <VerticalStackLayout Grid.Row="1" 
+                                                 IsVisible="{Binding IsExpanded}"
+                                                 Margin="20,0,0,0"
+                                                 Spacing="0">
+                                <CollectionView ItemsSource="{Binding Subcategories}"
+                                                SelectionMode="Single"
+                                                SelectionChanged="Subcategory_SelectionChanged">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Padding="12,8" BackgroundColor="{StaticResource Gray100}">
+                                                <Grid.GestureRecognizers>
+                                                    <TapGestureRecognizer Tapped="Subcategory_Tapped" />
+                                                </Grid.GestureRecognizers>
+                                                <Label Text="{Binding Name}"
+                                                       FontSize="14"
+                                                       TextColor="{StaticResource Gray900}"
+                                                       VerticalOptions="Center" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                </CollectionView>
                             </VerticalStackLayout>
-                        </Frame>
+                        </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <!-- Products View -->
-            <Label Text="Products:"
-                   FontSize="16"
-                   FontAttributes="Bold"
-                   TextColor="{StaticResource PrimaryDark}"
-                   Margin="0,8,0,0"
-                   IsVisible="{Binding ShowProducts}" />
-
+            <!-- Products ListView (matches Xamarin layout - fills remaining space) -->
             <CollectionView x:Name="ProductsCollectionView"
+                            Grid.Row="2"
                             ItemsSource="{Binding Products}"
                             SelectionMode="Single"
+                            Margin="0,20,0,0"
                             IsVisible="{Binding ShowProducts}">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:ProductViewModel">
-                        <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
-                            <VerticalStackLayout Spacing="4" InputTransparent="True">
+                        <Grid Padding="12" Margin="0,0,0,1" BackgroundColor="{StaticResource White}">
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="ProductCell_Tapped" />
+                            </Grid.GestureRecognizers>
+                            <VerticalStackLayout Spacing="8">
+                                <!-- Product Image (centered at top, matches Xamarin's full width with minHeight 300dp) -->
+                                <Image Source="{Binding ProductImagePath}"
+                                       HeightRequest="300"
+                                       MinimumHeightRequest="300"
+                                       Aspect="AspectFit"
+                                       HorizontalOptions="Fill"
+                                       VerticalOptions="Start"
+                                       Margin="0,20,0,20"
+                                       IsVisible="{Binding HasImage}">
+                                    <Image.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="ProductImage_Tapped" />
+                                    </Image.GestureRecognizers>
+                                </Image>
+                                
+                                <!-- Product Name -->
                                 <Label Text="{Binding Name}"
                                        FontSize="16"
                                        FontAttributes="Bold"
-                                       TextColor="{StaticResource Gray900}" />
-                                <HorizontalStackLayout Spacing="8">
-                                    <Label Text="{Binding Upc, StringFormat='UPC: {0}'}"
+                                       TextColor="{StaticResource Gray900}"
+                                       HorizontalOptions="Start"
+                                       Margin="0,4,0,0" />
+                                
+                                <!-- All details in a column -->
+                                <!-- All details in a 2-column grid -->
+                                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="4">
+                                    <!-- UPC (left, row 0) -->
+                                    <Label Grid.Column="0" Grid.Row="0"
+                                           Text="{Binding Upc, StringFormat='UPC: {0}'}"
                                            FontSize="13"
-                                           TextColor="{StaticResource Gray600}" />
-                                    <Label Text="{Binding Price, StringFormat='Price: {0}'}"
+                                           TextColor="{StaticResource colorLaceupDark}"
+                                           HorizontalOptions="Start" />
+    
+                                    <!-- Packaging (right, row 0) -->
+                                    <Label Grid.Column="1" Grid.Row="0"
+                                           Text="{Binding Packaging, StringFormat='Packaging: {0}'}"
                                            FontSize="13"
-                                           TextColor="{StaticResource Gray600}" />
-                                    <Label Text="{Binding Inventory, StringFormat='Inv: {0}'}"
+                                           TextColor="{StaticResource colorLaceupDark}"
+                                           HorizontalOptions="Start" />
+    
+                                    <!-- Price (left, row 1) -->
+                                    <Label Grid.Column="0" Grid.Row="1"
+                                           Text="{Binding Price, StringFormat='Price: {0}'}"
                                            FontSize="13"
-                                           TextColor="{StaticResource Gray600}" />
-                                </HorizontalStackLayout>
+                                           TextColor="{StaticResource colorLaceupDark}"
+                                           IsVisible="{Binding ShowPrice}"
+                                           HorizontalOptions="Start" />
+    
+                                    <!-- OH (On Hand) (right, row 1) -->
+                                    <Label Grid.Column="1" Grid.Row="1"
+                                           Text="{Binding OnHandText, StringFormat='OH: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource colorLaceupDark}"
+                                           HorizontalOptions="Start" />
+    
+                                    <!-- UoM (Primary) - if single UoM (left, row 2) -->
+                                    <Label Grid.Column="0" Grid.Row="2"
+                                           Text="{Binding Uom, StringFormat='UoM: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource colorLaceupDark}"
+                                           IsVisible="{Binding ShowUom}"
+                                           HorizontalOptions="Start" />
+    
+                                    <!-- Secondary UoM details (if multiple UoMs) (spans both columns, row 3) -->
+                                    <VerticalStackLayout Grid.Column="0" Grid.Row="3" Grid.ColumnSpan="2" 
+                                                         Spacing="4" IsVisible="{Binding ShowUom1}" Margin="0,4,0,0">
+                                        <Label Text="{Binding Price1, StringFormat='Price: {0}'}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource colorLaceupDark}"
+                                               IsVisible="{Binding ShowPrice1}"
+                                               HorizontalOptions="Start" />
+                                        <Label Text="{Binding OnHand1, StringFormat='OH: {0}'}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource colorLaceupDark}"
+                                               IsVisible="{Binding ShowOnHand1}"
+                                               HorizontalOptions="Start" />
+                                        <Label Text="{Binding Uom1, StringFormat='UoM: {0}'}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource colorLaceupDark}"
+                                               IsVisible="{Binding ShowUom1}"
+                                               HorizontalOptions="Start" />
+                                    </VerticalStackLayout>
+                                </Grid>
                             </VerticalStackLayout>
-                        </Frame>
+                        </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <Label Text="No items found."
+            <Label Grid.Row="2"
+                   Text="No items found."
                    IsVisible="{Binding ShowNoCategories}"
                    HorizontalOptions="Center"
                    VerticalOptions="Center"
                    Margin="0,20,0,20"
                    TextColor="{StaticResource Gray500}" />
-        </VerticalStackLayout>
+        </Grid>
     </ContentPage.Content>
 </ContentPage>
