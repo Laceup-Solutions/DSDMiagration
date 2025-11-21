@@ -51,6 +51,27 @@ namespace LaceupMigration.Converters
     }
     
     /// <summary>
+    /// Converter that returns expand/collapse icon character based on boolean value.
+    /// Returns "▼" when true (expanded), "▶" when false (collapsed).
+    /// </summary>
+    public class ExpandIconConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is bool boolValue)
+            {
+                return boolValue ? "▼" : "▶";
+            }
+            return "▶";
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    
+    /// <summary>
     /// Converter that returns true if the numeric value is not zero, false otherwise.
     /// Used to conditionally show weight and other numeric fields.
     /// </summary>
