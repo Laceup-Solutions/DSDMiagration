@@ -10,6 +10,7 @@ using LaceupMigration.Controls;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.ApplicationModel;
 using LaceupMigration;
+using System.Threading;
 
 namespace LaceupMigration.ViewModels
 {
@@ -29,6 +30,15 @@ namespace LaceupMigration.ViewModels
         private bool _isScanning = false;
         private int _lastScannedProductId = 0;
         private List<int> _relatedLines = new();
+        
+        // Performance optimization: caching
+        private List<AdvancedCatalogItemViewModel>? _cachedItems = null;
+        private int? _cachedItemType = null;
+        private int? _cachedCategoryId = null;
+        private string? _cachedSearchFromCategories = null;
+        private Dictionary<Product, List<InvoiceDetail>>? _cachedClientHistory = null;
+        private Timer? _searchDebounceTimer;
+        private const int SearchDebounceMs = 300;
 
         public ObservableCollection<AdvancedCatalogItemViewModel> Items { get; } = new();
         public ObservableCollection<AdvancedCatalogItemViewModel> FilteredItems { get; } = new();
@@ -39,6 +49,9 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private string _clientName = string.Empty;
+
+        [ObservableProperty]
+        private string _orderTypeText = string.Empty;
 
         [ObservableProperty]
         private string _linesText = "Lines: 0";
@@ -62,16 +75,47 @@ namespace LaceupMigration.ViewModels
         private bool _showReturnsButton = true;
 
         [ObservableProperty]
-        private Microsoft.Maui.Graphics.Color _salesButtonColor = Microsoft.Maui.Graphics.Colors.Blue;
+        private string _buttonGridColumns = "*,*,*";
 
         [ObservableProperty]
-        private Microsoft.Maui.Graphics.Color _dumpsButtonColor = Microsoft.Maui.Graphics.Colors.Gray;
+        private int _salesButtonColumn = 0;
 
         [ObservableProperty]
-        private Microsoft.Maui.Graphics.Color _returnsButtonColor = Microsoft.Maui.Graphics.Colors.Gray;
+        private int _dumpsButtonColumn = 1;
+
+        [ObservableProperty]
+        private int _returnsButtonColumn = 2;
+
+        [ObservableProperty]
+        private Microsoft.Maui.Graphics.Color _salesButtonColor = Microsoft.Maui.Graphics.Colors.Transparent;
+
+        [ObservableProperty]
+        private Microsoft.Maui.Graphics.Color _dumpsButtonColor = Microsoft.Maui.Graphics.Colors.Transparent;
+
+        [ObservableProperty]
+        private Microsoft.Maui.Graphics.Color _returnsButtonColor = Microsoft.Maui.Graphics.Colors.Transparent;
+
+        [ObservableProperty]
+        private Microsoft.Maui.Graphics.Color _salesButtonTextColor = Microsoft.Maui.Graphics.Colors.Black;
+
+        [ObservableProperty]
+        private Microsoft.Maui.Graphics.Color _dumpsButtonTextColor = Microsoft.Maui.Graphics.Colors.Black;
+
+        [ObservableProperty]
+        private Microsoft.Maui.Graphics.Color _returnsButtonTextColor = Microsoft.Maui.Graphics.Colors.Black;
 
         [ObservableProperty]
         private string _itemsTotalText = "Items: 0";
+
+        [ObservableProperty]
+        private bool _isOrderSummaryExpanded = false;
+
+        public bool ShowTotalInHeader => ShowTotals && !IsOrderSummaryExpanded;
+
+        partial void OnIsOrderSummaryExpandedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowTotalInHeader));
+        }
 
         [ObservableProperty]
         private string _termsText = "Terms: ";
@@ -89,6 +133,27 @@ namespace LaceupMigration.ViewModels
         private string _totalText = "Total: $0.00";
 
         [ObservableProperty]
+        private string _qtySoldText = "Qty Sold: 0";
+
+        [ObservableProperty]
+        private string _orderAmountText = "Order: $0.00";
+
+        [ObservableProperty]
+        private string _creditAmountText = "Credit: $0.00";
+
+        [ObservableProperty]
+        private string _companyText = string.Empty;
+
+        [ObservableProperty]
+        private bool _showCompany = false;
+
+        [ObservableProperty]
+        private bool _showTotals = true;
+
+        [ObservableProperty]
+        private bool _showDiscount = true;
+
+        [ObservableProperty]
         private string _sortByText = "Sort: Product Name";
 
         [ObservableProperty]
@@ -103,6 +168,12 @@ namespace LaceupMigration.ViewModels
             _appService = appService;
             _scannerService = scannerService;
             ShowPrices = !Config.HidePriceInTransaction;
+            ShowTotals = !Config.HidePriceInTransaction;
+        }
+
+        ~AdvancedCatalogPageViewModel()
+        {
+            _searchDebounceTimer?.Dispose();
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -164,30 +235,71 @@ namespace LaceupMigration.ViewModels
 
             _initialized = true;
             ClientName = _order.Client?.ClientName ?? "Unknown Client";
+            OrderTypeText = GetOrderTypeText(_order);
             TermsText = "Terms: " + _order.Term;
             CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
             ShowSendButton = _order.AsPresale;
-            
-            // If OrderType is Credit, hide Sales button and set default item type
-            if (_order.OrderType == OrderType.Credit)
+
+            // Company info
+            if (!string.IsNullOrEmpty(_order.CompanyName))
             {
-                ShowSalesButton = false;
-                // Default to Dumps (1) for credit orders, but allow switching to Returns (2)
-                if (!itemType.HasValue)
-                {
-                    _itemType = 1; // Default to Dumps for credit orders
-                }
+                CompanyText = $"Company: {_order.CompanyName}";
+                ShowCompany = true;
             }
             else
             {
-                ShowSalesButton = true;
+                ShowCompany = false;
+            }
+            
+            // Set button visibility based on OrderType and AllowOneDoc
+            // If OrderType is Return or Credit, show Dumps and Returns buttons (hide Sales)
+            if (_order.OrderType == OrderType.Return || _order.OrderType == OrderType.Credit)
+            {
+                ShowSalesButton = false;
+                ShowDumpsButton = true;
+                ShowReturnsButton = true;
+                // Default to Dumps (1) for credit/return orders, but allow switching to Returns (2)
+                if (!itemType.HasValue)
+                {
+                    _itemType = 1; // Default to Dumps for credit/return orders
+                }
+            }
+            else if (_order.OrderType == OrderType.Order)
+            {
+                // If AllowOneDoc is true, show Sales, Returns, and Dumps buttons
+                // If AllowOneDoc is false, don't show any buttons (only can add sales)
+                var allowOneDoc = _order.Client?.AllowOneDoc ?? false;
+                if (allowOneDoc)
+                {
+                    ShowSalesButton = true;
+                    ShowDumpsButton = true;
+                    ShowReturnsButton = true;
+                }
+                else
+                {
+                    ShowSalesButton = false;
+                    ShowDumpsButton = false;
+                    ShowReturnsButton = false;
+                }
                 // Default to Sales (0) for regular orders
                 if (!itemType.HasValue)
                 {
                     _itemType = 0;
                 }
             }
+            else
+            {
+                // Other order types - default behavior
+                ShowSalesButton = true;
+                ShowDumpsButton = false;
+                ShowReturnsButton = false;
+                if (!itemType.HasValue)
+                {
+                    _itemType = 0;
+                }
+            }
             
+            UpdateButtonGridColumns();
             UpdateItemTypeText();
             PrepareList();
             RefreshTotals();
@@ -205,6 +317,10 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task RefreshAsync()
         {
+            // Clear cache to force rebuild
+            _cachedItems = null;
+            _cachedItemType = null;
+            
             PrepareList();
             Filter();
             RefreshTotals();
@@ -217,9 +333,28 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return;
 
+            // Check if we can use cached items
+            var categoryId = _category?.CategoryId ?? 0;
+            if (_cachedItems != null && 
+                _cachedItemType == _itemType && 
+                _cachedCategoryId == categoryId &&
+                _cachedSearchFromCategories == _searchCriteriaFromCategories)
+            {
+                // Use cached items, just update display properties
+                Items.Clear();
+                foreach (var item in _cachedItems)
+                {
+                    // Update display properties in case order details changed
+                    UpdateItemFromOrderDetails(item);
+                    item.UpdateDisplayProperties();
+                    Items.Add(item);
+                }
+                return;
+            }
+
             var items = new List<AdvancedCatalogItemViewModel>();
 
-            var products = Product.GetProductListForOrder(_order, _itemType > 0, _category != null ? _category.CategoryId : 0);
+            var products = Product.GetProductListForOrder(_order, _itemType > 0, categoryId);
 
             if (!string.IsNullOrEmpty(_searchCriteriaFromCategories))
             {
@@ -233,10 +368,17 @@ namespace LaceupMigration.ViewModels
                 ).ToList();
             }
 
-            if (_order.Client.ClientProductHistory == null)
-                _order.Client.ClientProductHistory = InvoiceDetail.GetProductHistoryDictionary(_order.Client);
+            // Cache client history
+            if (_cachedClientHistory == null)
+            {
+                if (_order.Client.ClientProductHistory == null)
+                    _order.Client.ClientProductHistory = InvoiceDetail.GetProductHistoryDictionary(_order.Client);
+                _cachedClientHistory = _order.Client.ClientProductHistory;
+            }
 
-            var clientSource = _order.Client.ClientProductHistory;
+            var clientSource = _cachedClientHistory;
+            if (clientSource == null)
+                return;
 
             foreach (var product in products)
             {
@@ -246,11 +388,13 @@ namespace LaceupMigration.ViewModels
                     ItemType = _itemType
                 };
 
-                var clientSourceKey = clientSource.Keys.FirstOrDefault(x => x.ProductId == product.ProductId);
-                if (clientSourceKey != null)
+                // Use more efficient lookup - try to find by ProductId directly
+                var clientSourceKey = clientSource.Keys.FirstOrDefault(x => x != null && x.ProductId == product.ProductId);
+                if (clientSourceKey != null && clientSource.TryGetValue(clientSourceKey, out var history))
                 {
                     item.History.Clear();
-                    item.History.AddRange(clientSource[clientSourceKey].OrderByDescending(x => x.Date));
+                    // Only take recent history to improve performance
+                    item.History.AddRange(history.OrderByDescending(x => x.Date).Take(10));
                 }
 
                 // Create details for each UoM or single detail if no UoM
@@ -309,15 +453,17 @@ namespace LaceupMigration.ViewModels
                     }
                 }
 
-                // Sync with existing order details
-                foreach (var orderDetail in _order.Details)
-                {
-                    var it = orderDetail.IsCredit ? (orderDetail.Damaged ? 1 : 2) : 0;
-                    if (it != _itemType)
-                        continue;
+                // Sync with existing order details - optimize by filtering first
+                var relevantDetails = _order.Details
+                    .Where(d => 
+                    {
+                        var it = d.IsCredit ? (d.Damaged ? 1 : 2) : 0;
+                        return it == _itemType && d.Product.ProductId == product.ProductId;
+                    })
+                    .ToList();
 
-                    if (orderDetail.Product.ProductId != product.ProductId)
-                        continue;
+                foreach (var orderDetail in relevantDetails)
+                {
 
                     if (orderDetail.IsFreeItem || (!string.IsNullOrEmpty(orderDetail.ExtraFields) && orderDetail.ExtraFields.Contains("productfree")))
                     {
@@ -358,16 +504,64 @@ namespace LaceupMigration.ViewModels
                 items.Add(item);
             }
 
-            // Sort items
-            items = SortByCriteria(_selectedCriteria, items);
+            // Sort items (this is fast, can stay on current thread)
+            var sortedItems = SortByCriteria(_selectedCriteria, items);
 
-            Items.Clear();
-            foreach (var item in items)
+            // Cache the items
+            _cachedItems = sortedItems;
+            _cachedItemType = _itemType;
+            _cachedCategoryId = categoryId;
+            _cachedSearchFromCategories = _searchCriteriaFromCategories;
+
+            // Update UI on main thread with batched updates
+            MainThread.BeginInvokeOnMainThread(() =>
             {
-                Items.Add(item);
-            }
+                // Batch clear and add for better performance
+                Items.Clear();
+                // Add items in batch to reduce UI updates
+                var itemsToAdd = sortedItems.ToList();
+                foreach (var item in itemsToAdd)
+                {
+                    Items.Add(item);
+                }
+            });
 
             _relatedLines = _order.Details.Where(x => x.RelatedOrderDetail > 0).Select(x => x.RelatedOrderDetail).ToList();
+        }
+
+        private void UpdateItemFromOrderDetails(AdvancedCatalogItemViewModel item)
+        {
+            if (_order == null)
+                return;
+
+            // Sync with existing order details for this item type
+            foreach (var orderDetail in _order.Details)
+            {
+                var it = orderDetail.IsCredit ? (orderDetail.Damaged ? 1 : 2) : 0;
+                if (it != _itemType)
+                    continue;
+
+                if (orderDetail.Product.ProductId != item.Product.ProductId)
+                    continue;
+
+                var detail = item.Details.FirstOrDefault(x => EqualsUom(x.UoM, orderDetail.UnitOfMeasure));
+                if (detail != null)
+                {
+                    detail.Price = orderDetail.Price;
+                    detail.Detail = orderDetail;
+                    detail.ExtraFields = orderDetail.ExtraFields;
+
+                    double price = 0;
+                    if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out price, orderDetail.UnitOfMeasure))
+                    {
+                        detail.IsFromEspecial = detail.Price == price;
+                    }
+                }
+            }
+
+            // Update primary detail
+            item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.Qty > 0) 
+                ?? item.Details.FirstOrDefault();
         }
 
         private bool EqualsUom(UnitOfMeasure? uom1, UnitOfMeasure? uom2)
@@ -464,8 +658,32 @@ namespace LaceupMigration.ViewModels
             };
 
             SortByText = $"Sort: {selected}";
-            PrepareList();
-            Filter();
+            
+            // Re-sort existing items instead of rebuilding
+            if (_cachedItems != null && Items.Count > 0)
+            {
+                // Sort off UI thread
+                Task.Run(() =>
+                {
+                    var sorted = SortByCriteria(_selectedCriteria, Items.ToList());
+                    
+                    // Update UI on main thread
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        Items.Clear();
+                        foreach (var item in sorted)
+                        {
+                            Items.Add(item);
+                        }
+                        Filter();
+                    });
+                });
+            }
+            else
+            {
+                PrepareList();
+                Filter();
+            }
         }
 
         private void Filter()
@@ -473,50 +691,78 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return;
 
-            var list = Items.ToList();
-
-            if ((_currentFilter & 2) > 0) // In Stock
-                list = list.Where(x => x.Product.CurrentWarehouseInventory > 0).ToList();
-
-            if ((_currentFilter & 4) > 0) // Previously Ordered
-                list = list.Where(x => x.History.Count > 0).ToList();
-
-            if ((_currentFilter & 8) > 0) // Never Ordered
-                list = list.Where(x => x.History.Count == 0).ToList();
-
-            if ((_currentFilter & 16) > 0) // In Offer
+            // Run filtering off UI thread for better performance
+            Task.Run(() =>
             {
-                var prods = list.Select(x => x.Product.ProductId).ToList();
-                var discCat = list.Where(x => x.Product.DiscountCategoryId > 0).Select(x => x.Product.DiscountCategoryId).ToList();
-                var prodsWithOffer = Offer.GetOffersVisibleToClient(_order.Client)
-                    .Where(x => prods.Contains(x.ProductId) || discCat.Contains(x.Product.DiscountCategoryId))
-                    .Select(x => x.Product).ToList();
-                list = list.Where(x => prodsWithOffer.Any(y => y.ProductId == x.Product.ProductId || y.DiscountCategoryId == x.Product.DiscountCategoryId)).ToList();
-            }
+                // Use IEnumerable to avoid multiple ToList() calls - much more efficient
+                IEnumerable<AdvancedCatalogItemViewModel> filtered = Items;
 
-            if (!string.IsNullOrEmpty(_searchCriteria))
-            {
-                var searchLower = _searchCriteria.Replace(" ", "").ToLowerInvariant();
-                list = list.Where(x =>
-                    x.Product.Name.ToLowerInvariant().Replace(" ", "").Contains(searchLower) ||
-                    x.Product.Upc.ToLowerInvariant().Replace(" ", "").Contains(searchLower) ||
-                    x.Product.Sku.ToLowerInvariant().Replace(" ", "").Contains(searchLower) ||
-                    x.Product.Description.ToLowerInvariant().Replace(" ", "").Contains(searchLower) ||
-                    x.Product.Code.ToLowerInvariant().Replace(" ", "").Contains(searchLower)
-                ).ToList();
-            }
+                // Apply filters in sequence without creating intermediate lists
+                if ((_currentFilter & 2) > 0) // In Stock
+                    filtered = filtered.Where(x => x.Product.CurrentWarehouseInventory > 0);
 
-            FilteredItems.Clear();
-            foreach (var item in list)
-            {
-                FilteredItems.Add(item);
-            }
+                if ((_currentFilter & 4) > 0) // Previously Ordered
+                    filtered = filtered.Where(x => x.History.Count > 0);
+
+                if ((_currentFilter & 8) > 0) // Never Ordered
+                    filtered = filtered.Where(x => x.History.Count == 0);
+
+                if ((_currentFilter & 16) > 0) // In Offer
+                {
+                    // Pre-compute offers once
+                    var offers = Offer.GetOffersVisibleToClient(_order.Client).ToList();
+                    var offerProductIds = offers.Select(x => x.ProductId).ToHashSet();
+                    var offerCategoryIds = offers.Select(x => x.Product?.DiscountCategoryId ?? 0).Where(x => x > 0).ToHashSet();
+                    
+                    filtered = filtered.Where(x => 
+                        offerProductIds.Contains(x.Product.ProductId) || 
+                        (x.Product.DiscountCategoryId > 0 && offerCategoryIds.Contains(x.Product.DiscountCategoryId)));
+                }
+
+                // Apply search filter
+                if (!string.IsNullOrEmpty(_searchCriteria))
+                {
+                    var searchLower = _searchCriteria.Replace(" ", "").ToLowerInvariant();
+                    filtered = filtered.Where(x =>
+                        x.Product.Name.ToLowerInvariant().Replace(" ", "").Contains(searchLower) ||
+                        x.Product.Upc.ToLowerInvariant().Replace(" ", "").Contains(searchLower) ||
+                        x.Product.Sku.ToLowerInvariant().Replace(" ", "").Contains(searchLower) ||
+                        x.Product.Description.ToLowerInvariant().Replace(" ", "").Contains(searchLower) ||
+                        x.Product.Code.ToLowerInvariant().Replace(" ", "").Contains(searchLower)
+                    );
+                }
+
+                // Only call ToList() once at the end
+                var result = filtered.ToList();
+
+                // Update UI on main thread with batched updates
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    // Batch clear and add for better performance
+                    FilteredItems.Clear();
+                    // Pre-create list to reduce individual Add() calls overhead
+                    var itemsToAdd = result.ToList();
+                    foreach (var item in itemsToAdd)
+                    {
+                        FilteredItems.Add(item);
+                    }
+                });
+            });
         }
 
         partial void OnSearchQueryChanged(string value)
         {
-            _searchCriteria = value.ToLowerInvariant();
-            Filter();
+            _searchCriteria = value?.ToLowerInvariant() ?? string.Empty;
+            
+            // Debounce search
+            _searchDebounceTimer?.Dispose();
+            _searchDebounceTimer = new Timer(_ =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    Filter();
+                });
+            }, null, SearchDebounceMs, Timeout.Infinite);
         }
 
         private void RefreshTotals()
@@ -524,12 +770,29 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return;
 
-            ItemsTotalText = $"Items Total:{_order.Details.Sum(x => x.Qty)}";
+            // Calculate totals
+            var totalQty = _order.Details.Sum(x => x.Qty);
+            var subtotal = _order.OrderTotalCost();
+            var discount = _order.DiscountAmount;
+            var tax = _order.CalculateTax();
+            var total = _order.OrderTotalCost();
+
             LinesText = $"Lines: {_order.Details.Count}";
-            SubtotalText = $"Subtotal: {_order.CalculateItemCost().ToCustomString()}";
-            DiscountText = $"Discount: {_order.CalculateDiscount().ToCustomString()}";
-            TaxText = $"Tax: {_order.CalculateTax().ToCustomString()}";
-            TotalText = $"Total: {_order.OrderTotalCost().ToCustomString()}";
+            QtySoldText = $"Qty Sold: {totalQty}";
+            
+            // Calculate order and credit amounts
+            var orderAmount = _order.Details.Where(x => !x.IsCredit).Sum(x => x.Qty * x.Price);
+            var creditAmount = _order.Details.Where(x => x.IsCredit).Sum(x => x.Qty * x.Price);
+            OrderAmountText = $"Order: {orderAmount.ToCustomString()}";
+            CreditAmountText = $"Credit: {creditAmount.ToCustomString()}";
+            
+            SubtotalText = $"Subtotal: {subtotal.ToCustomString()}";
+            DiscountText = $"Discount: {discount.ToCustomString()}";
+            TaxText = $"Tax: {tax.ToCustomString()}";
+            TotalText = $"Total: {total.ToCustomString()}";
+
+            ShowTotals = !Config.HidePriceInTransaction;
+            ShowDiscount = _order.Client?.UseDiscount == true || _order.Client?.UseDiscountPerLine == true || _order.IsDelivery;
         }
 
         private void LoadLineItems()
@@ -724,7 +987,17 @@ namespace LaceupMigration.ViewModels
 
             _order.Save();
             RefreshTotals();
-            await RefreshAsync();
+            
+            // Update the item's display properties without full refresh
+            var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
+            if (item != null)
+            {
+                item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.Qty > 0) 
+                    ?? item.Details.FirstOrDefault();
+                item.UpdateDisplayProperties();
+            }
+            
+            // Don't call Filter() - it resets scroll position. The item is already in the filtered list.
         }
 
         [RelayCommand]
@@ -772,7 +1045,7 @@ namespace LaceupMigration.ViewModels
             _order.Save();
             RefreshTotals();
             
-            // Update the item's display properties
+            // Update the item's display properties - no need to re-filter, just update the item
             var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
             if (item != null)
             {
@@ -781,7 +1054,7 @@ namespace LaceupMigration.ViewModels
                 item.UpdateDisplayProperties();
             }
             
-            await RefreshAsync();
+            // Don't call Filter() - it resets scroll position. The item is already in the filtered list.
         }
 
         [RelayCommand]
@@ -812,7 +1085,17 @@ namespace LaceupMigration.ViewModels
 
             _order.Save();
             RefreshTotals();
-            await RefreshAsync();
+            
+            // Update the item's display properties without full refresh
+            var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
+            if (item != null)
+            {
+                item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.Qty > 0) 
+                    ?? item.Details.FirstOrDefault();
+                item.UpdateDisplayProperties();
+            }
+            
+            // Don't call Filter() - it resets scroll position. The item is already in the filtered list.
         }
 
         [RelayCommand]
@@ -863,7 +1146,7 @@ namespace LaceupMigration.ViewModels
             _order.Save();
             RefreshTotals();
             
-            // Update the item's display properties
+            // Update the item's display properties - no need to re-filter, just update the item
             var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
             if (item != null)
             {
@@ -872,7 +1155,7 @@ namespace LaceupMigration.ViewModels
                 item.UpdateDisplayProperties();
             }
             
-            await RefreshAsync();
+            // Don't call Filter() - it resets scroll position. The item is already in the filtered list.
         }
 
         [RelayCommand]
@@ -933,9 +1216,13 @@ namespace LaceupMigration.ViewModels
             }
 
             _order.Save();
-            RefreshTotals();
+            
+            // Update display properties immediately
             item.UpdateDisplayProperties();
-            await RefreshAsync();
+            
+            RefreshTotals();
+            
+            // Don't call Filter() - it resets scroll position. The item is already in the filtered list.
         }
 
         [RelayCommand]
@@ -1038,18 +1325,83 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SelectItemTypeAsync(string itemType)
         {
-            _itemType = itemType switch
+            var newItemType = itemType switch
             {
                 "Sales" => 0,
                 "Dumps" => 1,
                 "Returns" => 2,
                 _ => 0
             };
+
+            // Only rebuild if item type actually changed
+            if (_itemType == newItemType)
+                return;
+
+            _itemType = newItemType;
+            
+            // Clear cache when item type changes
+            _cachedItems = null;
+            _cachedItemType = null;
+            
             UpdateItemTypeText();
             PrepareList();
             Filter();
             RefreshTotals();
             await Task.CompletedTask;
+        }
+
+        [RelayCommand]
+        private void ToggleOrderSummary()
+        {
+            IsOrderSummaryExpanded = !IsOrderSummaryExpanded;
+        }
+
+        private void UpdateButtonGridColumns()
+        {
+            // Count visible buttons
+            int visibleCount = 0;
+            if (ShowSalesButton) visibleCount++;
+            if (ShowDumpsButton) visibleCount++;
+            if (ShowReturnsButton) visibleCount++;
+
+            // Set column definitions based on visible count
+            ButtonGridColumns = visibleCount switch
+            {
+                1 => "*",
+                2 => "*,*",
+                3 => "*,*,*",
+                _ => "*"
+            };
+
+            // Set column positions for each button based on visibility
+            int currentColumn = 0;
+            
+            if (ShowSalesButton)
+            {
+                SalesButtonColumn = currentColumn++;
+            }
+            else
+            {
+                SalesButtonColumn = -1; // Hidden
+            }
+
+            if (ShowDumpsButton)
+            {
+                DumpsButtonColumn = currentColumn++;
+            }
+            else
+            {
+                DumpsButtonColumn = -1; // Hidden
+            }
+
+            if (ShowReturnsButton)
+            {
+                ReturnsButtonColumn = currentColumn++;
+            }
+            else
+            {
+                ReturnsButtonColumn = -1; // Hidden
+            }
         }
 
         private void UpdateItemTypeText()
@@ -1061,10 +1413,47 @@ namespace LaceupMigration.ViewModels
                 _ => "Sales"
             };
 
-            // Update button colors
-            SalesButtonColor = _itemType == 0 ? Microsoft.Maui.Graphics.Colors.Blue : Microsoft.Maui.Graphics.Colors.Gray;
-            DumpsButtonColor = _itemType == 1 ? Microsoft.Maui.Graphics.Colors.Blue : Microsoft.Maui.Graphics.Colors.Gray;
-            ReturnsButtonColor = _itemType == 2 ? Microsoft.Maui.Graphics.Colors.Blue : Microsoft.Maui.Graphics.Colors.Gray;
+            // Update button colors - selected uses PrimaryDark, unselected uses transparent
+            var primaryDark = Microsoft.Maui.Graphics.Color.FromArgb("#0379cb");
+            var white = Microsoft.Maui.Graphics.Colors.White;
+            var black = Microsoft.Maui.Graphics.Colors.Black;
+            var transparent = Microsoft.Maui.Graphics.Colors.Transparent;
+
+            // Sales button
+            if (_itemType == 0)
+            {
+                SalesButtonColor = primaryDark;
+                SalesButtonTextColor = white;
+            }
+            else
+            {
+                SalesButtonColor = transparent;
+                SalesButtonTextColor = black;
+            }
+
+            // Dumps button
+            if (_itemType == 1)
+            {
+                DumpsButtonColor = primaryDark;
+                DumpsButtonTextColor = white;
+            }
+            else
+            {
+                DumpsButtonColor = transparent;
+                DumpsButtonTextColor = black;
+            }
+
+            // Returns button
+            if (_itemType == 2)
+            {
+                ReturnsButtonColor = primaryDark;
+                ReturnsButtonTextColor = white;
+            }
+            else
+            {
+                ReturnsButtonColor = transparent;
+                ReturnsButtonTextColor = black;
+            }
         }
 
         [RelayCommand]
@@ -1073,7 +1462,6 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return;
 
-            // Similar to SuperOrderTemplatePageViewModel SendOrderAsync
             var canSend = await FinalizeOrderAsync();
             if (!canSend)
                 return;
@@ -1090,13 +1478,11 @@ namespace LaceupMigration.ViewModels
                     return;
                 }
 
-                // Send the orders
                 DataAccess.SendTheOrders(new Batch[] { batch });
 
                 await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Order sent successfully.", "Success");
 
-                // Navigate back
                 await Shell.Current.GoToAsync("..");
             }
             catch (Exception ex)
@@ -1313,6 +1699,15 @@ namespace LaceupMigration.ViewModels
             var allowDiscount = _order.Client.UseDiscount;
             var asPresale = _order.AsPresale;
 
+            // Add Send Order as first option if applicable
+            if (ShowSendButton && CanEdit)
+            {
+                options.Add(new MenuOption("Send Order", async () =>
+                {
+                    await SendOrderAsync();
+                }));
+            }
+
             if (asPresale)
             {
                 // Presale menu items
@@ -1355,11 +1750,6 @@ namespace LaceupMigration.ViewModels
                         _order.ShipDate = selectedDate.Value;
                         _order.Save();
                     }
-                }));
-
-                options.Add(new MenuOption("Send Order", async () =>
-                {
-                    await SendOrderAsync();
                 }));
 
                 if (!(_order.Client.SplitInvoices.Count > 0))
@@ -1492,6 +1882,43 @@ namespace LaceupMigration.ViewModels
             }
         }
 
+        private string GetOrderTypeText(Order order)
+        {
+            if (order.OrderType == OrderType.Order)
+            {
+                if (order.AsPresale)
+                {
+                    return order.IsQuote ? "Quote" : "Sales Order";
+                }
+                return "Sales Invoice";
+            }
+            else if (order.OrderType == OrderType.Credit)
+            {
+                return order.AsPresale ? "Credit Order" : "Credit Invoice";
+            }
+            else if (order.OrderType == OrderType.Return)
+            {
+                return order.AsPresale ? "Return Order" : "Return Invoice";
+            }
+            else if (order.OrderType == OrderType.Consignment)
+            {
+                return "Consignment";
+            }
+            else if (order.OrderType == OrderType.NoService)
+            {
+                return "No Service";
+            }
+            else if (order.OrderType == OrderType.Bill)
+            {
+                return "Bill";
+            }
+            else if (order.OrderType == OrderType.WorkOrder)
+            {
+                return "Work Order";
+            }
+            return order.OrderType.ToString();
+        }
+
         private enum SortCriteria
         {
             ProductName = 0,
@@ -1560,6 +1987,15 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private string _quantityText = "0";
 
+        [ObservableProperty]
+        private string _typeText = string.Empty;
+
+        [ObservableProperty]
+        private Microsoft.Maui.Graphics.Color _typeColor = Microsoft.Maui.Graphics.Colors.Transparent;
+
+        [ObservableProperty]
+        private bool _showTypeText = false;
+
         public void UpdateDisplayProperties()
         {
             if (Product == null)
@@ -1583,12 +2019,29 @@ namespace LaceupMigration.ViewModels
                 QuantityText = PrimaryDetail.Detail.Qty.ToString("F0");
                 IsFreeItem = PrimaryDetail.Detail.IsFreeItem || 
                     (!string.IsNullOrEmpty(PrimaryDetail.Detail.ExtraFields) && PrimaryDetail.Detail.ExtraFields.Contains("productfree"));
+                
+                // Set type text based on detail
+                if (PrimaryDetail.Detail.IsCredit)
+                {
+                    TypeText = PrimaryDetail.Detail.Damaged ? "Dump" : "Return";
+                    TypeColor = Microsoft.Maui.Graphics.Colors.Orange;
+                    ShowTypeText = true;
+                }
+                else
+                {
+                    TypeText = string.Empty;
+                    TypeColor = Microsoft.Maui.Graphics.Colors.Transparent;
+                    ShowTypeText = false;
+                }
             }
             else if (PrimaryDetail != null)
             {
                 CurrentPriceText = $"Price:{PrimaryDetail.Price.ToCustomString()}";
                 QuantityText = "0";
                 IsFreeItem = false;
+                TypeText = string.Empty;
+                TypeColor = Microsoft.Maui.Graphics.Colors.Transparent;
+                ShowTypeText = false;
             }
             else
             {
@@ -1596,6 +2049,9 @@ namespace LaceupMigration.ViewModels
                 CurrentPriceText = $"Price:{price.ToCustomString()}";
                 QuantityText = "0";
                 IsFreeItem = false;
+                TypeText = string.Empty;
+                TypeColor = Microsoft.Maui.Graphics.Colors.Transparent;
+                ShowTypeText = false;
             }
 
             // History Text

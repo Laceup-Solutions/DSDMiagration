@@ -15,6 +15,7 @@
             <converters:IsNotZeroConverter x:Key="IsNotZeroConverter" />
             <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
             <converters:CreditTypeConverter x:Key="CreditTypeConverter" />
+            <converters:ExpandIconConverter x:Key="ExpandIconConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
