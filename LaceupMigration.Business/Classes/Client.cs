@@ -1001,20 +1001,7 @@ namespace LaceupMigration
         }
 
         public bool DollyPicked { get { return Batch.List.FirstOrDefault(x => x.Client.ClientId == ClientId && x.DollyPicked) != null; } }
-
-        public bool AsPresale 
-        { 
-            get 
-            { 
-                // Check if there's an active presale order for this client
-                var presaleOrder = Order.Orders.FirstOrDefault(x => 
-                    x.Client.ClientId == ClientId && 
-                    x.AsPresale && 
-                    !x.Voided && 
-                    !x.Finished);
-                return presaleOrder != null;
-            } 
-        }
+        
 
         public static void Remove(Client client)
         {

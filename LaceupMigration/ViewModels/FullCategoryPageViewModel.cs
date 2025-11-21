@@ -617,12 +617,6 @@ namespace LaceupMigration.ViewModels
                     price = (decimal)Product.GetPriceForProduct(product, _client, false, false);
                 }
                 
-                var asPresale = _order != null 
-                    ? _order.AsPresale 
-                    : (_client != null 
-                        ? _client.AsPresale 
-                        : false);
-                
                 // Get inventory (matches Xamarin: Config.TrackInventory ? product.CurrentInventory : product.CurrentWarehouseInventory)
                 var rawInventory = Config.TrackInventory ? product.CurrentInventory : product.CurrentWarehouseInventory;
                 
