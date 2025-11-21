@@ -1001,6 +1001,7 @@ namespace LaceupMigration
         }
 
         public bool DollyPicked { get { return Batch.List.FirstOrDefault(x => x.Client.ClientId == ClientId && x.DollyPicked) != null; } }
+        
 
         public static void Remove(Client client)
         {

@@ -23,13 +23,7 @@ namespace LaceupMigration.Views
                 menuItem.Command = _viewModel.ShowMenuCommand;
             }
 
-            // Wire up CollectionView selection handlers
-            var categoriesView = this.FindByName<CollectionView>("CategoriesCollectionView");
-            if (categoriesView != null)
-            {
-                categoriesView.SelectionChanged += CategoriesCollectionView_SelectionChanged;
-            }
-
+            // Wire up CollectionView selection handlers (only for products, categories use TapGestureRecognizer)
             var productsView = this.FindByName<CollectionView>("ProductsCollectionView");
             if (productsView != null)
             {
@@ -37,18 +31,6 @@ namespace LaceupMigration.Views
             }
         }
 
-        private async void CategoriesCollectionView_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (e.CurrentSelection.FirstOrDefault() is CategoryViewModel item)
-            {
-                await _viewModel.CategorySelectedAsync(item);
-            }
-
-            if (sender is CollectionView cv)
-            {
-                cv.SelectedItem = null;
-            }
-        }
 
         private async void ProductsCollectionView_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -149,11 +131,75 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        private void SearchBar_SearchButtonPressed(object sender, EventArgs e)
+        private async void SearchBar_SearchButtonPressed(object sender, EventArgs e)
         {
             if (sender is SearchBar searchBar)
             {
                 searchBar.Unfocus();
+                
+                // Match Xamarin's SearchView_QueryTextSubmit behavior
+                // When "By Product" is selected, navigate to product list with search term
+                await _viewModel.HandleProductSearchSubmitAsync();
+            }
+        }
+
+        private async void Category_Tapped(object sender, EventArgs e)
+        {
+            // Get the CategoryViewModel from the Grid's BindingContext (matches Xamarin's layout.Tag)
+            if (sender is Grid grid && grid.BindingContext is CategoryViewModel viewModel)
+            {
+                // Match Xamarin's Layout_Click logic exactly
+                if (viewModel.Subcategories.Count == 0)
+                {
+                    // No subcategories - navigate to products (matches Xamarin's GoToCategory)
+                    // PaintSelectedRow equivalent - could set background color here if needed
+                    await _viewModel.CategorySelectedAsync(viewModel);
+                }
+                else
+                {
+                    // Has subcategories - toggle expansion (matches Xamarin's expansion logic)
+                    await _viewModel.ToggleCategoryExpanded(viewModel);
+                }
+            }
+        }
+
+        private async void Subcategory_Tapped(object sender, EventArgs e)
+        {
+            if (sender is Grid grid && grid.BindingContext is Category subcategory)
+            {
+                // Navigate to products in this subcategory using ViewModel method
+                var categoryViewModel = new CategoryViewModel
+                {
+                    Category = subcategory,
+                    Name = subcategory.Name
+                };
+                await _viewModel.CategorySelectedAsync(categoryViewModel);
+            }
+        }
+
+        private void Subcategory_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is CollectionView cv)
+            {
+                cv.SelectedItem = null;
+            }
+        }
+
+        private async void ProductImage_Tapped(object sender, EventArgs e)
+        {
+            // Get the ProductViewModel from the Image's BindingContext (matches Xamarin's ImageClicked)
+            if (sender is Image image && image.BindingContext is ProductViewModel viewModel)
+            {
+                await _viewModel.ProductImageClickedAsync(viewModel);
+            }
+        }
+
+        private async void ProductCell_Tapped(object sender, EventArgs e)
+        {
+            // Get the ProductViewModel from the Grid's BindingContext (matches Xamarin's ProductNameClickedHandler)
+            if (sender is Grid grid && grid.BindingContext is ProductViewModel viewModel)
+            {
+                await _viewModel.ViewProductDetailsAsync(viewModel);
             }
         }
     }

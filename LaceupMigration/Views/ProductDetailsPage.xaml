@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.ProductDetailsPage"
+             x:DataType="vm:ProductDetailsPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Product Details"
+             BackgroundColor="White">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Spacing="0" Padding="5">
+                <!-- Product Name (centered, bold, blue) -->
+                <Label Text="{Binding ProductName}"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource colorLaceupDark}"
+                       HorizontalOptions="Center"
+                       Margin="0,10,0,10" />
+
+                <!-- Image and Details Horizontal Layout -->
+                <Grid ColumnDefinitions="0.4*,0.6*" ColumnSpacing="10" Margin="0,10,0,0">
+                    <!-- Product Image (left, 40% width) -->
+                    <Image Grid.Column="0"
+                           Source="{Binding ProductImagePath}"
+                           Aspect="AspectFit"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Start"
+                           IsVisible="{Binding HasImage}">
+                        <Image.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="ProductImage_Tapped" />
+                        </Image.GestureRecognizers>
+                    </Image>
+
+                    <!-- Product Details (right, 60% width) -->
+                    <VerticalStackLayout Grid.Column="1" Spacing="4">
+                        <!-- Item Code -->
+                        <Grid ColumnDefinitions="*,*" IsVisible="{Binding Code, Converter={StaticResource IsStringNotEmptyConverter}}">
+                            <Label Grid.Column="0"
+                                   Text="Item Code:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding Code}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   Margin="5,0,0,0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- UoM Spinner -->
+                        <Grid ColumnDefinitions="*,*" IsVisible="{Binding ShowUomSpinner}">
+                            <Label Grid.Column="0"
+                                   Text="Family UoM:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Picker Grid.Column="1"
+                                    ItemsSource="{Binding UomList}"
+                                    SelectedIndex="{Binding SelectedUomIndex}"
+                                    Margin="5,0,0,0"
+                                    HeightRequest="40"
+                                    FontSize="12" />
+                        </Grid>
+
+                        <!-- UPC -->
+                        <Grid ColumnDefinitions="*,*">
+                            <Label Grid.Column="0"
+                                   Text="UPC:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding Upc}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   Margin="5,0,0,0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Packaging (hidden when UoM is selected) -->
+                        <Grid ColumnDefinitions="*,*" IsVisible="{Binding ShowUomSpinner, Converter={StaticResource InvertedBoolConverter}}">
+                            <Label Grid.Column="0"
+                                   Text="Packaging:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding Packaging}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   Margin="5,0,0,0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Regular Price -->
+                        <Grid ColumnDefinitions="*,*" IsVisible="{Binding ShowPrice}">
+                            <Label Grid.Column="0"
+                                   Text="Regular price:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding RegularPrice}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   Margin="5,0,0,0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Sales Price -->
+                        <Grid ColumnDefinitions="*,*" IsVisible="{Binding ShowPrice}">
+                            <Label Grid.Column="0"
+                                   Text="Sales price:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding SalesPrice}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   Margin="5,0,0,0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Unit Price -->
+                        <Grid ColumnDefinitions="*,*" IsVisible="{Binding ShowPrice}">
+                            <Label Grid.Column="0"
+                                   Text="Unit price:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding UnitPrice}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   Margin="5,0,0,0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Lowest Price -->
+                        <Grid ColumnDefinitions="*,*" IsVisible="{Binding ShowLowestPriceLevel}">
+                            <Label Grid.Column="0"
+                                   Text="Lowest Price:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding LowestPrice}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   Margin="5,0,0,0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- On Hand -->
+                        <Grid ColumnDefinitions="*,*">
+                            <Label Grid.Column="0"
+                                   Text="OH:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding OnHand}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   Margin="5,0,0,0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Truck Inventory -->
+                        <Grid ColumnDefinitions="*,*">
+                            <Label Grid.Column="0"
+                                   Text="Truck Inventory:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding TruckInventory}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   Margin="5,0,0,0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Cost -->
+                        <Grid ColumnDefinitions="*,*" IsVisible="{Binding ShowCost}">
+                            <Label Grid.Column="0"
+                                   Text="Cost:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding Cost}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   Margin="5,0,0,0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Pallet Capacity -->
+                        <Grid ColumnDefinitions="*,*">
+                            <Label Grid.Column="0"
+                                   Text="Pallet Capacity:"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   HorizontalOptions="End"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding PalletCapacity}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   Margin="5,0,0,0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Grid>
+
+                <!-- Lowest Price Level -->
+                <Label Text="Low Price Level"
+                       FontSize="12"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource colorLaceupDark}"
+                       IsVisible="{Binding ShowLowestPriceLevel}"
+                       Margin="10,20,10,5" />
+
+                <!-- Retail Price Section -->
+                <VerticalStackLayout Spacing="10" Margin="10,20,10,5" IsVisible="{Binding ShowPrice}">
+                    <Grid ColumnDefinitions="*,*,*">
+                        <Label Grid.Column="0"
+                               Text="{Binding RetailPrice, StringFormat='Retail Price:{0}'}"
+                               FontSize="12"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource colorLaceupDark}"
+                               HorizontalOptions="Start" />
+                        <Label Grid.Column="1"
+                               Text="{Binding RetailPriceUnit}"
+                               FontSize="12"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource colorLaceupDark}"
+                               HorizontalOptions="Start" />
+                        <Label Grid.Column="2"
+                               Text="{Binding RetailPricePercent, StringFormat='{0}%'}"
+                               FontSize="12"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource colorLaceupDark}"
+                               HorizontalOptions="End" />
+                    </Grid>
+                    <Slider Minimum="0"
+                            Maximum="100"
+                            Value="{Binding RetailPricePercent}"
+                            ThumbColor="{StaticResource colorLaceupDark}"
+                            MinimumTrackColor="{StaticResource colorLaceupDark}"
+                            MaximumTrackColor="{StaticResource Gray300}" />
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>
