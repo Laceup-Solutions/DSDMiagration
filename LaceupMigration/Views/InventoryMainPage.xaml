@@ -6,21 +6,60 @@
              Shell.TabBarIsVisible="False"
              Title="Inventory">
     <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="16">
+        <VerticalStackLayout Padding="20" Spacing="20">
+            <!-- View/Print Inventory (matches Xamarin - first in layout but always hidden in code) -->
             <Button Text="{Binding ViewPrintText}"
                     Command="{Binding ViewPrintInventoryCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
                     FontSize="16"
-                    Padding="16,12" />
+                    Padding="16,12"
+                    IsVisible="{Binding ShowViewPrintInventory}" />
 
-            <Button Text="Check Inventory"
-                    Command="{Binding CheckInventoryCommand}"
+            <!-- Inventory Summary (matches Xamarin - second in layout, always visible) -->
+            <Button Text="Inventory Summary"
+                    Command="{Binding InventorySummaryCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
                     FontSize="16"
                     Padding="16,12" />
 
+            <!-- Check Inventory (matches Xamarin - third in layout, hidden by default) -->
+            <Button Text="Check Inventory"
+                    Command="{Binding CheckInventoryCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    IsVisible="{Binding ShowCheckInventory}" />
+
+            <!-- Set Par Level (matches Xamarin - fourth in layout) -->
+            <Button Text="Set Par Level"
+                    Command="{Binding SetParLevelCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    IsVisible="{Binding ShowParLevel}" />
+
+            <!-- Create Load Order (matches Xamarin - fifth in layout, text is "Create Load Order") -->
+            <Button Text="Create Load Order"
+                    Command="{Binding ViewLoadOrderCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    IsVisible="{Binding ShowLoadOrder}" />
+
+            <!-- Pending Load to Accept label (matches Xamarin - sixth in layout) -->
+            <Label Text="Pending Load to Accept"
+                   TextColor="Red"
+                   FontSize="14"
+                   FontAttributes="Bold"
+                   IsVisible="{Binding ShowPendingLoad}"
+                   HorizontalOptions="Center" />
+
+            <!-- Accept Load (matches Xamarin - seventh in layout) -->
             <Button Text="Accept Load"
                     Command="{Binding AcceptLoadCommand}"
                     BackgroundColor="{StaticResource Primary}"
@@ -30,14 +69,8 @@
                     IsVisible="{Binding ShowAcceptLoad}"
                     IsEnabled="{Binding AcceptLoadEnabled}" />
 
-            <Label Text="Pending Load to Accept"
-                   TextColor="Red"
-                   FontSize="14"
-                   FontAttributes="Bold"
-                   IsVisible="{Binding ShowPendingLoad}"
-                   HorizontalOptions="Center" />
-
-            <Button Text="Transfer On"
+            <!-- Create Transfer On (matches Xamarin - eighth in layout, text is "Create Transfer On") -->
+            <Button Text="Create Transfer On"
                     Command="{Binding TransferOnCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
@@ -45,7 +78,8 @@
                     Padding="16,12"
                     IsVisible="{Binding ShowTransfers}" />
 
-            <Button Text="Transfer Off"
+            <!-- Create Transfer Off (matches Xamarin - ninth in layout, text is "Create Transfer Off") -->
+            <Button Text="Create Transfer Off"
                     Command="{Binding TransferOffCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
@@ -53,35 +87,14 @@
                     Padding="16,12"
                     IsVisible="{Binding ShowTransfers}" />
 
-            <Button Text="View Load Order"
-                    Command="{Binding ViewLoadOrderCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12"
-                    IsVisible="{Binding ShowLoadOrder}" />
-
-            <Button Text="Set Par Level"
-                    Command="{Binding SetParLevelCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12"
-                    IsVisible="{Binding ShowParLevel}" />
-
-            <Button Text="Cycle Count"
+            <!-- Inventory Count (matches Xamarin - tenth in layout, text is "Inventory Count", always hidden) -->
+            <Button Text="Inventory Count"
                     Command="{Binding CycleCountCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
                     FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="Inventory Summary"
-                    Command="{Binding InventorySummaryCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
+                    Padding="16,12"
+                    IsVisible="{Binding ShowCycleCount}" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

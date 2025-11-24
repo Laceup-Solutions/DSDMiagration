@@ -5,52 +5,130 @@
              x:Class="LaceupMigration.Views.TransferOnOffPage"
              Shell.TabBarIsVisible="False"
              Title="{Binding Title}">
-    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
-        <Label Grid.Row="0"
-               Text="{Binding TotalText}"
-               FontSize="16"
-               FontAttributes="Bold"
-               Margin="16,8"
-               HorizontalOptions="Center" />
-
-        <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="16,0">
-            <Button Text="Search"
-                    Command="{Binding SearchCommand}"
-                    HorizontalOptions="FillAndExpand" />
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+        <HorizontalStackLayout Grid.Row="0" Spacing="8" Margin="16,0">
+            <Button Text="{Binding FilterButtonText}"
+                    Command="{Binding ToggleFilterCommand}"
+                    HorizontalOptions="FillAndExpand"
+                    IsEnabled="{Binding ReadOnly, Converter={StaticResource InvertedBoolConverter}}" />
             <Button Text="Save"
                     Command="{Binding SaveCommand}"
-                    HorizontalOptions="FillAndExpand" />
+                    HorizontalOptions="FillAndExpand"
+                    IsEnabled="{Binding ReadOnly, Converter={StaticResource InvertedBoolConverter}}" />
             <Button Text="Print"
                     Command="{Binding PrintCommand}"
                     HorizontalOptions="FillAndExpand" />
         </HorizontalStackLayout>
 
-        <CollectionView Grid.Row="2"
-                        ItemsSource="{Binding InventoryLines}"
+        <!-- Sort Button (positioned to the right) -->
+        <Label Grid.Row="1"
+               Text="{Binding SortButtonText}"
+               FontSize="16"
+               TextColor="{StaticResource colorLaceupDark}"
+               HorizontalOptions="End"
+               Margin="16,5,16,2">
+            <Label.GestureRecognizers>
+                <TapGestureRecognizer Tapped="SortButton_Tapped" />
+            </Label.GestureRecognizers>
+        </Label>
+
+        <SearchBar Grid.Row="2"
+                   Text="{Binding SearchQuery}"
+                   Placeholder="Search products..."
+                   Margin="16,0"
+                   IsEnabled="{Binding ReadOnly, Converter={StaticResource InvertedBoolConverter}}" />
+
+        <CollectionView Grid.Row="3"
+                        ItemsSource="{Binding TransferLines}"
                         Margin="16,0,16,8">
             <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="vm:InventoryLineViewModel">
+                <DataTemplate x:DataType="vm:TransferLineViewModel">
                     <Frame Padding="12"
                            Margin="0,4"
-                           BackgroundColor="{StaticResource Gray100}"
+                           BackgroundColor="{StaticResource White}"
                            HasShadow="False"
-                           CornerRadius="8"
-                           InputTransparent="True">
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" InputTransparent="True">
-                            <VerticalStackLayout Grid.Column="0" Spacing="4" InputTransparent="True">
-                                <Label Text="{Binding ProductName}"
-                                       FontSize="16"
-                                       FontAttributes="Bold" />
-                                <Label Text="{Binding QuantityText}"
-                                       FontSize="14"
-                                       TextColor="#666666" />
-                            </VerticalStackLayout>
-                            <Entry Grid.Column="1"
-                                   Text="{Binding Real, StringFormat='{0:F2}'}"
-                                   WidthRequest="100"
-                                   Keyboard="Numeric"
-                                   IsReadOnly="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReadOnly}" />
-                        </Grid>
+                           CornerRadius="0">
+                        <VerticalStackLayout Spacing="0">
+                            <!-- Main Cell Content: Product Name, Inventory, UoM, Add Button -->
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="0,0,5,0">
+                                <!-- Left side: Product info (80% equivalent) -->
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <!-- Product Name -->
+                                    <Label Text="{Binding ProductName}"
+                                           FontSize="14"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource colorLaceupDark}" />
+                                    
+                                    <!-- Starting Inventory -->
+                                    <Label Text="{Binding StartingInventoryText}"
+                                           FontSize="12"
+                                           TextColor="{Binding StartingInventoryColor}" />
+                                    
+                                    <!-- Current Inventory -->
+                                    <Label Text="{Binding CurrentInventoryText}"
+                                           FontSize="12"
+                                           TextColor="#666666" />
+                                    
+                                    <!-- UoM -->
+                                    <Label Text="{Binding UomText}"
+                                           FontSize="12"
+                                           TextColor="#666666"
+                                           IsVisible="{Binding ShowUom}" />
+                                </VerticalStackLayout>
+                                
+                                <!-- Right side: Add Qty Button (20% equivalent) -->
+                                <Button Grid.Column="1"
+                                        Text="+"
+                                        Command="{Binding AddQtyCommand}"
+                                        IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReadOnly, Converter={StaticResource InvertedBoolConverter}}"
+                                        WidthRequest="50"
+                                        HeightRequest="40"
+                                        HorizontalOptions="End"
+                                        VerticalOptions="Center"
+                                        Margin="5,0,0,0" />
+                            </Grid>
+                            
+                            <!-- Divider Line -->
+                            <BoxView HeightRequest="1"
+                                     Color="{StaticResource Gray300}"
+                                     Margin="0,5" />
+                            
+                            <!-- Details List (nested sub-cells) -->
+                            <CollectionView ItemsSource="{Binding Details}"
+                                            Margin="0">
+                                <CollectionView.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:TransferLineDetViewModel">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="0,4,5,4">
+                                            <!-- Left side: Lot and UoM (80% equivalent) -->
+                                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                                <!-- Lot -->
+                                                <Label Text="{Binding LotText}"
+                                                       FontSize="12"
+                                                       TextColor="#666666"
+                                                       IsVisible="{Binding ShowLot}" />
+                                                
+                                                <!-- UoM -->
+                                                <Label Text="{Binding UomText}"
+                                                       FontSize="12"
+                                                       TextColor="#666666"
+                                                       IsVisible="{Binding ShowUom}" />
+                                            </VerticalStackLayout>
+                                            
+                                            <!-- Right side: Qty Button (20% equivalent) -->
+                                            <Button Grid.Column="1"
+                                                    Text="{Binding QtyText}"
+                                                    Command="{Binding EditQtyCommand}"
+                                                    IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReadOnly, Converter={StaticResource InvertedBoolConverter}}"
+                                                    WidthRequest="50"
+                                                    HeightRequest="40"
+                                                    HorizontalOptions="End"
+                                                    VerticalOptions="Center"
+                                                    Margin="5,0,0,0" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </CollectionView.ItemTemplate>
+                            </CollectionView>
+                        </VerticalStackLayout>
                     </Frame>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
