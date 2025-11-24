@@ -4,62 +4,264 @@
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.Views.InventorySummaryPage"
              Shell.TabBarIsVisible="False"
-             Title="Inventory Summary">
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
-        <Label Grid.Row="0"
-               Text="{Binding TotalQtyText}"
-               FontSize="16"
-               FontAttributes="Bold"
-               Margin="16,8"
-               HorizontalOptions="Center" />
-        <Label Grid.Row="1"
-               Text="{Binding TotalWeightText}"
-               FontSize="16"
-               FontAttributes="Bold"
-               Margin="16,0"
-               HorizontalOptions="Center"
-               IsVisible="{Binding ShowWeight}" />
-        <Label Grid.Row="2"
-               Text="{Binding TotalPriceText}"
-               FontSize="16"
-               FontAttributes="Bold"
-               Margin="16,0"
-               HorizontalOptions="Center"
-               IsVisible="{Binding ShowPrice}" />
+             Title="Current Inventory Summary">
+    <ContentPage.Content>
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" RowSpacing="5" Padding="5">
+            <!-- Print Button and UoM Selector (matches Xamarin layout) -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,5">
+                <Button Grid.Column="0"
+                        Text="Print"
+                        Command="{Binding PrintCommand}"
+                        BackgroundColor="{StaticResource Primary}"
+                        TextColor="White"
+                        FontSize="14"
+                        Padding="12,8"
+                        IsVisible="{Binding ShowPrintButton}"
+                        HorizontalOptions="Start" />
+                <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="5" HorizontalOptions="End" Margin="0,0,5,0">
+                    <Label Grid.Column="0"
+                           Text="UoM:"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           VerticalOptions="Center"
+                           HorizontalOptions="End" />
+                    <Picker Grid.Column="1"
+                            ItemsSource="{Binding UomTypes}"
+                            SelectedIndex="{Binding SelectedUomIndex}"
+                            FontSize="14"
+                            HeightRequest="40"
+                            HorizontalOptions="End" />
+                </Grid>
+            </Grid>
 
-        <HorizontalStackLayout Grid.Row="3" Spacing="8" Margin="16,0">
-            <Button Text="Filter"
-                    Command="{Binding FilterCommand}"
-                    HorizontalOptions="FillAndExpand" />
-            <Button Text="Print"
-                    Command="{Binding PrintCommand}"
-                    HorizontalOptions="FillAndExpand"
-                    IsVisible="{Binding ShowPrintButton}" />
-        </HorizontalStackLayout>
+            <!-- Search Bar and Filter Button (matches Xamarin layout) -->
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="5" Margin="0,5">
+                <SearchBar Grid.Column="0"
+                           Text="{Binding SearchQuery}"
+                           Placeholder="Enter product name..."
+                           BackgroundColor="Transparent"
+                           Margin="0" />
+                <Button Grid.Column="1"
+                        Text="{Binding FilterButtonText}"
+                        Command="{Binding FilterToggleCommand}"
+                        BackgroundColor="{StaticResource Primary}"
+                        TextColor="White"
+                        FontSize="14"
+                        Padding="12,8"
+                        IsVisible="{Binding ShowFilterButton}"
+                        HorizontalOptions="End" />
+            </Grid>
 
-        <CollectionView Grid.Row="4"
-                        ItemsSource="{Binding Products}"
-                        Margin="16,0,16,8">
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="vm:InventorySummaryProductViewModel">
-                    <Frame Padding="12"
-                           Margin="0,4"
-                           BackgroundColor="{StaticResource Gray100}"
-                           HasShadow="False"
-                           CornerRadius="8"
-                           InputTransparent="True">
-                        <VerticalStackLayout Spacing="4" InputTransparent="True">
+            <!-- Table Header (matches Xamarin - B.I., R.L., LD, T.ON, T.OFF, S.I., CR.I., C.I.) -->
+            <Grid Grid.Row="2" 
+                  ColumnDefinitions="*,*,*,*,*,*,*,*" 
+                  ColumnSpacing="0"
+                  BackgroundColor="{StaticResource Gray100}"
+                  Padding="5,8"
+                  Margin="0,5">
+                <!-- B.I. Header (clickable) -->
+                <Label Grid.Column="0" 
+                       Text="B.I." 
+                       FontSize="12" 
+                       FontAttributes="Bold" 
+                       TextColor="{StaticResource colorLaceupDark}" 
+                       HorizontalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ShowBegInvInfoCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <BoxView Grid.Column="0" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                
+                <!-- R.L. Header (clickable) -->
+                <Label Grid.Column="1" 
+                       Text="R.L." 
+                       FontSize="12" 
+                       FontAttributes="Bold" 
+                       TextColor="{StaticResource colorLaceupDark}" 
+                       HorizontalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ShowLoadReqInfoCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <BoxView Grid.Column="1" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                
+                <!-- LD Header (clickable) -->
+                <Label Grid.Column="2" 
+                       Text="LD" 
+                       FontSize="12" 
+                       FontAttributes="Bold" 
+                       TextColor="{StaticResource colorLaceupDark}" 
+                       HorizontalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ShowLoadInvInfoCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <BoxView Grid.Column="2" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                
+                <!-- T.ON Header (clickable) -->
+                <Label Grid.Column="3" 
+                       Text="T.ON" 
+                       FontSize="12" 
+                       FontAttributes="Bold" 
+                       TextColor="{StaticResource colorLaceupDark}" 
+                       HorizontalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ShowTransOnInfoCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <BoxView Grid.Column="3" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                
+                <!-- T.OFF Header (clickable) -->
+                <Label Grid.Column="4" 
+                       Text="T.OFF" 
+                       FontSize="12" 
+                       FontAttributes="Bold" 
+                       TextColor="{StaticResource colorLaceupDark}" 
+                       HorizontalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ShowTransOffInfoCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <BoxView Grid.Column="4" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                
+                <!-- S.I. Header (clickable) -->
+                <Label Grid.Column="5" 
+                       Text="S.I." 
+                       FontSize="12" 
+                       FontAttributes="Bold" 
+                       TextColor="{StaticResource colorLaceupDark}" 
+                       HorizontalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ShowSalesInvInfoCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <BoxView Grid.Column="5" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                
+                <!-- CR.I Header (clickable) -->
+                <Label Grid.Column="6" 
+                       Text="CR.I" 
+                       FontSize="12" 
+                       FontAttributes="Bold" 
+                       TextColor="{StaticResource colorLaceupDark}" 
+                       HorizontalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ShowCreditInvInfoCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <BoxView Grid.Column="6" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                
+                <!-- C.I. Header (clickable) -->
+                <Label Grid.Column="7" 
+                       Text="C.I." 
+                       FontSize="12" 
+                       FontAttributes="Bold" 
+                       TextColor="{StaticResource colorLaceupDark}" 
+                       HorizontalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ShowCurrInvInfoCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </Grid>
+
+            <!-- Product List (matches Xamarin - shows aggregated values per product) -->
+            <CollectionView Grid.Row="4"
+                           ItemsSource="{Binding Products}"
+                           Margin="0,5">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:InventorySummaryProductViewModel">
+                        <VerticalStackLayout Spacing="4" Padding="5,8" Margin="0,1" BackgroundColor="{StaticResource White}">
+                            <!-- Product Name -->
                             <Label Text="{Binding ProductName}"
-                                   FontSize="16"
-                                   FontAttributes="Bold" />
-                            <Label Text="{Binding CurrentInventory, StringFormat='Qty: {0}'}"
-                                   FontSize="14"
-                                   TextColor="#666666" />
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource colorLaceupDark}" />
+                            
+                            <!-- UoM (if available) -->
+                            <Label Text="{Binding Uom}"
+                                   FontSize="12"
+                                   TextColor="{StaticResource colorLaceupDark}"
+                                   IsVisible="{Binding ShowUom}" />
+                            
+                            <!-- Inventory Values Row (matches Xamarin table structure) -->
+                            <Grid ColumnDefinitions="*,*,*,*,*,*,*,*" 
+                                  ColumnSpacing="0">
+                                <Label Grid.Column="0"
+                                       Text="{Binding BeginningInventory}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray900}"
+                                       HorizontalOptions="Center" />
+                                <BoxView Grid.Column="0" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                                
+                                <Label Grid.Column="1"
+                                       Text="{Binding RequestedLoad}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray900}"
+                                       HorizontalOptions="Center" />
+                                <BoxView Grid.Column="1" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                                
+                                <Label Grid.Column="2"
+                                       Text="{Binding Loaded}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray900}"
+                                       HorizontalOptions="Center" />
+                                <BoxView Grid.Column="2" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                                
+                                <Label Grid.Column="3"
+                                       Text="{Binding TransferredOn}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray900}"
+                                       HorizontalOptions="Center" />
+                                <BoxView Grid.Column="3" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                                
+                                <Label Grid.Column="4"
+                                       Text="{Binding TransferredOff}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray900}"
+                                       HorizontalOptions="Center" />
+                                <BoxView Grid.Column="4" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                                
+                                <Label Grid.Column="5"
+                                       Text="{Binding OnSales}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray900}"
+                                       HorizontalOptions="Center" />
+                                <BoxView Grid.Column="5" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                                
+                                <Label Grid.Column="6"
+                                       Text="{Binding OnCreditReturn}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray900}"
+                                       HorizontalOptions="Center" />
+                                <BoxView Grid.Column="6" WidthRequest="1" BackgroundColor="Black" HorizontalOptions="End" VerticalOptions="Fill" />
+                                
+                                <Label Grid.Column="7"
+                                       Text="{Binding CurrentInventory}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray900}"
+                                       HorizontalOptions="Center" />
+                            </Grid>
                         </VerticalStackLayout>
-                    </Frame>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
-    </Grid>
-</ContentPage>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
+            <!-- Totals (matches Xamarin - at bottom) -->
+            <VerticalStackLayout Grid.Row="5" Spacing="4" Margin="5">
+                <Label Text="{Binding TotalQtyText}"
+                       FontSize="13"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource Gray900}" />
+                <Label Text="{Binding TotalWeightText}"
+                       FontSize="13"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource Gray900}"
+                       IsVisible="{Binding ShowWeight}" />
+                <Label Text="{Binding TotalPriceText}"
+                       FontSize="13"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource Gray900}"
+                       IsVisible="{Binding ShowPrice}" />
+            </VerticalStackLayout>
+        </Grid>
+    </ContentPage.Content>
+</ContentPage>

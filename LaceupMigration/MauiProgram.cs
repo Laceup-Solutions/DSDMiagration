@@ -31,6 +31,11 @@ namespace LaceupMigration
             builder.Services.AddSingleton<IInterfaceHelper, InterfaceHelper>();
             builder.Services.AddSingleton<IScannerService, ScannerService>();
 
+            // Register DatePickerService for platform-specific date picker
+#if ANDROID
+            builder.Services.AddSingleton<LaceupMigration.Business.Interfaces.IDatePickerService, Platforms.Android.DatePickerService>();
+#endif
+
             // Register DialogService - use same instance for both interface and concrete type
             var dialogService = new DialogService();
             builder.Services.AddSingleton<IDialogService>(dialogService);

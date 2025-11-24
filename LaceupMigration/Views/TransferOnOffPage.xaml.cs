@@ -22,6 +22,11 @@ namespace LaceupMigration.Views
                 Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(action));
             }
         }
+
+        private async void SortButton_Tapped(object sender, EventArgs e)
+        {
+            await _viewModel.ShowSortDialogAsync();
+        }
     }
 }
 

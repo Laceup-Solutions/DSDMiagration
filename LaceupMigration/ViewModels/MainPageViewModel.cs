@@ -318,7 +318,7 @@ namespace LaceupMigration.ViewModels
 				menuItems.Add("End Of Day Close");
 			
 			if (Config.TrackInventory && !Config.HideProdOnHand)
-				menuItems.Add("Inventory");
+				menuItems.Add("Inventory Management");
 			
 			if (Config.ProductCatalog)
 				menuItems.Add("Product Catalog");
@@ -386,7 +386,7 @@ namespace LaceupMigration.ViewModels
 				case "End Of Day Close":
 					await Reports();
 					break;
-				case "Inventory":
+				case "Inventory Management":
 					await Inventory();
 					break;
 				case "Product Catalog":

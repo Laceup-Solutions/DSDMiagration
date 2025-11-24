@@ -1726,7 +1726,7 @@ namespace LaceupMigration
 
             if (File.Exists(Config.TransferOffFile))
             {
-                using (StreamReader reader = new StreamReader(Config.TransferOnFile))
+                using (StreamReader reader = new StreamReader(Config.TransferOffFile))
                 {
                     string line = reader.ReadLine();
                     while ((line = reader.ReadLine()) != null)
@@ -1747,7 +1747,8 @@ namespace LaceupMigration
 
                         var uom = UnitOfMeasure.List.FirstOrDefault(x => x.Id == uomId);
 
-                        product.UpdateInventory(qty, uom, 1, Weight);
+                        // Match Xamarin: Transfer Off uses factor -1
+                        product.UpdateInventory(qty, uom, -1, Weight);
 
                         product.AddTransferredInventory(qty, uom, -1, Weight);
                     }

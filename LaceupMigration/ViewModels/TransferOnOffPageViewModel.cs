@@ -2,30 +2,45 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
 using LaceupMigration.Services;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Graphics;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace LaceupMigration.ViewModels
 {
-    public enum TransferAction
-    {
-        On,
-        Off
-    }
-
     public partial class TransferOnOffPageViewModel : ObservableObject
     {
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
 
-        private TransferAction _transferAction;
+        private LaceupMigration.TransferAction _transferAction;
+        private bool _changed;
+        private bool _currentlyDisplayingAll = false; // Matches Xamarin: starts as false so button shows "Changed" and we show all items initially
+        private string _comment = string.Empty;
+        private string _tempFile = string.Empty;
+        private List<TransferLine> _allProductList = new();
+        private int _lastDetailId = 0;
 
-        [ObservableProperty] private ObservableCollection<InventoryLineViewModel> _inventoryLines = new();
+        public bool Changed
+        {
+            get => _changed;
+            set => SetProperty(ref _changed, value);
+        }
+
+        public LaceupMigration.TransferAction TransferAction => _transferAction;
+
+        [ObservableProperty] private ObservableCollection<TransferLineViewModel> _transferLines = new();
         [ObservableProperty] private string _totalText = string.Empty;
         [ObservableProperty] private bool _readOnly;
         [ObservableProperty] private string _title = "Transfer";
+        [ObservableProperty] private string _filterButtonText = "Changed";
+        [ObservableProperty] private string _searchQuery = string.Empty;
+        [ObservableProperty] private string _sortButtonText = "Sort By: Product Name";
 
         public TransferOnOffPageViewModel(DialogService dialogService, ILaceupAppService appService)
         {
@@ -35,8 +50,10 @@ namespace LaceupMigration.ViewModels
 
         public async Task InitializeAsync(string action)
         {
-            _transferAction = action == "transferOn" ? TransferAction.On : TransferAction.Off;
-            Title = _transferAction == TransferAction.On ? "Transfer On" : "Transfer Off";
+            _transferAction = action == "transferOn" ? LaceupMigration.TransferAction.On : LaceupMigration.TransferAction.Off;
+            Title = _transferAction == LaceupMigration.TransferAction.On ? "Transfer On" : "Transfer Off";
+            _tempFile = Path.Combine(Config.DataPath, _transferAction.ToString() + "_temp_LoadOrderPath.xml");
+            UpdateSortButtonText();
             await LoadInventoryAsync();
         }
 
@@ -44,85 +61,819 @@ namespace LaceupMigration.ViewModels
         {
             await Task.Run(() =>
             {
-                var productList = new System.Collections.Generic.List<InventoryLine>();
+                _allProductList = new List<TransferLine>();
 
                 foreach (var item in Product.Products.Where(x => x.CategoryId > 0 && x.ProductType == ProductType.Inventory))
                 {
-                    productList.Add(new InventoryLine
+                    if (_transferAction == LaceupMigration.TransferAction.Off && item.CurrentInventory <= 0 && !Config.CanGoBelow0)
+                        continue;
+
+                    var uom = UnitOfMeasure.List.FirstOrDefault(x => x.FamilyId == item.UoMFamily && x.IsBase);
+                    
+                    if (Config.ButlerCustomization)
+                        uom = item.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+
+                    _allProductList.Add(new TransferLine
                     {
                         Product = item,
-                        Real = 0,
-                        Starting = item.CurrentInventory
+                        UoM = uom
                     });
                 }
 
-                var sorted = SortDetails.SortedDetails(productList).ToList();
+                // Load from temp file if exists
+                if (File.Exists(_tempFile))
+                {
+                    LoadList();
+                    Changed = true;
+                }
 
-                System.Collections.Generic.List<InventoryLine> source;
-                if (_transferAction == TransferAction.Off)
-                {
-                    source = sorted.Where(x => x.Starting > 0).ToList();
-                }
-                else
-                {
-                    source = sorted;
-                }
+                // Apply sorting - match Xamarin RefreshList logic: productList = SortDetails.SortedDetails(productList).ToList();
+                _allProductList = SortDetails.SortedDetails(_allProductList).ToList();
 
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    InventoryLines.Clear();
-                    foreach (var line in source)
-                    {
-                        InventoryLines.Add(new InventoryLineViewModel(line, null));
-                    }
+                    // Use FilterProducts to apply both filter toggle and search query
+                    FilterProducts();
                     UpdateTotal();
                 });
             });
         }
 
-        private void UpdateTotal()
+        private void RefreshTransferLines(List<TransferLine> source)
         {
-            var total = InventoryLines.Sum(x => x.Real);
-            TotalText = $"Total: {total}";
+            TransferLines.Clear();
+            foreach (var line in source)
+            {
+                var viewModel = new TransferLineViewModel(line, this);
+                TransferLines.Add(viewModel);
+            }
+        }
+
+        public void UpdateTotal()
+        {
+            // Match Xamarin: calculate total value (price * qty * uom conversion)
+            double total = 0;
+            foreach (var line in _allProductList)
+            {
+                foreach (var detail in line.Details)
+                {
+                    var price = detail.Qty * line.Product.PriceLevel0;
+                    if (detail.UoM != null)
+                        price *= detail.UoM.Conversion;
+                    total += price;
+                }
+            }
+
+            if (!Config.Wstco)
+                TotalText = $"Transfer Value: {total.ToCustomString()}";
+            else
+                TotalText = string.Empty;
         }
 
         [RelayCommand]
         private async Task Save()
         {
-            // TODO: Implement save logic
-            await _dialogService.ShowAlertAsync("Save functionality to be implemented.", "Info", "OK");
+            // Match Xamarin SaveClicked logic
+            if (Changed && Config.TransferComment && string.IsNullOrEmpty(_comment))
+            {
+                await ShowCommentsDialog();
+                return;
+            }
+
+            // Check password if required - match Xamarin NewTransferActivity logic
+            if (Config.TransferPasswordAtSaving)
+            {
+                var correctPassword = _transferAction == LaceupMigration.TransferAction.On 
+                    ? Config.TransferPassword 
+                    : Config.TransferOffPassword;
+
+                if (!string.IsNullOrEmpty(correctPassword))
+                {
+                    var password = await _dialogService.ShowPromptAsync(
+                        _transferAction == LaceupMigration.TransferAction.On ? "Transfer On" : "Transfer Off",
+                        "Enter Password",
+                        "OK",
+                        "Cancel",
+                        "",
+                        -1,
+                        "",
+                        Keyboard.Default);
+
+                    if (password == null)
+                        return;
+
+                    if (string.Compare(password ?? "", correctPassword ?? "", StringComparison.CurrentCultureIgnoreCase) != 0)
+                    {
+                        await _dialogService.ShowAlertAsync("Invalid password", "Alert", "OK");
+                        return;
+                    }
+                }
+            }
+
+            // Confirm save
+            var confirmed = await _dialogService.ShowConfirmationAsync(
+                "Warning",
+                "This will prevent you from doing more changes, continue?",
+                "Yes",
+                "No");
+
+            if (confirmed)
+            {
+                ApplyTransfer();
+                SaveInFinalFile();
+
+                ReadOnly = true;
+                Changed = false;
+
+                if (File.Exists(_tempFile))
+                    File.Delete(_tempFile);
+
+                // Refresh the list to show updated inventory - match Xamarin adapter.NotifyDataSetChanged()
+                FilterProducts();
+                
+                // After save, notify all ViewModels that CurrentInventoryText has changed (inventory was updated by ApplyTransfer)
+                foreach (var lineViewModel in TransferLines)
+                {
+                    lineViewModel.NotifyInventoryChanged();
+                }
+
+                await _dialogService.ShowAlertAsync("Transfer saved successfully", "Success", "OK");
+            }
         }
 
         [RelayCommand]
         private async Task Print()
         {
-            // TODO: Implement print functionality
+            // TODO: Implement print functionality - match Xamarin PrintClicked
             await _dialogService.ShowAlertAsync("Print functionality to be implemented.", "Info", "OK");
         }
 
-        [RelayCommand]
-        private async Task Search()
+        partial void OnSearchQueryChanged(string value)
         {
-            var searchText = await _dialogService.ShowPromptAsync("Search", "Enter product name", "OK", "Cancel", "", -1, "");
-            if (!string.IsNullOrEmpty(searchText))
+            // Real-time search filtering
+            FilterProducts();
+        }
+
+        private void FilterProducts()
+        {
+            // Match Xamarin ChangeWhatIsListedClicked logic
+            List<TransferLine> baseList;
+            
+            if (_currentlyDisplayingAll)
             {
-                var upper = searchText.ToUpper();
-                var filtered = InventoryLines.Where(x => x.ProductName.ToUpper().Contains(upper)).ToList();
-                
-                if (filtered.Count > 0)
+                // Will toggle to show "All" button, so currently showing only changed items
+                baseList = _allProductList.Where(x => x.Details.Count > 0).ToList();
+            }
+            else
+            {
+                // Will toggle to show "Changed" button, so currently showing all items
+                baseList = _allProductList;
+            }
+
+            // Apply search filter if search query is not empty
+            if (!string.IsNullOrWhiteSpace(SearchQuery))
+            {
+                var searchLower = SearchQuery.ToLowerInvariant();
+                baseList = baseList.Where(x =>
+                    x.Product.Name.ToLowerInvariant().Contains(searchLower) ||
+                    x.Product.Description.ToLowerInvariant().Contains(searchLower) ||
+                    x.Product.Upc.ToLowerInvariant().Contains(searchLower) ||
+                    x.Product.Sku.ToLowerInvariant().Contains(searchLower) ||
+                    x.Product.Code.ToLowerInvariant().Contains(searchLower)
+                ).ToList();
+            }
+
+            // Apply sorting - match Xamarin RefreshList logic
+            baseList = SortDetails.SortedDetails(baseList).ToList();
+
+            RefreshTransferLines(baseList);
+        }
+
+        [RelayCommand]
+        private void ToggleFilter()
+        {
+            // Match Xamarin ChangeWhatIsListedClicked logic
+            string text;
+
+            if (_currentlyDisplayingAll)
+            {
+                text = "All";
+            }
+            else
+            {
+                text = "Changed";
+            }
+
+            FilterButtonText = text;
+            _currentlyDisplayingAll = !_currentlyDisplayingAll;
+            
+            // Re-filter with current search query
+            FilterProducts();
+        }
+
+        public async Task ShowAddQtyDialog(TransferLineViewModel lineViewModel)
+        {
+            // Match Xamarin ShowQtyDialog logic
+            // This will be implemented with a custom dialog showing:
+            // - Qty input
+            // - UoM spinner (if product has UoM family)
+            // - Lot selector (if product uses lot)
+            // - Lot expiration (if configured)
+            
+            // For now, show a simple prompt - will be enhanced later
+            var qtyText = await _dialogService.ShowPromptAsync(
+                lineViewModel.Product.Name,
+                "Enter quantity",
+                "Add",
+                "Cancel",
+                "1",
+                -1,
+                "1",
+                Keyboard.Numeric);
+
+            if (!string.IsNullOrEmpty(qtyText) && float.TryParse(qtyText, out var qty))
+            {
+                // Match Xamarin: use absolute value and default values
+                qty = Math.Abs(qty);
+                string lot = ""; // TODO: Add lot selection when implementing full dialog
+                DateTime lotExp = DateTime.MinValue; // TODO: Add lot expiration when implementing full dialog
+                UnitOfMeasure unit = lineViewModel.Uom; // TODO: Use selected UoM from spinner when implementing full dialog
+
+                // Calculate baseQty (converted to base UoM) - match Xamarin line 1718-1719
+                double baseQty = qty;
+                if (unit != null)
+                    baseQty = qty * unit.Conversion;
+
+                // Match Xamarin validation logic for Transfer Off (line 1721-1728)
+                if (_transferAction == LaceupMigration.TransferAction.Off)
                 {
-                    InventoryLines.Clear();
-                    foreach (var item in filtered)
+                    if (baseQty > lineViewModel.Product.CurrentInventory - lineViewModel.TransferLine.QtyTransferred && !Config.CanGoBelow0)
                     {
-                        InventoryLines.Add(item);
+                        await _dialogService.ShowAlertAsync(
+                            $"You cannot go below 0, you have only {lineViewModel.Product.CurrentInventory} to transfer off.",
+                            "Alert",
+                            "OK");
+                        return;
+                    }
+                }
+
+                // Match Xamarin logic (line 1730-1752): Check if detail with same Lot and UoM already exists
+                var existingDetail = lineViewModel.TransferLine.Details.FirstOrDefault(x => 
+                    x.Lot == lot && 
+                    (x.UoM != null ? x.UoM.Id : 0) == (unit != null ? unit.Id : 0));
+
+                if (existingDetail != null)
+                {
+                    // Add to existing quantity - match Xamarin line 1732
+                    existingDetail.Qty += qty;
+                    
+                    // Update the corresponding ViewModel
+                    var existingDetailViewModel = lineViewModel.Details.FirstOrDefault(x => x.TransferLineDet == existingDetail);
+                    if (existingDetailViewModel != null)
+                    {
+                        existingDetailViewModel.Qty = existingDetail.Qty;
                     }
                 }
                 else
                 {
-                    await _dialogService.ShowAlertAsync("Product not found.", "Alert", "OK");
+                    // Create new detail - match Xamarin line 1735-1744
+                    var detail = new TransferLineDet
+                    {
+                        Product = lineViewModel.Product,
+                        Qty = qty,
+                        UoM = unit,
+                        Lot = lot,
+                        LotExp = lotExp,
+                        Weight = lineViewModel.TransferLine.Weight,
+                        Id = _lastDetailId++
+                    };
+
+                    lineViewModel.TransferLine.Details.Add(detail);
+                    
+                    // Also add to ViewModel's Details collection for UI update
+                    var detailViewModel = new TransferLineDetViewModel(detail, lineViewModel, this);
+                    lineViewModel.Details.Add(detailViewModel);
                 }
+                
+                Changed = true; // Use property setter to trigger notifications
+                SaveList();
+                
+                // Don't notify CurrentInventoryText change - it should only update after save
+                // Only notify StartingInventoryText if needed (it shows the starting inventory)
+                // Only refresh if the item's visibility might have changed (e.g., first detail added when filter is "Changed")
+                bool needsRefresh = !_currentlyDisplayingAll && lineViewModel.TransferLine.Details.Count == 1;
+                if (needsRefresh)
+                {
+                    FilterProducts();
+                }
+                
+                UpdateTotal();
+            }
+        }
+
+        public async Task ShowEditQtyDialog(TransferLineDetViewModel detailViewModel, TransferLineViewModel lineViewModel)
+        {
+            // Match Xamarin ShowEditQtyDialog logic
+            var qtyText = await _dialogService.ShowPromptAsync(
+                detailViewModel.Product.Name,
+                "Enter quantity (0 to delete)",
+                "Save",
+                "Cancel",
+                detailViewModel.Qty.ToString(),
+                -1,
+                detailViewModel.Qty.ToString(),
+                Keyboard.Numeric);
+
+            if (qtyText != null && float.TryParse(qtyText, out var qty))
+            {
+                // Match Xamarin line 1896: use absolute value
+                qty = Math.Abs(qty);
+
+                if (qty == 0)
+                {
+                    // Match Xamarin line 1904-1907: remove detail if qty is 0
+                    lineViewModel.TransferLine.Details.Remove(detailViewModel.TransferLineDet);
+                    lineViewModel.Details.Remove(detailViewModel);
+                }
+                else
+                {
+                    // Match Xamarin validation logic for Transfer Off EXACTLY (line 1950-1957)
+                    if (_transferAction == LaceupMigration.TransferAction.Off)
+                    {
+                        // Match Xamarin line 1910-1913 exactly - use var and *= operator
+                        var oldQTy = detailViewModel.Qty;
+                        var oldBaseQty = oldQTy;
+                        if (detailViewModel.Uom != null)
+                            oldBaseQty *= (float)detailViewModel.Uom.Conversion;
+
+                        // Match Xamarin line 1915-1948 exactly
+                        float baseQty = qty;
+                        // TODO: Use selected UoM from spinner when implementing full dialog
+                        // For now, use the detail's current UoM
+                        if (detailViewModel.Uom != null)
+                            baseQty = qty * (float)detailViewModel.Uom.Conversion;
+
+                        // Match Xamarin line 1952 EXACTLY - use the exact same formula and types
+                        // Formula: baseQty > CurrentInventory - QtyTransferred - oldBaseQty
+                        float currentInventory = lineViewModel.Product.CurrentInventory;
+                        float qtyTransferred = lineViewModel.TransferLine.QtyTransferred;
+                        
+                        if (baseQty > currentInventory - qtyTransferred - oldBaseQty && !Config.CanGoBelow0)
+                        {
+                            await _dialogService.ShowAlertAsync(
+                                $"You cannot go below 0, you have only {lineViewModel.Product.CurrentInventory} to transfer off.",
+                                "Alert",
+                                "OK");
+                            return;
+                        }
+                    }
+
+                    // Match Xamarin line 1959-1962: update the detail properties
+                    detailViewModel.Qty = qty;
+                    // Also update the underlying TransferLineDet
+                    detailViewModel.TransferLineDet.Qty = qty;
+                    // TODO: Update UoM, Lot, and LotExp when implementing full dialog with spinner
+                }
+
+                Changed = true; // Use property setter to trigger notifications
+                SaveList();
+                
+                // Don't notify CurrentInventoryText change - it should only update after save
+                // Only refresh if the item's visibility might have changed (e.g., last detail removed when filter is "Changed")
+                bool needsRefresh = !_currentlyDisplayingAll && lineViewModel.TransferLine.Details.Count == 0;
+                if (needsRefresh)
+                {
+                    FilterProducts();
+                }
+                
+                UpdateTotal();
+            }
+        }
+
+        private void ApplyTransfer()
+        {
+            // Match Xamarin ApplyTransfer logic
+            if (ReadOnly)
+                return;
+
+            int factor = _transferAction == LaceupMigration.TransferAction.Off ? -1 : 1;
+
+            foreach (var line in _allProductList)
+            {
+                // Ensure ProductInv is initialized before updating inventory
+                var _ = line.Product.ProductInv;
+                
+                foreach (var item in line.Details)
+                {
+                    // Match Xamarin: UpdateInventory with factor (1 for Transfer On, -1 for Transfer Off)
+                    line.Product.UpdateInventory(item.Qty, item.UoM, item.Lot, item.LotExp, factor, item.Weight);
+                    
+                    // Match Xamarin: AddTransferredInventory with factor (1 for Transfer On, -1 for Transfer Off)
+                    line.Product.AddTransferredInventory(item.Qty, item.UoM, item.Lot, item.LotExp, _transferAction == LaceupMigration.TransferAction.On ? 1 : -1, item.Weight);
+                }
+            }
+
+            DataAccess.SaveInventory();
+            Logger.CreateLog("Inventory saved");
+        }
+
+        private void SaveInFinalFile()
+        {
+            // Match Xamarin SaveInFinalFile logic
+            if (Config.BranchSiteId == 0)
+                return;
+
+            var salesman = Salesman.List.FirstOrDefault(x => x.Id == Config.SalesmanId);
+            if (salesman == null)
+                return;
+
+            int sourceSite = 0;
+            int targetSite = 0;
+
+            if (_transferAction == LaceupMigration.TransferAction.Off)
+            {
+                sourceSite = salesman.InventorySiteId;
+                targetSite = Config.BranchSiteId;
+            }
+            else
+            {
+                sourceSite = Config.BranchSiteId;
+                targetSite = salesman.InventorySiteId;
+            }
+
+            lock (FileOperationsLocker.lockFilesObject)
+            {
+                try
+                {
+                    var transfer = new Transfer(_transferAction, sourceSite, targetSite, _comment);
+
+                    foreach (var line in _allProductList)
+                    {
+                        foreach (var item in line.Details)
+                        {
+                            transfer.AddDetail(line.Product.ProductId, Math.Abs(item.Qty), item.UoM != null ? item.UoM.Id : 0, item.Lot, item.LotExp, item.Weight);
+                        }
+                    }
+
+                    transfer.SaveInFile();
+                }
+                finally
+                {
+                }
+            }
+        }
+
+        private void LoadList()
+        {
+            // Match Xamarin LoadList logic
+            if (File.Exists(_tempFile))
+            {
+                using (StreamReader reader = new StreamReader(_tempFile))
+                {
+                    string line = reader.ReadLine();
+                    _comment = line ?? string.Empty;
+
+                    var listofIds = new List<int>();
+
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        try
+                        {
+                            string[] parts = line.Split(new char[] { (char)20 });
+                            int productID = Convert.ToInt32(parts[0], System.Globalization.CultureInfo.InvariantCulture);
+                            float qty = Convert.ToSingle(parts[1], System.Globalization.CultureInfo.InvariantCulture);
+
+                            UnitOfMeasure uom = null;
+                            if (parts.Length > 2)
+                            {
+                                var uomId = Convert.ToInt32(parts[2], System.Globalization.CultureInfo.InvariantCulture);
+                                uom = UnitOfMeasure.List.FirstOrDefault(x => x.Id == uomId);
+                            }
+
+                            string lot = "";
+                            if (parts.Length > 3)
+                                lot = parts[3];
+
+                            DateTime lotExp = DateTime.MinValue;
+                            if (parts.Length > 4)
+                                lotExp = new DateTime(Convert.ToInt64(parts[4]));
+
+                            double weight = 0;
+                            if (parts.Length > 5)
+                                weight = Convert.ToDouble(parts[5]);
+
+                            int id = 0;
+                            if (parts.Length > 6)
+                                Int32.TryParse(parts[6], out id);
+
+                            listofIds.Add(id);
+
+                            var product = _allProductList.FirstOrDefault(x => x.Product.ProductId == productID);
+                            if (product != null)
+                            {
+                                var detail = new TransferLineDet
+                                {
+                                    Product = product.Product,
+                                    Qty = qty,
+                                    UoM = uom,
+                                    Lot = lot,
+                                    LotExp = lotExp,
+                                    Weight = weight,
+                                    Id = id
+                                };
+                                product.Details.Add(detail);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.CreateLog(ex);
+                        }
+                    }
+
+                    var ordered = listofIds.OrderByDescending(x => x).ToList();
+                    var lastId = ordered.FirstOrDefault();
+                    if (ordered.Count > 0 && lastId > 0)
+                        _lastDetailId = lastId + 1;
+                }
+            }
+        }
+
+        public void SaveList()
+        {
+            // Match Xamarin SaveList logic
+            lock (FileOperationsLocker.lockFilesObject)
+            {
+                try
+                {
+                    if (File.Exists(_tempFile))
+                        File.Delete(_tempFile);
+
+                    using (StreamWriter writer = new StreamWriter(_tempFile, false))
+                    {
+                        writer.WriteLine(_comment);
+
+                        foreach (var line in _allProductList)
+                        {
+                            foreach (var item in line.Details)
+                            {
+                                writer.Write(item.Product.ProductId);
+                                writer.Write((char)20);
+                                writer.Write(item.Qty);
+                                writer.Write((char)20);
+                                writer.Write(item.UoM != null ? item.UoM.Id : 0);
+                                writer.Write((char)20);
+                                writer.Write(item.Lot);
+                                writer.Write((char)20);
+                                writer.Write(item.LotExp.Ticks);
+                                writer.Write((char)20);
+                                writer.Write(item.Weight);
+                                writer.Write((char)20);
+                                writer.Write(item.Id);
+                                writer.WriteLine();
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                }
+            }
+        }
+
+        private async Task ShowCommentsDialog()
+        {
+            // Match Xamarin ShowCommentsDialog logic
+            var commentText = await _dialogService.ShowPromptAsync(
+                "Enter Transfer Reason",
+                "Enter Transfer Reason",
+                "OK",
+                "Cancel",
+                "",
+                -1,
+                _comment);
+
+            if (!string.IsNullOrEmpty(commentText))
+            {
+                _comment = commentText;
+                SaveList();
+            }
+        }
+
+        public async Task ShowSortDialogAsync()
+        {
+            // Match Xamarin SortButton_Click logic
+            // Create sort options from enum values (match Xamarin CreateSortOptions)
+            var sortOptionsList = new List<SortDetails.SortCriteria>();
+            foreach (var item in Enum.GetValues(typeof(SortDetails.SortCriteria)))
+            {
+                sortOptionsList.Add((SortDetails.SortCriteria)item);
+            }
+
+            // Convert to display names (match Xamarin SortCriteriaName)
+            var sortOptionNames = sortOptionsList.Select(x => GetSortCriteriaName(x)).ToArray();
+
+            // Get current selection index (match Xamarin: int which = (int)GetCriteriaFromName(Config.PrintInvoiceSort))
+            var currentCriteria = SortDetails.GetCriteriaFromName(Config.PrintInvoiceSort);
+            var currentIndex = sortOptionsList.IndexOf(currentCriteria);
+            if (currentIndex < 0) currentIndex = 0;
+
+            var selected = await _dialogService.ShowActionSheetAsync(
+                "Sort By",
+                null,
+                "Cancel",
+                sortOptionNames);
+
+            if (selected == "Cancel" || string.IsNullOrEmpty(selected))
+                return;
+
+            // Find the selected criteria by matching the display name
+            var selectedIndex = Array.IndexOf(sortOptionNames, selected);
+            if (selectedIndex >= 0 && selectedIndex < sortOptionsList.Count)
+            {
+                var criteria = sortOptionsList[selectedIndex];
+                
+                // Save the criteria (match Xamarin: SaveSortCriteria((SortCriteria)which))
+                SortDetails.SaveSortCriteria(criteria);
+                
+                // Update button text (match Xamarin: sortButton.Text = GetString(Resource.String.sortBy) + SortCriteriaName(Config.PrintInvoiceSort))
+                UpdateSortButtonText();
+                
+                // Refresh list (match Xamarin: RefreshList())
+                FilterProducts();
+            }
+        }
+
+        private void UpdateSortButtonText()
+        {
+            // Match Xamarin: GetString(Resource.String.sortBy) + SortCriteriaName(Config.PrintInvoiceSort)
+            var criteria = SortDetails.GetCriteriaFromName(Config.PrintInvoiceSort);
+            var criteriaName = GetSortCriteriaName(criteria);
+            SortButtonText = $"Sort By: {criteriaName}";
+        }
+
+        private string GetSortCriteriaName(SortDetails.SortCriteria criteria)
+        {
+            // Match Xamarin SortCriteriaName method
+            return criteria switch
+            {
+                SortDetails.SortCriteria.ProductName => "Product Name",
+                SortDetails.SortCriteria.ProductCode => "Product Code",
+                SortDetails.SortCriteria.Category => "Category",
+                SortDetails.SortCriteria.InStock => "In Stock",
+                SortDetails.SortCriteria.Qty => "Qty",
+                SortDetails.SortCriteria.Descending => "Descending",
+                SortDetails.SortCriteria.OrderOfEntry => "Order of Entry",
+                SortDetails.SortCriteria.WarehouseLocation => "Warehouse Location",
+                SortDetails.SortCriteria.CategoryThenByCode => "Category Then By Code",
+                _ => "Product Name"
+            };
+        }
+    }
+
+    public partial class TransferLineViewModel : ObservableObject
+    {
+        private readonly TransferOnOffPageViewModel? _parent;
+
+        [ObservableProperty] private Product _product = null!;
+        [ObservableProperty] private UnitOfMeasure? _uom;
+        [ObservableProperty] private ObservableCollection<TransferLineDetViewModel> _details = new();
+
+        public TransferLine TransferLine { get; set; } = null!;
+
+        public TransferLineViewModel()
+        {
+        }
+
+        public TransferLineViewModel(TransferLine line, TransferOnOffPageViewModel? parent = null)
+        {
+            _parent = parent;
+            Product = line.Product;
+            Uom = line.UoM;
+            TransferLine = line;
+
+            foreach (var det in line.Details)
+            {
+                Details.Add(new TransferLineDetViewModel(det, this, parent));
+            }
+        }
+
+        public string ProductName => Product?.Name ?? "Unknown";
+        
+        public string StartingInventoryText
+        {
+            get
+            {
+                var startingInv = Math.Round(Product.CurrentInventory, Config.Round);
+                if (_parent != null && _parent.ReadOnly)
+                {
+                    int factor = _parent.TransferAction == LaceupMigration.TransferAction.Off ? -1 : 1;
+                    startingInv = Math.Round(Product.CurrentInventory - (TransferLine.QtyTransferred * factor), Config.Round);
+                }
+
+                if (Uom != null && !Uom.IsBase)
+                    startingInv /= Uom.Conversion;
+
+                return $"Starting Inv: {Math.Round(startingInv, 2)}";
+            }
+        }
+
+        public Color StartingInventoryColor
+        {
+            get
+            {
+                // Match Xamarin: red if <= 0, otherwise blue (#017CBA)
+                if (Product.CurrentInventory <= 0)
+                    return Colors.Red;
+                return Color.FromArgb("#017CBA");
+            }
+        }
+
+        public string CurrentInventoryText
+        {
+            get
+            {
+                // Calculate current inventory
+                double currentInv = Math.Round(Product.CurrentInventory, Config.Round);
+                
+                // Before save: show actual current inventory (not adjusted by transfer)
+                // After save: show the updated inventory (which is already updated by ApplyTransfer)
+                // So we always show Product.CurrentInventory, which reflects the actual state
+                
+                if (Uom != null && !Uom.IsBase)
+                    currentInv /= Uom.Conversion;
+
+                return $"Current Inv: {Math.Round(currentInv, 2)}";
+            }
+        }
+
+        public string UomText => Uom != null ? $"UoM: {Uom.Name}" : string.Empty;
+        public bool ShowUom => Uom != null;
+
+        /// <summary>
+        /// Notifies that computed properties (like CurrentInventoryText) have changed
+        /// </summary>
+        public void NotifyInventoryChanged()
+        {
+            OnPropertyChanged(nameof(CurrentInventoryText));
+            OnPropertyChanged(nameof(StartingInventoryText));
+        }
+
+        [RelayCommand]
+        private async Task AddQty()
+        {
+            if (_parent != null)
+            {
+                await _parent.ShowAddQtyDialog(this);
+            }
+        }
+    }
+
+    public partial class TransferLineDetViewModel : ObservableObject
+    {
+        private readonly TransferLineViewModel? _parentLine;
+        private readonly TransferOnOffPageViewModel? _parent;
+
+        [ObservableProperty] private Product _product = null!;
+        [ObservableProperty] private float _qty;
+        [ObservableProperty] private UnitOfMeasure? _uom;
+        [ObservableProperty] private string _lot = string.Empty;
+        [ObservableProperty] private DateTime _lotExp;
+        [ObservableProperty] private double _weight;
+        [ObservableProperty] private int _id;
+
+        public TransferLineDet TransferLineDet { get; set; } = null!;
+
+        public TransferLineDetViewModel()
+        {
+        }
+
+        public TransferLineDetViewModel(TransferLineDet det, TransferLineViewModel? parentLine, TransferOnOffPageViewModel? parent = null)
+        {
+            _parentLine = parentLine;
+            _parent = parent;
+            Product = det.Product;
+            Qty = det.Qty;
+            Uom = det.UoM;
+            Lot = det.Lot;
+            LotExp = det.LotExp;
+            Weight = det.Weight;
+            Id = det.Id;
+            TransferLineDet = det;
+        }
+
+        public string QtyText => Qty.ToString();
+        public string UomText => Uom != null ? $"UoM: {Uom.Name}" : string.Empty;
+        public bool ShowUom => Uom != null;
+        public string LotText => Product.UseLot ? $"Lot: {Lot}" : string.Empty;
+        public bool ShowLot => Product.UseLot && !string.IsNullOrEmpty(Lot);
+
+        [RelayCommand]
+        private async Task EditQty()
+        {
+            if (_parent != null && _parentLine != null)
+            {
+                await _parent.ShowEditQtyDialog(this, _parentLine);
             }
         }
     }
 }
-

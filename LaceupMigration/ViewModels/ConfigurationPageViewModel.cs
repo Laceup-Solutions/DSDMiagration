@@ -5,6 +5,7 @@ using LaceupMigration.Services;
 using System;
 using System.Globalization;
 using System.Threading.Tasks;
+using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.ViewModels
 {
@@ -139,11 +140,118 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task CleanData()
         {
-            var confirmed = await _dialogService.ShowConfirmationAsync("Confirm", "Are you sure you want to clean data? This action cannot be undone.", "Yes", "No");
-            if (confirmed)
+            // Match Xamarin CleanButton_Click (line 769-793)
+            // Show action sheet with 3 options: Clear Log, Clear Data, Clear All
+            var selected = await _dialogService.ShowActionSheetAsync(
+                "Clear",
+                null,
+                "Cancel",
+                "Clear Log",
+                "Clear Data",
+                "Clear All");
+
+            if (selected == "Cancel" || string.IsNullOrEmpty(selected))
+                return;
+
+            if (selected == "Clear Log")
             {
-                // TODO: Implement data cleaning
-                await _dialogService.ShowAlertAsync("Data cleaning functionality to be implemented.", "Info", "OK");
+                // Match Xamarin ClearLogFile (line 795-799)
+                _appService.RecordEvent("Clear log button");
+                Logger.ClearFile();
+                await _dialogService.ShowAlertAsync("Log cleared.", "Info", "OK");
+            }
+            else if (selected == "Clear Data")
+            {
+                // Match Xamarin ClearData(true, false) - line 785
+                await ClearDataAsync(false);
+            }
+            else if (selected == "Clear All")
+            {
+                // Match Xamarin ClearData(true, true) - line 787
+                await ClearDataAsync(true);
+            }
+        }
+
+        private async Task ClearDataAsync(bool clearAll)
+        {
+            // Match Xamarin ClearData method (line 801-857)
+            // Save config values that need to be preserved
+            var acceptedTerms = Config.AcceptedTermsAndConditions;
+            var loginConfig = Config.SignedIn;
+            var enabledlogin = Config.EnableLogin;
+
+            // Show confirmation dialog - match Xamarin line 816
+            var confirmed = await _dialogService.ShowConfirmationAsync(
+                "Warning",
+                "Are you sure you want to clean your data? The application will close after this.",
+                "Yes",
+                "No");
+
+            if (!confirmed)
+                return;
+
+            // Show loading dialog - match Xamarin line 818
+            await _dialogService.ShowLoadingAsync("Please wait...");
+
+            try
+            {
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        // Force a backup before cleaning - match Xamarin line 825
+                        BackgroundDataSync.ForceBackup();
+
+                        // Remove activity state - match Xamarin line 827-829
+                        var activityState = ActivityState.GetState(typeof(ConfigurationPageViewModel).FullName);
+                        if (activityState != null)
+                            ActivityState.RemoveState(activityState);
+
+                        // Clear settings if "Clear All" - match Xamarin line 831-832
+                        if (clearAll)
+                            Config.ClearSettings();
+
+                        // Clear data - match Xamarin line 834
+                        DataAccess.ClearData();
+
+                        // Reinitialize - match Xamarin line 835-836
+                        Config.Initialize();
+                        DataAccess.Initialize();
+
+                        // Restore saved config values - match Xamarin line 838-840
+                        Config.AcceptedTermsAndConditions = acceptedTerms;
+                        Config.SignedIn = loginConfig;
+                        Config.EnableLogin = enabledlogin;
+
+                        // Save settings - match Xamarin line 842
+                        Config.SaveSettings();
+                    }
+                    catch (Exception ex)
+                    {
+                        _appService.TrackError(ex);
+                        throw;
+                    }
+                });
+
+                await _dialogService.HideLoadingAsync();
+
+                // Show success message
+                await _dialogService.ShowAlertAsync(
+                    "Data cleared successfully. The application will now close.",
+                    "Success",
+                    "OK");
+
+                // Close the application - match Xamarin behavior
+                Application.Current?.Quit();
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                await _dialogService.ShowAlertAsync(
+                    $"Error clearing data: {ex.Message}",
+                    "Error",
+                    "OK");
+                _appService.TrackError(ex);
             }
         }
     }
