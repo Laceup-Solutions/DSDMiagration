@@ -2,7 +2,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
 using LaceupMigration.Services;
+using Microsoft.Maui.ApplicationModel;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -14,11 +16,13 @@ namespace LaceupMigration.ViewModels
     {
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
+        private List<CycleCountLineViewModel> _allLines = new();
 
         [ObservableProperty] private ObservableCollection<CycleCountLineViewModel> _cycleCountLines = new();
-        [ObservableProperty] private bool _showingAll;
+        [ObservableProperty] private bool _showingAll = true;
         [ObservableProperty] private string _searchQuery = string.Empty;
         [ObservableProperty] private bool _showPrintButton;
+        [ObservableProperty] private string _filterButtonText = "Current";
 
         public CycleCountPageViewModel(DialogService dialogService, ILaceupAppService appService)
         {
@@ -52,44 +56,53 @@ namespace LaceupMigration.ViewModels
 
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    CycleCountLines.Clear();
-                    foreach (var line in lines)
-                    {
-                        CycleCountLines.Add(line);
-                    }
-                    Filter();
+                    _allLines = lines;
+                    ApplyFilter();
                 });
             });
         }
 
         partial void OnSearchQueryChanged(string value)
         {
-            Filter();
+            ApplyFilter();
         }
 
         [RelayCommand]
         private void Filter()
         {
             ShowingAll = !ShowingAll;
-            
-            // Filter to show all or only items with inventory
-            var allLines = CycleCountLines.ToList();
+            FilterButtonText = ShowingAll ? "Current" : "All";
+            ApplyFilter();
+        }
+
+        private void ApplyFilter()
+        {
             CycleCountLines.Clear();
             
-            if (ShowingAll)
+            IEnumerable<CycleCountLineViewModel> filtered = _allLines;
+            
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(SearchQuery))
             {
-                foreach (var line in allLines)
-                {
-                    CycleCountLines.Add(line);
-                }
+                var searchUpper = SearchQuery.ToUpperInvariant();
+                filtered = filtered.Where(x => 
+                    x.ProductName.ToUpperInvariant().Contains(searchUpper) ||
+                    x.Product.Code?.ToUpperInvariant().Contains(searchUpper) == true ||
+                    x.Product.Sku?.ToUpperInvariant().Contains(searchUpper) == true ||
+                    x.Product.Upc?.ToUpperInvariant().Contains(searchUpper) == true
+                );
             }
-            else
+            
+            // Apply showing all filter
+            if (!ShowingAll)
             {
                 // Show only items with inventory
-                foreach (var line in allLines.Where(x => x.CurrentInventory > 0 || x.Real > 0))
-                {
-                    CycleCountLines.Add(line);
-                }
+                filtered = filtered.Where(x => x.CurrentInventory > 0 || x.Real > 0);
+            }
+            
+            foreach (var line in filtered)
+            {
+                CycleCountLines.Add(line);
             }
         }
 
@@ -107,7 +120,7 @@ namespace LaceupMigration.ViewModels
                 if (!confirmed)
                     return;
                 
-                // Save cycle count items
+                // Save cycle count items - save all items that have been counted (Real > 0) or explicitly set to 0
                 var fileName = Path.Combine(Config.DataPath, "cycleCount.xml");
                 
                 if (File.Exists(fileName))
@@ -115,7 +128,8 @@ namespace LaceupMigration.ViewModels
                 
                 using (StreamWriter writer = new StreamWriter(fileName))
                 {
-                    foreach (var line in CycleCountLines)
+                    // Save all items from master list that have Real set (including 0)
+                    foreach (var line in _allLines.Where(x => x.Real != 0 || x.CurrentInventory > 0))
                     {
                         var item = new CycleCountItem
                         {
@@ -145,7 +159,8 @@ namespace LaceupMigration.ViewModels
         {
             try
             {
-                var items = CycleCountLines.Select(x => new CycleCountItem
+                // Print all items that have been counted
+                var items = _allLines.Where(x => x.Real > 0).Select(x => new CycleCountItem
                 {
                     Product = x.Product,
                     Qty = x.Real,
@@ -154,6 +169,12 @@ namespace LaceupMigration.ViewModels
                     UoM = null,
                     Weight = 0
                 }).ToList();
+                
+                if (items.Count == 0)
+                {
+                    await _dialogService.ShowAlertAsync("No items to print.", "Info", "OK");
+                    return;
+                }
                 
                 PrinterProvider.PrintDocument((int copies) =>
                 {

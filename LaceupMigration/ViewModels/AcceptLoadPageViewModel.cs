@@ -62,6 +62,47 @@ namespace LaceupMigration.ViewModels
             RefreshOrders();
         }
 
+        public async Task InitializeWithOrderIdAsync(int orderId)
+        {
+            // Called when navigating from newloadordertemplate route with orderId
+            // Match Xamarin: activity.PutExtra(NewLoadOrderTemplateActivity.orderIdIntent, order.OrderId);
+            // Note: This is a temporary solution - NewLoadOrderTemplateActivity should be a dedicated editing page
+            // In Xamarin, NewLoadOrderTemplateActivity is for creating/editing load orders, not accepting them
+            // After saving in NewLoadOrderTemplateActivity, it just calls Finish() to go back
+            // The user then clicks "Accept Load" separately to accept pending load orders
+            
+            // For now, if we're here with an orderId, it means we're trying to view/edit a specific load order
+            // But AcceptLoadPage is for accepting loads, not editing them
+            // So we should just navigate back or show a message
+            // Actually, let's just show the order if it exists, but note this is not the correct flow
+            
+            var order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId && x.OrderType == OrderType.Load);
+            if (order != null)
+            {
+                // Set the date to the order's date
+                _currentDate = order.Date;
+                SelectedDateText = _currentDate.ToShortDateString();
+                _ordersAlreadyLoaded = true;
+                
+                // Show this order (even if it doesn't have PendingLoad = true yet)
+                // This allows viewing a newly created load order
+                _sourceOrders = new List<Order> { order };
+                _selectedOrders = new bool[] { true };
+                
+                Orders.Clear();
+                Orders.Add(new AcceptLoadOrderItemViewModel(order, this, 0));
+                
+                SelectAll = true;
+                RefreshTotals();
+            }
+            else
+            {
+                await _dialogService.ShowAlertAsync("Load order not found.", "Error", "OK");
+                // Navigate back if order not found
+                await Shell.Current.GoToAsync("..");
+            }
+        }
+
         public async Task OnAppearingAsync()
         {
             // On appearing, if we don't have orders yet, show date picker first

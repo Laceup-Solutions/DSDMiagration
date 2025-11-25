@@ -33,6 +33,16 @@ namespace LaceupMigration.Views
                     Dispatcher.Dispatch(async () => await _viewModel.InitializeWithDateAsync(date));
                 }
             }
+
+            // Handle orderId parameter (from newloadordertemplate route)
+            // Match Xamarin: activity.PutExtra(NewLoadOrderTemplateActivity.orderIdIntent, order.OrderId);
+            if (query.TryGetValue("orderId", out var orderIdValue) && orderIdValue != null)
+            {
+                if (int.TryParse(orderIdValue.ToString(), out var orderId) && orderId > 0)
+                {
+                    Dispatcher.Dispatch(async () => await _viewModel.InitializeWithOrderIdAsync(orderId));
+                }
+            }
         }
 
         protected override async void OnAppearing()

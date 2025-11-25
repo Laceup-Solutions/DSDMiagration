@@ -680,9 +680,77 @@ namespace LaceupMigration.ViewModels
             if (_order == null || item.Product == null)
                 return;
 
-            // Handle Load order type - navigate to AddItemPage
-            var route = $"additem?orderId={_order.OrderId}&productId={item.Product.ProductId}";
-            await Shell.Current.GoToAsync(route);
+            // Handle Load order type - show popup dialog (same as NewLoadOrderTemplatePage)
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == item.Product.ProductId && !x.Deleted);
+            
+            var currentQty = existingDetail?.Qty ?? 0;
+            var currentComments = existingDetail?.Comments ?? string.Empty;
+            var currentUoM = existingDetail?.UnitOfMeasure ?? item.Line?.UoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+            
+            var result = await _dialogService.ShowAddItemDialogAsync(
+                item.Product.Name,
+                item.Product,
+                currentQty > 0 ? currentQty.ToString() : "1",
+                currentComments,
+                currentUoM);
+            
+            if (result.qty == null)
+                return; // User cancelled
+
+            if (string.IsNullOrEmpty(result.qty) || !decimal.TryParse(result.qty, out var qty))
+                qty = 0;
+
+            if (qty == 0)
+            {
+                // Remove the detail
+                if (existingDetail != null)
+                {
+                    existingDetail.Deleted = true;
+                    _order.Details.Remove(existingDetail);
+                }
+            }
+            else
+            {
+                // Add or update the detail
+                OrderDetail det;
+                if (existingDetail == null)
+                {
+                    det = new OrderDetail(item.Product, (float)qty, _order)
+                    {
+                        LoadStarting = -1, // Mark as new/modified
+                        UnitOfMeasure = result.selectedUoM ?? currentUoM,
+                        Comments = result.comments ?? string.Empty
+                    };
+                    _order.Details.Add(det);
+                }
+                else
+                {
+                    det = existingDetail;
+                    // Check inventory if configured
+                    if (Config.CheckInventoryInLoad)
+                    {
+                        if (det.Product.CurrentWarehouseInventory < (float)qty)
+                        {
+                            await _dialogService.ShowAlertAsync("Not enough inventory.", "Alert", "OK");
+                            return;
+                        }
+                    }
+
+                    bool changedUoM = det.UnitOfMeasure != null && result.selectedUoM != null && det.UnitOfMeasure.Id != result.selectedUoM.Id;
+                    if (det.LoadStarting == -1 && (det.Qty != (float)qty || changedUoM)) 
+                        det.LoadStarting = 0;
+
+                    det.Qty = (float)qty;
+                    det.Comments = result.comments ?? string.Empty;
+                    det.UnitOfMeasure = result.selectedUoM ?? currentUoM;
+                }
+            }
+
+            _order.Save();
+            
+            // Refresh the product list
+            PrepareProductList();
+            Filter();
         }
 
         [RelayCommand]
@@ -868,17 +936,74 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
-        private async Task DoneAsync()
+        private async Task AddItemsAsync()
         {
-            // Same as AddToOrder - pop pages and go back
-            await AddToOrderAsync();
+            // Add Items button - adds items to load order (same as Xamarin)
+            if (_order == null)
+                return;
+
+            if (_order.OrderType == OrderType.Load)
+            {
+                // For load orders, add items and navigate to load order template
+                await AddToLoadOrderAsync();
+            }
+            else
+            {
+                // For other order types, add items to order
+                await AddToOrderAsync();
+            }
         }
 
         [RelayCommand]
         private async Task ShowMenuAsync()
         {
-            // TODO: Implement menu options
-            await Task.CompletedTask;
+            await ShowAdvancedOptionsAsync();
+        }
+
+        private async Task ShowAdvancedOptionsAsync()
+        {
+            var options = new List<string>
+            {
+                "Update Settings",
+                "Send Log File",
+                "Export Data",
+                "Remote Control",
+                "Setup Printer"
+            };
+
+            if (Config.GoToMain)
+            {
+                options.Add("Go to main activity");
+            }
+
+            var choice = await _dialogService.ShowActionSheetAsync("Advanced Options", "Cancel", null, options.ToArray());
+            if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
+                return;
+
+            switch (choice)
+            {
+                case "Update Settings":
+                    await _appService.UpdateSalesmanSettingsAsync();
+                    await _dialogService.ShowAlertAsync("Settings updated.", "Info", "OK");
+                    break;
+                case "Send Log File":
+                    await _appService.SendLogAsync();
+                    await _dialogService.ShowAlertAsync("Log sent.", "Info", "OK");
+                    break;
+                case "Export Data":
+                    await _appService.ExportDataAsync();
+                    await _dialogService.ShowAlertAsync("Data exported.", "Info", "OK");
+                    break;
+                case "Remote Control":
+                    await _appService.RemoteControlAsync();
+                    break;
+                case "Setup Printer":
+                    await _dialogService.ShowAlertAsync("Printer setup is not yet implemented in the MAUI version.", "Info", "OK");
+                    break;
+                case "Go to main activity":
+                    await _appService.GoBackToMainAsync();
+                    break;
+            }
         }
 
         [RelayCommand]

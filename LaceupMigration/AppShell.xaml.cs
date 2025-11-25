@@ -65,6 +65,7 @@ namespace LaceupMigration
             Routing.RegisterRoute("checkinventory", typeof(CheckInventoryPage));
             Routing.RegisterRoute("transferonoff", typeof(TransferOnOffPage));
             Routing.RegisterRoute("viewloadorder", typeof(ViewLoadOrderPage));
+            Routing.RegisterRoute("newloadordertemplate", typeof(NewLoadOrderTemplatePage));
             Routing.RegisterRoute("setparlevel", typeof(SetParLevelPage));
             Routing.RegisterRoute("cyclecount", typeof(CycleCountPage));
             Routing.RegisterRoute("inventorysummary", typeof(InventorySummaryPage));

@@ -12,7 +12,7 @@
                    Margin="16,8" />
 
         <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="16,0">
-            <Button Text="Filter"
+            <Button Text="{Binding FilterButtonText}"
                     Command="{Binding FilterCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Save"
