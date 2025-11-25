@@ -8,7 +8,7 @@
              Shell.TabBarIsVisible="False"
              Title="Products">
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Done" Command="{Binding DoneCommand}" Order="Primary" Priority="0" />
+        <ToolbarItem Text="Menu" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,*">

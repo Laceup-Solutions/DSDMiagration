@@ -1,4 +1,5 @@
 ﻿using Microsoft.Maui.Controls.Shapes;
+using LaceupMigration;
 
 namespace LaceupMigration.Controls;
 
@@ -321,6 +322,328 @@ public class DialogService : IDialogService
         {
             await currentPage.Navigation.PushModalAsync(_loadingPage);
         }
+    }
+
+    public async Task<(string qty, string comments, UnitOfMeasure selectedUoM)> ShowAddItemDialogAsync(string productName, Product product, string initialQty = "1", string initialComments = "", UnitOfMeasure initialUoM = null)
+    {
+        var page = GetCurrentPage();
+        if (page == null)
+            return (null, null, null);
+
+        var tcs = new TaskCompletionSource<(string qty, string comments, UnitOfMeasure selectedUoM)>();
+
+        // Simple layout matching Xamarin's catalogAddLayout - just Qty and Comments for load orders
+        // Quantity input
+        var qtyEntry = new Entry
+        {
+            Text = initialQty,
+            Keyboard = Keyboard.Numeric,
+            FontSize = 16,
+            BackgroundColor = Colors.White
+        };
+
+        // Comments input
+        var commentsEntry = new Editor
+        {
+            Text = initialComments,
+            Placeholder = "Enter comments",
+            HeightRequest = 80,
+            FontSize = 14,
+            BackgroundColor = Colors.White
+        };
+
+        // Unit of Measure selector (if product has UoMFamily and Config allows it)
+        Picker uomPicker = null;
+        UnitOfMeasure selectedUoM = initialUoM;
+        
+        if (product != null && !string.IsNullOrEmpty(product.UoMFamily) && Config.CanChangeUomInLoad)
+        {
+            var familyItems = UnitOfMeasure.List.Where(x => x.FamilyId == product.UoMFamily).ToList();
+            if (familyItems.Count > 0)
+            {
+                uomPicker = new Picker
+                {
+                    FontSize = 16,
+                    BackgroundColor = Colors.White,
+                    ItemsSource = familyItems,
+                    ItemDisplayBinding = new Binding("Name")
+                };
+
+                if (initialUoM != null)
+                {
+                    var index = familyItems.FindIndex(x => x.Id == initialUoM.Id);
+                    if (index >= 0)
+                        uomPicker.SelectedIndex = index;
+                }
+                else
+                {
+                    var defaultIndex = familyItems.FindIndex(x => x.IsDefault);
+                    if (defaultIndex >= 0)
+                        uomPicker.SelectedIndex = defaultIndex;
+                }
+
+                uomPicker.SelectedIndexChanged += (s, e) =>
+                {
+                    if (uomPicker.SelectedIndex >= 0 && uomPicker.SelectedIndex < familyItems.Count)
+                        selectedUoM = familyItems[uomPicker.SelectedIndex];
+                };
+
+                if (uomPicker.SelectedIndex >= 0)
+                    selectedUoM = familyItems[uomPicker.SelectedIndex];
+            }
+        }
+
+        // Simple content layout matching Xamarin - horizontal layout for Qty, vertical for Comments
+        var qtyRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            },
+            Padding = new Thickness(20, 15, 20, 10)
+        };
+
+        var qtyLabel = new Label
+        {
+            Text = "Qty:",
+            FontSize = 14,
+            TextColor = Colors.Black,
+            VerticalOptions = LayoutOptions.Center
+        };
+        Grid.SetColumn(qtyLabel, 0);
+        Grid.SetColumn(qtyEntry, 1);
+        qtyRow.Children.Add(qtyLabel);
+        qtyRow.Children.Add(qtyEntry);
+
+        var commentsRow = new VerticalStackLayout
+        {
+            Spacing = 5,
+            Padding = new Thickness(20, 10, 20, 5)
+        };
+
+        var commentsLabel = new Label
+        {
+            Text = "Comments:",
+            FontSize = 14,
+            TextColor = Colors.Black
+        };
+        commentsRow.Children.Add(commentsLabel);
+        commentsRow.Children.Add(commentsEntry);
+
+        // UoM row (if applicable)
+        Grid uomRow = null;
+        if (uomPicker != null)
+        {
+            uomRow = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitionCollection
+                {
+                    new ColumnDefinition { Width = GridLength.Auto },
+                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+                },
+                Padding = new Thickness(20, 5, 20, 5)
+            };
+
+            var uomLabel = new Label
+            {
+                Text = "Unit of Measure:",
+                FontSize = 14,
+                TextColor = Colors.Black,
+                VerticalOptions = LayoutOptions.Center
+            };
+            Grid.SetColumn(uomLabel, 0);
+            Grid.SetColumn(uomPicker, 1);
+            uomRow.Children.Add(uomLabel);
+            uomRow.Children.Add(uomPicker);
+        }
+
+        // Create buttons row (match Xamarin: Cancel on left, Add on right)
+        var cancelButton = new Button
+        {
+            Text = "Cancel",
+            BackgroundColor = Colors.Gray,
+            TextColor = Colors.White,
+            FontSize = 16,
+            Margin = new Thickness(0,0,5,10),
+            CornerRadius = 0
+        };
+
+        var addButton = new Button
+        {
+            Text = "Add",
+            BackgroundColor = Color.FromArgb("#017CBA"), // Match Laceup blue
+            TextColor = Colors.White,
+            FontSize = 16,
+            Margin = new Thickness(5,0,0,10),
+            CornerRadius = 0
+        };
+
+        var buttonRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = GridLength.Star }
+            },
+            ColumnSpacing = 0,
+            Padding = new Thickness(0),
+            BackgroundColor = Colors.White
+        };
+
+        Grid.SetColumn(cancelButton, 0);
+        Grid.SetColumn(addButton, 1);
+        buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(addButton);
+
+        // Main content - simple vertical stack
+        var content = new VerticalStackLayout
+        {
+            Spacing = 0,
+            BackgroundColor = Colors.White,
+            Children = { qtyRow }
+        };
+
+        if (uomRow != null)
+            content.Children.Add(uomRow);
+
+        content.Children.Add(commentsRow);
+        content.Children.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") });
+        content.Children.Add(buttonRow);
+
+        // Create a popup-style dialog (centered overlay, not full page)
+        var scrollContent = new ScrollView
+        {
+            Content = content,
+            MaximumWidthRequest = 300, // Limit width for tablet/desktop
+            MaximumHeightRequest = 500 // Limit height
+        };
+
+        // Main container with header and content
+        var mainContainer = new VerticalStackLayout
+        {
+            Spacing = 0,
+            BackgroundColor = Colors.White,
+            Children =
+            {
+                new Label
+                {
+                    Text = productName,
+                    FontSize = 18,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Colors.Black,
+                    Padding = new Thickness(20, 20, 20, 15),
+                    BackgroundColor = Colors.White
+                },
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") },
+                scrollContent
+            }
+        };
+
+        var dialogBorder = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 0,
+            Padding = 0,
+            Margin = new Thickness(20),
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(8) },
+            Content = mainContainer
+        };
+
+        // Create a grid with semi-transparent background and centered content
+        var overlayGrid = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"), // Semi-transparent black overlay
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            },
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        // Place dialog border in center of overlay
+        Grid.SetRow(dialogBorder, 1);
+        Grid.SetColumn(dialogBorder, 1);
+        overlayGrid.Children.Add(dialogBorder);
+
+        // Create modal page (full screen but styled as popup)
+        var dialog = new ContentPage
+        {
+            BackgroundColor = Colors.Transparent, // Transparent so overlay shows through
+            Content = overlayGrid
+        };
+
+        // Helper method to safely pop the modal
+        async Task SafePopModalAsync()
+        {
+            try
+            {
+                var currentPage = GetCurrentPage();
+                if (currentPage != null)
+                {
+                    // Check if we're on the dialog page or need to pop from the original page
+                    if (currentPage == dialog && currentPage.Navigation.ModalStack.Count > 0)
+                    {
+                        await currentPage.Navigation.PopModalAsync();
+                    }
+                    else if (page != null && page.Navigation.ModalStack.Count > 0)
+                    {
+                        // Pop from the original page's navigation
+                        await page.Navigation.PopModalAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Modal might already be popped, ignore
+                System.Diagnostics.Debug.WriteLine($"Error popping modal: {ex.Message}");
+            }
+        }
+
+        addButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult((qtyEntry.Text, commentsEntry.Text, selectedUoM));
+        };
+
+        cancelButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult((null, null, null));
+        };
+
+        // Tap outside to close (tap on overlay background)
+        var tapGesture = new TapGestureRecognizer();
+        tapGesture.Tapped += async (s, e) =>
+        {
+            // Only close if tapping the overlay background, not the dialog content
+            if (s == overlayGrid)
+            {
+                await SafePopModalAsync();
+                tcs.SetResult((null, null, null));
+            }
+        };
+        overlayGrid.GestureRecognizers.Add(tapGesture);
+
+        // Show as modal
+        await page.Navigation.PushModalAsync(dialog);
+        
+        // Focus and select all text in qty entry (match Xamarin: SetSelectAllOnFocus)
+        qtyEntry.Focus();
+        if (!string.IsNullOrEmpty(qtyEntry.Text))
+        {
+            qtyEntry.CursorPosition = 0;
+            qtyEntry.SelectionLength = qtyEntry.Text.Length;
+        }
+
+        return await tcs.Task;
     }
 
     public async Task HideLoadingAsync()

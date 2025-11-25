@@ -104,35 +104,68 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task Save()
         {
+            _appService.RecordEvent("Save button");
+            
+            // Match Xamarin SaveClicked logic (lines 135-171)
             if (Config.PrinterAvailable && HasChanges && !IsPrinted)
             {
                 var confirmed = await _dialogService.ShowConfirmationAsync("Warning", "No printed report. Continue?", "Yes", "No");
                 if (!confirmed)
                     return;
-            }
 
-            // Ask for password
-            var password = await _dialogService.ShowPromptAsync("Inventory Password", "Enter password", "OK", "Cancel", "", -1, "", Keyboard.Numeric);
-            if (string.IsNullOrEmpty(password) || !string.Equals(password, Config.InventoryPassword, StringComparison.OrdinalIgnoreCase))
+                // Ask for password only if warning was confirmed - match Xamarin lines 144-168
+                var password = await _dialogService.ShowPromptAsync("Inventory Password", "Enter password", "OK", "Cancel", "", -1, "", Keyboard.Default);
+                if (password == null)
+                    return; // User cancelled
+
+                if (string.Compare(password, Config.InventoryPassword, StringComparison.CurrentCultureIgnoreCase) != 0)
+                {
+                    await _dialogService.ShowAlertAsync("Invalid password.", "Alert", "OK");
+                    return;
+                }
+
+                // Continue to save - match Xamarin SaveChanges (line 157)
+                await SaveChangesAsync();
+            }
+            else
             {
-                await _dialogService.ShowAlertAsync("Invalid password.", "Alert", "OK");
-                return;
-            }
+                // If printer not available or already printed, go directly to password prompt
+                // Ask for password - match Xamarin lines 144-168
+                var password = await _dialogService.ShowPromptAsync("Inventory Password", "Enter password", "OK", "Cancel", "", -1, "", Keyboard.Default);
+                if (password == null)
+                    return; // User cancelled
 
+                if (string.Compare(password, Config.InventoryPassword, StringComparison.CurrentCultureIgnoreCase) != 0)
+                {
+                    await _dialogService.ShowAlertAsync("Invalid password.", "Alert", "OK");
+                    return;
+                }
+
+                // Continue to save
+                await SaveChangesAsync();
+            }
+        }
+
+        private async Task SaveChangesAsync()
+        {
+            // Match Xamarin SaveChanges logic (lines 173-188)
             var confirmOverride = await _dialogService.ShowConfirmationAsync("Warning", "Override current inventory?", "Yes", "No");
             if (!confirmOverride)
                 return;
 
             try
             {
+                // Update the counted inventory to the real qty - match Xamarin line 180
                 foreach (var line in InventoryLines)
                 {
                     line.InventoryLine.Product.SetCurrentInventory(line.InventoryLine.Real);
                 }
 
+                // Indicate it was saved - match Xamarin line 182
                 DataAccess.SaveInventory();
                 HasChanges = false;
 
+                // Delete temp file - match Xamarin line 185-186
                 if (File.Exists(Config.CurrentCheckInventoryFile))
                     File.Delete(Config.CurrentCheckInventoryFile);
 
@@ -174,12 +207,30 @@ namespace LaceupMigration.ViewModels
             if (line == null)
                 return;
 
+            _appService.RecordEvent("Add Qty button");
+            
+            // Match Xamarin ShowQtyDialog logic (lines 409-446)
             var qtyText = await _dialogService.ShowPromptAsync("Quantity to Add", "", "Add", "Cancel", "1", -1, "", Keyboard.Numeric);
-            if (!string.IsNullOrEmpty(qtyText) && int.TryParse(qtyText, out var qty))
+            if (!string.IsNullOrEmpty(qtyText))
             {
-                line.InventoryLine.Real += qty;
-                line.UpdateQtyText();
-                MarkChanged();
+                try
+                {
+                    // Match Xamarin line 424: use int for Add Qty
+                    int qty = Convert.ToInt32(qtyText);
+
+                    // Match Xamarin line 426: add to existing Real
+                    line.InventoryLine.Real += qty;
+                    
+                    // Match Xamarin lines 427-430: update display
+                    line.UpdateQtyText();
+                    
+                    // Match Xamarin line 432: mark as changed
+                    MarkChanged();
+                }
+                catch
+                {
+                    await _dialogService.ShowAlertAsync("Invalid quantity.", "Alert", "OK");
+                }
             }
         }
 

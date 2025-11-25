@@ -16,6 +16,9 @@
         </VerticalStackLayout>
 
         <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="16,0">
+            <Button Text="{Binding FilterButtonText}"
+                    Command="{Binding FilterCommand}"
+                    HorizontalOptions="FillAndExpand" />
             <Button Text="Search"
                     Command="{Binding SearchCommand}"
                     HorizontalOptions="FillAndExpand" />

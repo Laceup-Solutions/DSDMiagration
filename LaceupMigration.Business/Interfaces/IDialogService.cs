@@ -15,6 +15,7 @@ public interface IDialogService
     Task ShowLoadingAsync(string message = "Loading...");
     Task HideLoadingAsync();
     Task UpdateLoadingMessageAsync(string message);
+    Task<(string qty, string comments, UnitOfMeasure selectedUoM)> ShowAddItemDialogAsync(string productName, Product product, string initialQty = "1", string initialComments = "", UnitOfMeasure initialUoM = null);
 }
 
 public class DialogHelper

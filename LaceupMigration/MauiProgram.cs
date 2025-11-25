@@ -155,6 +155,8 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.TransferOnOffPageViewModel>();
 		builder.Services.AddTransient<ViewLoadOrderPage>();
 		builder.Services.AddTransient<ViewModels.ViewLoadOrderPageViewModel>();
+		builder.Services.AddTransient<NewLoadOrderTemplatePage>();
+		builder.Services.AddTransient<ViewModels.NewLoadOrderTemplatePageViewModel>();
 		builder.Services.AddTransient<SetParLevelPage>();
 		builder.Services.AddTransient<ViewModels.SetParLevelPageViewModel>();
 		builder.Services.AddTransient<CycleCountPage>();
