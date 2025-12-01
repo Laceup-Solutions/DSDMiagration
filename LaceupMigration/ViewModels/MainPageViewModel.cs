@@ -580,6 +580,78 @@ namespace LaceupMigration.ViewModels
 			{
 				SubscribeToNotifications();
 			}
+
+			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1733-1738
+			// Check for NewSyncLoadOnDemand and RouteOrdersCount
+			if (!errorDownloadingData && Config.NewSyncLoadOnDemand && DataAccess.RouteOrdersCount > 0)
+			{
+				// Match Xamarin GoToAcceptLoad(DateTime.Now, true) - download load orders before navigating
+				// When fromDownloadData=true, it skips DownloadProducts/DownloadClients but still calls GetPendingLoadOrders
+				await _dialogService.ShowLoadingAsync("Downloading load orders...");
+				string loadOrdersResponseMessage = null;
+				
+				try
+				{
+					await Task.Run(() =>
+					{
+						try
+						{
+							// Products and clients already downloaded in sync, just get pending load orders
+							// Match Xamarin: DataAccess.GetPendingLoadOrders(date, Config.ShowAllAvailableLoads)
+							DataAccess.GetPendingLoadOrders(DateTime.Now, Config.ShowAllAvailableLoads);
+						}
+						catch (Exception e)
+						{
+							Logger.CreateLog(e);
+							loadOrdersResponseMessage = "Error downloading load orders.";
+						}
+					});
+				}
+				finally
+				{
+					await _dialogService.HideLoadingAsync();
+				}
+
+				if (!string.IsNullOrEmpty(loadOrdersResponseMessage))
+				{
+					await _dialogService.ShowAlertAsync(loadOrdersResponseMessage, "Alert", "OK");
+				}
+				else
+				{
+					// Navigate to AcceptLoad page with today's date
+					await Shell.Current.GoToAsync($"acceptload?loadDate={DateTime.Now.Ticks}");
+				}
+				return;
+			}
+
+			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1740-1769
+			// Check for pending load to accept after sync
+			if (!errorDownloadingData && Config.TrackInventory && updateInventory && DataAccess.PendingLoadToAccept)
+			{
+				if (Config.AutoAcceptLoad)
+				{
+					// Auto-accept load logic (Xamarin lines 1744-1758)
+					// Update inventory for all products with RequestedLoadInventory > 0
+					foreach (var product in Product.Products)
+					{
+						if (product.RequestedLoadInventory > 0)
+						{
+							product.UpdateInventory(product.RequestedLoadInventory, null, 1, 0);
+							product.AddLoadedInventory(product.RequestedLoadInventory, null, 0);
+						}
+					}
+
+					DataAccess.PendingLoadToAccept = false;
+					Config.SaveAppStatus();
+					DataAccess.SaveInventory();
+				}
+				else
+				{
+					// Navigate to inventory page (Xamarin lines 1762-1765)
+					// Pass actionIntent=1 to trigger AcceptLoad automatically
+					await Shell.Current.GoToAsync("inventorymain?actionIntent=1");
+				}
+			}
 		}
 		
 		// [MIGRATION]: Auto sync logic from Xamarin

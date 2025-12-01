@@ -48,6 +48,9 @@ namespace LaceupMigration.ViewModels
             SelectedDateText = _currentDate.ToShortDateString();
             ShowViewAllToggle = Config.ShowAllAvailableLoads;
             ViewAll = Config.ShowAllAvailableLoads;
+            
+            // Match Xamarin OnCreate - load existing orders from memory (don't sync yet)
+            RefreshOrders();
         }
 
         public async Task InitializeWithDateAsync(DateTime date)
@@ -105,17 +108,21 @@ namespace LaceupMigration.ViewModels
 
         public async Task OnAppearingAsync()
         {
-            // On appearing, if we don't have orders yet, show date picker first
-            // Match Xamarin behavior: if SyncLoadOnDemand, show date picker on appearing
-            if (Orders.Count == 0 && !_ordersAlreadyLoaded)
+            // Match Xamarin OnResume behavior - just refresh the UI with existing orders
+            // Xamarin doesn't auto-sync on appearing, only when user clicks date button or toggles ViewAll
+            // If orders are already loaded from InitializeWithDateAsync, just refresh the display
+            if (_ordersAlreadyLoaded)
             {
-                // Show date picker first, then refresh
-                await SelectDateAsync();
+                RefreshOrders();
             }
-            else if (!_ordersAlreadyLoaded)
+            else if (Orders.Count == 0)
             {
-                await RefreshAsync(false);
+                // No orders loaded yet - show existing orders from memory (matching Xamarin OnCreate)
+                // Don't auto-sync, wait for user to click date button or toggle ViewAll
+                RefreshOrders();
             }
+            // If orders exist, they're already displayed, no need to refresh
+            
             _ordersAlreadyLoaded = false; // Reset for next time
         }
 
@@ -226,7 +233,7 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private async Task RefreshAsync(bool exit = false)
+        public async Task RefreshAsync(bool exit = false)
         {
             // Match Xamarin Refresh method logic - show progress dialog
             await _dialogService.ShowLoadingAsync("Downloading load orders...");
@@ -390,7 +397,8 @@ namespace LaceupMigration.ViewModels
             }
 
             var orderIds = string.Join("|", selectedOrders.Select(x => x.OrderId.ToString()));
-            await Shell.Current.GoToAsync($"acceptinventoryresume?orderIds={orderIds}");
+            // Match Xamarin: Navigate to AcceptInventoryResumeActivity (which is equivalent to AcceptLoadEditDelivery)
+            await Shell.Current.GoToAsync($"acceptloadeditdelivery?orderIds={orderIds}");
         }
 
         [RelayCommand]
@@ -635,6 +643,15 @@ namespace LaceupMigration.ViewModels
         partial void OnIsSelectedChanged(bool value)
         {
             _parent.UpdateOrderSelection(_index, value);
+        }
+
+        [RelayCommand]
+        private async Task OrderTappedAsync()
+        {
+            // Match Xamarin: HandleClick -> GoToAcceptLoad(orderId) -> ModifyOrderToAcceptActivity
+            // But user wants to go to AcceptLoadEditDelivery instead
+            // Navigate to Edit Delivery with this order's ID
+            await Shell.Current.GoToAsync($"acceptloadeditdelivery?orderIds={_order.OrderId}");
         }
     }
 }

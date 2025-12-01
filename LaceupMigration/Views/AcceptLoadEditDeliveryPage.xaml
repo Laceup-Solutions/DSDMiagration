@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.AcceptLoadEditDeliveryPage"
+             Shell.TabBarIsVisible="False"
+             Title="Edit Delivery">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+        <!-- Print, Search, Done buttons -->
+        <HorizontalStackLayout Grid.Row="0" Spacing="8" Margin="16,8">
+            <Button Text="Print"
+                    Command="{Binding PrintCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="Search"
+                    Command="{Binding SearchCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    HorizontalOptions="FillAndExpand" />
+            <Button Text="{Binding FinishButtonText}"
+                    Command="{Binding FinishCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    HorizontalOptions="FillAndExpand" />
+        </HorizontalStackLayout>
+
+        <!-- Totals -->
+        <Frame Grid.Row="1"
+               Padding="12"
+               Margin="16,0"
+               BackgroundColor="White"
+               HasShadow="True"
+               CornerRadius="8">
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <VerticalStackLayout Grid.Column="0" Spacing="4">
+                    <Label Text="{Binding TotalItems, StringFormat='Items Total: {0}'}"
+                           FontSize="14"
+                           FontAttributes="Bold" />
+                    <Label Text="{Binding TotalQty, StringFormat='Total Qty: {0}'}"
+                           FontSize="14"
+                           IsVisible="{Binding ShowTotalQty}" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                    <Label Text="{Binding TotalWeight, StringFormat='Total Weight: {0}'}"
+                           FontSize="14"
+                           IsVisible="{Binding ShowTotalWeight}" />
+                </VerticalStackLayout>
+            </Grid>
+        </Frame>
+
+        <!-- Product List -->
+        <CollectionView Grid.Row="2"
+                        ItemsSource="{Binding ProductLines}"
+                        Margin="16,0,16,8">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:AcceptLoadEditDeliveryLineViewModel">
+                    <Frame Padding="12"
+                           Margin="0,4"
+                           BackgroundColor="{StaticResource Gray100}"
+                           HasShadow="False"
+                           CornerRadius="8">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+                            <!-- Product Name -->
+                            <Label Grid.Row="0"
+                                   Text="{Binding ProductName}"
+                                   FontSize="16"
+                                   FontAttributes="Bold" />
+
+                            <!-- Ordered and Quantity -->
+                            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Label Grid.Column="0"
+                                       Text="{Binding OrderedText}"
+                                       FontSize="13"
+                                       TextColor="{Binding OrderedColor}" />
+                                <Button Grid.Column="1"
+                                        Text="{Binding QtyText}"
+                                        Command="{Binding EditQtyCommand}"
+                                        BackgroundColor="{StaticResource Primary}"
+                                        TextColor="White"
+                                        WidthRequest="80" />
+                            </Grid>
+
+                            <!-- UoM -->
+                            <Label Grid.Row="2"
+                                   Text="{Binding UomText}"
+                                   FontSize="12"
+                                   TextColor="#666666"
+                                   IsVisible="{Binding ShowUoM}" />
+
+                            <!-- Weight and Lot -->
+                            <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <Label Grid.Column="0"
+                                       Text="{Binding WeightText}"
+                                       FontSize="12"
+                                       TextColor="#666666"
+                                       IsVisible="{Binding ShowWeight}" />
+                                <Label Grid.Column="1"
+                                       Text="{Binding LotText}"
+                                       FontSize="12"
+                                       TextColor="#666666"
+                                       IsVisible="{Binding ShowLot}" />
+                            </Grid>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

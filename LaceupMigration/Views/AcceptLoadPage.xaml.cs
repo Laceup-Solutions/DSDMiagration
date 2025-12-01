@@ -43,6 +43,18 @@ namespace LaceupMigration.Views
                     Dispatcher.Dispatch(async () => await _viewModel.InitializeWithOrderIdAsync(orderId));
                 }
             }
+
+            // Handle needRefresh parameter (from AcceptLoadEditDelivery)
+            // Match Xamarin: activity.PutExtra("needRefresh", refresh ? "1" : "0");
+            // When needRefresh=true, call Refresh(true) which will go back to main if RouteOrdersCount == 0
+            if (query.TryGetValue("needRefresh", out var needRefreshValue) && needRefreshValue != null)
+            {
+                if (needRefreshValue.ToString() == "1")
+                {
+                    // Match Xamarin: Refresh(true) - exit=true means go back to main if no more orders
+                    Dispatcher.Dispatch(async () => await _viewModel.RefreshAsync(true));
+                }
+            }
         }
 
         protected override async void OnAppearing()

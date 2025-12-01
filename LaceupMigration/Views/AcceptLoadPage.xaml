@@ -164,6 +164,9 @@
                                BackgroundColor="{StaticResource Gray100}"
                                HasShadow="False"
                                CornerRadius="5">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding OrderTappedCommand}" />
+                            </Frame.GestureRecognizers>
                             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                                 <CheckBox Grid.Column="0"
                                          IsChecked="{Binding IsSelected}"

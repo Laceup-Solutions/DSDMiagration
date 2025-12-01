@@ -651,14 +651,28 @@ public class DialogService : IDialogService
         if (_loadingPage == null)
             return;
 
-        var currentPage = GetCurrentPage();
-        if (currentPage != null)
+        try
         {
-            await currentPage.Navigation.PopModalAsync();
+            var currentPage = GetCurrentPage();
+            if (currentPage != null && currentPage.Navigation != null)
+            {
+                // Check if there's actually a modal to pop
+                if (currentPage.Navigation.ModalStack.Count > 0)
+                {
+                    await currentPage.Navigation.PopModalAsync();
+                }
+            }
         }
-
-        _loadingPage = null;
-        _loadingLabel = null;
+        catch (Exception ex)
+        {
+            // Modal might already be popped or navigation state invalid, ignore
+            System.Diagnostics.Debug.WriteLine($"Error hiding loading: {ex.Message}");
+        }
+        finally
+        {
+            _loadingPage = null;
+            _loadingLabel = null;
+        }
     }
 
     public async Task UpdateLoadingMessageAsync(string message)

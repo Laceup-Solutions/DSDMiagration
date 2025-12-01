@@ -119,10 +119,6 @@
                        SearchButtonPressed="SearchBar_SearchButtonPressed" />
         </Border>
 
-        <DatePicker x:Name="RouteDatePicker"
-                    Grid.Row="0"
-                    IsVisible="False"
-                    DateSelected="RouteDatePicker_DateSelected" />
 
         <HorizontalStackLayout Grid.Row="1"
                                x:Name="ButtonsLayout"
