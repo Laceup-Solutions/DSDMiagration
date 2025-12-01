@@ -139,6 +139,8 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.ConfigurationPageViewModel>();
 		builder.Services.AddTransient<AcceptLoadPage>();
 		builder.Services.AddTransient<ViewModels.AcceptLoadPageViewModel>();
+		builder.Services.AddTransient<AcceptLoadEditDeliveryPage>();
+		builder.Services.AddTransient<ViewModels.AcceptLoadEditDeliveryPageViewModel>();
 		builder.Services.AddTransient<ManageRoutePage>();
 		builder.Services.AddTransient<ViewModels.ManageRoutePageViewModel>();
 		builder.Services.AddTransient<SelectGoalPage>();

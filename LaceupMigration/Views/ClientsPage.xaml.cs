@@ -17,8 +17,6 @@ namespace LaceupMigration
 			_mainViewModel = App.Services.GetRequiredService<MainPageViewModel>();
 			BindingContext = _viewModel;
 
-			_viewModel.SelectDateRequested += OnSelectDateRequested;
-
 			// Wire up menu toolbar item
 			var menuItem = ToolbarItems.FirstOrDefault();
 			if (menuItem != null)
@@ -52,26 +50,6 @@ namespace LaceupMigration
 			}
 		}
 
-		private void OnSelectDateRequested()
-		{
-			var datePicker = this.FindByName<DatePicker>("RouteDatePicker");
-			if (datePicker != null)
-			{
-				if (Dispatcher.IsDispatchRequired)
-				{
-					Dispatcher.Dispatch(() => datePicker.Focus());
-				}
-				else
-				{
-					datePicker.Focus();
-				}
-			}
-		}
-
-		private async void RouteDatePicker_DateSelected(object sender, DateChangedEventArgs e)
-		{
-			await _viewModel.OnRouteDateSelectedAsync(e.NewDate);
-		}
 
 		private async void OnClientSelectionChanged(object sender, SelectionChangedEventArgs e)
 		{

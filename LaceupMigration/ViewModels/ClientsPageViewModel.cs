@@ -78,7 +78,7 @@ namespace LaceupMigration.ViewModels
 		private string _viewButtonText = "View Route";
 
 		[ObservableProperty]
-		private string _selectDayButtonText = DateTime.Today.ToString("d", CultureInfo.CurrentCulture);
+		private string _selectDayButtonText = "Other Day";
 
 		[ObservableProperty]
 		private string _editButtonText = "Edit";
@@ -94,8 +94,6 @@ namespace LaceupMigration.ViewModels
 
 		public bool HasInfoMessage => !string.IsNullOrWhiteSpace(InfoMessage);
 
-		public event Action? SelectDateRequested;
-
 		public ClientsPageViewModel(DialogService dialogService, ILaceupAppService appService)
 		{
 			_dialogService = dialogService;
@@ -103,7 +101,7 @@ namespace LaceupMigration.ViewModels
 
 			_displayMode = RouteEx.Routes.Count > 0 ? DisplayMode.Route : DisplayMode.All;
 			UpdateViewButtonText();
-			SelectDayButtonText = RouteDate.ToString("d", CultureInfo.CurrentCulture);
+			// Match Xamarin: Button text is static "Other Day", not the date
 		}
 
 		public async Task OnAppearingAsync()
@@ -146,7 +144,7 @@ namespace LaceupMigration.ViewModels
 		public async Task OnRouteDateSelectedAsync(DateTime date)
 		{
 			RouteDate = date.Date;
-			SelectDayButtonText = RouteDate.ToString("d", CultureInfo.CurrentCulture);
+			// Match Xamarin: Button text stays "Other Day", doesn't show the date
 			await RefreshAsync(false, false);
 		}
 
@@ -171,9 +169,20 @@ namespace LaceupMigration.ViewModels
 		}
 
 		[RelayCommand]
-		private void SelectDate()
+		private async Task SelectDateAsync()
 		{
-			SelectDateRequested?.Invoke();
+			// Match Xamarin: Show date picker dialog
+			_appService.RecordEvent("Change when to view button");
+			
+			var initialDate = RouteDate;
+			if (initialDate == DateTime.MinValue)
+				initialDate = DateTime.Today;
+			
+			var selectedDate = await _dialogService.ShowDatePickerAsync("Select Date", initialDate);
+			if (selectedDate.HasValue)
+			{
+				await OnRouteDateSelectedAsync(selectedDate.Value);
+			}
 		}
 
 		[RelayCommand]
@@ -592,8 +601,14 @@ namespace LaceupMigration.ViewModels
 		private void UpdateButtons()
 		{
 			var hasRoutes = RouteEx.Routes.Count > 0;
-			var firstRouteDate = hasRoutes ? RouteEx.Routes[0].Date.Date : DateTime.Today;
-			var differentDates = hasRoutes && RouteEx.Routes.Any(x => x.Date.Date != firstRouteDate);
+			// Match Xamarin: Check if routes have different dates
+			// Xamarin compares x.Date != firstDate directly, but we should compare date parts to avoid time component issues
+			var differentDates = false;
+			if (hasRoutes)
+			{
+				var firstDate = RouteEx.Routes[0].Date.Date; // Get date part only
+				differentDates = RouteEx.Routes.Any(x => x.Date.Date != firstDate);
+			}
 			var hasRouteEntries = _allEntries.Any(x => x.Type != ClientEntryType.Regular);
 
 			ShowViewButton = hasRoutes || (Config.CanModifyQuotes && !Config.OnlyPresale);

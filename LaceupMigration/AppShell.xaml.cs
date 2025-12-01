@@ -81,6 +81,7 @@ namespace LaceupMigration
             Routing.RegisterRoute("saporderreport", typeof(SAPOrderReportPage));
             Routing.RegisterRoute("configuration", typeof(ConfigurationPage));
             Routing.RegisterRoute("acceptload", typeof(AcceptLoadPage));
+            Routing.RegisterRoute("acceptloadeditdelivery", typeof(AcceptLoadEditDeliveryPage));
             Routing.RegisterRoute("routemanagement", typeof(ManageRoutePage));
             Routing.RegisterRoute("goals", typeof(SelectGoalPage));
             Routing.RegisterRoute("endofday", typeof(EndOfDayPage));
