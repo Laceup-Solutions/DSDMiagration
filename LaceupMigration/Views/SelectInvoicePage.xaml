@@ -8,53 +8,88 @@
              Shell.TabBarIsVisible="False"
              Title="Select Invoice">
     <ContentPage.Content>
-        <ScrollView>
-            <VerticalStackLayout Padding="16" Spacing="16">
-                <Label Text="{Binding ClientName}"
-                       FontSize="20"
-                       FontAttributes="Bold"
-                       TextColor="{StaticResource PrimaryDark}" />
+        <Grid RowDefinitions="Auto,*">
+            <Border Grid.Row="0"
+                    StrokeThickness="0"
+                    BackgroundColor="#F2F2F7"
+                    Padding="12,4"
+                    StrokeShape="RoundRectangle 12"
+                    Margin="16,16,16,12">
+                <SearchBar Placeholder="Search invoices"
+                           FontSize="14"
+                           Text="{Binding SearchQuery}"
+                           SearchButtonPressed="SearchBar_SearchButtonPressed" />
+            </Border>
 
-                <Label Text="{Binding PaymentTermText}"
-                       IsVisible="{Binding ShowPaymentTerm}"
-                       TextColor="{StaticResource Gray600}" />
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Padding="16" Spacing="16">
+                    <Label Text="{Binding ClientName}"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource PrimaryDark}" />
 
-                <Label Text="{Binding PaymentGoalText}"
-                       IsVisible="{Binding ShowPaymentGoal}"
-                       TextColor="{StaticResource colorLaceupGreen}"
-                       FontAttributes="Bold" />
+                    <Label Text="{Binding PaymentTermText}"
+                           IsVisible="{Binding ShowPaymentTerm}"
+                           TextColor="{StaticResource Gray600}" />
 
-                <CollectionView ItemsSource="{Binding InvoiceItems}"
-                                SelectionMode="Multiple"
-                                x:Name="InvoiceCollectionView">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:SelectInvoiceItemViewModel">
-                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
-                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12">
-                                    <CheckBox Grid.Column="0" Grid.RowSpan="3"
-                                              IsChecked="{Binding IsSelected}"
-                                              VerticalOptions="Center" />
-                                    <Label Grid.Column="1" Grid.Row="0"
-                                           Text="{Binding Title}"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource Gray900}" />
-                                    <Label Grid.Column="1" Grid.Row="1"
-                                           Text="{Binding DateText}"
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray600}" />
-                                    <Label Grid.Column="1" Grid.Row="2"
-                                           Text="{Binding AmountText}"
-                                           FontSize="13"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource Gray900}"
-                                           IsVisible="{Binding ShowAmount}" />
-                                </Grid>
-                            </Frame>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                    <Label Text="{Binding PaymentGoalText}"
+                           IsVisible="{Binding ShowPaymentGoal}"
+                           TextColor="{StaticResource colorLaceupGreen}"
+                           FontAttributes="Bold" />
 
-                <Label Text="Total Selected: {Binding TotalSelectedText}"
+                    <CollectionView ItemsSource="{Binding InvoiceItems}"
+                                    SelectionMode="Multiple"
+                                    x:Name="InvoiceCollectionView">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SelectInvoiceItemViewModel">
+                                <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12">
+                                        <CheckBox Grid.Column="0" Grid.RowSpan="5"
+                                                  IsChecked="{Binding IsSelected}"
+                                                  VerticalOptions="Center" />
+                                        <Label Grid.Column="1" Grid.Row="0"
+                                               Text="{Binding Title}"
+                                               FontAttributes="Bold"
+                                               TextColor="{Binding TextColor}" />
+                                        <Label Grid.Column="1" Grid.Row="1"
+                                               Text="{Binding DateText}"
+                                               FontSize="13"
+                                               TextColor="{Binding TextColor}" />
+                                        <Label Grid.Column="1" Grid.Row="2"
+                                               Text="{Binding AmountText}"
+                                               FontSize="13"
+                                               FontAttributes="Bold"
+                                               TextColor="{Binding TextColor}"
+                                               IsVisible="{Binding ShowAmount}" />
+                                        
+                                        <!-- Discount Display -->
+                                        <Frame Grid.Column="1" Grid.Row="3"
+                                               Padding="8"
+                                               BackgroundColor="#E3F2FD"
+                                               HasShadow="False"
+                                               IsVisible="{Binding ShowDiscount}">
+                                            <Label Text="{Binding DiscountText}"
+                                                   FontSize="12"
+                                                   TextColor="{StaticResource PrimaryDark}" />
+                                        </Frame>
+                                        
+                                        <!-- Goal Payment Display -->
+                                        <Frame Grid.Column="1" Grid.Row="4"
+                                               Padding="8"
+                                               BackgroundColor="#E8F5E9"
+                                               HasShadow="False"
+                                               IsVisible="{Binding ShowGoalPayment}">
+                                            <Label Text="{Binding GoalPaymentText}"
+                                                   FontSize="12"
+                                                   TextColor="{StaticResource colorLaceupGreen}" />
+                                        </Frame>
+                                    </Grid>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                <Label Text="{Binding TotalSelectedText}"
                        FontSize="16"
                        FontAttributes="Bold"
                        TextColor="{StaticResource PrimaryDark}"
@@ -78,6 +113,7 @@
                         Style="{StaticResource SecondaryButton}" />
             </VerticalStackLayout>
         </ScrollView>
+            </Grid>
     </ContentPage.Content>
 </ContentPage>
 

@@ -918,7 +918,7 @@ namespace LaceupMigration.ViewModels
                 {
                     options.Add(new MenuOption("Send by Email", async () =>
                     {
-                        await _dialogService.ShowAlertAsync("Send by Email functionality is not yet fully implemented.", "Info");
+                        await SendByEmailAsync();
                     }));
 
                     options.Add(new MenuOption("Share PDF", async () =>
@@ -968,7 +968,7 @@ namespace LaceupMigration.ViewModels
                 {
                     options.Add(new MenuOption("Send by Email", async () =>
                     {
-                        await _dialogService.ShowAlertAsync("Send by Email functionality is not yet fully implemented.", "Info");
+                        await SendByEmailAsync();
                     }));
 
                     options.Add(new MenuOption("Share PDF", async () =>
@@ -1387,6 +1387,26 @@ namespace LaceupMigration.ViewModels
         }
 
         private record MenuOption(string Title, Func<Task> Action);
+
+        private async Task SendByEmailAsync()
+        {
+            if (_order == null)
+            {
+                await _dialogService.ShowAlertAsync("No order to send.", "Alert", "OK");
+                return;
+            }
+
+            try
+            {
+                // Use PdfHelper to send order by email (matches Xamarin template activities)
+                PdfHelper.SendOrderByEmail(_order);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
+            }
+        }
     }
 
     public partial class OrderLineItemViewModel : ObservableObject

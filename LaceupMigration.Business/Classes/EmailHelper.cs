@@ -529,6 +529,13 @@ namespace LaceupMigration
             {
                 string pdfFile = GetTransferPdf(sortedList, isOn);
 
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    return;
+                }
+
+                // Use platform-specific implementation (matches Xamarin SendTransferByEmail)
+                Config.helper?.SendReportByEmail(pdfFile);
             }
             catch (Exception ex)
             {
@@ -542,14 +549,13 @@ namespace LaceupMigration
             {
                 string pdfFile = GetInvoicePdf(invoice);
 
-                string toAddress = null;
-                if (invoice.Client.ExtraProperties != null)
+                if (string.IsNullOrEmpty(pdfFile))
                 {
-                    var termsExtra = invoice.Client.ExtraProperties.FirstOrDefault(x => x.Item1.ToUpperInvariant() == "EMAIL");
-                    if (termsExtra != null && !string.IsNullOrEmpty(termsExtra.Item2))
-                        toAddress = termsExtra.Item2;
+                    return;
                 }
 
+                // Use platform-specific implementation (matches Xamarin SendInvoiceByEmail)
+                Config.helper?.SendReportByEmail(pdfFile);
             }
             catch (Exception ex)
             {
@@ -563,6 +569,13 @@ namespace LaceupMigration
             {
                 string pdfFile = GetInvoicesPdf(invoices);
 
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    return;
+                }
+
+                // Use platform-specific implementation (matches Xamarin SendInvoicesByEmail)
+                Config.helper?.SendReportByEmail(pdfFile);
             }
             catch (Exception ex)
             {
@@ -575,7 +588,14 @@ namespace LaceupMigration
             try
             {
                 string pdfFile = GetOrderPdf(order);
-                
+
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    return;
+                }
+
+                // Use platform-specific implementation (matches Xamarin SendOrderByEmail)
+                Config.helper?.SendReportByEmail(pdfFile);
             }
             catch (Exception ex)
             {
@@ -589,6 +609,13 @@ namespace LaceupMigration
             {
                 string pdfFile = GetOrdersPdf(order);
 
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    return;
+                }
+
+                // Use platform-specific implementation (matches Xamarin SendOrdersByEmail)
+                Config.helper?.SendReportByEmail(pdfFile);
             }
             catch (Exception ex)
             {
@@ -602,6 +629,13 @@ namespace LaceupMigration
             {
                 string pdfFile = GetConsignmentPdf(order, counting);
 
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    return;
+                }
+
+                // Use platform-specific implementation (matches Xamarin SendConsignmentByEmail)
+                Config.helper?.SendReportByEmail(pdfFile);
             }
             catch (Exception ex)
             {
@@ -615,6 +649,13 @@ namespace LaceupMigration
             {
                 string pdfFile = GetLoadPdf(order);
 
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    return;
+                }
+
+                // Use platform-specific implementation (matches Xamarin SendLoadByEmail)
+                Config.helper?.SendReportByEmail(pdfFile);
             }
             catch (Exception ex)
             {
@@ -629,7 +670,13 @@ namespace LaceupMigration
                 string pdfFile = format == FileFormat.Pdf || format == FileFormat.All ? GetOrderPdf(order) : string.Empty;
 
                 string xlsmFile = format == FileFormat.Xlsx || format == FileFormat.All ? GetOrderXlsx(order) : string.Empty;
-                
+
+                // For now, send PDF if available (XLSX support can be added later)
+                if (!string.IsNullOrEmpty(pdfFile))
+                {
+                    // Use platform-specific implementation (matches Xamarin SendOrderByEmail with format)
+                    Config.helper?.SendReportByEmail(pdfFile);
+                }
             }
             catch (Exception ex)
             {
@@ -639,11 +686,21 @@ namespace LaceupMigration
 
         public static void SendOrdersByEmail(List<Order> orders, FileFormat format)
         {
-            List<string> pdfFiles = format == FileFormat.Pdf || format == FileFormat.All ? GetOrdersPdfs(orders) : new List<string>();
+            try
+            {
+                // For multiple orders, generate a single combined PDF
+                string pdfFile = format == FileFormat.Pdf || format == FileFormat.All ? GetOrdersPdf(orders) : string.Empty;
 
-            List<string> xlsmFiles = format == FileFormat.Xlsx || format == FileFormat.All ? GetOrdersXlsx(orders) : new List<string>();
-            
-            
+                if (!string.IsNullOrEmpty(pdfFile))
+                {
+                    // Use platform-specific implementation (matches Xamarin SendOrdersByEmail with format)
+                    Config.helper?.SendReportByEmail(pdfFile);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
         }
 
         //-------------------------------------------------------------------------------------------------

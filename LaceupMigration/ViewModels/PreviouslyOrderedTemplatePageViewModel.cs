@@ -863,10 +863,16 @@ namespace LaceupMigration.ViewModels
 
                 options.Add(new MenuOption("Print", async () =>
                 {
-                    // TODO: Implement print
-                    await _dialogService.ShowAlertAsync("Print functionality is not yet fully implemented.", "Info");
+                    await PrintAsync();
                 }));
-            
+
+            if (!(_order.Client.SplitInvoices.Count > 0))
+            {
+                options.Add(new MenuOption("Send by Email", async () =>
+                {
+                    await SendByEmailAsync();
+                }));
+            }
 
             return options;
         }
@@ -1263,6 +1269,69 @@ namespace LaceupMigration.ViewModels
             // Refresh the parent view
             LoadOrderData();
             RefreshProductList();
+        }
+
+        [RelayCommand]
+        private async Task PrintAsync()
+        {
+            if (_order == null)
+            {
+                await _dialogService.ShowAlertAsync("No order to print.", "Alert", "OK");
+                return;
+            }
+
+            try
+            {
+                PrinterProvider.PrintDocument((int number) =>
+                {
+                    if (string.IsNullOrEmpty(_order.PrintedOrderId))
+                    {
+                        if ((_order.AsPresale && Config.GeneratePresaleNumber) || (!_order.AsPresale && Config.GeneratePreorderNum))
+                        {
+                            _order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(_order);
+                            _order.Save();
+                        }
+                    }
+
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    bool allWent = true;
+
+                    for (int i = 0; i < number; i++)
+                    {
+                        if (!printer.PrintOrder(_order, !_order.Finished))
+                            allWent = false;
+                    }
+
+                    if (!allWent)
+                        return "Error printing order.";
+                    return string.Empty;
+                });
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
+            }
+        }
+
+        private async Task SendByEmailAsync()
+        {
+            if (_order == null)
+            {
+                await _dialogService.ShowAlertAsync("No order to send.", "Alert", "OK");
+                return;
+            }
+
+            try
+            {
+                // Use PdfHelper to send order by email (matches Xamarin PreviouslyOrderedTemplateActivity)
+                PdfHelper.SendOrderByEmail(_order);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
+            }
         }
     }
 }

@@ -36,6 +36,14 @@ namespace LaceupMigration.Views
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
         }
+
+        private void SearchBar_SearchButtonPressed(object sender, EventArgs e)
+        {
+            if (sender is SearchBar searchBar)
+            {
+                searchBar.Unfocus();
+            }
+        }
     }
 }
 

@@ -82,6 +82,9 @@ namespace LaceupMigration
             if (company == null)
                 company = CompanyInfo.SelectedCompany;
 
+            if (company == null)
+                company = CompanyInfo.Companies.FirstOrDefault();
+
             if (!string.IsNullOrEmpty(Config.CompanyLogo))
             {
                 AddCompanyInfoWithLogo(doc, order, company);
@@ -1856,7 +1859,9 @@ namespace LaceupMigration
             if (File.Exists(targetFile))
                 File.Delete(targetFile);
 
-            PdfWriter writer = new PdfWriter(new FileInfo(targetFile));
+            var file = new FileInfo(targetFile);
+            
+            PdfWriter writer = new PdfWriter(file);
             PdfDocument pdf = new PdfDocument(writer);
             Document doc = new Document(pdf);
 

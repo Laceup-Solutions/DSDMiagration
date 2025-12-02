@@ -204,8 +204,66 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task Print()
         {
-            // TODO: Implement print functionality - match Xamarin PrintClicked
-            await _dialogService.ShowAlertAsync("Print functionality to be implemented.", "Info", "OK");
+            try
+            {
+                PrinterProvider.PrintDocument((int number) =>
+                {
+                    if (number < 1)
+                        return "Please enter a valid number of copies.";
+
+                    CompanyInfo.SelectedCompany = CompanyInfo.Companies.Count > 0 ? CompanyInfo.Companies[0] : null;
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    bool allGood = true;
+
+                    // Convert TransferLine to InventoryLine
+                    List<InventoryLine> lines = new List<InventoryLine>();
+                    foreach (var product in _allProductList)
+                    {
+                        foreach (var item in product.Details)
+                        {
+                            var l = new InventoryLine()
+                            {
+                                Product = item.Product,
+                                Lot = item.Lot,
+                                UoM = item.UoM,
+                                Real = item.Qty
+                            };
+
+                            var inv = product.Product.ProductInv?.TruckInventories?.FirstOrDefault(x => x.Lot == item.Lot);
+                            if (inv != null)
+                            {
+                                l.Starting = inv.CurrentQty;
+                                if (l.UoM != null)
+                                    l.Starting /= l.UoM.Conversion;
+                            }
+
+                            lines.Add(l);
+                        }
+                    }
+
+                    for (int i = 0; i < number; i++)
+                    {
+                        // Get site name
+                        var siteName = string.Empty;
+                        // Note: transferTruckSiteId would need to be stored in the ViewModel if needed
+                        // For now, using empty string as default
+
+                        bool result = printer.PrintTransferOnOff(lines, _transferAction == TransferAction.On, ReadOnly, _comment, siteName);
+
+                        if (!result)
+                            allGood = false;
+                    }
+
+                    if (!allGood)
+                        return "Error printing transfer.";
+                    return string.Empty;
+                });
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
+            }
         }
 
         partial void OnSearchQueryChanged(string value)

@@ -659,8 +659,7 @@ namespace LaceupMigration.ViewModels
             {
                 options.Add(new MenuOption("Send by Email", async () =>
                 {
-                    await _dialogService.ShowAlertAsync("Send by Email functionality is not yet fully implemented.", "Info");
-                    // TODO: Implement email sending
+                    await SendByEmailAsync();
                 }));
             }
 
@@ -769,6 +768,26 @@ namespace LaceupMigration.ViewModels
             {
                 Logger.CreateLog(ex);
                 await _dialogService.ShowAlertAsync("Error sending order.", "Alert");
+            }
+        }
+
+        private async Task SendByEmailAsync()
+        {
+            if (_order == null)
+            {
+                await _dialogService.ShowAlertAsync("No order to send.", "Alert", "OK");
+                return;
+            }
+
+            try
+            {
+                // Use PdfHelper to send consignment by email (matches Xamarin ConsignmentActivity)
+                PdfHelper.SendConsignmentByEmail(_order, _counting);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
             }
         }
     }

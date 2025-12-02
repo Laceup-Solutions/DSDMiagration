@@ -185,8 +185,52 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // TODO: Implement print functionality
-            await _dialogService.ShowAlertAsync("Print functionality to be implemented.", "Info", "OK");
+            try
+            {
+                PrinterProvider.PrintDocument((int copies) =>
+                {
+                    CompanyInfo.SelectedCompany = CompanyInfo.Companies.Count > 0 ? CompanyInfo.Companies[0] : null;
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    bool allWent = true;
+
+                    foreach (var orderInOS in SelectedOrders)
+                    {
+                        var order = Order.Orders.FirstOrDefault(x => x.OrderId == orderInOS.OrderId);
+                        if (order == null)
+                            continue;
+
+                        for (int i = 0; i < copies; i++)
+                        {
+                            bool result = false;
+                            if (order.OrderType == OrderType.Consignment)
+                            {
+                                if (Config.UseFullConsignment)
+                                    result = printer.PrintFullConsignment(order, !order.Finished);
+                                else
+                                    result = printer.PrintConsignment(order, !order.Finished);
+                            }
+                            else
+                            {
+                                result = printer.PrintOrder(order, !order.Finished);
+                            }
+
+                            if (!result)
+                                allWent = false;
+                            else if (order.Finished)
+                                orderInOS.PrintedCopies += 1;
+                        }
+                    }
+
+                    if (!allWent)
+                        return "Error printing transactions";
+                    return string.Empty;
+                });
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
+            }
         }
 
         [RelayCommand]

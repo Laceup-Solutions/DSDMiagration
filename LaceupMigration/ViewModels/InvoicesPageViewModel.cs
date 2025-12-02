@@ -5,6 +5,9 @@ using LaceupMigration.Services;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Maui.ApplicationModel;
 
 namespace LaceupMigration.ViewModels
 {
@@ -45,8 +48,11 @@ namespace LaceupMigration.ViewModels
 		private SearchBy _searchBy = SearchBy.ClientName;
 		private bool _needRefresh = false;
 		private bool _isUpdatingSelectAll = false;
+		private Timer? _searchDebounceTimer;
+		private const int SearchDebounceMs = 300;
+		private readonly SemaphoreSlim _filterSemaphore = new SemaphoreSlim(1, 1);
 
-		[ObservableProperty] private ObservableCollection<ClientInvoiceGroupViewModel> _clientGroups = new();
+		[ObservableProperty] private ObservableCollection<InvoiceGroupItemViewModel> _flatInvoiceList = new();
 		[ObservableProperty] private ObservableCollection<string> _dateRangeOptions = new() { "All", "1-30", "31-60", "61-90", "90+" };
 		[ObservableProperty] private string _selectedDateRange = "All";
 		[ObservableProperty] private string _searchQuery = string.Empty;
@@ -63,6 +69,13 @@ namespace LaceupMigration.ViewModels
 		{
 			_dialogService = dialogService;
 			_appService = appService;
+		}
+
+		// Cleanup resources
+		~InvoicesPageViewModel()
+		{
+			_searchDebounceTimer?.Dispose();
+			_filterSemaphore?.Dispose();
 		}
 
 		public async Task OnAppearingAsync()
@@ -92,10 +105,20 @@ namespace LaceupMigration.ViewModels
 
 		partial void OnSearchQueryChanged(string value)
 		{
-			if (_searchCriteria != value)
+			var newCriteria = value ?? string.Empty;
+			if (_searchCriteria != newCriteria)
 			{
-				_searchCriteria = value;
-				Filter();
+				_searchCriteria = newCriteria;
+				
+				// Debounce search to prevent filtering on every keystroke
+				_searchDebounceTimer?.Dispose();
+				_searchDebounceTimer = new Timer(_ =>
+				{
+					MainThread.BeginInvokeOnMainThread(() =>
+					{
+						Filter();
+					});
+				}, null, SearchDebounceMs, Timeout.Infinite);
 			}
 		}
 
@@ -153,19 +176,16 @@ namespace LaceupMigration.ViewModels
 				}
 
 				// Update all invoice items' selection state (skip handler to prevent recursive calls)
-				foreach (var group in ClientGroups)
+				foreach (var flatItem in FlatInvoiceList.Where(x => !x.IsGroupHeader && x.InvoiceItem != null))
 				{
-					foreach (var item in group.Invoices)
-					{
-						var shouldBeSelected = SelectedInvoices.Contains(item.Invoice);
-						item.SetIsSelected(shouldBeSelected, skipHandler: true);
-					}
+					var shouldBeSelected = SelectedInvoices.Contains(flatItem.InvoiceItem.Invoice);
+					flatItem.InvoiceItem.SetIsSelected(shouldBeSelected, skipHandler: true);
 				}
 				
 				RefreshListHeader();
 				// Don't update IsSelectAllChecked here - it's already set by the user's click
 				// Just verify it matches the actual state
-				var totalInvoices = ClientGroups.Sum(g => g.Invoices.Count);
+				var totalInvoices = FlatInvoiceList.Count(x => !x.IsGroupHeader);
 				var shouldBeChecked = totalInvoices > 0 && SelectedInvoices.Count == totalInvoices;
 				if (IsSelectAllChecked != shouldBeChecked)
 				{
@@ -285,23 +305,8 @@ namespace LaceupMigration.ViewModels
 
 			try
 			{
-				// Convert invoices to orders for email sending
-				var orders = new List<Order>();
-				foreach (var invoice in SelectedInvoices)
-				{
-					var order = Order.Orders.FirstOrDefault(x => x.PrintedOrderId == invoice.InvoiceNumber);
-					if (order != null)
-						orders.Add(order);
-				}
-
-				if (orders.Count == 0)
-				{
-					await _dialogService.ShowAlertAsync("No orders found for selected invoices.", "Alert", "OK");
-					return;
-				}
-
-				// TODO: Implement PdfHelper.SendOrdersByEmail when available
-				await _dialogService.ShowAlertAsync("Send by email functionality requires PdfHelper implementation.", "Info", "OK");
+				// Use EmailHelper to send invoices by email (matches Xamarin PdfHelper.SendInvoicesByEmail)
+				PdfHelper.SendInvoicesByEmail(SelectedInvoices);
 			}
 			catch (Exception ex)
 			{
@@ -314,10 +319,10 @@ namespace LaceupMigration.ViewModels
 		{
 			if (!DataAccess.CanUseApplication() || !DataAccess.ReceivedData)
 			{
-				IsSearchVisible = false;
-				ShowButtonsLayout = false;
-				ShowSelectAllLayout = false;
-				ClientGroups.Clear();
+			IsSearchVisible = false;
+			ShowButtonsLayout = false;
+			ShowSelectAllLayout = false;
+			FlatInvoiceList.Clear();
 				return;
 			}
 
@@ -353,10 +358,16 @@ namespace LaceupMigration.ViewModels
 
 		private void Filter()
 		{
-			Dictionary<Client, List<Invoice>> toShow = null;
-
-			switch (_whatIsVisible)
+			// Run filtering on background thread for better performance
+			Task.Run(async () =>
 			{
+				await _filterSemaphore.WaitAsync();
+				try
+				{
+					Dictionary<Client, List<Invoice>> toShow = null;
+
+					switch (_whatIsVisible)
+					{
 				case SelectedOption.All:
 					if (_all.Count == 0)
 					{
@@ -504,18 +515,29 @@ namespace LaceupMigration.ViewModels
 					break;
 			}
 
-			if (toShow != null)
-			{
-				if (!string.IsNullOrEmpty(_searchCriteria))
-				{
-					if (_searchBy == SearchBy.ClientName)
-						toShow = new Dictionary<Client, List<Invoice>>(toShow.Where(x => x.Key.ClientName.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant())));
-					else
-						toShow = new Dictionary<Client, List<Invoice>>(toShow.Where(x => x.Value.Any(y => y.InvoiceNumber.ToLowerInvariant().Contains(_searchCriteria.ToLowerInvariant()))));
-				}
+					if (toShow != null)
+					{
+						if (!string.IsNullOrEmpty(_searchCriteria))
+						{
+							var searchLower = _searchCriteria.ToLowerInvariant();
+							if (_searchBy == SearchBy.ClientName)
+								toShow = new Dictionary<Client, List<Invoice>>(toShow.Where(x => x.Key.ClientName.ToLowerInvariant().Contains(searchLower)));
+							else
+								toShow = new Dictionary<Client, List<Invoice>>(toShow.Where(x => x.Value.Any(y => y.InvoiceNumber.ToLowerInvariant().Contains(searchLower))));
+						}
 
-				RefreshClientGroups(toShow);
-			}
+						// Update UI on main thread
+						MainThread.BeginInvokeOnMainThread(() =>
+						{
+							RefreshClientGroups(toShow);
+						});
+					}
+				}
+				finally
+				{
+					_filterSemaphore.Release();
+				}
+			});
 		}
 
 		private void RefreshClientGroups(Dictionary<Client, List<Invoice>> source = null)
@@ -523,30 +545,38 @@ namespace LaceupMigration.ViewModels
 			if (source == null)
 				source = GetCurrentDictionary() ?? new Dictionary<Client, List<Invoice>>();
 
-			ClientGroups.Clear();
+			// Build flat list with group headers for better performance (no nested CollectionViews)
+			var flatList = new List<InvoiceGroupItemViewModel>();
 			foreach (var kvp in source)
 			{
-				var group = new ClientInvoiceGroupViewModel
-				{
-					ClientName = kvp.Key.ClientName
-				};
-
+				// Add group header
+				flatList.Add(new InvoiceGroupItemViewModel { IsGroupHeader = true, ClientName = kvp.Key.ClientName });
+				
+				// Add invoice items
 				foreach (var invoice in kvp.Value)
 				{
-					var item = new InvoiceListItemViewModel(invoice, this);
-					group.Invoices.Add(item);
+					flatList.Add(new InvoiceGroupItemViewModel 
+					{ 
+						IsGroupHeader = false, 
+						InvoiceItem = new InvoiceListItemViewModel(invoice, this) 
+					});
 				}
-
-				ClientGroups.Add(group);
 			}
 
-			ShowSelectAllLayout = ClientGroups.Count > 0;
+			// Replace entire collection at once for smoother UI update
+			FlatInvoiceList.Clear();
+			foreach (var item in flatList)
+			{
+				FlatInvoiceList.Add(item);
+			}
+
+			ShowSelectAllLayout = FlatInvoiceList.Any(x => !x.IsGroupHeader);
 			UpdateSelectAllState();
 		}
 
 		private void UpdateSelectAllState()
 		{
-			var totalInvoices = ClientGroups.Sum(g => g.Invoices.Count);
+			var totalInvoices = FlatInvoiceList.Count(x => !x.IsGroupHeader);
 			var shouldBeChecked = totalInvoices > 0 && SelectedInvoices.Count == totalInvoices;
 			if (IsSelectAllChecked != shouldBeChecked)
 			{
@@ -624,28 +654,24 @@ namespace LaceupMigration.ViewModels
 			
 			// Update the invoice item's selection state (skip handler to prevent infinite loop)
 			// Only update if the value is actually different
-			foreach (var group in ClientGroups)
+			foreach (var flatItem in FlatInvoiceList.Where(x => !x.IsGroupHeader && x.InvoiceItem != null && x.InvoiceItem.Invoice == invoice))
 			{
-				foreach (var item in group.Invoices)
+				var shouldBeSelected = SelectedInvoices.Contains(invoice);
+				if (flatItem.InvoiceItem.IsSelected != shouldBeSelected)
 				{
-					if (item.Invoice == invoice)
-					{
-						var shouldBeSelected = SelectedInvoices.Contains(invoice);
-						if (item.IsSelected != shouldBeSelected)
-						{
-							item.SetIsSelected(shouldBeSelected, skipHandler: true);
-						}
-						break;
-					}
+					flatItem.InvoiceItem.SetIsSelected(shouldBeSelected, skipHandler: true);
 				}
+				break;
 			}
 		}
 	}
 
-	public partial class ClientInvoiceGroupViewModel : ObservableObject
+	// Flat list item that can be either a group header or an invoice item
+	public partial class InvoiceGroupItemViewModel : ObservableObject
 	{
+		[ObservableProperty] private bool _isGroupHeader;
 		[ObservableProperty] private string _clientName = string.Empty;
-		[ObservableProperty] private ObservableCollection<InvoiceListItemViewModel> _invoices = new();
+		[ObservableProperty] private InvoiceListItemViewModel? _invoiceItem;
 	}
 
 	public partial class InvoiceListItemViewModel : ObservableObject
@@ -682,20 +708,22 @@ namespace LaceupMigration.ViewModels
 		public string DateText => $"Date: {_invoice.Date.ToShortDateString()}";
 		public string TotalText => $"Total: {_invoice.Amount.ToCustomString()}";
 
+		// Cached values to avoid expensive recalculations during scrolling
+		private string? _cachedOpenBalanceText;
+		private Color? _cachedOpenBalanceColor;
+		private bool _isFullyPaid;
+		private double _openBalance;
+
 		public string OpenBalanceText
 		{
 			get
 			{
-				bool isFullyPaid = false;
-				if (Config.ShowInvoicesCreditsInPayments)
+				if (_cachedOpenBalanceText == null)
 				{
-					var payments = InvoicePayment.List.FirstOrDefault(x => x.Invoices().Any(x => _invoice.InvoiceId == x.InvoiceId));
-					if (payments != null && payments.Invoices().Any(x => x.Amount < 0))
-						isFullyPaid = true;
+					CalculateOpenBalance();
+					_cachedOpenBalanceText = $"Open: {_openBalance.ToCustomString()}";
 				}
-
-				var openBalance = isFullyPaid ? 0 : _invoice.Balance - _invoice.Paid;
-				return $"Open: {openBalance.ToCustomString()}";
+				return _cachedOpenBalanceText;
 			}
 		}
 
@@ -703,21 +731,36 @@ namespace LaceupMigration.ViewModels
 		{
 			get
 			{
-				bool isFullyPaid = false;
-				if (Config.ShowInvoicesCreditsInPayments)
+				if (_cachedOpenBalanceColor == null)
 				{
-					var payments = InvoicePayment.List.FirstOrDefault(x => x.Invoices().Any(x => _invoice.InvoiceId == x.InvoiceId));
-					if (payments != null && payments.Invoices().Any(x => x.Amount < 0))
-						isFullyPaid = true;
+					// Ensure CalculateOpenBalance is called if not already cached
+					if (_cachedOpenBalanceText == null)
+						CalculateOpenBalance();
+					
+					if (_openBalance == 0)
+						_cachedOpenBalanceColor = Colors.Green;
+					else if (_invoice.DueDate < DateTime.Today)
+						_cachedOpenBalanceColor = Colors.Red;
+					else
+						_cachedOpenBalanceColor = Colors.Black;
 				}
-
-				var openBalance = isFullyPaid ? 0 : _invoice.Balance - _invoice.Paid;
-				if (openBalance == 0)
-					return Colors.Green;
-				if (_invoice.DueDate < DateTime.Today)
-					return Colors.Red;
-				return Colors.Black;
+				return _cachedOpenBalanceColor;
 			}
+		}
+
+		private void CalculateOpenBalance()
+		{
+			_isFullyPaid = false;
+			if (Config.ShowInvoicesCreditsInPayments)
+			{
+				// Optimize: cache the invoice ID to avoid repeated property access
+				var invoiceId = _invoice.InvoiceId;
+				var payments = InvoicePayment.List.FirstOrDefault(x => x.Invoices().Any(x => x.InvoiceId == invoiceId));
+				if (payments != null && payments.Invoices().Any(x => x.Amount < 0))
+					_isFullyPaid = true;
+			}
+
+			_openBalance = _isFullyPaid ? 0 : _invoice.Balance - _invoice.Paid;
 		}
 
 		public bool ShowAmounts => !Config.HidePriceInTransaction;

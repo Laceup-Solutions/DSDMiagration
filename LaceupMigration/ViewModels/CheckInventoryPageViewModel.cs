@@ -181,9 +181,37 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task Print()
         {
-            // TODO: Implement print functionality
-            IsPrinted = true;
-            await _dialogService.ShowAlertAsync("Print functionality to be implemented.", "Info", "OK");
+            try
+            {
+                PrinterProvider.PrintDocument((int number) =>
+                {
+                    if (number < 1)
+                        return "Please enter a valid number of copies.";
+
+                    CompanyInfo.SelectedCompany = CompanyInfo.Companies.Count > 0 ? CompanyInfo.Companies[0] : null;
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    bool allWent = true;
+
+                    var inventoryLines = InventoryLines.Select(x => x.InventoryLine).ToList();
+
+                    for (int i = 0; i < number; i++)
+                    {
+                        if (!printer.PrintInventoryCheck(inventoryLines))
+                            allWent = false;
+                    }
+
+                    if (!allWent)
+                        return "Error printing inventory.";
+                    
+                    IsPrinted = true;
+                    return string.Empty;
+                });
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
+            }
         }
 
         [RelayCommand]

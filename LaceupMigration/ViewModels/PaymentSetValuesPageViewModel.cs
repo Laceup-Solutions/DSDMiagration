@@ -89,40 +89,61 @@ namespace LaceupMigration.ViewModels
 
         public async Task OnNavigatedTo(IDictionary<string, object> query)
         {
-            if (query.ContainsKey("paymentId"))
+            if (query == null)
+                return;
+
+            // Parse paymentId
+            if (query.TryGetValue("paymentId", out var paymentIdValue) && paymentIdValue != null)
             {
-                _paymentId = Convert.ToInt32(query["paymentId"].ToString());
+                if (int.TryParse(paymentIdValue.ToString(), out var paymentId))
+                {
+                    _paymentId = paymentId;
+                }
             }
 
-            if (query.ContainsKey("invoiceIds"))
+            // Parse invoiceIds
+            if (query.TryGetValue("invoiceIds", out var invoiceIdsValue) && invoiceIdsValue != null)
             {
-                _invoicesId = query["invoiceIds"].ToString() ?? string.Empty;
+                _invoicesId = invoiceIdsValue.ToString() ?? string.Empty;
             }
 
-            if (query.ContainsKey("orderIds"))
+            // Parse orderIds
+            if (query.TryGetValue("orderIds", out var orderIdsValue) && orderIdsValue != null)
             {
-                _ordersId = query["orderIds"].ToString() ?? string.Empty;
+                _ordersId = orderIdsValue.ToString() ?? string.Empty;
             }
 
-            if (query.ContainsKey("clientId"))
+            // Parse clientId
+            if (query.TryGetValue("clientId", out var clientIdValue) && clientIdValue != null)
             {
-                var clientId = Convert.ToInt32(query["clientId"].ToString());
-                _client = Client.Clients.FirstOrDefault(x => x.ClientId == clientId);
+                if (int.TryParse(clientIdValue.ToString(), out var clientId))
+                {
+                    _client = Client.Clients.FirstOrDefault(x => x.ClientId == clientId);
+                }
             }
 
-            if (query.ContainsKey("goBackToMain"))
+            // Parse goBackToMain (can be "1", "true", or boolean)
+            if (query.TryGetValue("goBackToMain", out var goBackValue) && goBackValue != null)
             {
-                _goBackToMain = Convert.ToBoolean(query["goBackToMain"]);
+                var goBackStr = goBackValue.ToString();
+                _goBackToMain = goBackStr == "1" || goBackStr?.ToLowerInvariant() == "true" || 
+                               (goBackValue is bool goBackBool && goBackBool);
             }
 
-            if (query.ContainsKey("fromPaymentTab"))
+            // Parse fromPaymentTab
+            if (query.TryGetValue("fromPaymentTab", out var fromPaymentTabValue) && fromPaymentTabValue != null)
             {
-                _fromPaymentTab = Convert.ToBoolean(query["fromPaymentTab"]);
+                var fromPaymentTabStr = fromPaymentTabValue.ToString();
+                _fromPaymentTab = fromPaymentTabStr == "1" || fromPaymentTabStr?.ToLowerInvariant() == "true" || 
+                                 (fromPaymentTabValue is bool fromPaymentTabBool && fromPaymentTabBool);
             }
 
-            if (query.ContainsKey("fromClientDetails"))
+            // Parse fromClientDetails
+            if (query.TryGetValue("fromClientDetails", out var fromClientDetailsValue) && fromClientDetailsValue != null)
             {
-                _fromClientDetails = Convert.ToBoolean(query["fromClientDetails"]);
+                var fromClientDetailsStr = fromClientDetailsValue.ToString();
+                _fromClientDetails = fromClientDetailsStr == "1" || fromClientDetailsStr?.ToLowerInvariant() == "true" || 
+                                    (fromClientDetailsValue is bool fromClientDetailsBool && fromClientDetailsBool);
             }
 
             await InitializeAsync();
@@ -135,14 +156,28 @@ namespace LaceupMigration.ViewModels
                 _invoicePayment = InvoicePayment.List.FirstOrDefault(x => x.Id == _paymentId);
                 if (_invoicePayment == null)
                 {
-                    await _dialogService.ShowAlertAsync("Payment not found.", "Error", "OK");
+                    await _dialogService.ShowAlertAsync($"Payment with ID {_paymentId} not found in list of {InvoicePayment.List.Count} payments.", "Error", "OK");
                     await Shell.Current.GoToAsync("..");
                     return;
                 }
 
                 _client = _invoicePayment.Client;
+                if (_client == null)
+                {
+                    await _dialogService.ShowAlertAsync("Payment has no associated client.", "Error", "OK");
+                    await Shell.Current.GoToAsync("..");
+                    return;
+                }
+
                 _invoicesId = _invoicePayment.InvoicesId ?? string.Empty;
                 _ordersId = _invoicePayment.OrderId ?? string.Empty;
+
+                // Set client name first
+                ClientName = _client.ClientName;
+                ShowCreditAmount = Config.ShowInvoicesCreditsInPayments;
+
+                // Load invoice/order data and calculate amounts BEFORE loading components
+                LoadExistingPaymentData();
 
                 // Load existing payment components
                 PaymentComponents.Clear();
@@ -174,15 +209,178 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            ClientName = _client.ClientName;
+            // Ensure ClientName is set
+            if (string.IsNullOrEmpty(ClientName) && _client != null)
+            {
+                ClientName = _client.ClientName;
+            }
+
             ShowCreditAmount = Config.ShowInvoicesCreditsInPayments;
 
-            if (PaymentComponents.Count == 0 && _amount > 0)
+            if (PaymentComponents.Count == 0 && _amount > 0 && _paymentId == 0)
             {
                 PaymentComponents.Add(new PaymentComponentViewModel(new PaymentComponent { Amount = _amount }, this));
             }
 
             RefreshLabels();
+        }
+
+        private void LoadExistingPaymentData()
+        {
+            if (_invoicePayment == null)
+                return;
+
+            _invoices.Clear();
+            _orders.Clear();
+            _amount = 0;
+            _creditAmount = 0;
+            _totalDiscount = _invoicePayment.DiscountApplied;
+
+            var docNumbersList = new List<string>();
+            var creditsDocNumbersList = new List<string>();
+
+            // Use the payment's own Invoices() method to get invoices
+            var paymentInvoices = _invoicePayment.Invoices();
+            foreach (var invoice in paymentInvoices)
+            {
+                // Calculate already paid by other payments (excluding current payment)
+                var idAsString = Config.SavePaymentsByInvoiceNumber 
+                    ? invoice.InvoiceNumber 
+                    : invoice.InvoiceId.ToString();
+
+                var paymentsForInvoice = InvoicePayment.List.Where(x => 
+                    x.InvoicesId != null && 
+                    x.InvoicesId.Contains(idAsString) && 
+                    x.Id != _paymentId);
+                double alreadyPaidByOthers = 0;
+
+                foreach (var payment in paymentsForInvoice)
+                {
+                    foreach (var i in payment.Invoices())
+                    {
+                        bool matches = Config.SavePaymentsByInvoiceNumber 
+                            ? i.InvoiceNumber == idAsString 
+                            : i.InvoiceId == invoice.InvoiceId;
+
+                        if (matches)
+                        {
+                            double creditApplied = 0;
+                            var creditsInPayment = payment.Invoices().Where(x => x.Balance < 0).ToList();
+                            if (creditsInPayment.Count > 0)
+                                creditApplied = Math.Abs(creditsInPayment.Sum(x => x.Paid));
+
+                            foreach (var component in payment.Components)
+                            {
+                                if (invoice.Balance == 0)
+                                    continue;
+
+                                double usedInThisInvoice = component.Amount;
+                                if (invoice.Balance < 0)
+                                    usedInThisInvoice = invoice.Balance;
+                                else if (component.Amount > invoice.Balance)
+                                    usedInThisInvoice = invoice.Balance;
+
+                                alreadyPaidByOthers += usedInThisInvoice + creditApplied;
+                            }
+                        }
+                    }
+                }
+
+                // Match Xamarin logic exactly:
+                // Xamarin: amount += invoice.Balance, then amount -= alreadyPaid
+                // This calculates: amount = current balance - already paid by others
+                // The current balance already excludes this payment, so we get what was owed before this payment
+                // Then later: amount -= totalDiscount
+                // So final amount = current balance - already paid by others - discount
+                var originalInvoiceBalance = invoice.Balance - alreadyPaidByOthers;
+
+                if (Config.ShowInvoicesCreditsInPayments)
+                {
+                    if (originalInvoiceBalance < 0)
+                    {
+                        _creditAmount += originalInvoiceBalance;
+                        creditsDocNumbersList.Add(invoice.InvoiceNumber);
+                    }
+                    else
+                    {
+                        _amount += originalInvoiceBalance;
+                        docNumbersList.Add(invoice.InvoiceNumber);
+                    }
+                }
+                else
+                {
+                    _amount += originalInvoiceBalance;
+                    docNumbersList.Add(invoice.InvoiceNumber);
+                }
+
+                _invoices.Add(invoice);
+            }
+
+            // Use the payment's own Orders() method to get orders
+            var paymentOrders = _invoicePayment.Orders();
+            foreach (var order in paymentOrders)
+            {
+                // Calculate already paid by other payments for this order
+                var paymentsForOrder = InvoicePayment.List.Where(x => 
+                    x.OrderId != null && 
+                    x.OrderId.Contains(order.UniqueId) && 
+                    x.Id != _paymentId);
+                double alreadyPaidByOthers = 0;
+                foreach (var payment in paymentsForOrder)
+                {
+                    if (payment.Orders().Any(o => o.UniqueId == order.UniqueId))
+                    {
+                        alreadyPaidByOthers += payment.TotalPaid;
+                    }
+                }
+
+                // Match Xamarin logic: amount = current balance - already paid by others
+                var originalOrderAmount = order.OrderTotalCost() - alreadyPaidByOthers;
+
+                if (Config.ShowInvoicesCreditsInPayments)
+                {
+                    if (originalOrderAmount < 0)
+                    {
+                        _creditAmount += originalOrderAmount;
+                        if (!string.IsNullOrEmpty(order.PrintedOrderId))
+                            creditsDocNumbersList.Add(order.PrintedOrderId);
+                    }
+                    else
+                    {
+                        _amount += originalOrderAmount;
+                        if (!string.IsNullOrEmpty(order.PrintedOrderId))
+                            docNumbersList.Add(order.PrintedOrderId);
+                    }
+                }
+                else
+                {
+                    _amount += originalOrderAmount;
+                    if (!string.IsNullOrEmpty(order.PrintedOrderId))
+                        docNumbersList.Add(order.PrintedOrderId);
+                }
+
+                _orders.Add(order);
+            }
+
+            DocNumbers = string.Join(", ", docNumbersList);
+            CreditsDocNumbers = string.Join(", ", creditsDocNumbersList);
+            ShowCreditsDocNumbers = creditsDocNumbersList.Count > 0;
+
+            if (Config.ShowInvoicesCreditsInPayments)
+                _amount += _creditAmount;
+
+            // Apply discount (Xamarin does this after calculating amounts)
+            // Note: _totalDiscount was already set from _invoicePayment.DiscountApplied at the start
+            // We don't recalculate discount for existing payments, we use the stored value
+            // Xamarin: amount -= totalDiscount (line 297)
+            _amount -= _totalDiscount;
+
+            // Check if credit account
+            if (string.IsNullOrEmpty(_invoicesId) && string.IsNullOrEmpty(_ordersId))
+            {
+                _creditAccount = true;
+                IsCreditAccount = true;
+            }
         }
 
         private void LoadInvoicesAndOrders()
@@ -363,7 +561,13 @@ namespace LaceupMigration.ViewModels
             DiscountTotal = _totalDiscount.ToCustomString();
             ShowDiscount = _totalDiscount > 0;
 
-            CanAddPayment = _creditAccount || ((_invoicePayment == null || !_invoicePayment.Printed) && open > 0);
+            // Disable Add Payment button if:
+            // 1. Payment is already printed (can't modify)
+            // 2. There's no open amount left to collect (unless it's a credit account)
+            // 3. There are empty payment components that need to be filled first
+            var hasEmptyComponents = PaymentComponents.Any(x => x.Amount == 0);
+            CanAddPayment = !hasEmptyComponents && 
+                           (_creditAccount || ((_invoicePayment == null || !_invoicePayment.Printed) && open > 0));
         }
 
         [RelayCommand]
