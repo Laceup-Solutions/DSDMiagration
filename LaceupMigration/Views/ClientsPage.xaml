@@ -11,17 +11,6 @@
     </ContentPage.ToolbarItems>
 
     <ContentPage.Resources>
-        <Style TargetType="Button" x:Key="SmallButton">
-            <Setter Property="Padding" Value="14,8" />
-            <Setter Property="Margin" Value="4,0" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#FFFFFF, Dark=#2C2C2C}" />
-            <Setter Property="TextColor" Value="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-            <Setter Property="BorderColor" Value="#CCCCCC" />
-            <Setter Property="BorderWidth" Value="1" />
-            <Setter Property="CornerRadius" Value="6" />
-        </Style>
-
         <Style TargetType="Border" x:Key="BadgeBorder">
             <Setter Property="Padding" Value="6,2" />
             <Setter Property="StrokeShape">

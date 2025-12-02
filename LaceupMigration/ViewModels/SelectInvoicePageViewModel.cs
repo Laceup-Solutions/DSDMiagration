@@ -7,6 +7,9 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
+using Microsoft.Maui.Graphics;
+using Microsoft.Maui.ApplicationModel;
 
 namespace LaceupMigration.ViewModels
 {
@@ -18,6 +21,11 @@ namespace LaceupMigration.ViewModels
         private bool _fromClientDetails;
         private bool _fromPaymentTab;
         private bool _initialized;
+        private Term? _term;
+        private List<SelectInvoiceItemViewModel> _masterList = new();
+        private string _searchCriteria = string.Empty;
+        private Timer? _searchDebounceTimer;
+        private const int SearchDebounceMs = 300;
 
         public ObservableCollection<SelectInvoiceItemViewModel> InvoiceItems { get; } = new();
 
@@ -53,6 +61,9 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private bool _showPaymentCard;
+
+        [ObservableProperty]
+        private string _searchQuery = string.Empty;
 
         public SelectInvoicePageViewModel(DialogService dialogService)
         {
@@ -93,10 +104,10 @@ namespace LaceupMigration.ViewModels
 
             ClientName = _client.ClientName;
 
-            var term = Term.List.Where(x => x.IsActive).FirstOrDefault(x => x.Id == _client.TermId);
-            if (term != null)
+            _term = Term.List.Where(x => x.IsActive).FirstOrDefault(x => x.Id == _client.TermId);
+            if (_term != null)
             {
-                PaymentTermText = $"Payment Term: {term.Name}";
+                PaymentTermText = $"Payment Term: {_term.Name}";
                 ShowPaymentTerm = true;
             }
 
@@ -130,13 +141,47 @@ namespace LaceupMigration.ViewModels
             await Task.CompletedTask;
         }
 
+        partial void OnSearchQueryChanged(string value)
+        {
+            // Debounce search
+            _searchDebounceTimer?.Dispose();
+            _searchDebounceTimer = new Timer(_ =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    _searchCriteria = value;
+                    FilterInvoices();
+                });
+            }, null, SearchDebounceMs, Timeout.Infinite);
+        }
+
+        private void FilterInvoices()
+        {
+            InvoiceItems.Clear();
+            var filtered = _masterList;
+
+            if (!string.IsNullOrEmpty(_searchCriteria))
+            {
+                var searchLower = _searchCriteria.ToLowerInvariant();
+                filtered = _masterList.Where(x =>
+                    (x.Invoice != null && x.Invoice.InvoiceNumber.ToLowerInvariant().Contains(searchLower)) ||
+                    (x.Order != null && x.Order.PrintedOrderId?.ToLowerInvariant().Contains(searchLower) == true)
+                ).ToList();
+            }
+
+            foreach (var item in filtered)
+            {
+                InvoiceItems.Add(item);
+            }
+        }
+
         private void LoadInvoices()
         {
             InvoiceItems.Clear();
             if (_client == null)
                 return;
 
-            var masterList = new List<SelectInvoiceItemViewModel>();
+            _masterList = new List<SelectInvoiceItemViewModel>();
 
             var invoicesToIterate = Invoice.OpenInvoices.Where(x => x.ClientId == _client.ClientId).ToList();
 
@@ -198,14 +243,56 @@ namespace LaceupMigration.ViewModels
                         _ => $"Invoice: {invoice.InvoiceNumber}"
                     };
 
-                    masterList.Add(new SelectInvoiceItemViewModel
+                    // Calculate discount
+                    double discount = 0;
+                    bool hasDiscount = false;
+                    if (_term != null && Config.UsePaymentDiscount && openAmount > 0)
+                    {
+                        var daysRemainingForDiscount = Math.Abs((invoice.Date - DateTime.Now.Date).TotalDays);
+                        if (_term.StandardDiscountDays >= daysRemainingForDiscount && _term.DiscountPercentage > 0)
+                        {
+                            discount = openAmount * (_term.DiscountPercentage / 100);
+                            hasDiscount = true;
+                        }
+                    }
+
+                    // Check for goal payment
+                    bool hasGoal = false;
+                    string goalText = string.Empty;
+                    if (Config.ViewGoals && GoalDetailDTO.List.Any(x => 
+                        x.Goal != null && 
+                        x.Goal.Criteria == GoalCriteria.Payment && 
+                        x.ExternalInvoice == invoice && 
+                        x.ClientId == invoice.ClientId && 
+                        x.Goal.PendingDays > 0))
+                    {
+                        var detail = GoalDetailDTO.List.FirstOrDefault(x => 
+                            x.ExternalInvoice == invoice && 
+                            x.ClientId == invoice.ClientId);
+                        if (detail != null)
+                        {
+                            hasGoal = true;
+                            goalText = $"Payment Goal: {detail.QuantityOrAmountValue.ToCustomString()}";
+                        }
+                    }
+
+                    // Check if past due
+                    bool isPastDue = invoice.DueDate < DateTime.Today;
+
+                    _masterList.Add(new SelectInvoiceItemViewModel
                     {
                         Invoice = invoice,
                         Title = title,
                         DateText = $"Due: {invoice.DueDate.ToShortDateString()}",
                         AmountText = $"Open: {Math.Abs(openAmount).ToCustomString()}",
-                        OpenAmount = Math.Abs(openAmount),
-                        ShowAmount = !Config.HidePriceInTransaction
+                        OpenAmount = openAmount, // Keep sign for credits
+                        ShowAmount = !Config.HidePriceInTransaction,
+                        DiscountAmount = discount,
+                        ShowDiscount = hasDiscount,
+                        DiscountText = hasDiscount ? $"Apply for {_term!.DiscountPercentage}% Total: {discount.ToCustomString()}" : string.Empty,
+                        ShowGoalPayment = hasGoal,
+                        GoalPaymentText = goalText,
+                        IsPastDue = isPastDue
                     });
                 }
             }
@@ -233,27 +320,28 @@ namespace LaceupMigration.ViewModels
 
                 if (openAmount > 0)
                 {
-                    masterList.Add(new SelectInvoiceItemViewModel
+                    bool isPastDue = order.DueDate < DateTime.Today;
+
+                    _masterList.Add(new SelectInvoiceItemViewModel
                     {
                         Order = order,
                         Title = $"Order: {order.PrintedOrderId ?? order.OrderId.ToString()}",
                         DateText = $"Date: {order.Date.ToShortDateString()}",
                         AmountText = $"Open: {openAmount.ToCustomString()}",
                         OpenAmount = openAmount,
-                        ShowAmount = !Config.HidePriceInTransaction
+                        ShowAmount = !Config.HidePriceInTransaction,
+                        IsPastDue = isPastDue
                     });
                 }
             }
 
             // Sort by due date or order date
             var sortedList = Config.ShowInvoicesCreditsInPayments
-                ? masterList.OrderByDescending(x => x.Invoice?.Date ?? x.Order?.Date ?? DateTime.MinValue).ToList()
-                : masterList.OrderBy(x => x.Invoice?.DueDate ?? x.Order?.Date ?? DateTime.MaxValue).ToList();
+                ? _masterList.OrderByDescending(x => x.Invoice?.Date ?? x.Order?.Date ?? DateTime.MinValue).ToList()
+                : _masterList.OrderBy(x => x.Invoice?.DueDate ?? x.Order?.Date ?? DateTime.MaxValue).ToList();
 
-            foreach (var item in sortedList)
-            {
-                InvoiceItems.Add(item);
-            }
+            _masterList = sortedList;
+            FilterInvoices();
 
             CanAddPayment = InvoiceItems.Count > 0;
             ShowCreditAccount = Config.UseCreditAccount && !Config.HidePriceInTransaction;
@@ -262,9 +350,23 @@ namespace LaceupMigration.ViewModels
 
         private void UpdateTotals()
         {
-            var total = InvoiceItems.Where(x => x.IsSelected).Sum(x => x.OpenAmount);
+            var selected = InvoiceItems.Where(x => x.IsSelected).ToList();
+            var openAmount = selected.Where(x => x.OpenAmount > 0).Sum(x => x.OpenAmount);
+            var creditAmount = selected.Where(x => x.OpenAmount < 0).Sum(x => x.OpenAmount);
+            var total = selected.Sum(x => x.OpenAmount);
+            
+            // Calculate discount for selected items
+            double discountTotal = 0;
+            if (_term != null && Config.UsePaymentDiscount)
+            {
+                foreach (var item in selected.Where(x => x.Invoice != null && x.OpenAmount > 0))
+                {
+                    discountTotal += item.DiscountAmount;
+                }
+            }
+
             TotalSelectedText = $"Total Selected: {total.ToCustomString()}";
-            CanAddPayment = InvoiceItems.Any(x => x.IsSelected);
+            CanAddPayment = selected.Count > 0 && total >= 0; // Can't add payment if total is negative
             CanCreditAccount = CanAddPayment;
             CanPaymentCard = CanAddPayment;
         }
@@ -276,6 +378,20 @@ namespace LaceupMigration.ViewModels
             if (selectedItems.Count == 0)
             {
                 await _dialogService.ShowAlertAsync("Please select at least one invoice or order.", "Alert");
+                return;
+            }
+
+            var total = selectedItems.Sum(x => x.OpenAmount);
+            if (total < 0)
+            {
+                await _dialogService.ShowAlertAsync("El monto de pago recibido debe superar $0.", "Alert");
+                return;
+            }
+
+            // Check for multiple selection blocking
+            if (Config.BlockMultipleCollectPaymets && selectedItems.Count > 1)
+            {
+                await _dialogService.ShowAlertAsync("Only one invoice per payment is allowed.", "Alert");
                 return;
             }
 
@@ -305,6 +421,8 @@ namespace LaceupMigration.ViewModels
 
     public partial class SelectInvoiceItemViewModel : ObservableObject
     {
+        private bool _isUpdatingSelection = false;
+
         [ObservableProperty]
         private bool _isSelected;
 
@@ -323,8 +441,42 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showAmount = true;
 
+        [ObservableProperty]
+        private double _discountAmount;
+
+        [ObservableProperty]
+        private bool _showDiscount;
+
+        [ObservableProperty]
+        private string _discountText = string.Empty;
+
+        [ObservableProperty]
+        private bool _showGoalPayment;
+
+        [ObservableProperty]
+        private string _goalPaymentText = string.Empty;
+
+        [ObservableProperty]
+        private bool _isPastDue;
+
+        [ObservableProperty]
+        private Color _textColor = Colors.Black;
+
         public Invoice? Invoice { get; set; }
         public Order? Order { get; set; }
+
+        partial void OnIsSelectedChanged(bool value)
+        {
+            // Selection blocking is handled in the parent ViewModel's AddPaymentAsync
+        }
+
+        partial void OnIsPastDueChanged(bool value)
+        {
+            if (value)
+                TextColor = Colors.Red;
+            else
+                TextColor = Colors.Black;
+        }
     }
 }
 

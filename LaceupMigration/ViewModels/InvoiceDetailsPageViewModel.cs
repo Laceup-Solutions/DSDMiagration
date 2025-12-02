@@ -214,8 +214,7 @@ namespace LaceupMigration.ViewModels
             // Print Copy
             options.Add(new MenuOption("Print Copy", async () =>
             {
-                await _dialogService.ShowAlertAsync("Print functionality is not yet fully implemented.", "Info");
-                // TODO: Implement printing
+                await PrintAsync();
             }));
 
             // Convert to Sales Order
@@ -238,8 +237,7 @@ namespace LaceupMigration.ViewModels
             // Send by Email
             options.Add(new MenuOption("Send by Email", async () =>
             {
-                await _dialogService.ShowAlertAsync("Send by Email functionality is not yet fully implemented.", "Info");
-                // TODO: Implement email sending
+                await SendByEmailAsync();
             }));
 
             // View Attached Photos
@@ -304,6 +302,60 @@ namespace LaceupMigration.ViewModels
                 case "Go to main activity":
                     await _appService.GoBackToMainAsync();
                     break;
+            }
+        }
+
+        private async Task SendByEmailAsync()
+        {
+            if (_invoice == null)
+            {
+                await _dialogService.ShowAlertAsync("No invoice to send.", "Alert", "OK");
+                return;
+            }
+
+            try
+            {
+                // Use PdfHelper to send invoice by email (matches Xamarin InvoiceDetailsActivity)
+                PdfHelper.SendInvoiceByEmail(_invoice);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
+            }
+        }
+
+        private async Task PrintAsync()
+        {
+            if (_invoice == null)
+            {
+                await _dialogService.ShowAlertAsync("No invoice to print.", "Alert", "OK");
+                return;
+            }
+
+            try
+            {
+                PrinterProvider.PrintDocument((int number) =>
+                {
+                    CompanyInfo.SelectedCompany = CompanyInfo.Companies.Count > 0 ? CompanyInfo.Companies[0] : null;
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    bool allWent = true;
+
+                    for (int i = 0; i < number; i++)
+                    {
+                        if (!printer.PrintOpenInvoice(_invoice))
+                            allWent = false;
+                    }
+
+                    if (!allWent)
+                        return "Error printing invoice.";
+                    return string.Empty;
+                });
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
             }
         }
     }

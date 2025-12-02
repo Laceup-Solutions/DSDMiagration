@@ -145,8 +145,48 @@ namespace LaceupMigration.ViewModels
         private async Task Print()
         {
             _appService.RecordEvent("Print inventory summary");
-            // TODO: Implement print functionality (matches Xamarin's Print_Click)
-            await _dialogService.ShowAlertAsync("Print functionality to be implemented.", "Info", "OK");
+            
+            try
+            {
+                PrinterProvider.PrintDocument((int number) =>
+                {
+                    if (number < 1)
+                        return "Please enter a valid number of copies.";
+
+                    if (CompanyInfo.Companies.Count == 0)
+                    {
+                        CompanyInfo.Companies.Add(CompanyInfo.CreateDefaultCompany());
+                    }
+
+                    CompanyInfo.SelectedCompany = CompanyInfo.Companies[0];
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    
+                    int index = 1;
+                    int count = 1;
+                    
+                    if (Config.PrintInvSettReport)
+                        count++;
+
+                    bool isBase = SelectedUnitType == "Base";
+
+                    for (int i = 0; i < number; i++)
+                    {
+                        if (Config.PrintInvSettReport)
+                        {
+                            if (!printer.InventorySummary(index, count, isBase))
+                                return "Error printing inventory summary.";
+                            index++;
+                        }
+                    }
+
+                    return string.Empty;
+                });
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
+            }
         }
 
         [RelayCommand]

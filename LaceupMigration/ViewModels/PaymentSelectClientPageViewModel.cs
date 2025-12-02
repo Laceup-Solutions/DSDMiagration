@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
+using Microsoft.Maui.ApplicationModel;
 
 namespace LaceupMigration.ViewModels
 {
@@ -13,6 +15,8 @@ namespace LaceupMigration.ViewModels
     {
         private readonly DialogService _dialogService;
         private List<ClientItemViewModel> _allClients = new();
+        private Timer? _searchDebounceTimer;
+        private const int SearchDebounceMs = 300;
 
         [ObservableProperty]
         private ObservableCollection<ClientItemViewModel> _clients = new();
@@ -32,7 +36,12 @@ namespace LaceupMigration.ViewModels
 
         partial void OnSearchQueryChanged(string value)
         {
-            FilterClients();
+            // Debounce search
+            _searchDebounceTimer?.Dispose();
+            _searchDebounceTimer = new Timer(_ =>
+            {
+                MainThread.BeginInvokeOnMainThread(() => FilterClients());
+            }, null, SearchDebounceMs, Timeout.Infinite);
         }
 
         private void LoadClients()

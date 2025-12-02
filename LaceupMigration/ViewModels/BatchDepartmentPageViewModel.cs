@@ -487,14 +487,57 @@ namespace LaceupMigration.ViewModels
             // Send by Email
             options.Add(new MenuOption("Send by Email", async () =>
             {
-                await _dialogService.ShowAlertAsync("Send by Email functionality is not yet fully implemented.", "Info");
-                // TODO: Implement email sending
+                await SendByEmailAsync();
             }));
 
             // Advanced Options
             options.Add(new MenuOption("Advanced Options", ShowAdvancedOptionsAsync));
 
             return options;
+        }
+
+        private async Task SendByEmailAsync()
+        {
+            try
+            {
+                var selectedOrders = Orders.Where(x => x.IsSelected).Select(x => x.Order).ToList();
+                
+                if (selectedOrders.Count == 0)
+                {
+                    // If no orders selected, send all orders merged (matches Xamarin BatchDepartmentActivity)
+                    var allOrders = Orders.Select(x => x.Order).ToList();
+                    if (allOrders.Count == 0)
+                    {
+                        await _dialogService.ShowAlertAsync("No orders to send.", "Alert", "OK");
+                        return;
+                    }
+                    
+                    // Merge orders into one (matches Xamarin MergeOrders logic)
+                    var mergedOrder = allOrders.First();
+                    if (allOrders.Count > 1)
+                    {
+                        // Merge details from other orders
+                        foreach (var order in allOrders.Skip(1))
+                        {
+                            foreach (var detail in order.Details)
+                            {
+                                mergedOrder.Details.Add(detail);
+                            }
+                        }
+                    }
+                    
+                    PdfHelper.SendOrderByEmail(mergedOrder);
+                }
+                else
+                {
+                    PdfHelper.SendOrdersByEmail(selectedOrders);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
+            }
         }
 
         private async Task ShowAdvancedOptionsAsync()

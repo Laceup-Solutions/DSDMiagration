@@ -200,10 +200,7 @@ namespace LaceupMigration.ViewModels
 
             if (choice == "Send by Email")
             {
-                // Navigate to FinalReportOfDayPage if it exists, otherwise show message
-                // TODO: Check if FinalReportOfDayPage exists
-                await _dialogService.ShowAlertAsync("Send by Email functionality will navigate to report page.", "Info", "OK");
-                // await Shell.Current.GoToAsync("finalreportofday");
+                await SendReportsByEmailAsync();
             }
             else if (choice == "Print Reports")
             {
@@ -880,6 +877,50 @@ namespace LaceupMigration.ViewModels
                 case "Go to main activity":
                     await _appService.GoBackToMainAsync();
                     break;
+            }
+        }
+
+        private async Task SendReportsByEmailAsync()
+        {
+            try
+            {
+                await _dialogService.ShowLoadingAsync("Generating reports...");
+
+                // Generate PDF for all reports (similar to PrintAllReports but create PDF instead)
+                if (CompanyInfo.Companies.Count == 0)
+                {
+                    CompanyInfo.Companies.Add(CompanyInfo.CreateDefaultCompany());
+                }
+
+                CompanyInfo.SelectedCompany = CompanyInfo.Companies[0];
+
+                // Use BaseReportPageViewModel's SendByEmailInternal pattern
+                // For EndOfDay, we need to generate a combined report PDF
+                // For now, navigate to a report page that can handle email sending
+                // Or generate the report PDF directly
+                
+                // Check if FinalReportOfDayPage exists, otherwise generate report directly
+                var reportCommand = "EndOfDayReport"; // This would be the command to get the report
+                
+                // For now, use the same logic as PrintAllReports but generate PDF
+                // The actual implementation would need to generate a PDF from all the reports
+                // This is a simplified version - in production, you'd generate a combined PDF
+                
+                await _dialogService.HideLoadingAsync();
+                
+                // Navigate to FinalReportOfDayPage if available, or show message
+                await _dialogService.ShowAlertAsync("End of day report email functionality requires FinalReportOfDayPage implementation.", "Info", "OK");
+                
+                // TODO: Implement actual PDF generation and email sending
+                // This would involve:
+                // 1. Generate PDF from all end-of-day reports
+                // 2. Use Config.helper?.SendReportByEmail(pdfFile) to send
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending reports by email.", "Alert", "OK");
             }
         }
     }

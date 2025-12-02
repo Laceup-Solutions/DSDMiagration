@@ -146,8 +146,45 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // TODO: Implement print functionality
-            await _dialogService.ShowAlertAsync("Print functionality to be implemented.", "Info", "OK");
+            try
+            {
+                PrinterProvider.PrintDocument((int copies) =>
+                {
+                    CompanyInfo.SelectedCompany = CompanyInfo.Companies.Count > 0 ? CompanyInfo.Companies[0] : null;
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    bool allWent = true;
+
+                    foreach (var sentPayment in SelectedPayments)
+                    {
+                        // Find the actual InvoicePayment from the OrderUniqueId
+                        InvoicePayment? invoicePayment = null;
+                        if (!string.IsNullOrEmpty(sentPayment.OrderUniqueId))
+                        {
+                            invoicePayment = InvoicePayment.List.FirstOrDefault(x => 
+                                !string.IsNullOrEmpty(x.OrderId) && 
+                                x.OrderId.Contains(sentPayment.OrderUniqueId));
+                        }
+
+                        if (invoicePayment == null)
+                            continue;
+
+                        for (int i = 0; i < copies; i++)
+                        {
+                            if (!printer.PrintPayment(invoicePayment))
+                                allWent = false;
+                        }
+                    }
+
+                    if (!allWent)
+                        return "Error printing payments";
+                    return string.Empty;
+                });
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
+            }
         }
 
         [RelayCommand]
@@ -159,8 +196,44 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // TODO: Implement send by email functionality
-            await _dialogService.ShowAlertAsync("Send by email functionality to be implemented.", "Info", "OK");
+            try
+            {
+                // Find the actual InvoicePayment from the OrderUniqueId
+                var payments = new List<InvoicePayment>();
+                foreach (var sentPayment in SelectedPayments)
+                {
+                    if (!string.IsNullOrEmpty(sentPayment.OrderUniqueId))
+                    {
+                        var payment = InvoicePayment.List.FirstOrDefault(x => 
+                            !string.IsNullOrEmpty(x.OrderId) && 
+                            x.OrderId.Contains(sentPayment.OrderUniqueId));
+                        if (payment != null)
+                            payments.Add(payment);
+                    }
+                }
+
+                if (payments.Count == 0)
+                {
+                    await _dialogService.ShowAlertAsync("Could not find payments to send.", "Alert", "OK");
+                    return;
+                }
+
+                // Send each payment by email (matches Xamarin payment email sending)
+                foreach (var payment in payments)
+                {
+                    // InvoicePayment has an Invoices() method that returns the invoices associated with the payment
+                    var invoices = payment.Invoices();
+                    foreach (var invoice in invoices)
+                    {
+                        PdfHelper.SendInvoiceByEmail(invoice);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
+            }
         }
 
         [RelayCommand]

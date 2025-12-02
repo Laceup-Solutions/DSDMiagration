@@ -8,6 +8,7 @@
 
     <ItemGroup>
       <PackageReference Include="itext7" Version="9.3.0" />
+      <PackageReference Include="itext7.bouncy-castle-adapter" Version="9.3.0" />
       <PackageReference Include="Microsoft.Maui.Controls.Core" Version="9.0.51" />
       <PackageReference Include="Microsoft.Maui.Essentials" Version="9.0.51" />
       <PackageReference Include="RestSharp" Version="112.1.0" />

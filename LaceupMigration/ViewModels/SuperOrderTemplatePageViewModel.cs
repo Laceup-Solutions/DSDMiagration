@@ -928,6 +928,34 @@ namespace LaceupMigration.ViewModels
                     break;
             }
         }
+
+        private async Task SendByEmailAsync()
+        {
+            if (_order == null)
+            {
+                await _dialogService.ShowAlertAsync("No order to send.", "Alert", "OK");
+                return;
+            }
+
+            try
+            {
+                // Use PdfHelper to send order by email (matches Xamarin SuperOrderTemplateActivity)
+                // If there's a credit order, send both
+                if (_credit != null)
+                {
+                    PdfHelper.SendOrdersByEmail(new List<Order> { _order, _credit });
+                }
+                else
+                {
+                    PdfHelper.SendOrderByEmail(_order);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
+            }
+        }
     }
 
     public partial class SuperOrderLineItemViewModel : ObservableObject

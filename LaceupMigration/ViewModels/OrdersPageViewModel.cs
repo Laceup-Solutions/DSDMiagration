@@ -427,9 +427,8 @@ namespace LaceupMigration.ViewModels
 
 			try
 			{
-				// TODO: Implement PdfHelper.SendOrdersByEmail when available
-				// For now, show info message
-				await _dialogService.ShowAlertAsync("Send by email functionality requires PdfHelper implementation.", "Info", "OK");
+				// Use PdfHelper to send orders by email (matches Xamarin NewTransactionsFragment)
+				PdfHelper.SendOrdersByEmail(SelectedOrders);
 			}
 			catch (Exception ex)
 			{

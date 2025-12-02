@@ -654,14 +654,135 @@ namespace LaceupMigration.ViewModels
 
         private async Task PrintBatchAsync(List<Order> orders, int copies, bool isPickTicket)
         {
-            await _dialogService.ShowAlertAsync("Print functionality is not yet fully implemented in the MAUI version.", "Info");
-            // TODO: Implement printing
+            if (orders.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("No orders to print.", "Alert");
+                return;
+            }
+
+            try
+            {
+                PrinterProvider.PrintDocument((int number) =>
+                {
+                    if (number < 1)
+                        return "Please enter a valid number of copies.";
+
+                    // Generate PrintedOrderId if needed
+                    if (Config.GeneratePreorderNum)
+                    {
+                        foreach (var order in orders)
+                        {
+                            if (order != null && string.IsNullOrEmpty(order.PrintedOrderId))
+                            {
+                                order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
+                                order.Save();
+                            }
+                        }
+                    }
+
+                    CompanyInfo.SelectedCompany = CompanyInfo.Companies.Count > 0 ? CompanyInfo.Companies[0] : null;
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    bool allWent = true;
+
+                    for (int i = 0; i < number; i++)
+                    {
+                        foreach (var order in orders)
+                        {
+                            bool result = false;
+                            
+                            if (isPickTicket && !order.Finished)
+                            {
+                                result = printer.PrintPickTicket(order);
+                            }
+                            else
+                            {
+                                if (order.OrderType == OrderType.Consignment)
+                                {
+                                    if (Config.UseFullConsignment)
+                                    {
+                                        result = printer.PrintFullConsignment(order, !order.Finished);
+                                    }
+                                    else
+                                    {
+                                        result = printer.PrintConsignment(order, !order.Finished);
+                                    }
+                                    
+                                    if (result && order.Finished)
+                                        order.PrintedCopies += 1;
+                                }
+                                else
+                                {
+                                    result = printer.PrintOrder(order, !order.Finished, true);
+                                    if (result && (order.Finished || Config.LockOrderAfterPrinted))
+                                        order.PrintedCopies += 1;
+                                }
+                            }
+
+                            if (!result)
+                                allWent = false;
+                        }
+                    }
+
+                    if (!allWent)
+                        return "At least one order failed to print.";
+                    return string.Empty;
+                }, copies);
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
+            }
         }
 
         private async Task PrintLabelsAsync(List<Order> orders, int copies)
         {
-            await _dialogService.ShowAlertAsync("Print labels functionality is not yet fully implemented in the MAUI version.", "Info");
-            // TODO: Implement label printing
+            if (orders.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("No orders to print labels for.", "Alert");
+                return;
+            }
+
+            try
+            {
+                PrinterProvider.PrintDocument((int number) =>
+                {
+                    if (number < 1)
+                        return "Please enter a valid number of copies.";
+
+                    // Generate PrintedOrderId if needed
+                    if (Config.GeneratePreorderNum)
+                    {
+                        foreach (var order in orders)
+                        {
+                            if (order != null && string.IsNullOrEmpty(order.PrintedOrderId))
+                            {
+                                order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
+                                order.Save();
+                            }
+                        }
+                    }
+
+                    CompanyInfo.SelectedCompany = CompanyInfo.Companies.Count > 0 ? CompanyInfo.Companies[0] : null;
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    bool allWent = true;
+
+                    for (int i = 0; i < number; i++)
+                    {
+                        if (!printer.PrintLabels(orders))
+                            allWent = false;
+                    }
+
+                    if (!allWent)
+                        return "Error printing labels.";
+                    return string.Empty;
+                }, copies);
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error printing labels: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
+            }
         }
 
         [RelayCommand]
@@ -682,6 +803,29 @@ namespace LaceupMigration.ViewModels
             if (option?.Action != null)
             {
                 await option.Action();
+            }
+        }
+
+        private async Task SendByEmailAsync()
+        {
+            // Get selected orders (matches Xamarin BatchActivity.SelectActiveOrders)
+            var orders = GetSelectedOrders();
+
+            if (orders.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("No orders selected to send.", "Alert", "OK");
+                return;
+            }
+
+            try
+            {
+                // Use PdfHelper to send orders by email (matches Xamarin BatchActivity.SendByEmail)
+                PdfHelper.SendOrdersByEmail(orders);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
             }
         }
 
@@ -877,8 +1021,7 @@ namespace LaceupMigration.ViewModels
             {
                 options.Add(new MenuOption("Send by Email", async () =>
                 {
-                    await _dialogService.ShowAlertAsync("Send by Email functionality is not yet fully implemented.", "Info");
-                    // TODO: Implement email sending
+                    await SendByEmailAsync();
                 }));
             }
 

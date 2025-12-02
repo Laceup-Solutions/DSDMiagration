@@ -6,6 +6,8 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using Microsoft.Maui.ApplicationModel;
 
 namespace LaceupMigration.ViewModels
 {
@@ -24,6 +26,8 @@ namespace LaceupMigration.ViewModels
 		private string _searchCriteria = string.Empty;
 		private SearchBy _searchBy = SearchBy.ClientName;
 		private bool _isUpdatingSelectAll = false;
+		private Timer? _searchDebounceTimer;
+		private const int SearchDebounceMs = 300;
 
 		[ObservableProperty] private ObservableCollection<ClientPaymentGroupViewModel> _clientGroups = new();
 		[ObservableProperty] private string _searchQuery = string.Empty;
@@ -53,11 +57,19 @@ namespace LaceupMigration.ViewModels
 
 		partial void OnSearchQueryChanged(string value)
 		{
-			if (_searchCriteria != value)
+			// Debounce search
+			_searchDebounceTimer?.Dispose();
+			_searchDebounceTimer = new Timer(_ =>
 			{
-				_searchCriteria = value;
-				Filter();
-			}
+				MainThread.BeginInvokeOnMainThread(() =>
+				{
+					if (_searchCriteria != value)
+					{
+						_searchCriteria = value;
+						Filter();
+					}
+				});
+			}, null, SearchDebounceMs, Timeout.Infinite);
 		}
 
 		[RelayCommand]
@@ -481,7 +493,7 @@ namespace LaceupMigration.ViewModels
 			// Populate components
 			foreach (var component in _payment.Components)
 			{
-				Components.Add(new PaymentComponentViewModel(component, _payment));
+				Components.Add(new PaymentComponentDisplayViewModel(component, _payment));
 			}
 		}
 
@@ -512,7 +524,7 @@ namespace LaceupMigration.ViewModels
 
 		public string TotalText => $"Total: {_payment.Components.Sum(x => x.Amount).ToCustomString()}";
 
-		[ObservableProperty] private ObservableCollection<PaymentComponentViewModel> _components = new();
+		[ObservableProperty] private ObservableCollection<PaymentComponentDisplayViewModel> _components = new();
 
 		partial void OnIsSelectedChanged(bool value)
 		{
@@ -544,20 +556,60 @@ namespace LaceupMigration.ViewModels
 
 		public InvoicePayment Payment => _payment;
 
-		partial void OnComponentsChanged(ObservableCollection<PaymentComponentViewModel> value)
+		partial void OnComponentsChanged(ObservableCollection<PaymentComponentDisplayViewModel> value)
 		{
 			// Components are populated in constructor
 		}
 	}
 
-	public partial class PaymentComponentViewModel : ObservableObject
+	public partial class PaymentComponentDisplayViewModel : ObservableObject
 	{
+		private readonly PaymentComponent _component;
 		private readonly InvoicePayment _payment;
 
-		public PaymentComponentViewModel(PaymentComponent component, InvoicePayment payment)
+		public PaymentComponentDisplayViewModel(PaymentComponent component, InvoicePayment payment)
 		{
 			_component = component;
 			_payment = payment;
+			UpdateProperties();
+		}
+
+		public string PaymentMethodText
+		{
+			get
+			{
+				var fullText = GetPaymentMethodName(_component.PaymentMethod);
+				if (!string.IsNullOrEmpty(_component.BankName))
+					fullText += ", Bank";
+				if (!string.IsNullOrEmpty(_component.Comments))
+					fullText += ", Comments";
+				if (_component.ExtraFields.Contains("Image"))
+					fullText += ", Image";
+				return fullText;
+			}
+		}
+
+		public string AmountText => _component.Amount.ToCustomString();
+
+		private string GetPaymentMethodName(InvoicePaymentMethod method)
+		{
+			return method switch
+			{
+				InvoicePaymentMethod.Cash => "Cash",
+				InvoicePaymentMethod.Check => "Check",
+				InvoicePaymentMethod.Credit_Card => "Credit Card",
+				InvoicePaymentMethod.Money_Order => "Money Order",
+				InvoicePaymentMethod.Transfer => "Transfer",
+				InvoicePaymentMethod.Zelle_Transfer => "Zelle Transfer",
+				InvoicePaymentMethod.ACH => "ACH",
+				_ => "Cash"
+			};
+		}
+
+		private void UpdateProperties()
+		{
+			OnPropertyChanged(nameof(PaymentMethodText));
+			OnPropertyChanged(nameof(AmountText));
 		}
 
 		[RelayCommand]
