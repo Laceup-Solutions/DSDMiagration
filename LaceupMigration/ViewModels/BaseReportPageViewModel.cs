@@ -164,7 +164,7 @@ namespace LaceupMigration.ViewModels
         }
 
         /// <summary>
-        /// Sends the report PDF by email
+        /// Sends the report PDF by email - navigates to PDF viewer
         /// </summary>
         protected async Task SendReportByEmail(string pdfFile)
         {
@@ -176,8 +176,8 @@ namespace LaceupMigration.ViewModels
 
             try
             {
-                // Use platform-specific implementation (matches Xamarin SendReportByEmail)
-                Config.helper?.SendReportByEmail(pdfFile);
+                // Navigate to PDF viewer with the PDF path (like PreviouslyOrderedTemplatePageViewModel)
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}");
             }
             catch (Exception ex)
             {

@@ -1,4 +1,5 @@
-﻿using LaceupMigration.ViewModels;
+﻿using LaceupMigration.UtilDlls;
+using LaceupMigration.ViewModels;
 using LaceupMigration.Views;
 
 namespace LaceupMigration
@@ -111,6 +112,10 @@ namespace LaceupMigration
                 typeof(Views.SelfService.SelfServiceCollectPaymentPage));
             Routing.RegisterRoute("selfservice/credittemplate",
                 typeof(Views.SelfService.SelfServiceCreditTemplatePage));
+            
+            
+            //PDF
+            Routing.RegisterRoute("pdfviewer", typeof(PdfViewer));
         }
 
         // [MIGRATION]: Update company name in header (matches Xamarin MainActivity.UpdateCompanyName)

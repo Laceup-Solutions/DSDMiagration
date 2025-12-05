@@ -2,6 +2,7 @@ using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Threading.Tasks;
 using iText.Layout;
 using iText.Kernel.Pdf;
 using iText.Layout.Element;
@@ -10,10 +11,13 @@ using iText.Kernel.Colors;
 using iText.IO.Font;
 using iText.Kernel.Font;
 using iText.IO.Image;
-using iText.Layout.Borders;
-
 using System.IO;
 using iText.IO.Font.Constants;
+using Microsoft.Maui.Controls;
+using Border = iText.Layout.Borders.Border;
+using Cell = iText.Layout.Element.Cell;
+using Image = iText.Layout.Element.Image;
+using Style = iText.Layout.Style;
 
 namespace LaceupMigration
 {
@@ -543,7 +547,7 @@ namespace LaceupMigration
             }
         }
 
-        public static void SendInvoiceByEmail(Invoice invoice)
+        public static async Task SendInvoiceByEmail(Invoice invoice)
         {
             try
             {
@@ -554,8 +558,8 @@ namespace LaceupMigration
                     return;
                 }
 
-                // Use platform-specific implementation (matches Xamarin SendInvoiceByEmail)
-                Config.helper?.SendReportByEmail(pdfFile);
+                // Navigate to PDF viewer with the PDF path
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}");
             }
             catch (Exception ex)
             {
@@ -583,7 +587,7 @@ namespace LaceupMigration
             }
         }
 
-        public static void SendOrderByEmail(Order order)
+        public static async Task SendOrderByEmail(Order order)
         {
             try
             {
@@ -594,8 +598,9 @@ namespace LaceupMigration
                     return;
                 }
 
-                // Use platform-specific implementation (matches Xamarin SendOrderByEmail)
-                Config.helper?.SendReportByEmail(pdfFile);
+                // Navigate to PDF viewer with both PDF path and orderId (like PreviouslyOrderedTemplatePageViewModel)
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}&orderId={order.OrderId}");
+
             }
             catch (Exception ex)
             {
@@ -603,19 +608,33 @@ namespace LaceupMigration
             }
         }
 
-        public static void SendOrdersByEmail(List<Order> order)
+        public static async Task SendOrdersByEmail(List<Order> orders)
         {
             try
             {
-                string pdfFile = GetOrdersPdf(order);
+                if (orders == null || orders.Count == 0)
+                {
+                    return;
+                }
+
+                string pdfFile = GetOrdersPdf(orders);
 
                 if (string.IsNullOrEmpty(pdfFile))
                 {
                     return;
                 }
 
-                // Use platform-specific implementation (matches Xamarin SendOrdersByEmail)
-                Config.helper?.SendReportByEmail(pdfFile);
+                // Navigate to PDF viewer with the PDF path
+                // For multiple orders, use the first order's ID
+                int? orderId = orders.Count > 0 ? orders[0].OrderId : null;
+                if (orderId.HasValue)
+                {
+                    await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}&orderId={orderId.Value}");
+                }
+                else
+                {
+                    await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}");
+                }
             }
             catch (Exception ex)
             {
@@ -623,7 +642,7 @@ namespace LaceupMigration
             }
         }
 
-        public static void SendConsignmentByEmail(Order order, bool counting)
+        public static async Task SendConsignmentByEmail(Order order, bool counting)
         {
             try
             {
@@ -634,8 +653,8 @@ namespace LaceupMigration
                     return;
                 }
 
-                // Use platform-specific implementation (matches Xamarin SendConsignmentByEmail)
-                Config.helper?.SendReportByEmail(pdfFile);
+                // Navigate to PDF viewer with both PDF path and orderId
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}&orderId={order.OrderId}");
             }
             catch (Exception ex)
             {

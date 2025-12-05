@@ -1041,7 +1041,7 @@ namespace LaceupMigration.ViewModels
             try
             {
                 // Use PdfHelper to send order by email (matches Xamarin email sending)
-                PdfHelper.SendOrderByEmail(_order);
+                await PdfHelper.SendOrderByEmail(_order);
             }
             catch (Exception ex)
             {

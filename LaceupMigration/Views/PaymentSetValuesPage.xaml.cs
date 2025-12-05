@@ -21,17 +21,36 @@ namespace LaceupMigration.Views
 
         private async void EditPayment_Clicked(object sender, EventArgs e)
         {
-            if (sender is Button button && button.BindingContext is PaymentComponentViewModel component)
+            PaymentComponentViewModel? component = null;
+            
+            if (sender is Button button)
+            {
+                component = button.BindingContext as PaymentComponentViewModel;
+            }
+            else if (sender is Frame frame)
+            {
+                component = frame.BindingContext as PaymentComponentViewModel;
+            }
+            
+            if (component != null)
             {
                 await _viewModel.EditPayment(component);
             }
         }
 
-        private async void DeletePayment_Clicked(object sender, EventArgs e)
+        private async void OnImageTapped(object sender, EventArgs e)
         {
-            if (sender is Button button && button.BindingContext is PaymentComponentViewModel component)
+            if (sender is TapGestureRecognizer recognizer)
             {
-                await _viewModel.DeletePayment(component);
+                var frame = recognizer.Parent as Frame;
+                if (frame != null)
+                {
+                    var component = frame.BindingContext as PaymentComponentViewModel;
+                    if (component != null)
+                    {
+                        await _viewModel.EditPayment(component);
+                    }
+                }
             }
         }
     }

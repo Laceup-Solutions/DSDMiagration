@@ -782,7 +782,7 @@ namespace LaceupMigration.ViewModels
             try
             {
                 // Use PdfHelper to send consignment by email (matches Xamarin ConsignmentActivity)
-                PdfHelper.SendConsignmentByEmail(_order, _counting);
+                await PdfHelper.SendConsignmentByEmail(_order, _counting);
             }
             catch (Exception ex)
             {

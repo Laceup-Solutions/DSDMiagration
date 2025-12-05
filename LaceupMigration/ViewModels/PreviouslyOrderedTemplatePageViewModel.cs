@@ -1314,6 +1314,26 @@ namespace LaceupMigration.ViewModels
             }
         }
 
+        // private async Task SendByEmailAsync()
+        // {
+        //     if (_order == null)
+        //     {
+        //         await _dialogService.ShowAlertAsync("No order to send.", "Alert", "OK");
+        //         return;
+        //     }
+        //
+        //     try
+        //     {
+        //         // Use PdfHelper to send order by email (matches Xamarin PreviouslyOrderedTemplateActivity)
+        //         await PdfHelper.SendOrderByEmail(_order);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         Logger.CreateLog(ex);
+        //         await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
+        //     }
+        // }
+
         private async Task SendByEmailAsync()
         {
             if (_order == null)
@@ -1324,15 +1344,45 @@ namespace LaceupMigration.ViewModels
 
             try
             {
-                // Use PdfHelper to send order by email (matches Xamarin PreviouslyOrderedTemplateActivity)
-                PdfHelper.SendOrderByEmail(_order);
+                await _dialogService.ShowLoadingAsync("Generating PDF...");
+        
+                string pdfFile = PdfHelper.GetOrderPdf(_order);
+        
+                await _dialogService.HideLoadingAsync();
+        
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    await _dialogService.ShowAlertAsync("Error generating PDF.", "Alert", "OK");
+                    return;
+                }
+
+                // Navigate to PDF viewer with both PDF path and orderId
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}&orderId={_order.OrderId}");
             }
             catch (Exception ex)
             {
+                await _dialogService.HideLoadingAsync();
                 Logger.CreateLog(ex);
-                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
+                await _dialogService.ShowAlertAsync("Error occurred.", "Alert", "OK");
             }
         }
+
+private async Task SharePdfAsync(string pdfFile)
+{
+    try
+    {
+        await Share.RequestAsync(new ShareFileRequest
+        {
+            Title = "Share Order",
+            File = new ShareFile(pdfFile)
+        });
+    }
+    catch (Exception ex)
+    {
+        Logger.CreateLog(ex);
+        await _dialogService.ShowAlertAsync("Error sharing PDF.", "Alert", "OK");
+    }
+}
     }
 }
 

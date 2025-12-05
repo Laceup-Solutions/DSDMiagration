@@ -428,7 +428,7 @@ namespace LaceupMigration.ViewModels
 			try
 			{
 				// Use PdfHelper to send orders by email (matches Xamarin NewTransactionsFragment)
-				PdfHelper.SendOrdersByEmail(SelectedOrders);
+				await PdfHelper.SendOrdersByEmail(SelectedOrders);
 			}
 			catch (Exception ex)
 			{

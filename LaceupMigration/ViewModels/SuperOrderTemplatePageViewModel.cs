@@ -943,11 +943,11 @@ namespace LaceupMigration.ViewModels
                 // If there's a credit order, send both
                 if (_credit != null)
                 {
-                    PdfHelper.SendOrdersByEmail(new List<Order> { _order, _credit });
+                    await PdfHelper.SendOrdersByEmail(new List<Order> { _order, _credit });
                 }
                 else
                 {
-                    PdfHelper.SendOrderByEmail(_order);
+                    await PdfHelper.SendOrderByEmail(_order);
                 }
             }
             catch (Exception ex)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using CoreBluetooth;
@@ -253,6 +254,69 @@ public class InterfaceHelper : IInterfaceHelper
         catch (Exception ex)
         {
             Logger.CreateLog("Error sending report by email ==>" + ex.ToString());
+        }
+    }
+
+    // NOTE: Android is prioritized for platform-specific implementations
+    // This iOS implementation is basic - Android has full feature parity with Xamarin
+    public void SendOrderByEmail(string pdfFile, string subject, string body, List<string> toAddresses)
+    {
+        if (string.IsNullOrEmpty(pdfFile))
+        {
+            return;
+        }
+
+        try
+        {
+            var window = UIApplication.SharedApplication.KeyWindow;
+            var viewController = window.RootViewController;
+
+            // Ensure we get the topmost view controller
+            while (viewController.PresentedViewController != null)
+            {
+                viewController = viewController.PresentedViewController;
+            }
+
+            if (MFMailComposeViewController.CanSendMail)
+            {
+                var mailComposer = new MFMailComposeViewController();
+                mailComposer.SetSubject(subject ?? "Invoice Attached");
+                mailComposer.SetMessageBody(body ?? "", false);
+
+                var fileData = NSData.FromFile(pdfFile);
+                if (fileData != null)
+                {
+                    mailComposer.AddAttachmentData(fileData, "application/pdf", Path.GetFileName(pdfFile));
+                }
+
+                if (toAddresses != null && toAddresses.Count > 0)
+                {
+                    var validAddresses = toAddresses.Where(e => !string.IsNullOrEmpty(e)).ToArray();
+                    if (validAddresses.Length > 0)
+                    {
+                        mailComposer.SetToRecipients(validAddresses);
+                    }
+                }
+
+                mailComposer.Finished += (sender, e) =>
+                {
+                    mailComposer.DismissViewController(true, null);
+                };
+
+                viewController.PresentViewController(mailComposer, true, null);
+            }
+            else
+            {
+                // Fallback to UIDocumentInteractionController if mail is not configured
+                var viewer = UIDocumentInteractionController.FromUrl(NSUrl.FromFilename(pdfFile));
+                viewer.PresentOptionsMenu(
+                    new CoreGraphics.CGRect(0, 0, viewController.View.Frame.Width, viewController.View.Frame.Height),
+                    viewController.View, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.CreateLog("Error sending order by email ==>" + ex.ToString());
         }
     }
 

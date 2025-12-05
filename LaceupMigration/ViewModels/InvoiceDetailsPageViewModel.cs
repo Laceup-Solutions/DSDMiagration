@@ -316,7 +316,7 @@ namespace LaceupMigration.ViewModels
             try
             {
                 // Use PdfHelper to send invoice by email (matches Xamarin InvoiceDetailsActivity)
-                PdfHelper.SendInvoiceByEmail(_invoice);
+                await PdfHelper.SendInvoiceByEmail(_invoice);
             }
             catch (Exception ex)
             {

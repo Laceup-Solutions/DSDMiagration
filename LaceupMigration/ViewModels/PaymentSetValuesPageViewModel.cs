@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Graphics;
 
 namespace LaceupMigration.ViewModels
 {
@@ -51,6 +52,9 @@ namespace LaceupMigration.ViewModels
         private string _openLabel = string.Empty;
 
         [ObservableProperty]
+        private Color _openLabelColor = Colors.Black;
+
+        [ObservableProperty]
         private string _paidLabel = string.Empty;
 
         [ObservableProperty]
@@ -76,6 +80,9 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private bool _canPrintPayment = true;
+
+        [ObservableProperty]
+        private bool _canDeletePayment = true;
 
         [ObservableProperty]
         private bool _isCreditAccount;
@@ -190,6 +197,7 @@ namespace LaceupMigration.ViewModels
                 {
                     CanAddPayment = false;
                     CanSavePayment = false;
+                    CanDeletePayment = false;
                 }
             }
             else if (!string.IsNullOrEmpty(_invoicesId) || !string.IsNullOrEmpty(_ordersId))
@@ -221,6 +229,9 @@ namespace LaceupMigration.ViewModels
             {
                 PaymentComponents.Add(new PaymentComponentViewModel(new PaymentComponent { Amount = _amount }, this));
             }
+
+            // Set CanDeletePayment based on whether there's a payment to delete
+            CanDeletePayment = _paymentId > 0 && (_invoicePayment == null || !_invoicePayment.Printed);
 
             RefreshLabels();
         }
@@ -553,6 +564,11 @@ namespace LaceupMigration.ViewModels
 
             AmountLabel = (_amount + _totalDiscount).ToCustomString();
             OpenLabel = open.ToCustomString();
+            // Set color: green if $0 or $0.00, otherwise black (matching Xamarin)
+            if (open == 0 || OpenLabel == "$0" || OpenLabel == "$0.00")
+                OpenLabelColor = Colors.Green;
+            else
+                OpenLabelColor = Colors.Black;
             PaidLabel = currentPaymentAmount.ToCustomString();
 
             if (ShowCreditAmount)
@@ -644,6 +660,12 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SavePayment()
         {
+            await SavePaymentInternal();
+            await FinishProcessAsync();
+        }
+
+        private async Task<bool> SavePaymentInternal()
+        {
             if (Config.PaymentBankIsMandatory)
             {
                 foreach (var component in PaymentComponents)
@@ -653,7 +675,7 @@ namespace LaceupMigration.ViewModels
                          component.PaymentMethod == InvoicePaymentMethod.Credit_Card))
                     {
                         await _dialogService.ShowAlertAsync("You must select a Bank to be able to save this payment.", "Alert", "OK");
-                        return;
+                        return false;
                     }
                 }
             }
@@ -664,7 +686,7 @@ namespace LaceupMigration.ViewModels
                 if (checkPayments.Any(x => x.PostedDate == DateTime.MinValue))
                 {
                     await _dialogService.ShowAlertAsync("You must enter a Posted Date for Check Payments.", "Alert", "OK");
-                    return;
+                    return false;
                 }
             }
 
@@ -720,7 +742,139 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
+            return true;
+        }
+
+        [RelayCommand]
+        private async Task SaveAndClose()
+        {
+            await SavePayment();
             await FinishProcessAsync();
+        }
+
+        [RelayCommand]
+        private async Task SendByEmail()
+        {
+            try
+            {
+                // Match Xamarin logic exactly: only show dialog if payment is null (not saved yet)
+                if (_invoicePayment == null)
+                {
+                    var confirmed = await _dialogService.ShowConfirmationAsync("Warning", 
+                        "If you send by Email, you won't be able to modify the payment. Are you sure that you'd like to continue?", 
+                        "Yes", "No");
+                    if (!confirmed)
+                        return;
+
+                    if (!await SavePaymentInternal())
+                        return;
+
+                    _invoicePayment!.Printed = true;
+                    _invoicePayment.Save();
+                    CanAddPayment = false;
+                    CanSavePayment = false;
+                    CanDeletePayment = false;
+                    RefreshLabels();
+
+                    // Proceed to send email after saving
+                    await SendByEmailProceed();
+                    return;
+                }
+                // If payment exists, proceed directly without confirmation (matches Xamarin else branch)
+                await SendByEmailProceed();
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
+            }
+        }
+
+        private async Task SendByEmailProceed()
+        {
+            try
+            {
+                // Get payment PDF (matches Xamarin SendByEmailProceed)
+                var pdfFile = PdfHelper.GetPaymentPdf(_invoicePayment!);
+                
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    await _dialogService.ShowAlertAsync("PDF could not be generated.", "Alert", "OK");
+                    return;
+                }
+
+                // Send email (matches Xamarin SendByEmail method)
+                await SendPaymentByEmail(pdfFile);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error sending payment by email", "Alert", "OK");
+            }
+        }
+
+        private async Task SendPaymentByEmail(string pdfFile)
+        {
+            if (string.IsNullOrEmpty(pdfFile))
+            {
+                await _dialogService.ShowAlertAsync("PDF could not be generated.", "Alert", "OK");
+                return;
+            }
+
+            // Get client email
+            string toEmail = string.Empty;
+            if (_invoicePayment!.Client != null)
+            {
+                toEmail = DataAccess.GetSingleUDF("email", _invoicePayment.Client.ExtraPropertiesAsString);
+            }
+
+            // Determine subject and body (matches Xamarin SendByEmail)
+            string subject = string.Empty;
+            string body = string.Empty;
+
+            if (Config.EcoSkyWaterCustomEmail)
+            {
+                subject = "Eco SkyWater Payment";
+                body = string.Format(@"<html><body>Thank you for choosing Eco SkyWater the most sustainable bottled water on earth, every contribution helps towards a healthier plastic free environment.<br><br>For more information on how our water and plant based bottles are made, please visit <a href='{0}' >www.ecoskywater.com</a><br><br>Payments can be made through bank transfer using the attached banking information link: <a href='{1}'>https://ecoskywater-my.sharepoint.com/:b:/p/philip/EQdUS4WWb4tMhHQilv2-FzgBRy2w8yEbNW6XSCsp9ww1Vw?e=e65jGO</a><br><br>Please reach out to us with any feedback as we are continually improving our products.<br><br><br>Do Good Live Great,<br><br>Eco SkyWater<br><b> <span style='color:blue'>Local . Sustainable . Pure</span></b><br><br>E: <a href='{2}'>Sales@ecoskywater.com</a><br>IG: @ecoskywater<br>FB: @ecoskyh2o<br>T: 1 (246) 572-4587<br>C: 1 (246) 235-3269<br>Lot 1B Walkes Spring, St. Thomas, Barbados</body></html>", 
+                    "www.ecoskywater.com", 
+                    "https://ecoskywater-my.sharepoint.com/:b:/p/philip/EQdUS4WWb4tMhHQilv2-FzgBRy2w8yEbNW6XSCsp9ww1Vw?e=e65jGO", 
+                    "Sales@ecoskywater.com");
+            }
+            else
+            {
+                subject = "Payment Attached";
+            }
+
+            // Send email using helper interface (matches Xamarin SendByEmail)
+            var toAddresses = new List<string>();
+            if (!string.IsNullOrEmpty(toEmail))
+            {
+                toAddresses.Add(toEmail);
+            }
+
+            Config.helper?.SendOrderByEmail(pdfFile, subject, body, toAddresses);
+        }
+
+        [RelayCommand]
+        private async Task DeleteEntirePayment()
+        {
+            if (_invoicePayment == null)
+            {
+                await _dialogService.ShowAlertAsync("No payment to delete.", "Alert", "OK");
+                return;
+            }
+
+            var confirmed = await _dialogService.ShowConfirmationAsync("Delete Payment", 
+                "Are you sure you want to delete this payment?", "Yes", "No");
+            if (confirmed)
+            {
+                if (Config.VoidPayments)
+                    _invoicePayment.Void();
+                else
+                    _invoicePayment.Delete();
+
+                await FinishProcessAsync();
+            }
         }
 
         [RelayCommand]

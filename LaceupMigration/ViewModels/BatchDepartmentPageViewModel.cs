@@ -526,11 +526,11 @@ namespace LaceupMigration.ViewModels
                         }
                     }
                     
-                    PdfHelper.SendOrderByEmail(mergedOrder);
+                    await PdfHelper.SendOrderByEmail(mergedOrder);
                 }
                 else
                 {
-                    PdfHelper.SendOrdersByEmail(selectedOrders);
+                    await PdfHelper.SendOrdersByEmail(selectedOrders);
                 }
             }
             catch (Exception ex)

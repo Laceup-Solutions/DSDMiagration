@@ -47,6 +47,7 @@ public interface IInterfaceHelper
     void ViewPdf(string filepath);
     void PrintPdf(string filepath);
     void SendReportByEmail(string pdfFile);
+    void SendOrderByEmail(string pdfFile, string subject, string body, List<string> toAddresses);
 
     void SubscribeToTopic(string topic);
 

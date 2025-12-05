@@ -3,6 +3,7 @@ using LaceupMigration.Controls;
 using LaceupMigration.Views;
 using MauiIcons.Material.Outlined;
 using Microsoft.Extensions.Logging;
+using Maui.PDFView;
 
 namespace LaceupMigration
 {
@@ -14,6 +15,7 @@ namespace LaceupMigration
             builder
                 .UseMauiApp<App>()
 				.UseMauiCommunityToolkit()
+				.UseMauiPdfView()
 				.UseMaterialOutlinedMauiIcons()
                 .ConfigureFonts(fonts =>
                 {
