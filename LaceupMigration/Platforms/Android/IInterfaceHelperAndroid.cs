@@ -1,4 +1,5 @@
 ﻿
+using System.Linq;
 using Android.Net.Wifi;
 using Android.Preferences;
 using Android.Telephony;
@@ -277,10 +278,13 @@ public class InterfaceHelper : IInterfaceHelper
             target.SetFlags(ActivityFlags.ClearTop | ActivityFlags.NewTask | ActivityFlags.NoHistory);
             target.AddFlags(ActivityFlags.GrantReadUriPermission);
 
-            Intent intent = Intent.CreateChooser(target, "Open File");
-            intent.AddFlags(ActivityFlags.NewTask);
-
-            context.StartActivity(intent);
+            // Intent intent = Intent.CreateChooser(target, "Open File");
+            // intent.AddFlags(ActivityFlags.NewTask);
+            //
+            // context.StartActivity(intent);
+            
+            target.AddFlags(ActivityFlags.NewTask);
+            context.StartActivity(target);
         }
         catch (Exception ex)
         {
@@ -328,6 +332,52 @@ public class InterfaceHelper : IInterfaceHelper
         catch (Exception ex)
         {
             Logger.CreateLog("Error sending report by email ==>" + ex.ToString());
+        }
+    }
+
+    public void SendOrderByEmail(string pdfFile, string subject, string body, List<string> toAddresses)
+    {
+        if (string.IsNullOrEmpty(pdfFile))
+        {
+            return;
+        }
+
+        Context context = Android.App.Application.Context;
+
+        try
+        {
+            using (var emailIntent = new Intent(Intent.ActionSend))
+            {
+                Java.IO.File file = new Java.IO.File(pdfFile);
+
+                var appPackageName = context.ApplicationInfo.PackageName + ".fileprovider";
+                var apkURI = FileProvider.GetUriForFile(context, appPackageName, file);
+
+                emailIntent.PutExtra(Intent.ExtraSubject, subject ?? "Invoice Attached");
+                emailIntent.PutExtra(Intent.ExtraText, body ?? "");
+
+                if (toAddresses != null && toAddresses.Count > 0)
+                {
+                    // Filter and format email addresses (Android prioritized implementation)
+                    var emailArray = toAddresses
+                        .Where(e => !string.IsNullOrEmpty(e))
+                        .Select(e => e.ToLowerInvariant())
+                        .ToArray();
+                    if (emailArray.Length > 0)
+                        emailIntent.PutExtra(Intent.ExtraEmail, emailArray);
+                }
+
+                emailIntent.SetType("application/pdf");
+                emailIntent.PutExtra(Intent.ExtraStream, apkURI);
+                emailIntent.AddFlags(ActivityFlags.GrantReadUriPermission);
+                emailIntent.AddFlags(ActivityFlags.NewTask);
+
+                context.StartActivity(emailIntent);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.CreateLog("Error sending order by email ==>" + ex.ToString());
         }
     }
 

@@ -328,7 +328,7 @@ namespace LaceupMigration.ViewModels
                 }
 
                 // Use PdfHelper to send orders by email (matches Xamarin SentOrdersPackagesActivity)
-                PdfHelper.SendOrdersByEmail(orders);
+                await PdfHelper.SendOrdersByEmail(orders);
             }
             catch (Exception ex)
             {

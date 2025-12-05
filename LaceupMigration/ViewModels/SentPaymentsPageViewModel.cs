@@ -225,7 +225,9 @@ namespace LaceupMigration.ViewModels
                     var invoices = payment.Invoices();
                     foreach (var invoice in invoices)
                     {
-                        PdfHelper.SendInvoiceByEmail(invoice);
+                        await PdfHelper.SendInvoiceByEmail(invoice);
+                        // Small delay between multiple PDFs to avoid opening all at once
+                        await Task.Delay(500);
                     }
                 }
             }

@@ -2,89 +2,278 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              x:Class="LaceupMigration.Views.PaymentSetValuesPage"
              x:DataType="vm:PaymentSetValuesPageViewModel"
              Shell.NavBarIsVisible="True"
              Shell.TabBarIsVisible="False"
              Title="Collect Payment">
     <ContentPage.Content>
-        <ScrollView>
-            <VerticalStackLayout Padding="16" Spacing="16">
-                <!-- Client Name -->
-                <Label Text="{Binding ClientName}"
-                       FontSize="20"
-                       FontAttributes="Bold"
-                       TextColor="{StaticResource PrimaryDark}" />
+        <VerticalStackLayout Spacing="0">
+            <!-- Top Action Buttons (matching Xamarin layout) -->
+            <Grid ColumnDefinitions="2*,*,2*,*,1.2*" 
+                  ColumnSpacing="5" 
+                  Padding="5,0,5,0"
+                  HeightRequest="50">
+                <Button Grid.Column="0"
+                        Text="Save &amp; Close" 
+                        Command="{Binding SaveAndCloseCommand}" 
+                        IsEnabled="{Binding CanSavePayment}"
+                        Style="{StaticResource PrimaryButton}"
+                        Padding="5,0"
+                        FontSize="12" />
+                <Button Grid.Column="1"
+                        Text="Print" 
+                        Command="{Binding PrintPaymentCommand}" 
+                        IsEnabled="{Binding CanPrintPayment}"
+                        Style="{StaticResource PrimaryButton}"
+                        Padding="12,0"
+                        FontSize="14" />
+                <Button Grid.Column="2"
+                        Text="Send By Email" 
+                        Command="{Binding SendByEmailCommand}" 
+                        IsEnabled="{Binding CanSavePayment}"
+                        Style="{StaticResource PrimaryButton}"
+                        Padding="8,0"
+                        FontSize="12" />
+                <Button Grid.Column="3"
+                        Text="Add" 
+                        Command="{Binding AddPaymentCommand}" 
+                        IsEnabled="{Binding CanAddPayment}"
+                        Style="{StaticResource SecondaryButton}"
+                        Padding="12,0"
+                        FontSize="14" />
+                <Button Grid.Column="4"
+                        Text="Delete" 
+                        Command="{Binding DeleteEntirePaymentCommand}" 
+                        IsEnabled="{Binding CanDeletePayment}"
+                        Style="{StaticResource DeleteButton}"
+                        Padding="8,0"
+                        FontSize="12" />
+            </Grid>
+            
+            <ScrollView>
+                <VerticalStackLayout Padding="10" Spacing="8">
+                    <!-- Summary Section with Blue Border (matching Xamarin) -->
+                    <Border StrokeThickness="2"
+                            Stroke="{StaticResource PrimaryDark}"
+                            BackgroundColor="White"
+                            Padding="10"
+                            Margin="0,0,0,5">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="3" />
+                        </Border.StrokeShape>
+                        <VerticalStackLayout Spacing="5">
+                            <!-- Client Name -->
+                            <Label Text="{Binding ClientName}"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource PrimaryDark}" />
 
-                <!-- Invoice/Order Numbers -->
-                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="#F5F5F5">
-                    <VerticalStackLayout Spacing="8">
-                        <Label Text="{Binding DocNumbers}"
-                               FontSize="14" />
-                        <Label Text="{Binding CreditsDocNumbers}"
-                               FontSize="14"
-                               TextColor="Red"
-                               IsVisible="{Binding ShowCreditsDocNumbers}" />
-                    </VerticalStackLayout>
-                </Frame>
+                            <!-- Invoice/Order Numbers (matching Xamarin horizontal layout) -->
+                            <Grid ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="5">
+                                <Label Grid.Column="0" 
+                                       Text="Invoice #:" 
+                                       FontSize="14" 
+                                       FontAttributes="Bold" />
+                                <Label Grid.Column="1" 
+                                       Text="{Binding DocNumbers}"
+                                       FontSize="14" />
+                                <Label Grid.Column="2" 
+                                       Text="Credit:" 
+                                       FontSize="14" 
+                                       FontAttributes="Bold"
+                                       IsVisible="{Binding ShowCreditsDocNumbers}"
+                                       Margin="5,0,0,0" />
+                                <Label Grid.Column="3" 
+                                       Text="{Binding CreditsDocNumbers}"
+                                       FontSize="14"
+                                       TextColor="Red"
+                                       IsVisible="{Binding ShowCreditsDocNumbers}" />
+                            </Grid>
 
-                <!-- Amount Information -->
-                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
-                    <Label Grid.Row="0" Grid.Column="0" Text="Amount Owed:" FontSize="14" />
-                    <Label Grid.Row="0" Grid.Column="1" Text="{Binding AmountLabel}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" />
+                            <!-- Amount Information (matching Xamarin horizontal layout: Owed, Credit, Open) -->
+                            <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,*" ColumnSpacing="5">
+                                <Label Grid.Column="0" Text="Owed:" FontSize="14" FontAttributes="Bold" />
+                                <Label Grid.Column="1" Text="{Binding AmountLabel}" FontSize="14" />
+                                
+                                <Label Grid.Column="2" 
+                                       Text="Credit:" 
+                                       FontSize="14" 
+                                       FontAttributes="Bold"
+                                       IsVisible="{Binding ShowCreditAmount}"
+                                       Margin="5,0,0,0" />
+                                <Label Grid.Column="3" 
+                                       Text="{Binding CreditAmountLabel}" 
+                                       FontSize="14"
+                                       IsVisible="{Binding ShowCreditAmount}" />
+                                
+                                <Label Grid.Column="4" Text="Open:" FontSize="14" FontAttributes="Bold" Margin="5,0,0,0" />
+                                <Label Grid.Column="5" 
+                                       Text="{Binding OpenLabel}" 
+                                       FontSize="14"
+                                       TextColor="{Binding OpenLabelColor}" />
+                            </Grid>
 
-                    <Label Grid.Row="1" Grid.Column="0" Text="Total Paid:" FontSize="14" />
-                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding PaidLabel}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" />
+                            <!-- Discount (separate line if visible, matching Xamarin) -->
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="5" 
+                                  IsVisible="{Binding ShowDiscount}">
+                                <Label Grid.Column="0" Text="Discount:" FontSize="14" FontAttributes="Bold" />
+                                <Label Grid.Column="1" Text="{Binding DiscountTotal}" FontSize="14" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
 
-                    <Label Grid.Row="2" Grid.Column="0" Text="Still Open:" FontSize="14" />
-                    <Label Grid.Row="2" Grid.Column="1" Text="{Binding OpenLabel}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" />
+                <!-- Payment Components (matching Xamarin bordered container with blue border) -->
+                <Label Text="Payment Methods:" FontSize="16" FontAttributes="Bold" Margin="0,5,0,5" />
 
-                    <Label Grid.Row="3" Grid.Column="0" Text="Credit Amount:" FontSize="14" IsVisible="{Binding ShowCreditAmount}" />
-                    <Label Grid.Row="3" Grid.Column="1" Text="{Binding CreditAmountLabel}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" IsVisible="{Binding ShowCreditAmount}" />
 
-                    <Label Grid.Row="4" Grid.Column="0" Text="Discount:" FontSize="14" IsVisible="{Binding ShowDiscount}" />
-                    <Label Grid.Row="4" Grid.Column="1" Text="{Binding DiscountTotal}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" IsVisible="{Binding ShowDiscount}" />
-                </Grid>
+                    <CollectionView ItemsSource="{Binding PaymentComponents}"
+                                    SelectionMode="None">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PaymentComponentViewModel">
+                                <Frame Padding="10" 
+                                       Margin="0,2,0,10" 
+                                       HasShadow="False" 
+                                       BackgroundColor="{StaticResource White}">
+                                    <VerticalStackLayout Spacing="10">
+                                        <!-- Divider with "-Select Payment Method-" text (matching Xamarin) -->
+                                        <Grid ColumnDefinitions="*,Auto,*" Margin="5,15,5,0">
+                                            <BoxView Grid.Column="0" 
+                                                    HeightRequest="1" 
+                                                    Color="LightGray" 
+                                                    VerticalOptions="Center" />
+                                            <Label Grid.Column="1" 
+                                                   Text="-Select Payment Method-" 
+                                                   FontSize="12" 
+                                                   FontAttributes="Bold"
+                                                   TextColor="LightGray"
+                                                   Margin="5,0" />
+                                            <BoxView Grid.Column="2" 
+                                                    HeightRequest="1" 
+                                                    Color="LightGray" 
+                                                    VerticalOptions="Center" />
+                                        </Grid>
 
-                <!-- Payment Components -->
-                <Label Text="Payment Methods:" FontSize="16" FontAttributes="Bold" />
+                                        <!-- Payment Method Row -->
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="5">
+                                            <Label Grid.Column="0" 
+                                                   Text="Payment Method:" 
+                                                   FontSize="14" 
+                                                   VerticalOptions="Center" />
+                                            <Button Grid.Column="1"
+                                                    Text="{Binding PaymentMethodText}" 
+                                                    Clicked="EditPayment_Clicked"
+                                                    BackgroundColor="#F5F5F5"
+                                                    TextColor="Gray"
+                                                    FontSize="14"
+                                                    HeightRequest="50"
+                                                    CornerRadius="5" />
+                                        </Grid>
 
-                <CollectionView ItemsSource="{Binding PaymentComponents}"
-                                SelectionMode="None">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:PaymentComponentViewModel">
-                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
-                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
-                                    <Label Grid.Row="0" Grid.Column="0" Text="{Binding PaymentMethodText}" FontSize="14" FontAttributes="Bold" />
-                                    <Label Grid.Row="0" Grid.Column="1" Text="{Binding AmountText}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" />
+                                        <!-- Amount, Comments, Add Image Row (matching Xamarin 30%, 40%, 30% weights) -->
+                                        <Grid ColumnDefinitions="0.3*,0.4*,0.3*" ColumnSpacing="5">
+                                            <!-- Amount -->
+                                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                                <Label Text="Amount:" FontSize="14" />
+                                                <Button Text="{Binding AmountText}" 
+                                                        Clicked="EditPayment_Clicked"
+                                                        BackgroundColor="#F5F5F5"
+                                                        TextColor="Gray"
+                                                        FontSize="14"
+                                                        HeightRequest="40"
+                                                        CornerRadius="5" />
+                                            </VerticalStackLayout>
 
-                                    <Label Grid.Row="1" Grid.Column="0" Text="{Binding Ref, StringFormat='Ref: {0}'}" FontSize="12" IsVisible="{Binding ShowRef}" />
-                                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding PostedDate, StringFormat='Posted: {0:d}'}" FontSize="12" IsVisible="{Binding ShowPostedDate}" HorizontalOptions="End" />
+                                            <!-- Comments -->
+                                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                                <Label Text="Comments:" FontSize="14" />
+                                                <Button Text="{Binding Comments}" 
+                                                        Clicked="EditPayment_Clicked"
+                                                        BackgroundColor="#F5F5F5"
+                                                        TextColor="Gray"
+                                                        FontSize="14"
+                                                        HeightRequest="40"
+                                                        CornerRadius="5"
+                                                        HorizontalOptions="Fill" />
+                                            </VerticalStackLayout>
 
-                                    <Label Grid.Row="2" Grid.Column="0" Text="{Binding BankName, StringFormat='Bank: {0}'}" FontSize="12" IsVisible="{Binding ShowBank}" />
-                                    <Label Grid.Row="2" Grid.Column="1" Text="{Binding Comments, StringFormat='Comments: {0}'}" FontSize="12" HorizontalOptions="End" />
+                                            <!-- Add Image -->
+                                            <VerticalStackLayout Grid.Column="2" Spacing="2">
+                                                <Label Text="Add Image:" FontSize="14" />
+                                                <Frame BackgroundColor="#F5F5F5"
+                                                       BorderColor="LightGray"
+                                                       CornerRadius="5"
+                                                       Padding="5"
+                                                       HeightRequest="35"
+                                                       WidthRequest="60">
+                                                    <Frame.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnImageTapped" />
+                                                    </Frame.GestureRecognizers>
+                                                    <Image Source="{mi:MaterialOutlined Icon=AddPhotoAlternate, IconColor=Gray}"
+                                                           Aspect="AspectFit"
+                                                           HeightRequest="24"
+                                                           WidthRequest="24"
+                                                           HorizontalOptions="Center"
+                                                           VerticalOptions="Center" />
+                                                </Frame>
+                                            </VerticalStackLayout>
+                                        </Grid>
 
-                                    <HorizontalStackLayout Grid.Row="3" Grid.ColumnSpan="2" Spacing="8" HorizontalOptions="End">
-                                        <Button Text="Edit" Clicked="EditPayment_Clicked" 
-                                                Style="{StaticResource SecondaryButton}" />
-                                        <Button Text="Delete" Clicked="DeletePayment_Clicked" 
-                                                Style="{StaticResource DeleteButton}" />
-                                    </HorizontalStackLayout>
-                                </Grid>
-                            </Frame>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                                        <!-- Ref Number and Posted Date Row (matching Xamarin 60%, 40% weights) -->
+                                        <Grid ColumnDefinitions="0.6*,0.4*" 
+                                              ColumnSpacing="5"
+                                              IsVisible="{Binding ShowRef}">
+                                            <!-- Ref Number -->
+                                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                                <Label Text="Ref Number:" FontSize="14" />
+                                                <Button Text="{Binding Ref}" 
+                                                        Clicked="EditPayment_Clicked"
+                                                        BackgroundColor="#F5F5F5"
+                                                        TextColor="Gray"
+                                                        FontSize="14"
+                                                        HeightRequest="40"
+                                                        CornerRadius="5" />
+                                            </VerticalStackLayout>
 
-                <!-- Action Buttons -->
-                <Button Text="Add Payment" Command="{Binding AddPaymentCommand}" IsEnabled="{Binding CanAddPayment}" Style="{StaticResource PrimaryButton}" />
+                                            <!-- Posted Date -->
+                                            <VerticalStackLayout Grid.Column="1" Spacing="2" IsVisible="{Binding ShowPostedDate}">
+                                                <Label Text="Posted Date:" FontSize="14" />
+                                                <Button Text="{Binding PostedDate, StringFormat='{0:d}'}" 
+                                                        Clicked="EditPayment_Clicked"
+                                                        BackgroundColor="#F5F5F5"
+                                                        TextColor="Gray"
+                                                        FontSize="14"
+                                                        HeightRequest="40"
+                                                        CornerRadius="5" />
+                                            </VerticalStackLayout>
+                                        </Grid>
 
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                    <Button Grid.Column="0" Text="Save" Command="{Binding SavePaymentCommand}" IsEnabled="{Binding CanSavePayment}" Style="{StaticResource PrimaryButton}" />
-                    <Button Grid.Column="1" Text="Print" Command="{Binding PrintPaymentCommand}" IsEnabled="{Binding CanPrintPayment}" Style="{StaticResource SecondaryButton}" />
-                </Grid>
-            </VerticalStackLayout>
-        </ScrollView>
+                                        <!-- Bank Layout (if visible) -->
+                                        <Grid ColumnDefinitions="Auto,*" 
+                                              ColumnSpacing="5"
+                                              IsVisible="{Binding ShowBank}">
+                                            <Label Grid.Column="0" 
+                                                   Text="Bank:" 
+                                                   FontSize="14" 
+                                                   VerticalOptions="Center" />
+                                            <Button Grid.Column="1"
+                                                    Text="{Binding BankName}" 
+                                                    Clicked="EditPayment_Clicked"
+                                                    BackgroundColor="#F5F5F5"
+                                                    TextColor="Gray"
+                                                    FontSize="14"
+                                                    HeightRequest="40"
+                                                    CornerRadius="5" />
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </ScrollView>
+        </VerticalStackLayout>
     </ContentPage.Content>
 </ContentPage>
 
