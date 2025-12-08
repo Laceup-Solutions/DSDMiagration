@@ -19,9 +19,7 @@ public class ScannerService : IScannerService
     protected static EMDKWorker emdkWorker;
 
     protected static HoneywellWorker honeywellWorker;
-
-    protected static ChainwayWorker1D chainwayScanner1D;
-
+    
     protected CipherlabScanner cipherlabScanner;
 
     protected bool errorScanner = false;
@@ -35,10 +33,6 @@ public class ScannerService : IScannerService
         else if (Config.ScannerToUse == 7)
         {
             honeywellWorker = new HoneywellWorker();
-        }
-        else if (Config.ScannerToUse == 5 && chainwayScanner1D == null)
-        {
-            chainwayScanner1D = new ChainwayWorker1D(Platform.CurrentActivity);
         }
         else if (Config.ScannerToUse == 2 && emdkWorker == null)
         {
@@ -72,11 +66,6 @@ public class ScannerService : IScannerService
             honeywellWorker.HandleData += OnDecodeData;
             honeywellWorker.HandleDataQR += OnDecodeDataQR;
         }
-        else if (Config.ScannerToUse == 5 && chainwayScanner1D != null)
-        {
-            chainwayScanner1D.Initialize();
-            chainwayScanner1D.HandleData += OnDecodeData;
-        }
         else if (!errorScanner && Config.ScannerToUse == 2 && emdkWorker != null)
         {
             emdkWorker.InitScanner();
@@ -104,11 +93,6 @@ public class ScannerService : IScannerService
             honeywellWorker.HandleData -= OnDecodeData;
             honeywellWorker.HandleDataQR -= OnDecodeDataQR;
         }
-        else if (Config.ScannerToUse == 5 && chainwayScanner1D != null)
-        {
-            chainwayScanner1D.Pause();
-            chainwayScanner1D.HandleData -= OnDecodeData;
-        }
         else if (Config.ScannerToUse == 2 && emdkWorker != null)
         {
             emdkWorker.DeinitScanner();
@@ -128,8 +112,6 @@ public class ScannerService : IScannerService
             cipherlabScanner.IsWorking = false;
         else if (Config.ScannerToUse == 7 && honeywellWorker != null)
             honeywellWorker.IsWorking = false;
-        else if (Config.ScannerToUse == 5 && chainwayScanner1D != null)
-            chainwayScanner1D.IsWorking = false;
         else if (Config.ScannerToUse == 3 && socketScanner != null)
             socketScanner.Isworking = false;
         else if (Config.ScannerToUse == 2 && emdkWorker != null) emdkWorker.IsWorking = false;
@@ -141,8 +123,6 @@ public class ScannerService : IScannerService
             cipherlabScanner.IsWorking = true;
         else if (Config.ScannerToUse == 7 && honeywellWorker != null)
             honeywellWorker.IsWorking = true;
-        else if (Config.ScannerToUse == 5 && chainwayScanner1D != null)
-            chainwayScanner1D.IsWorking = true;
         else if (Config.ScannerToUse == 3 && socketScanner != null)
             socketScanner.Isworking = true;
         else if (Config.ScannerToUse == 2 && emdkWorker != null) emdkWorker.IsWorking = true;

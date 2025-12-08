@@ -16,8 +16,8 @@
 		<ApplicationId>com.laceupsolutions.laceupmigration</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.01</ApplicationDisplayVersion>
-		<ApplicationVersion>101</ApplicationVersion>
+		<ApplicationDisplayVersion>1.04</ApplicationDisplayVersion>
+		<ApplicationVersion>104</ApplicationVersion>
 		<WindowsPackageType>None</WindowsPackageType>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
@@ -48,9 +48,6 @@
 		<PackageReference Include="Honeywell.BarcodeReader"  Version="1.32.7.10" />
         <Reference Include="BarcodeAPI_V1_1_15">
             <HintPath>UtilDlls\BarcodeAPI_V1_1_15.dll</HintPath>
-        </Reference>
-        <Reference Include="DeviceAPI">
-            <HintPath>UtilDlls\DeviceAPI.dll</HintPath>
         </Reference>
         <Reference Include="Symbol.XamarinEMDK">
             <HintPath>UtilDlls\Symbol.XamarinEMDK.dll</HintPath>
