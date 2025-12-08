@@ -161,10 +161,24 @@
             </Frame>
 
             <!-- Search and Sort -->
-            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="16,8">
-                <SearchBar Grid.Column="0"
-                           Text="{Binding SearchQuery}"
-                           Placeholder="Search products..." />
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Padding="16,8">
+                <Frame Grid.Column="0" Padding="0" HasShadow="False" BorderColor="{StaticResource Gray300}" BackgroundColor="{StaticResource White}">
+                    <Grid ColumnDefinitions="*,Auto" Padding="8,0">
+                        <SearchBar Grid.Column="0"
+                                   Text="{Binding SearchQuery}"
+                                   Placeholder="Search products..."
+                                   BackgroundColor="Transparent"
+                                   Margin="0" />
+                        <ImageButton Grid.Column="1"
+                                     Source="{mi:MaterialOutlined Icon=QrCode, IconColor=Black}"
+                                     WidthRequest="40"
+                                     HeightRequest="40"
+                                     BackgroundColor="Transparent"
+                                     Command="{Binding ScanCommand}"
+                                     VerticalOptions="Center"
+                                     HorizontalOptions="Center" />
+                    </Grid>
+                </Frame>
                 <Button Grid.Column="1"
                         Text="{Binding SortByText}"
                         Command="{Binding SortCommand}"

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Services;
+using LaceupMigration.Business.Interfaces;
 using Microsoft.Maui.Graphics;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,7 @@ namespace LaceupMigration.ViewModels
         private readonly ILaceupAppService _appService;
         private readonly IScannerService _scannerService;
         private readonly AdvancedOptionsService _advancedOptionsService;
+        private readonly ICameraBarcodeScannerService _cameraBarcodeScanner;
         private Order? _order;
         private bool _initialized;
         private int? _categoryId;
@@ -31,6 +33,7 @@ namespace LaceupMigration.ViewModels
         private string? _comingFrom; // "Credit" or "PreviouslyOrdered"
         private string _searchCriteria = string.Empty;
         private bool _isCreating = false;
+        private bool _isScanning = false;
         private bool _atLeastOneImage = false;
         private ViewTypes _currentViewType = ViewTypes.Normal;
         private bool _onlyReturn = false;
@@ -49,11 +52,13 @@ namespace LaceupMigration.ViewModels
         private string _viewTypeIcon = "catalog_two";
 
         public ProductCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, AdvancedOptionsService advancedOptionsService)
+        public ProductCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner)
         {
             _dialogService = dialogService;
             _appService = appService;
             _scannerService = scannerService;
             _advancedOptionsService = advancedOptionsService;
+            _cameraBarcodeScanner = cameraBarcodeScanner;
             _currentViewType = (ViewTypes)Config.ProductCatalogViewType;
             UpdateViewTypeIcon();
         }
@@ -364,19 +369,30 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         public async Task ScanAsync()
         {
-            // try
-            // {
-            //     var scanResult = await _scannerService.ScanAsync();
-            //     if (string.IsNullOrEmpty(scanResult))
-            //         return;
-            //
-            //     await ScannerDoTheThingAsync(scanResult);
-            // }
-            // catch (Exception ex)
-            // {
-            //     Logger.CreateLog($"Error scanning: {ex.Message}");
-            //     await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
-            // }
+            if (_isScanning || _order == null)
+                return;
+
+            try
+            {
+                _isScanning = true;
+                var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
+                if (string.IsNullOrEmpty(scanResult))
+                {
+                    _isScanning = false;
+                    return;
+                }
+
+                await ScannerDoTheThingAsync(scanResult);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog($"Error scanning: {ex.Message}");
+                await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
+            }
+            finally
+            {
+                _isScanning = false;
+            }
         }
 
         private async Task ScannerDoTheThingAsync(string data)

@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
 using LaceupMigration.Services;
+using LaceupMigration.Business.Interfaces;
 using Microsoft.Maui.ApplicationModel;
 using System;
 using System.Collections.ObjectModel;
@@ -16,6 +17,7 @@ namespace LaceupMigration.ViewModels
         private readonly ILaceupAppService _appService;
         private readonly IScannerService _scannerService;
         private readonly AdvancedOptionsService _advancedOptionsService;
+        private readonly ICameraBarcodeScannerService _cameraBarcodeScanner;
         private Client? _client;
         private Order? _order;
         private bool _initialized;
@@ -54,11 +56,13 @@ namespace LaceupMigration.ViewModels
         private string _title = "Product Catalog";
 
         public FullCategoryPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, AdvancedOptionsService advancedOptionsService)
+        public FullCategoryPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner)
         {
             _dialogService = dialogService;
             _appService = appService;
             _scannerService = scannerService;
             _advancedOptionsService = advancedOptionsService;
+            _cameraBarcodeScanner = cameraBarcodeScanner;
         }
 
         public async Task InitializeAsync(int? clientId = null, int? orderId = null, int? categoryId = null, 
@@ -322,6 +326,54 @@ namespace LaceupMigration.ViewModels
 
         partial void OnSearchQueryChanged(string value)
         {
+            // When search is cleared, also clear the stored product search and comingFromSearch flag
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                _productSearch = null;
+                _comingFromSearch = false;
+                
+                // If we were showing products from a search and have an orderId, switch back to categories
+                if (ShowProducts && _orderId.HasValue && !_categoryId.HasValue)
+                {
+                    ShowProducts = false;
+                    ShowCategories = true;
+                    SearchByProduct = false;
+                    SearchByCategory = true;
+                    Title = "Categories";
+                    LoadCategories();
+                    return;
+                }
+                
+                // If showing products without orderId or with categoryId, reload all products (clear the search filter)
+                if (ShowProducts)
+                {
+                    // Reset search mode to category if we have an orderId
+                    if (_orderId.HasValue && !_categoryId.HasValue)
+                    {
+                        // This case is handled above, but just in case
+                        ShowProducts = false;
+                        ShowCategories = true;
+                        SearchByProduct = false;
+                        SearchByCategory = true;
+                        Title = "Categories";
+                        LoadCategories();
+                    }
+                    else
+                    {
+                        // Reload products without search filter
+                        LoadProducts();
+                    }
+                    return;
+                }
+                
+                // If we're showing categories, just reload them
+                if (ShowCategories)
+                {
+                    LoadCategories();
+                    return;
+                }
+            }
+            
             // Match Xamarin's SearchBar_QueryTextChange behavior
             if (ShowProducts)
             {
@@ -563,7 +615,9 @@ namespace LaceupMigration.ViewModels
             else if (_client != null)
             {
                 // No order but have client - use GetProductListForClient (matches Xamarin behavior)
-                products = Product.GetProductListForClient(_client, _categoryId ?? 0, _productSearch ?? string.Empty).ToList();
+                // Only use _productSearch if SearchQuery is empty (for initial load), otherwise use SearchQuery
+                var searchForClient = !string.IsNullOrWhiteSpace(SearchQuery) ? SearchQuery : (_productSearch ?? string.Empty);
+                products = Product.GetProductListForClient(_client, _categoryId ?? 0, searchForClient).ToList();
             }
             else
             {
@@ -579,6 +633,8 @@ namespace LaceupMigration.ViewModels
             }
 
             // Apply search filter if provided (from initialization or current search query)
+            // Priority: Use SearchQuery if set, otherwise use _productSearch (for initial load with search parameter)
+            // When user clears SearchQuery, _productSearch is also cleared in OnSearchQueryChanged
             var searchTerm = !string.IsNullOrWhiteSpace(SearchQuery) ? SearchQuery : _productSearch;
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -730,33 +786,66 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task ScanAsync()
         {
-            // try
-            // {
-            //     var scanResult = await _scannerService.ScanAsync();
-            //     if (string.IsNullOrEmpty(scanResult))
-            //         return;
-            //
-            //     // Find product by barcode
-            //     var product = Product.Products.FirstOrDefault(p =>
-            //         p.Barcode == scanResult ||
-            //         p.Barcode2 == scanResult ||
-            //         p.Barcode3 == scanResult);
-            //
-            //     if (product != null)
-            //     {
-            //         // TODO: Navigate to product details or add to order
-            //         await _dialogService.ShowAlertAsync($"Found product: {product.Name}", "Info");
-            //     }
-            //     else
-            //     {
-            //         await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
-            //     }
-            // }
-            // catch (Exception ex)
-            // {
-            //     Logger.CreateLog($"Error scanning: {ex.Message}");
-            //     await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
-            // }
+            try
+            {
+                var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
+                if (string.IsNullOrEmpty(scanResult))
+                    return;
+
+                // Find product by barcode (check UPC, SKU, Code)
+                var product = Product.Products.FirstOrDefault(p =>
+                    (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
+
+                if (product != null)
+                {
+                    // Set search query to the barcode to filter products
+                    SearchQuery = scanResult;
+                    
+                    // Switch to product search mode
+                    SearchByProduct = true;
+                    SearchByCategory = false;
+                    
+                    // Reload products with the barcode filter
+                    LoadProducts();
+                    
+                    // If we have an order, navigate to add item page
+                    if (_order != null)
+                    {
+                        var route = $"additem?orderId={_order.OrderId}&productId={product.ProductId}";
+                        if (_asCreditItem)
+                            route += "&asCreditItem=1";
+                        if (_asReturnItem)
+                            route += "&asReturnItem=1";
+                        if (_consignmentCounting)
+                            route += "&consignmentCounting=1";
+                        await Shell.Current.GoToAsync(route);
+                    }
+                    else
+                    {
+                        // Just show the product in the list
+                        await _dialogService.ShowAlertAsync($"Found product: {product.Name}", "Barcode Scan");
+                    }
+                }
+                else
+                {
+                    // Product not found, but set search query anyway
+                    // Ensure we're showing products view (not categories)
+                    ShowProducts = true;
+                    ShowCategories = false;
+                    SearchQuery = scanResult;
+                    SearchByProduct = true;
+                    SearchByCategory = false;
+                    LoadProducts();
+                    await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog($"Error scanning barcode: {ex.Message}");
+                await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
+            }
         }
 
         [RelayCommand]

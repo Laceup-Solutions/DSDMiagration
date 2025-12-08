@@ -5,6 +5,8 @@ using MauiIcons.Material.Outlined;
 using Microsoft.Extensions.Logging;
 using Maui.PDFView;
 using Microsoft.Maui.Controls.Compatibility.Hosting;
+using ZXing.Net.Maui;
+using ZXing.Net.Maui.Controls;
 
 namespace LaceupMigration
 {
@@ -25,6 +27,7 @@ namespace LaceupMigration
 
 					handlers.AddCompatibilityRenderers();
 				})
+				.UseBarcodeReader()
                 .ConfigureFonts(fonts =>
                 {
 					fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -41,9 +44,12 @@ namespace LaceupMigration
             builder.Services.AddSingleton<IInterfaceHelper, InterfaceHelper>();
             builder.Services.AddSingleton<IScannerService, ScannerService>();
 
-            // Register DatePickerService for platform-specific date picker
+            // Register CameraBarcodeScannerService for platform-specific camera scanning
 #if ANDROID
+            builder.Services.AddSingleton<LaceupMigration.Business.Interfaces.ICameraBarcodeScannerService, Platforms.Android.Services.CameraBarcodeScannerService>();
             builder.Services.AddSingleton<LaceupMigration.Business.Interfaces.IDatePickerService, Platforms.Android.DatePickerService>();
+#elif IOS
+            builder.Services.AddSingleton<LaceupMigration.Business.Interfaces.ICameraBarcodeScannerService, Platforms.iOS.Services.CameraBarcodeScannerService>();
 #endif
 
             // Register DialogService - use same instance for both interface and concrete type
