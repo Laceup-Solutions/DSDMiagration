@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              x:Class="LaceupMigration.Views.ProductCatalogPage"
              x:DataType="vm:ProductCatalogPageViewModel"
              Shell.NavBarIsVisible="True"
@@ -12,11 +13,24 @@
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,*">
-            <!-- Search Bar -->
-            <SearchBar Grid.Row="0"
-                       Text="{Binding SearchQuery}"
-                       Placeholder="Search products..."
-                       Margin="8,4" />
+            <!-- Search Bar with Barcode Icon -->
+            <Frame Grid.Row="0" Margin="8,4" Padding="0" HasShadow="False" BorderColor="{StaticResource Gray300}" BackgroundColor="{StaticResource White}">
+                <Grid ColumnDefinitions="*,Auto" Padding="8,0">
+                    <SearchBar Grid.Column="0"
+                               Text="{Binding SearchQuery}"
+                               Placeholder="Search products..."
+                               BackgroundColor="Transparent"
+                               Margin="0" />
+                    <ImageButton Grid.Column="1"
+                                 Source="{mi:MaterialOutlined Icon=QrCode, IconColor=Black}"
+                                 WidthRequest="40"
+                                 HeightRequest="40"
+                                 BackgroundColor="Transparent"
+                                 Command="{Binding ScanCommand}"
+                                 VerticalOptions="Center"
+                                 HorizontalOptions="Center" />
+                </Grid>
+            </Frame>
 
             <!-- Product List -->
             <CollectionView Grid.Row="1"

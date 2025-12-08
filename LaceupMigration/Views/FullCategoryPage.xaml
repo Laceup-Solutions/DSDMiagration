@@ -27,8 +27,7 @@
                                  WidthRequest="40"
                                  HeightRequest="40"
                                  BackgroundColor="Transparent"
-                                 IsEnabled="False"
-                                 Opacity="0.6"
+                                 Command="{Binding ScanCommand}"
                                  VerticalOptions="Center"
                                  HorizontalOptions="Center" />
                 </Grid>
