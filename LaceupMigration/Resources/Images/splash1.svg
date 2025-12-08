@@ -6,10 +6,10 @@
   <defs>
     <style>
       .cls-1 {
-      fill: #534d56;
+        fill: #534d56;
       }
       .cls-2 {
-      fill: #0496ff;
+        fill: #0496ff;
       }
     </style>
   </defs>
@@ -34,13 +34,13 @@
   <!-- REPLACE the bottom text paths with a single text element -->
   <g>
     <!-- Adjust the x, y, font-size, etc. as you prefer -->
-    <text
-            x="70%"
-            y="90%"
-            class="cls-1"
-            text-anchor="middle"
-            font-size="65"
-            font-family="Verdana, sans-serif"
+    <text 
+      x="70%" 
+      y="90%" 
+      class="cls-1" 
+      text-anchor="middle" 
+      font-size="65" 
+      font-family="Verdana, sans-serif"
     >
       Solutions
     </text>

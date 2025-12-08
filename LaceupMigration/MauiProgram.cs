@@ -4,6 +4,7 @@ using LaceupMigration.Views;
 using MauiIcons.Material.Outlined;
 using Microsoft.Extensions.Logging;
 using Maui.PDFView;
+using Microsoft.Maui.Controls.Compatibility.Hosting;
 using ZXing.Net.Maui;
 using ZXing.Net.Maui.Controls;
 
@@ -19,6 +20,13 @@ namespace LaceupMigration
 				.UseMauiCommunityToolkit()
 				.UseMauiPdfView()
 				.UseMaterialOutlinedMauiIcons()
+				.UseMauiCompatibility()
+				.ConfigureMauiHandlers(handlers =>
+				{
+					handlers.AddHandler(typeof(Shell), typeof(CustomTabBarRenderer));
+
+					handlers.AddCompatibilityRenderers();
+				})
 				.UseBarcodeReader()
                 .ConfigureFonts(fonts =>
                 {
@@ -50,6 +58,7 @@ namespace LaceupMigration
             builder.Services.AddSingleton(dialogService);
 
 			builder.Services.AddSingleton<Services.ILaceupAppService, Services.LaceupAppService>();
+			builder.Services.AddSingleton<Services.AdvancedOptionsService>();
 
 			// Register AppShell
 			builder.Services.AddSingleton<AppShell>();

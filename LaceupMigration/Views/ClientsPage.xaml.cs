@@ -8,6 +8,8 @@ namespace LaceupMigration
 	{
 		private readonly ClientsPageViewModel _viewModel;
 		private readonly MainPageViewModel _mainViewModel;
+		
+		public ClientsPageViewModel ViewModel => _viewModel;
 
 		public ClientsPage()
 		{

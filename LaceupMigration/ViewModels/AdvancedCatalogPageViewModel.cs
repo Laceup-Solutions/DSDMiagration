@@ -20,6 +20,7 @@ namespace LaceupMigration.ViewModels
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
         private readonly IScannerService _scannerService;
+        private readonly AdvancedOptionsService _advancedOptionsService;
         private readonly ICameraBarcodeScannerService _cameraBarcodeScanner;
         private Order? _order;
         private Category? _category;
@@ -164,11 +165,13 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showPrices = true;
 
+        public AdvancedCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, AdvancedOptionsService advancedOptionsService)
         public AdvancedCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner)
         {
             _dialogService = dialogService;
             _appService = appService;
             _scannerService = scannerService;
+            _advancedOptionsService = advancedOptionsService;
             _cameraBarcodeScanner = cameraBarcodeScanner;
             ShowPrices = !Config.HidePriceInTransaction;
             ShowTotals = !Config.HidePriceInTransaction;
@@ -1838,41 +1841,7 @@ namespace LaceupMigration.ViewModels
 
         private async Task ShowAdvancedOptionsAsync()
         {
-            var options = new List<string>
-            {
-                "Update settings",
-                "Send log file",
-                "Export data",
-                "Remote control"
-            };
-
-            if (Config.GoToMain)
-            {
-                options.Add("Go to main activity");
-            }
-
-            var choice = await _dialogService.ShowActionSheetAsync("Advanced options", "Cancel", null, options.ToArray());
-            switch (choice)
-            {
-                case "Update settings":
-                    await _appService.UpdateSalesmanSettingsAsync();
-                    await _dialogService.ShowAlertAsync("Settings updated.", "Info");
-                    break;
-                case "Send log file":
-                    await _appService.SendLogAsync();
-                    await _dialogService.ShowAlertAsync("Log sent.", "Info");
-                    break;
-                case "Export data":
-                    await _appService.ExportDataAsync();
-                    await _dialogService.ShowAlertAsync("Data exported.", "Info");
-                    break;
-                case "Remote control":
-                    await _appService.RemoteControlAsync();
-                    break;
-                case "Go to main activity":
-                    await _appService.GoBackToMainAsync();
-                    break;
-            }
+            await _advancedOptionsService.ShowAdvancedOptionsAsync();
         }
 
         [RelayCommand]

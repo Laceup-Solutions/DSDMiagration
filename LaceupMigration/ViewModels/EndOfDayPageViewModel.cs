@@ -15,6 +15,7 @@ namespace LaceupMigration.ViewModels
     {
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
+        private readonly AdvancedOptionsService _advancedOptionsService;
         
         // State tracking (matches Xamarin static variables)
         private bool _routeReturns = false;
@@ -36,10 +37,11 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private bool _showSetParLevel;
         [ObservableProperty] private bool _showClockOut;
 
-        public EndOfDayPageViewModel(DialogService dialogService, ILaceupAppService appService)
+        public EndOfDayPageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService)
         {
             _dialogService = dialogService;
             _appService = appService;
+            _advancedOptionsService = advancedOptionsService;
         }
 
         public async Task OnAppearingAsync()
@@ -588,9 +590,7 @@ namespace LaceupMigration.ViewModels
             // Final confirmation
             var finalConfirmed = await _dialogService.ShowConfirmationAsync(
                 "Alert",
-                "Sure would like to transmit all?",
-                "Yes",
-                "No");
+                "Are you sure that you would like to transmit all the information?");
             
             if (!finalConfirmed)
                 return;
@@ -753,7 +753,7 @@ namespace LaceupMigration.ViewModels
                 "Advanced Options"
             };
 
-            var choice = await Application.Current!.MainPage!.DisplayActionSheet("Menu", "Cancel", null, menuItems.ToArray());
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, menuItems.ToArray());
 
             switch (choice)
             {
@@ -844,40 +844,7 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task AdvancedLog()
         {
-            var options = new[] { "Update settings", "Send log file", "Export data", "Remote control", "Setup printer" };
-            if (Config.GoToMain)
-            {
-                var list = options.ToList();
-                list.Add("Go to main activity");
-                options = list.ToArray();
-            }
-
-            var choice = await Application.Current!.MainPage!.DisplayActionSheet("Advanced options", "Cancel", null, options);
-            
-            switch (choice)
-            {
-                case "Update settings":
-                    await _appService.UpdateSalesmanSettingsAsync();
-                    await _dialogService.ShowAlertAsync("Settings updated.", "Info", "OK");
-                    break;
-                case "Send log file":
-                    await _appService.SendLogAsync();
-                    await _dialogService.ShowAlertAsync("Log sent.", "Info", "OK");
-                    break;
-                case "Export data":
-                    await _appService.ExportDataAsync();
-                    await _dialogService.ShowAlertAsync("Data exported.", "Info", "OK");
-                    break;
-                case "Remote control":
-                    await _appService.RemoteControlAsync();
-                    break;
-                case "Setup printer":
-                    // TODO: Implement printer setup
-                    break;
-                case "Go to main activity":
-                    await _appService.GoBackToMainAsync();
-                    break;
-            }
+            await _advancedOptionsService.ShowAdvancedOptionsAsync();
         }
 
         private async Task SendReportsByEmailAsync()

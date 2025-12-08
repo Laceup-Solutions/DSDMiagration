@@ -24,6 +24,7 @@ namespace LaceupMigration.ViewModels
 
 		private readonly DialogService _dialogService;
 		private readonly ILaceupAppService _appService;
+		private readonly AdvancedOptionsService _advancedOptionsService;
 
 		private readonly List<ClientEntry> _allEntries = new();
 		private CancellationTokenSource? _searchDebounceTokenSource;
@@ -94,10 +95,11 @@ namespace LaceupMigration.ViewModels
 
 		public bool HasInfoMessage => !string.IsNullOrWhiteSpace(InfoMessage);
 
-		public ClientsPageViewModel(DialogService dialogService, ILaceupAppService appService)
+		public ClientsPageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService)
 		{
 			_dialogService = dialogService;
 			_appService = appService;
+			_advancedOptionsService = advancedOptionsService;
 
 			_displayMode = RouteEx.Routes.Count > 0 ? DisplayMode.Route : DisplayMode.All;
 			UpdateViewButtonText();
@@ -132,12 +134,12 @@ namespace LaceupMigration.ViewModels
 			if (DataAccess.MustEndOfDay())
 			{
 				await _dialogService.ShowAlertAsync("End of Day process is required before continuing.", "Warning");
-				RestrictToOpenClients();
+				ClearClientListAndLock();
 			}
 			else if (!DataAccess.CanUseApplication())
 			{
 				await _dialogService.ShowAlertAsync("You must sync data before continuing.", "Warning");
-				RestrictToOpenClients();
+				ClearClientListAndLock();
 			}
 		}
 
@@ -224,46 +226,7 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task AdvancedOptionsAsync()
 		{
-			var options = new List<string>
-			{
-				"Update settings",
-				"Send log file",
-				"Export data",
-				"Remote control",
-				"Setup printer"
-			};
-
-			if (Config.GoToMain)
-			{
-				options.Add("Go to main activity");
-			}
-
-			var choice = await _dialogService.ShowActionSheetAsync("Advanced options", "", "Cancel", options.ToArray());
-
-			switch (choice)
-			{
-				case "Update settings":
-					await _appService.UpdateSalesmanSettingsAsync();
-					await _dialogService.ShowAlertAsync("Settings updated.", "Info");
-					break;
-				case "Send log file":
-					await _appService.SendLogAsync();
-					await _dialogService.ShowAlertAsync("Log sent.", "Info");
-					break;
-				case "Export data":
-					await _appService.ExportDataAsync();
-					await _dialogService.ShowAlertAsync("Data exported.", "Info");
-					break;
-				case "Remote control":
-					await _appService.RemoteControlAsync();
-					break;
-				case "Setup printer":
-					await _dialogService.ShowAlertAsync("Printer setup is not yet implemented in the MAUI version.", "Info");
-					break;
-				case "Go to main activity":
-					await _appService.GoBackToMainAsync();
-					break;
-			}
+			await _advancedOptionsService.ShowAdvancedOptionsAsync();
 		}
 
 		partial void OnSearchQueryChanged(string value)
@@ -297,6 +260,27 @@ namespace LaceupMigration.ViewModels
 		{
 			ShowGroupedList = value;
 			ShowFlatList = !value;
+		}
+
+		partial void OnIsEditingChanged(bool value)
+		{
+			// Only update if we have items to avoid unnecessary work
+			if (Clients.Count == 0 && ClientGroups.Count == 0)
+				return;
+
+			// Batch update editing state for better performance
+			foreach (var item in Clients)
+			{
+				item.IsEditing = value;
+			}
+
+			foreach (var group in ClientGroups)
+			{
+				foreach (var item in group.Clients)
+				{
+					item.IsEditing = value;
+				}
+			}
 		}
 
 		partial void OnInfoMessageChanged(string value)
@@ -334,7 +318,7 @@ namespace LaceupMigration.ViewModels
 						_messageDisplayed = true;
 					}
 
-					RestrictToOpenClients();
+					ClearClientListAndLock();
 					return;
 				}
 
@@ -468,16 +452,36 @@ namespace LaceupMigration.ViewModels
 		private void ApplyFilter()
 		{
 			var query = SearchQuery?.Trim() ?? string.Empty;
+			
+			// Fast path for empty query
+			if (string.IsNullOrWhiteSpace(query))
+			{
+				UpdateCollectionFromEntries(_allEntries);
+				return;
+			}
+
 			var comparer = StringComparison.InvariantCultureIgnoreCase;
+			var queryLower = query.ToLowerInvariant();
 
-			// Filter entries (done off UI thread)
-			var filteredEntries = string.IsNullOrWhiteSpace(query)
-				? _allEntries.ToList()
-				: _allEntries.Where(entry =>
-						(entry.Client?.ClientName?.Contains(query, comparer) ?? false) ||
-						(entry.Client?.ShipToAddress?.Contains(query, comparer) ?? false))
-					.ToList();
+			// Optimized filtering with pre-computed lower case comparison
+			var filteredEntries = _allEntries.Where(entry =>
+			{
+				if (entry.Client == null)
+					return false;
+				
+				var name = entry.Client.ClientName;
+				var address = entry.Client.ShipToAddress;
+				
+				return (name != null && name.Contains(queryLower, comparer)) ||
+				       (address != null && address.Contains(queryLower, comparer));
+			}).ToList();
 
+			UpdateCollectionFromEntries(filteredEntries);
+		}
+
+		private void UpdateCollectionFromEntries(List<ClientEntry> filteredEntries)
+		{
+			var query = SearchQuery?.Trim() ?? string.Empty;
 			var shouldGroup = !string.IsNullOrEmpty(Config.GroupClientsByCat) && _displayMode == DisplayMode.All && Client.Clients.Count > 0;
 			UseGrouping = shouldGroup;
 
@@ -528,22 +532,26 @@ namespace LaceupMigration.ViewModels
 			// Update UI on main thread with pre-built view models
 			MainThread.BeginInvokeOnMainThread(() =>
 			{
-				Clients.Clear();
-				ClientGroups.Clear();
-
+				// Batch collection updates for better performance
 				if (shouldGroup && groupViewModels != null)
 				{
+					ClientGroups.Clear();
+					// Use AddRange if available, otherwise add in batch
 					foreach (var groupVm in groupViewModels)
 					{
 						ClientGroups.Add(groupVm);
 					}
+					Clients.Clear();
 				}
 				else if (flatViewModels != null)
 				{
+					Clients.Clear();
+					// Batch add items for better performance
 					foreach (var vm in flatViewModels)
 					{
 						Clients.Add(vm);
 					}
+					ClientGroups.Clear();
 				}
 
 				UpdateSearchVisibility();
@@ -598,6 +606,24 @@ namespace LaceupMigration.ViewModels
 			InfoMessage = "Pending load must be accepted before continuing.";
 		}
 
+		public void ClearClientListAndLock()
+		{
+			// Clear client list completely and lock all interactions - matches EOD page behavior
+			_allEntries.Clear();
+			Clients.Clear();
+			ClientGroups.Clear();
+			UseGrouping = false;
+			ShowButtonsLayout = false;
+			ShowMapRouteButton = false;
+			ShowSelectDayButton = false;
+			ShowViewButton = false;
+			ShowEditButton = false;
+			ShowSearchButton = false;
+			SearchButtonEnabled = false;
+			IsSearchVisible = false;
+			InfoMessage = "You must sync data before continuing.";
+		}
+
 		private void UpdateButtons()
 		{
 			var hasRoutes = RouteEx.Routes.Count > 0;
@@ -634,6 +660,10 @@ namespace LaceupMigration.ViewModels
 
 		private void UpdateEditingState()
 		{
+			// Only update if editing state changed and we have items
+			if (Clients.Count == 0 && ClientGroups.Count == 0)
+				return;
+
 			foreach (var item in Clients)
 			{
 				item.IsEditing = IsEditing;
@@ -687,17 +717,26 @@ namespace LaceupMigration.ViewModels
 	{
 		private readonly ClientEntry _entry;
 		private readonly CultureInfo _culture = CultureInfo.CurrentCulture;
+		
+		// Cached properties for performance
+		private readonly string _name;
+		private readonly string _address;
+		private readonly bool _showAddress;
+		private readonly string _balance;
+		private readonly Color _nameColor;
+		private readonly Color _addressColor;
 
 		public Client Client => _entry.Client;
-		public string Name => Client?.ClientName ?? string.Empty;
-		public string Address => Client?.ShipToAddress?.Replace("|", " ") ?? string.Empty;
-		public bool ShowAddress => Config.ShowAddrInClientList && !string.IsNullOrEmpty(Address);
+		public string Name => _name;
+		public string Address => _address;
+		public bool ShowAddress => _showAddress;
 		public string StopText => _entry.Stop > 0 ? _entry.Stop.ToString(_culture) : string.Empty;
 		public bool ShowStop => !string.IsNullOrEmpty(StopText);
 		public bool ShowCollectBadge => Client?.ClientBalanceInDevice > 0;
 		public bool ShowPaymentBadge { get; }
 		public bool ShowVisitBadge { get; }
 		public bool HasOverdueInvoices { get; }
+		public string Balance => _balance;
 
 		[ObservableProperty]
 		private bool _isEditing;
@@ -706,15 +745,13 @@ namespace LaceupMigration.ViewModels
 		{
 			get
 			{
-				if (HasOverdueInvoices)
-					return Colors.Red;
 				if (IsEditing)
 					return Color.FromArgb("#1976D2");
-				return Colors.Black;
+				return _nameColor;
 			}
 		}
 
-		public Color AddressColor => IsEditing ? Color.FromArgb("#1976D2") : Color.FromArgb("#4A4A4A");
+		public Color AddressColor => IsEditing ? Color.FromArgb("#1976D2") : _addressColor;
 
 		public Color StopBadgeBackground => _entry.Type switch
 		{
@@ -731,7 +768,15 @@ namespace LaceupMigration.ViewModels
 		{
 			_entry = entry;
 
-			if (Config.CannotOrderWithUnpaidInvoices)
+			// Cache expensive string operations
+			_name = Client?.ClientName ?? string.Empty;
+			_address = Client?.ShipToAddress?.Replace("|", " ") ?? string.Empty;
+			_showAddress = Config.ShowAddrInClientList && !string.IsNullOrEmpty(_address);
+			_balance = Client?.ClientBalanceInDevice.ToCustomString() ?? 0.0.ToCustomString();
+
+			// Pre-calculate HasOverdueInvoices for color caching
+			bool hasOverdue = false;
+			if (Config.CannotOrderWithUnpaidInvoices && Client != null)
 			{
 				var invoices = (Invoice.OpenInvoices ?? new List<Invoice>())
 					.Where(x => x.Client.ClientId == Client.ClientId)
@@ -739,11 +784,16 @@ namespace LaceupMigration.ViewModels
 
 				if (invoices.Count > 0)
 				{
-					HasOverdueInvoices = invoices.Any(x => x.DueDate.AddDays(90) < DateTime.Now.Date && x.Balance > 0);
+					hasOverdue = invoices.Any(x => x.DueDate.AddDays(90) < DateTime.Now.Date && x.Balance > 0);
 				}
 			}
+			HasOverdueInvoices = hasOverdue;
 
-			if (Config.TimeSheetCustomization && Session.sessionDetails != null)
+			// Cache colors based on overdue status
+			_nameColor = hasOverdue ? Colors.Red : Colors.Black;
+			_addressColor = Color.FromArgb("#4A4A4A");
+
+			if (Config.TimeSheetCustomization && Session.sessionDetails != null && Client != null)
 			{
 				ShowVisitBadge = Session.sessionDetails.Any(x =>
 					x.clientId == Client.ClientId &&
@@ -752,7 +802,7 @@ namespace LaceupMigration.ViewModels
 					x.endTime == DateTime.MinValue);
 			}
 
-			if (Config.ViewGoals)
+			if (Config.ViewGoals && Client != null)
 			{
 				var goals = (GoalProgressDTO.List ?? new List<GoalProgressDTO>())
 					.Where(x => x.Criteria == GoalCriteria.Payment && x.PendingDays > 0)

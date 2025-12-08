@@ -21,97 +21,71 @@
             <Setter Property="MinimumHeightRequest" Value="20" />
         </Style>
 
-        <DataTemplate x:Key="ClientItemTemplate" x:DataType="vm:ClientListItemViewModel">
-            <Frame Margin="0,4"
-                   Padding="12"
-                   HasShadow="False"
-                   InputTransparent="True"
-                   BorderColor="#E0E0E0"
-                   CornerRadius="10">
-                <Grid ColumnDefinitions="Auto,*"
-                      RowDefinitions="Auto,Auto,Auto"
-                      ColumnSpacing="12"
-                      InputTransparent="True">
-                    <Border StrokeThickness="0"
-                            BackgroundColor="{Binding StopBadgeBackground}"
-                            IsVisible="{Binding ShowStop}"
-                            WidthRequest="36"
-                            HeightRequest="36"
-                            HorizontalOptions="Center"
-                            VerticalOptions="Center">
-                        <Label Text="{Binding StopText}"
-                               TextColor="{Binding StopBadgeTextColor}"
-                               FontAttributes="Bold"
-                               FontSize="14"
-                               HorizontalOptions="Center"
-                               VerticalOptions="Center" />
-                    </Border>
+        <DataTemplate x:Key="ClientItemTemplate" x:DataType="vm:ClientListItemViewModel" >
+            <Grid RowDefinitions="24,20,0.5"
+                  ColumnDefinitions="*,Auto"
+                  Padding="12,8,12,0"
+                  ColumnSpacing="12"
+                  HeightRequest="52.5">
+                <Label Grid.Row="0"
+                       Grid.Column="0"
+                       Text="{Binding Name}"
+                       FontSize="14"
+                       FontAttributes="Bold"
+                       TextColor="{Binding NameColor}"
+                       VerticalOptions="Start" />
 
-                    <VerticalStackLayout Grid.Column="1"
-                                          Spacing="2">
-                        <Label Text="{Binding Name}"
-                               FontSize="16"
-                               FontAttributes="Bold"
-                               TextColor="{Binding NameColor}" />
+                <Label Grid.Row="1"
+                       Grid.Column="0"
+                       Text="{Binding Address}"
+                       FontSize="12"
+                       TextColor="{Binding AddressColor}"
+                       IsVisible="{Binding ShowAddress}"
+                       VerticalOptions="Start" />
 
-                        <Label Text="{Binding Address}"
-                               FontSize="13"
-                               TextColor="{Binding AddressColor}"
-                               IsVisible="{Binding ShowAddress}" />
+                <Label Grid.Row="0"
+                       Grid.RowSpan="2"
+                       Grid.Column="1"
+                       Text="{Binding Balance}"
+                       FontSize="14"
+                       FontAttributes="Bold"
+                       TextColor="{Binding NameColor}"
+                       VerticalOptions="Center"
+                       HorizontalOptions="End" />
 
-                        <HorizontalStackLayout Spacing="6">
-                            <Border Style="{StaticResource BadgeBorder}"
-                                    BackgroundColor="#FFE082"
-                                    IsVisible="{Binding ShowCollectBadge}">
-                                <Label Text="Collect"
-                                       FontSize="11"
-                                       TextColor="#6D4C41" />
-                            </Border>
-
-                            <Border Style="{StaticResource BadgeBorder}"
-                                    BackgroundColor="#C5E1A5"
-                                    IsVisible="{Binding ShowPaymentBadge}">
-                                <Label Text="Payment"
-                                       FontSize="11"
-                                       TextColor="#33691E" />
-                            </Border>
-
-                            <Border Style="{StaticResource BadgeBorder}"
-                                    BackgroundColor="#B3E5FC"
-                                    IsVisible="{Binding ShowVisitBadge}">
-                                <Label Text="Visiting"
-                                       FontSize="11"
-                                       TextColor="#01579B" />
-                            </Border>
-                        </HorizontalStackLayout>
-                    </VerticalStackLayout>
-                </Grid>
-            </Frame>
+                <BoxView Grid.Row="2"
+                         Grid.ColumnSpan="2"
+                         HeightRequest="0.5"
+                         Color="#E0E0E0"
+                         Margin="0,0,0,0" />
+            </Grid>
         </DataTemplate>
     </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,Auto,Auto,*"
           ColumnDefinitions="*"
-          Padding="16"
-          RowSpacing="12">
+          RowSpacing="0">
 
-        <Border Grid.Row="0"
+        <Border Grid.Row="1"
+                Margin="5"
                 x:Name="SearchBorder"
                 StrokeThickness="1"
                 BackgroundColor="white"
                 IsVisible="{Binding IsSearchVisible}"
-                Padding="12,4"
+                Padding="12,2"
                 StrokeShape="RoundRectangle 12">
             <SearchBar Placeholder="Search customers"
                        FontSize="14"
+                       HeightRequest="36"
                        Text="{Binding SearchQuery}"
                        SearchButtonPressed="SearchBar_SearchButtonPressed" />
         </Border>
 
 
-        <HorizontalStackLayout Grid.Row="1"
+        <HorizontalStackLayout Grid.Row="0"
                                x:Name="ButtonsLayout"
                                Spacing="6"
+                               Margin="5"
                                HorizontalOptions="Center"
                                IsVisible="{Binding ShowButtonsLayout}">
             <Button Text="View Map Route"
@@ -149,7 +123,8 @@
                         SelectionMode="Single"
                         SelectionChanged="OnClientSelectionChanged"
                         IsVisible="{Binding ShowFlatList}"
-                        EmptyView="No customers available.">
+                        EmptyView="No customers available."
+                        ItemSizingStrategy="MeasureFirstItem">
         </CollectionView>
 
         <CollectionView x:Name="GroupedCollectionView"
@@ -180,7 +155,8 @@
                                         ItemTemplate="{StaticResource ClientItemTemplate}"
                                         SelectionMode="Single"
                                         SelectionChanged="OnGroupedClientSelectionChanged"
-                                        IsVisible="{Binding IsExpanded}">
+                                        IsVisible="{Binding IsExpanded}"
+                                        ItemSizingStrategy="MeasureFirstItem">
                         </CollectionView>
                     </VerticalStackLayout>
                 </DataTemplate>
