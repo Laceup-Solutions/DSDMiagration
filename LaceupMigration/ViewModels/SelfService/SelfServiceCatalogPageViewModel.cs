@@ -3,7 +3,10 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.Linq;
 using LaceupMigration.Services;
+using LaceupMigration.Business.Interfaces;
 using LaceupMigration;
+using System;
+using System.Threading.Tasks;
 
 namespace LaceupMigration.ViewModels.SelfService
 {
@@ -11,6 +14,7 @@ namespace LaceupMigration.ViewModels.SelfService
     {
         private readonly IDialogService _dialogService;
         private readonly ILaceupAppService _appService;
+        private readonly ICameraBarcodeScannerService _cameraBarcodeScanner;
         private Order _order;
         private Category _category;
 
@@ -35,10 +39,11 @@ namespace LaceupMigration.ViewModels.SelfService
         private int _currentFilter = 0; // 0 = All, 2 = In Stock, 4 = Not In Order, etc.
         private int _currentSort = 0; // 0 = Name, 1 = Category, 2 = In Stock
 
-        public SelfServiceCatalogPageViewModel(IDialogService dialogService, ILaceupAppService appService)
+        public SelfServiceCatalogPageViewModel(IDialogService dialogService, ILaceupAppService appService, ICameraBarcodeScannerService cameraBarcodeScanner)
         {
             _dialogService = dialogService;
             _appService = appService;
+            _cameraBarcodeScanner = cameraBarcodeScanner;
         }
 
         public void ApplyQueryAttributes(System.Collections.Generic.IDictionary<string, object> query)
@@ -131,8 +136,50 @@ namespace LaceupMigration.ViewModels.SelfService
         [RelayCommand]
         private async Task Scan()
         {
-            // TODO: Implement barcode scanning
-            await _dialogService.ShowAlertAsync("Barcode scanning functionality to be implemented.", "Info", "OK");
+            if (_order == null)
+                return;
+
+            try
+            {
+                var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
+                if (string.IsNullOrEmpty(scanResult))
+                    return;
+
+                // Find product by barcode (check UPC, SKU, Code)
+                var product = Product.Products.FirstOrDefault(p =>
+                    (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
+
+                if (product != null)
+                {
+                    // Set search text to filter products
+                    SearchText = scanResult;
+                    
+                    // Find the product in the list and add it
+                    var productItem = Products.FirstOrDefault(p => p.Product.ProductId == product.ProductId);
+                    if (productItem != null)
+                    {
+                        // Product is in the list, could navigate to it or add it
+                        await _dialogService.ShowAlertAsync($"Found product: {product.Name}", "Barcode Scan");
+                    }
+                    else
+                    {
+                        await _dialogService.ShowAlertAsync("Product not found in current category.", "Info");
+                    }
+                }
+                else
+                {
+                    // Product not found, but set search text anyway
+                    SearchText = scanResult;
+                    await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog($"Error scanning barcode: {ex.Message}");
+                await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
+            }
         }
 
         [RelayCommand]

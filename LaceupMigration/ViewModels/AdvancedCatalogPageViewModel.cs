@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Services;
+using LaceupMigration.Business.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -19,6 +20,7 @@ namespace LaceupMigration.ViewModels
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
         private readonly IScannerService _scannerService;
+        private readonly ICameraBarcodeScannerService _cameraBarcodeScanner;
         private Order? _order;
         private Category? _category;
         private bool _initialized;
@@ -162,11 +164,12 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showPrices = true;
 
-        public AdvancedCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService)
+        public AdvancedCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner)
         {
             _dialogService = dialogService;
             _appService = appService;
             _scannerService = scannerService;
+            _cameraBarcodeScanner = cameraBarcodeScanner;
             ShowPrices = !Config.HidePriceInTransaction;
             ShowTotals = !Config.HidePriceInTransaction;
         }
@@ -859,30 +862,30 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task ScanAsync()
         {
-            // if (_isScanning || _order == null)
-            //     return;
-            //
-            // try
-            // {
-            //     _isScanning = true;
-            //     var scanResult = await _scannerService.ScanAsync();
-            //     if (string.IsNullOrEmpty(scanResult))
-            //     {
-            //         _isScanning = false;
-            //         return;
-            //     }
-            //
-            //     await ScannerDoTheThingAsync(scanResult);
-            // }
-            // catch (Exception ex)
-            // {
-            //     Logger.CreateLog($"Error scanning: {ex.Message}");
-            //     await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
-            // }
-            // finally
-            // {
-            //     _isScanning = false;
-            // }
+            if (_isScanning || _order == null)
+                return;
+
+            try
+            {
+                _isScanning = true;
+                var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
+                if (string.IsNullOrEmpty(scanResult))
+                {
+                    _isScanning = false;
+                    return;
+                }
+
+                await ScannerDoTheThingAsync(scanResult);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog($"Error scanning: {ex.Message}");
+                await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
+            }
+            finally
+            {
+                _isScanning = false;
+            }
         }
 
         private async Task ScannerDoTheThingAsync(string data)
