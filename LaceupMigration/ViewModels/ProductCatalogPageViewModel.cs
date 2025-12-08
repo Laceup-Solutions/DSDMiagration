@@ -51,8 +51,7 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private string _viewTypeIcon = "catalog_two";
 
-        public ProductCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, AdvancedOptionsService advancedOptionsService)
-        public ProductCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner)
+        public ProductCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner, AdvancedOptionsService advancedOptionsService)
         {
             _dialogService = dialogService;
             _appService = appService;

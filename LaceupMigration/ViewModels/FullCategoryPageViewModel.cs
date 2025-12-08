@@ -55,8 +55,7 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private string _title = "Product Catalog";
 
-        public FullCategoryPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, AdvancedOptionsService advancedOptionsService)
-        public FullCategoryPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner)
+        public FullCategoryPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner, AdvancedOptionsService advancedOptionsService)
         {
             _dialogService = dialogService;
             _appService = appService;

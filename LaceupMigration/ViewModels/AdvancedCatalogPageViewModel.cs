@@ -165,8 +165,7 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showPrices = true;
 
-        public AdvancedCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, AdvancedOptionsService advancedOptionsService)
-        public AdvancedCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner)
+        public AdvancedCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner, AdvancedOptionsService advancedOptionsService)
         {
             _dialogService = dialogService;
             _appService = appService;
