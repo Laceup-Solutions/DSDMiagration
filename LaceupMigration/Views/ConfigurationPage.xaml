@@ -5,6 +5,12 @@
              x:Class="LaceupMigration.Views.ConfigurationPage"
              Shell.TabBarIsVisible="False"
              Title="Configuration">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Save" 
+                     Command="{Binding SaveCommand}" 
+                     Order="Primary" 
+                     Priority="0" />
+    </ContentPage.ToolbarItems>
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
             <Label Text="{Binding Version, StringFormat='Version: {0}'}"
@@ -129,20 +135,12 @@
                     FontSize="16"
                     Padding="16,12" />
 
-            <Button Text="Clean Data"
+            <Button Text="Clear Data"
                     Command="{Binding CleanDataCommand}"
                     BackgroundColor="Red"
                     TextColor="White"
                     FontSize="16"
                     Padding="16,12" />
-
-            <Button Text="Save"
-                    Command="{Binding SaveCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12"
-                    Margin="0,20,0,0" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

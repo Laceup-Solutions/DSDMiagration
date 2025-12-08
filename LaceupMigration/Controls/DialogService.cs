@@ -37,6 +37,24 @@ public class DialogService : IDialogService
 
     public async Task<string> ShowActionSheetAsync(string title, string message, string cancelText, params string[] buttons)
     {
+#if ANDROID
+        // Use custom Android implementation with separators and reduced margins
+        try
+        {
+            var activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
+            if (activity != null)
+            {
+                return await LaceupMigration.Platforms.Android.ActionSheetService.ShowActionSheetAsync(
+                    activity, title, message, cancelText, buttons);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Fallback to default implementation on error
+            System.Diagnostics.Debug.WriteLine($"Error showing custom action sheet: {ex.Message}");
+        }
+#endif
+        // Default implementation for other platforms or fallback
         var page = GetCurrentPage();
         if (page != null)
         {

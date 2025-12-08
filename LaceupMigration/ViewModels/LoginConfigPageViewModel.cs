@@ -78,7 +78,7 @@ namespace LaceupMigration.ViewModels
 		private async Task NeedHelp()
 		{
 			var options = new[] { "Send log file", "Export data", "Remote control" };
-			var choice = await Application.Current!.MainPage!.DisplayActionSheet("Advanced options", "Cancel", null, options);
+			var choice = await DialogHelper._dialogService.ShowActionSheetAsync("Advanced options", "Cancel", null, options);
 			switch (choice)
 			{
 				case "Send log file":

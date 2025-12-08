@@ -3,6 +3,9 @@ using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
 using LaceupMigration.Services;
 using System.Linq;
+using Microsoft.Maui.Controls;
+using Microsoft.Maui.ApplicationModel;
+using LaceupMigration.Views;
 
 namespace LaceupMigration.ViewModels
 {
@@ -10,15 +13,17 @@ namespace LaceupMigration.ViewModels
 	{
 		private readonly IDialogService _dialogService;
 		private readonly ILaceupAppService _appService;
+		private readonly AdvancedOptionsService _advancedOptionsService;
 
 		[ObservableProperty] private string _companyName = "Laceup";
 		[ObservableProperty] private bool _showNotificationIcon;
 		[ObservableProperty] private bool _showAcceptLoadMenuItem;
 
-		public MainPageViewModel(IDialogService dialogService, ILaceupAppService appService)
+		public MainPageViewModel(IDialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService)
 		{
 			_dialogService = dialogService;
 			_appService = appService;
+			_advancedOptionsService = advancedOptionsService;
 		}
 
 		public void OnAppearing()
@@ -291,73 +296,92 @@ namespace LaceupMigration.ViewModels
 		{
 			var menuItems = new List<string>();
 			
-			// Match Xamarin OnPrepareOptionsMenu logic
-			if (Config.CanAddClient)
-				menuItems.Add("Add Client");
-			
+			// Match Xamarin mainMenu.xml order exactly
+			// 1. Sync Data
 			menuItems.Add("Sync Data");
 			
+			// 2. Update Product Images
 			menuItems.Add("Update Product Images");
 			
+			// 3. Accept Load
 			if (ShowAcceptLoadMenuItem)
 				menuItems.Add("Accept Load");
 			
+			// 4. Time Sheet
 			if (Config.TimeSheetCustomization)
 				menuItems.Add("Time Sheet");
 			
+			// 5. Clock Out
 			if (Config.UseClockInOut)
 				menuItems.Add("Clock Out");
 			
+			// 6. Send All / Send Orders
 			if (!Config.TrackInventory || Config.PreSale)
 			{
 				var sendAllText = Config.TrackInventory && Config.PreSale ? "Send Orders" : "Send All";
 				menuItems.Add(sendAllText);
 			}
 			
+			// 7. End Of Day Close
 			if (Config.TrackInventory)
 				menuItems.Add("End Of Day Close");
 			
+			// 8. Inventory Management
 			if (Config.TrackInventory && !Config.HideProdOnHand)
 				menuItems.Add("Inventory Management");
 			
+			// 9. Add Client
+			if (Config.CanAddClient)
+				menuItems.Add("Add Client");
+			
+			// 10. Product Catalog
 			if (Config.ProductCatalog)
 				menuItems.Add("Product Catalog");
 			
+			// 11. Goals
 			if (Config.ViewGoals)
 				menuItems.Add("Goals");
 			
+			// 12. View Order Status
 			if (Config.ShowOrderStatus)
 				menuItems.Add("View Order Status");
 			
+			// 13. Sent Orders
 			if (Config.ShowSentTransactions)
-			{
 				menuItems.Add("Sent Orders");
-				if (!Config.HidePriceInTransaction)
-					menuItems.Add("Sent Payments");
-			}
-			else if (!Config.HidePriceInTransaction)
-			{
-				menuItems.Add("Sent Payments");
-			}
 			
+			// 14. Sent Payments
+			if (Config.ShowSentTransactions && !Config.HidePriceInTransaction)
+				menuItems.Add("Sent Payments");
+			else if (!Config.ShowSentTransactions && !Config.HidePriceInTransaction)
+				menuItems.Add("Sent Payments");
+			
+			// 15. Show Reports
 			if (Config.ShowReports)
 				menuItems.Add("Show Reports");
 			
+			// 16. Select Site
 			if (Config.SalesmanCanChangeSite && !Config.HideSelectSitesFromMenu)
 				menuItems.Add("Select Site");
 			
+			// 17. Route Management
 			if (Config.RouteManagement)
 				menuItems.Add("Route Management");
 			
+			// 18. Advanced Options
 			menuItems.Add("Advanced Options");
+			
+			// 19. Configuration
 			menuItems.Add("Configuration");
 			
+			// 20. Sign Out
 			if (Config.CanLogout && !Config.NeedAccessForConfiguration)
 				menuItems.Add("Sign Out");
 			
-			menuItems.Add("About");
+			// 21. About Laceup Solutions
+			menuItems.Add("About Laceup Solutions");
 
-			var choice = await Application.Current!.MainPage!.DisplayActionSheet("Menu", "Cancel", null, menuItems.ToArray());
+			var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, menuItems.ToArray());
 			
 			switch (choice)
 			{
@@ -422,7 +446,7 @@ namespace LaceupMigration.ViewModels
 				case "Sign Out":
 					await SignOut();
 					break;
-				case "About":
+				case "About Laceup Solutions":
 					await About();
 					break;
 			}
@@ -431,40 +455,7 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task AdvancedLog()
 		{
-			var options = new[] { "Update settings", "Send log file", "Export data", "Remote control", "Setup printer" };
-			if (Config.GoToMain)
-			{
-				var list = options.ToList();
-				list.Add("Go to main activity");
-				options = list.ToArray();
-			}
-
-			var choice = await Application.Current!.MainPage!.DisplayActionSheet("Advanced options", "Cancel", null, options);
-			
-			switch (choice)
-			{
-				case "Update settings":
-					await _appService.UpdateSalesmanSettingsAsync();
-					await _dialogService.ShowAlertAsync("Settings updated.", "Info", "OK");
-					break;
-				case "Send log file":
-					await _appService.SendLogAsync();
-					await _dialogService.ShowAlertAsync("Log sent.", "Info", "OK");
-					break;
-				case "Export data":
-					await _appService.ExportDataAsync();
-					await _dialogService.ShowAlertAsync("Data exported.", "Info", "OK");
-					break;
-				case "Remote control":
-					await _appService.RemoteControlAsync();
-					break;
-				case "Setup printer":
-					// TODO: Implement printer setup
-					break;
-				case "Go to main activity":
-					await _appService.GoBackToMainAsync();
-					break;
-			}
+			await _advancedOptionsService.ShowAdvancedOptionsAsync();
 		}
 
 		#endregion
@@ -744,14 +735,14 @@ namespace LaceupMigration.ViewModels
 
 		private async Task EndOfDayAsync()
 		{
-			var result = await _dialogService.ShowConfirmationAsync("Sure would like to transmit all?", "Alert", "Yes", "No");
+			var result = await _dialogService.ShowConfirmationAsync("Alert", "Are you sure that you would like to transmit all the information?");
 			if (result)
 				await ContinueEndOfDayAsync();
 		}
 
 		private async Task ContinueEndOfDayAsync()
 		{
-			await _dialogService.ShowLoadingAsync("Transmitting data...");
+			await _dialogService.ShowLoadingAsync("Sending all information...");
 			string responseMessage = null;
 
 			try
@@ -783,6 +774,45 @@ namespace LaceupMigration.ViewModels
 			var title = string.IsNullOrEmpty(responseMessage) ? "Success" : "Alert";
 			var message = string.IsNullOrEmpty(responseMessage) ? "Data successfully transmitted." : responseMessage;
 			await _dialogService.ShowAlertAsync(message, title, "OK");
+
+			// Lock the app after successful end of day - mimic Xamarin behavior
+			// This matches SetDefaultsAfterSendAll() in Xamarin MainActivity and EndOfDayHandler in EndOfDayPageViewModel
+			if (string.IsNullOrEmpty(responseMessage))
+			{
+				// Set ReceivedData = false to lock the app until sync happens
+				// This matches Xamarin behavior where SetDefaultsAfterSendAll() sets ReceivedData = false
+				DataAccess.PendingLoadToAccept = false;
+				DataAccess.ReceivedData = false;
+				DataAccess.LastEndOfDay = DateTime.Now;
+				Config.SaveAppStatus();
+
+				// Navigate to MainPage (Clients tab)
+				await Shell.Current.GoToAsync("///MainPage");
+
+				// Force clear client list immediately - don't wait for OnAppearing
+				// Wait a moment for navigation to complete
+				await Task.Delay(200);
+				
+				MainThread.BeginInvokeOnMainThread(() =>
+				{
+					try
+					{
+						// Get the current page from Shell
+						var currentPage = Shell.Current.CurrentPage;
+						
+						// Check if we're on ClientsPage
+						if (currentPage is ClientsPage clientsPage)
+						{
+							clientsPage.ViewModel?.ClearClientListAndLock();
+						}
+					}
+					catch (Exception ex)
+					{
+						// Log but don't crash - the OnAppearing will handle it
+						System.Diagnostics.Debug.WriteLine($"Error forcing client list clear: {ex.Message}");
+					}
+				});
+			}
 		}
 
 		private async Task MenuHandlerReportsAsync()
@@ -1013,7 +1043,7 @@ namespace LaceupMigration.ViewModels
 		{
 			var sites = SiteEx.Sites.Where(x => x.SiteType == SiteType.Main).ToList();
 			var siteNames = sites.Select(x => x.Name).ToArray();
-			var selected = await Application.Current!.MainPage!.DisplayActionSheet("Select Driver", "Cancel", null, siteNames);
+			var selected = await _dialogService.ShowActionSheetAsync("Select Driver", "Cancel", null, siteNames);
 			
 			var index = Array.IndexOf(siteNames, selected);
 			if (index >= 0)

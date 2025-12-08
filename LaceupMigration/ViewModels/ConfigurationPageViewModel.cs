@@ -74,6 +74,9 @@ namespace LaceupMigration.ViewModels
 
                 // TODO: Save all configuration changes
                 await _dialogService.ShowAlertAsync("Configuration saved successfully.", "Success", "OK");
+                
+                // Navigate back after successful save
+                await Shell.Current.GoToAsync("..");
             }
             catch (Exception ex)
             {
@@ -183,7 +186,7 @@ namespace LaceupMigration.ViewModels
             // Show confirmation dialog - match Xamarin line 816
             var confirmed = await _dialogService.ShowConfirmationAsync(
                 "Warning",
-                "Are you sure you want to clean your data? The application will close after this.",
+                "Are you sure you want to clean your data?",
                 "Yes",
                 "No");
 
@@ -235,14 +238,15 @@ namespace LaceupMigration.ViewModels
 
                 await _dialogService.HideLoadingAsync();
 
-                // Show success message
+                // Show success message - match Xamarin behavior (no app close message)
                 await _dialogService.ShowAlertAsync(
-                    "Data cleared successfully. The application will now close.",
+                    "Data cleared successfully.",
                     "Success",
                     "OK");
 
-                // Close the application - match Xamarin behavior
-                Application.Current?.Quit();
+                // Navigate to MainPage to clean the tabs/navigation stack - match Xamarin behavior
+                // This clears the navigation stack and resets to main page
+                await Shell.Current.GoToAsync("///MainPage");
             }
             catch (Exception ex)
             {

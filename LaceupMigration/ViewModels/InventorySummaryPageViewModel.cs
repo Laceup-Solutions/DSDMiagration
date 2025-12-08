@@ -14,6 +14,7 @@ namespace LaceupMigration.ViewModels
     {
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
+        private readonly AdvancedOptionsService _advancedOptionsService;
 
         [ObservableProperty] private ObservableCollection<InventorySummaryProductViewModel> _products = new();
         [ObservableProperty] private string _totalQtyText = string.Empty;
@@ -30,10 +31,11 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _filterButtonText = "All";
         [ObservableProperty] private string _searchQuery = string.Empty;
 
-        public InventorySummaryPageViewModel(DialogService dialogService, ILaceupAppService appService)
+        public InventorySummaryPageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService)
         {
             _dialogService = dialogService;
             _appService = appService;
+            _advancedOptionsService = advancedOptionsService;
             ShowPrice = Config.ShowPricesInInventorySummary;
             ShowWeight = Config.ShowWeightOnInventorySummary || Config.UsePallets;
             ShowPrintButton = Config.PrinterAvailable;
@@ -277,41 +279,7 @@ namespace LaceupMigration.ViewModels
 
         private async Task ShowAdvancedOptionsAsync()
         {
-            var options = new List<string>
-            {
-                "Update settings",
-                "Send log file",
-                "Export data",
-                "Remote control"
-            };
-
-            if (Config.GoToMain)
-            {
-                options.Add("Go to main activity");
-            }
-
-            var choice = await _dialogService.ShowActionSheetAsync("Advanced options", "Cancel", null, options.ToArray());
-            switch (choice)
-            {
-                case "Update settings":
-                    await _appService.UpdateSalesmanSettingsAsync();
-                    await _dialogService.ShowAlertAsync("Settings updated.", "Info");
-                    break;
-                case "Send log file":
-                    await _appService.SendLogAsync();
-                    await _dialogService.ShowAlertAsync("Log sent.", "Info");
-                    break;
-                case "Export data":
-                    await _appService.ExportDataAsync();
-                    await _dialogService.ShowAlertAsync("Data exported.", "Info");
-                    break;
-                case "Remote control":
-                    await _appService.RemoteControlAsync();
-                    break;
-                case "Go to main activity":
-                    await _appService.GoBackToMainAsync();
-                    break;
-            }
+            await _advancedOptionsService.ShowAdvancedOptionsAsync();
         }
     }
 

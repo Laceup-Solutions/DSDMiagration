@@ -87,7 +87,7 @@ namespace LaceupMigration.UtilDlls
 
         private async void OnMenuClicked(object sender, EventArgs e)
         {
-            var action = await DisplayActionSheet("Menu", "Cancel", null, 
+            var action = await DialogHelper._dialogService.ShowActionSheetAsync("Menu", "Cancel", null, 
                 "Print", 
                 "Send By Email", 
                 "Share",
@@ -138,7 +138,7 @@ namespace LaceupMigration.UtilDlls
                 options.Add("Go to main activity");
             }
 
-            var choice = await DisplayActionSheet("Advanced Options", "Cancel", null, options.ToArray());
+            var choice = await DialogHelper._dialogService.ShowActionSheetAsync("Advanced Options", "Cancel", null, options.ToArray());
             if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
                 return;
 
