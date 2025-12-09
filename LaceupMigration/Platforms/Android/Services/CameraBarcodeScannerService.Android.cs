@@ -1,4 +1,5 @@
 using LaceupMigration.Business.Interfaces;
+using LaceupMigration;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using System;
@@ -53,10 +54,36 @@ public class CameraBarcodeScannerService : ICameraBarcodeScannerService
                 _scanSemaphore.Release();
             };
 
-            // Navigate to scanner page
+            // Navigate to scanner page - use Application.Current.MainPage.Navigation (most reliable)
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                await Application.Current!.MainPage!.Navigation.PushModalAsync(scannerPage);
+                try
+                {
+                    // Use Application.Current.MainPage.Navigation as primary method (works for all pages)
+                    if (Application.Current?.MainPage?.Navigation != null)
+                    {
+                        await Application.Current.MainPage.Navigation.PushModalAsync(scannerPage);
+                    }
+                    else
+                    {
+                        // Fallback: try getting current page
+                        var currentPage = GetCurrentPage();
+                        if (currentPage != null && currentPage.Navigation != null)
+                        {
+                            await currentPage.Navigation.PushModalAsync(scannerPage);
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("No navigation context available");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog($"Error pushing scanner page: {ex.Message}");
+                    Logger.CreateLog($"Stack trace: {ex.StackTrace}");
+                    throw;
+                }
             });
 
             // Wait for scan result or cancellation
@@ -73,9 +100,24 @@ public class CameraBarcodeScannerService : ICameraBarcodeScannerService
                     // Close the scanner page
                     await MainThread.InvokeOnMainThreadAsync(async () =>
                     {
-                        if (Application.Current?.MainPage?.Navigation.ModalStack.Count > 0)
+                        try
                         {
-                            await Application.Current.MainPage.Navigation.PopModalAsync();
+                            if (Application.Current?.MainPage?.Navigation != null && Application.Current.MainPage.Navigation.ModalStack.Count > 0)
+                            {
+                                await Application.Current.MainPage.Navigation.PopModalAsync();
+                            }
+                            else
+                            {
+                                var currentPage = GetCurrentPage();
+                                if (currentPage != null && currentPage.Navigation != null && currentPage.Navigation.ModalStack.Count > 0)
+                                {
+                                    await currentPage.Navigation.PopModalAsync();
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.CreateLog($"Error popping scanner page: {ex.Message}");
                         }
                     });
                     return null;
@@ -85,9 +127,24 @@ public class CameraBarcodeScannerService : ICameraBarcodeScannerService
             // Close the scanner page
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                if (Application.Current?.MainPage?.Navigation.ModalStack.Count > 0)
+                try
                 {
-                    await Application.Current.MainPage.Navigation.PopModalAsync();
+                    if (Application.Current?.MainPage?.Navigation != null && Application.Current.MainPage.Navigation.ModalStack.Count > 0)
+                    {
+                        await Application.Current.MainPage.Navigation.PopModalAsync();
+                    }
+                    else
+                    {
+                        var currentPage = GetCurrentPage();
+                        if (currentPage != null && currentPage.Navigation != null && currentPage.Navigation.ModalStack.Count > 0)
+                        {
+                            await currentPage.Navigation.PopModalAsync();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog($"Error popping scanner page: {ex.Message}");
                 }
             });
 
@@ -115,6 +172,16 @@ public class CameraBarcodeScannerService : ICameraBarcodeScannerService
             var status = await Permissions.RequestAsync<Permissions.Camera>();
             return status == PermissionStatus.Granted;
         });
+    }
+
+    private Page GetCurrentPage()
+    {
+        // Try Shell first (most common in MAUI)
+        if (Shell.Current?.CurrentPage != null)
+            return Shell.Current.CurrentPage;
+        
+        // Fallback to Application Windows
+        return Application.Current?.Windows?.FirstOrDefault()?.Page;
     }
 }
 

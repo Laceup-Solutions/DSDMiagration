@@ -864,63 +864,56 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task ScanAsync()
         {
-            if (_isScanning || _order == null)
+            if (_order == null)
+            {
+                await _dialogService.ShowAlertAsync("No order available.", "Error");
                 return;
+            }
 
             try
             {
-                _isScanning = true;
                 var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
                 if (string.IsNullOrEmpty(scanResult))
-                {
-                    _isScanning = false;
                     return;
+                
+                // Find product by barcode (check UPC, SKU, Code)
+                var product = Product.Products.FirstOrDefault(p =>
+                    (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
+                
+                if (product != null)
+                {
+                    // Set search query to the barcode to filter products
+                    SearchQuery = scanResult;
+                    
+                    // Wait for the filter to complete (debounce is 300ms, wait a bit longer to be safe)
+                    await Task.Delay(500);
+                    
+                    // If we have an order, navigate to add item page (same as FullCategoryPageViewModel)
+                    var route = $"additem?orderId={_order.OrderId}&productId={product.ProductId}";
+                    if (_itemType == 1) // Dump
+                        route += "&asCreditItem=1";
+                    if (_itemType == 2) // Return
+                        route += "&asReturnItem=1";
+                    await Shell.Current.GoToAsync(route);
                 }
-
-                await ScannerDoTheThingAsync(scanResult);
+                else
+                {
+                    // Product not found, but set search query anyway (same as FullCategoryPageViewModel)
+                    SearchQuery = scanResult;
+                    
+                    // Wait for the filter to complete
+                    await Task.Delay(500);
+                    
+                    await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
+                }
             }
             catch (Exception ex)
             {
-                Logger.CreateLog($"Error scanning: {ex.Message}");
+                Logger.CreateLog($"Error scanning barcode: {ex.Message}");
                 await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
             }
-            finally
-            {
-                _isScanning = false;
-            }
-        }
-
-        private async Task ScannerDoTheThingAsync(string data)
-        {
-            if (_order == null)
-                return;
-
-            var product = ActivityExtensionMethods.GetProduct(_order, data);
-
-            if (product == null)
-            {
-                await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
-                return;
-            }
-
-            var item = FilteredItems.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
-            if (item == null)
-            {
-                var noInventory = product.GetInventory(_order.AsPresale) <= 0;
-                await _dialogService.ShowAlertAsync(
-                    noInventory ? $"Not enough inventory of {product.Name}" : "Product not found in category",
-                    "Alert");
-                return;
-            }
-
-            var detail = item.Details.FirstOrDefault();
-            if (detail == null)
-            {
-                await _dialogService.ShowAlertAsync("No details available for this product.", "Alert");
-                return;
-            }
-
-            await AddItemFromScannerAsync(detail, false);
         }
 
         private async Task AddItemFromScannerAsync(AdvancedCatalogDetailViewModel detail, bool excludeOffer)
