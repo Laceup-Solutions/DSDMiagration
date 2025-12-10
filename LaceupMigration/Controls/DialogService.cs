@@ -638,22 +638,13 @@ public class DialogService : IDialogService
         };
 
         // Tap outside to close (tap on overlay background)
-        var tapGesture = new TapGestureRecognizer();
-        tapGesture.Tapped += async (s, e) =>
-        {
-            // Only close if tapping the overlay background, not the dialog content
-            if (s == overlayGrid)
-            {
-                await SafePopModalAsync();
-                tcs.SetResult((null, null, null));
-            }
-        };
-        overlayGrid.GestureRecognizers.Add(tapGesture);
+        // Don't add tap gesture - let user use Cancel button (matching Xamarin: SetCancelable(false))
+        // Xamarin code has: responseDialogBuilder.SetCancelable(false);
 
         // Show as modal
         await page.Navigation.PushModalAsync(dialog);
         
-        // Focus and select all text in qty entry (match Xamarin: SetSelectAllOnFocus)
+        // Focus qty entry and select all text (matching Xamarin: SetSelectAllOnFocus)
         qtyEntry.Focus();
         if (!string.IsNullOrEmpty(qtyEntry.Text))
         {
@@ -662,6 +653,53 @@ public class DialogService : IDialogService
         }
 
         return await tcs.Task;
+    }
+
+    public async Task<(int? priceLevelId, string price, string comments)> ShowPriceLevelDialogAsync(
+        string productName, Product product, Order order, UnitOfMeasure uom, int currentPriceLevelSelected, string initialPrice = "", string initialComments = "")
+    {
+        // Get ProductPrice entries for this product
+        var productPrices = ProductPrice.Pricelist.Where(x => x.ProductId == product.ProductId).ToList();
+        
+        if (!productPrices.Any())
+            return (null, null, null);
+
+        var priceLevelOptions = new List<string>();
+        var productPriceList = new List<ProductPrice>(); // Store ProductPrice entries to access price when selected
+        var conversion = uom != null ? uom.Conversion : 1.0;
+        
+        // Build price level list from ProductPrice entries
+        foreach (var pp in productPrices)
+        {
+            var priceLevel = PriceLevel.List.FirstOrDefault(x => x.Id == pp.PriceLevelId);
+            if (priceLevel != null)
+            {
+                // Apply UoM conversion
+                var convertedPrice = Math.Round(pp.Price * conversion, Config.Round);
+                priceLevelOptions.Add($"{priceLevel.Name}: {convertedPrice.ToCustomString()}");
+                productPriceList.Add(pp);
+            }
+        }
+
+        if (!priceLevelOptions.Any())
+            return (null, null, null);
+
+        // Show selection popup
+        var selectedIndex = await ShowSelectionAsync("Select Price Level", priceLevelOptions.ToArray());
+        
+        if (selectedIndex < 0 || selectedIndex >= productPriceList.Count)
+            return (null, null, null);
+
+        // Get selected price level and calculate price
+        var selectedProductPrice = productPriceList[selectedIndex];
+        var selectedPriceLevelId = selectedProductPrice.PriceLevelId;
+        var calculatedPrice = Math.Round(selectedProductPrice.Price * conversion, Config.Round);
+        var priceString = calculatedPrice.ToString("F2");
+
+        // Optionally prompt for comments (if initial comments provided, use them; otherwise return empty)
+        var comments = initialComments ?? "";
+
+        return (selectedPriceLevelId, priceString, comments);
     }
 
     public async Task HideLoadingAsync()

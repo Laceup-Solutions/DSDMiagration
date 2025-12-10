@@ -1,8 +1,9 @@
 using LaceupMigration.ViewModels;
+using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.Views
 {
-    public partial class SelectPriceLevelPage : ContentPage
+    public partial class SelectPriceLevelPage : ContentPage, IQueryAttributable
     {
         private readonly SelectPriceLevelPageViewModel _viewModel;
 
@@ -11,6 +12,11 @@ namespace LaceupMigration.Views
             InitializeComponent();
             _viewModel = viewModel;
             BindingContext = _viewModel;
+        }
+
+        public void ApplyQueryAttributes(IDictionary<string, object> query)
+        {
+            _viewModel.ApplyQueryAttributes(query);
         }
 
         protected override async void OnAppearing()

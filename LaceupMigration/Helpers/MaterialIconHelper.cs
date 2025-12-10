@@ -23,7 +23,7 @@ public static class MaterialIconHelper
 	{
 		return icon switch
 		{
-			MaterialOutlinedIcons.PersonPinCircle => "\uE925",
+			MaterialOutlinedIcons.PersonPinCircle => "\uE56A",
 			MaterialOutlinedIcons.LocalShipping => "\uE558",
 			MaterialOutlinedIcons.CheckCircle => "\uE86C",
 			MaterialOutlinedIcons.Description => "\uE873",
