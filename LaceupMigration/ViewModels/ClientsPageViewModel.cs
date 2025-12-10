@@ -1,9 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Controls;
+using MauiIcons.Material.Outlined;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -717,6 +720,7 @@ namespace LaceupMigration.ViewModels
 	{
 		private readonly ClientEntry _entry;
 		private readonly CultureInfo _culture = CultureInfo.CurrentCulture;
+		private readonly bool _isRouteView; // Track if we're showing routes (not "All")
 		
 		// Cached properties for performance
 		private readonly string _name;
@@ -731,7 +735,36 @@ namespace LaceupMigration.ViewModels
 		public string Address => _address;
 		public bool ShowAddress => _showAddress;
 		public string StopText => _entry.Stop > 0 ? _entry.Stop.ToString(_culture) : string.Empty;
-		public bool ShowStop => !string.IsNullOrEmpty(StopText);
+		
+		public bool ShowStop => _isRouteView && _entry.Type != ClientEntryType.Regular && !string.IsNullOrEmpty(StopText);
+		
+		public bool ShowIcon => _isRouteView && _entry.Type != ClientEntryType.Regular;
+		
+		public bool HasLeftContent => ShowStop || ShowIcon;
+		
+		public ImageSource IconImageSource
+		{
+			get
+			{
+				if (!ShowIcon)
+					return null;
+					
+				var icon = _entry.Type switch
+				{
+					ClientEntryType.Route => MaterialOutlinedIcons.PersonPinCircle,
+					ClientEntryType.Delivery => MaterialOutlinedIcons.LocalShipping,
+					ClientEntryType.Completed => MaterialOutlinedIcons.CheckCircle,
+					ClientEntryType.Quote => MaterialOutlinedIcons.Description,
+					_ => (MaterialOutlinedIcons?)null
+				};
+				
+				if (icon == null)
+					return null;
+				
+				return MaterialIconHelper.GetImageSource(icon.Value, Colors.Black, 24);
+			}
+		}
+		
 		public bool ShowCollectBadge => Client?.ClientBalanceInDevice > 0;
 		public bool ShowPaymentBadge { get; }
 		public bool ShowVisitBadge { get; }
@@ -767,6 +800,7 @@ namespace LaceupMigration.ViewModels
 		public ClientListItemViewModel(ClientEntry entry, bool isRouteView)
 		{
 			_entry = entry;
+			_isRouteView = isRouteView; // Store for ShowStop/ShowIcon logic
 
 			// Cache expensive string operations
 			_name = Client?.ClientName ?? string.Empty;

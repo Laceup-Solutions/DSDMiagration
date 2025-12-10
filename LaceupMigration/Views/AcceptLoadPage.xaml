@@ -32,9 +32,13 @@
                     <Button Text="{Binding SelectedDateText}"
                            Command="{Binding SelectDateCommand}"
                            BackgroundColor="Transparent"
-                           TextColor="Black"
+                           TextColor="{StaticResource colorLaceupDark}"
                            FontSize="14"
+                           FontAttributes="Bold"
                            Padding="5,0"
+                           BorderColor="{StaticResource colorLaceupDark}"
+                           BorderWidth="1"
+                           CornerRadius="3"
                            HorizontalOptions="Start" />
                 </HorizontalStackLayout>
                 <VerticalStackLayout Grid.Column="1" 

@@ -50,12 +50,51 @@ namespace LaceupMigration.ViewModels
             try
             {
                 _packagePath = packagePath;
-                var selectedDate = DateTime.Now.AddDays(-Config.DaysToShowSentOrders);
-                var sentPackages = SentOrderPackage.Packages(selectedDate);
-                var package = sentPackages.FirstOrDefault(x => string.Equals(x.PackagePath, packagePath, StringComparison.InvariantCulture));
+                
+                if (string.IsNullOrEmpty(packagePath))
+                {
+                    await _dialogService.ShowAlertAsync("Package path is empty.", "Error", "OK");
+                    await Shell.Current.GoToAsync("..");
+                    return;
+                }
+                
+                // First, try to load the package directly if the file exists
+                SentOrderPackage package = null;
+                if (System.IO.File.Exists(packagePath))
+                {
+                    try
+                    {
+                        package = new SentOrderPackage { PackagePath = packagePath };
+                        var testOrders = package.PackageOrders().ToList();
+                        if (testOrders.Any(x => x.OrderId == orderId))
+                        {
+                            // Package found and contains the order
+                        }
+                        else
+                        {
+                            package = null;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog($"Error loading package directly: {ex.Message}");
+                        package = null;
+                    }
+                }
+                
+                // If direct load failed, try searching packages from the date range
+                if (package == null)
+                {
+                    var selectedDate = DateTime.Now.AddDays(-Config.DaysToShowSentOrders);
+                    var sentPackages = SentOrderPackage.Packages(selectedDate);
+                    package = sentPackages.FirstOrDefault(x => 
+                        string.Equals(x.PackagePath, packagePath, StringComparison.InvariantCulture) ||
+                        string.Equals(System.IO.Path.GetFileName(x.PackagePath), System.IO.Path.GetFileName(packagePath), StringComparison.InvariantCulture));
+                }
                 
                 if (package == null)
                 {
+                    Logger.CreateLog($"Package not found. Path: {packagePath}");
                     await _dialogService.ShowAlertAsync("Package not found.", "Error", "OK");
                     await Shell.Current.GoToAsync("..");
                     return;
@@ -212,19 +251,49 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return;
 
-            var confirmed = await _dialogService.ShowConfirmationAsync("Warning", "Continue sending orders?", "Yes", "No");
+            var confirmed = await _dialogService.ShowConfirmationAsync("Continue sending orders?", "Warning", "Yes", "No");
             if (!confirmed)
                 return;
 
             try
             {
-                // TODO: Implement resend logic
-                // Resend the orders & the signatures
-                await _dialogService.ShowAlertAsync("Resend functionality to be implemented.", "Info", "OK");
+                await _dialogService.ShowLoadingAsync("Sending orders...");
+                
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        var dstFile = _order.PackagePath;
+                        if (string.IsNullOrEmpty(dstFile) || !System.IO.File.Exists(dstFile))
+                        {
+                            throw new Exception("Package file not found.");
+                        }
+
+                        string dstFileZipped = dstFile + ".zip";
+                        DataAccess.ZipFile(dstFile, dstFileZipped);
+                        NetAccess.SendTheOrders(dstFileZipped);
+                        System.IO.File.Delete(dstFileZipped);
+
+                        var signatureFileZipped = dstFile + ".signature.zip";
+                        if (System.IO.File.Exists(signatureFileZipped))
+                        {
+                            NetAccess.SendTheSignatures(signatureFileZipped);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog(ex);
+                        throw;
+                    }
+                });
+
+                await _dialogService.HideLoadingAsync();
+                await _dialogService.ShowAlertAsync("Orders sent successfully.", "Info", "OK");
             }
             catch (Exception ex)
             {
-                await _dialogService.ShowAlertAsync($"Error resending order: {ex.Message}", "Error", "OK");
+                await _dialogService.HideLoadingAsync();
+                await _dialogService.ShowAlertAsync($"Error resending order: {ex.Message}", "Alert", "OK");
                 _appService.TrackError(ex);
             }
         }

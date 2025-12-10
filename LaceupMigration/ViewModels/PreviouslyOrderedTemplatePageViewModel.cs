@@ -652,6 +652,16 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return;
 
+            // Check if order has details
+            bool isEmpty = _order.Details.Count == 0 || 
+                (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
+            
+            if (isEmpty)
+            {
+                await _dialogService.ShowAlertAsync("You can't send an empty order", "Alert");
+                return;
+            }
+
             var canSend = await FinalizeOrderAsync();
             if (!canSend)
                 return;
@@ -757,6 +767,18 @@ namespace LaceupMigration.ViewModels
 
                 if (Session.session != null)
                     Session.session.AddDetailFromOrder(_order);
+
+                // Set end date if not set
+                if (_order.EndDate == DateTime.MinValue)
+                {
+                    _order.EndDate = DateTime.Now;
+                }
+
+                // Update route if presale
+                if (_order.AsPresale)
+                {
+                    UpdateRoute(true);
+                }
 
                 _order.Modified = true;
                 _order.Save();

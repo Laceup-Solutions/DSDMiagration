@@ -133,6 +133,8 @@ namespace LaceupMigration.ViewModels
                 _originalSentOrdersList.Clear();
 
                 var packages = SentOrderPackage.Packages(SelectedDate);
+                var processedOrderIds = new HashSet<string>();
+                
                 if (packages.Count > 0)
                 {
                     foreach (var pck in packages)
@@ -140,9 +142,11 @@ namespace LaceupMigration.ViewModels
                         var packageOrders = pck.PackageOrders();
                         foreach (var sentOrder in packageOrders)
                         {
-                            if (!_sentOrdersList.Any(x => x.OrderUniqueId == sentOrder.OrderUniqueId))
+                            var orderId = sentOrder.OrderUniqueId ?? $"{sentOrder.OrderId}_{sentOrder.Date.Ticks}";
+                            if (processedOrderIds.Add(orderId))
                             {
                                 sentOrder.CellType = CellType.Header;
+                                sentOrder.PackagePath = pck.PackagePath;
                                 _sentOrdersList.Add(sentOrder);
                             }
                         }
@@ -374,6 +378,7 @@ namespace LaceupMigration.ViewModels
         private void RefreshListView()
         {
             var list = _originalSentOrdersList.ToList();
+            var uniqueOrderIds = new HashSet<string>();
 
             if (SelectedDate != DateTime.MinValue)
             {
@@ -427,8 +432,12 @@ namespace LaceupMigration.ViewModels
             SentOrders.Clear();
             foreach (var item in list)
             {
-                item.IsChecked = SelectedOrders.Any(x => x.OrderUniqueId == item.Order.OrderUniqueId);
-                SentOrders.Add(item);
+                var orderId = item.Order.OrderUniqueId ?? $"{item.Order.OrderId}_{item.Order.Date.Ticks}";
+                if (uniqueOrderIds.Add(orderId))
+                {
+                    item.IsChecked = SelectedOrders.Any(x => x.OrderUniqueId == item.Order.OrderUniqueId);
+                    SentOrders.Add(item);
+                }
             }
 
             RefreshListHeader();
@@ -518,6 +527,7 @@ namespace LaceupMigration.ViewModels
         }
 
         public string OrderNumberText => !string.IsNullOrEmpty(_order.PrintedOrderId) ? $"Doc#: {_order.PrintedOrderId}" : $"Order #{_order.OrderId}";
+        public bool ShowOrderNumber => !string.IsNullOrEmpty(_order.PrintedOrderId);
         public string DateClientText => $"{_order.Date:yyyy/MM/dd hh:mm tt} {_order.ClientName}";
         public bool ShowTotal => !Config.HidePriceInTransaction && _order.OrderType != OrderType.NoService;
 
@@ -529,22 +539,23 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task ViewDetails()
         {
-            // Find the package path for this order
-            var selectedDate = DateTime.Now.AddDays(-Config.DaysToShowSentOrders);
-            var packages = SentOrderPackage.Packages(selectedDate);
-            string? packagePath = null;
-
-            foreach (var pck in packages)
+            string? packagePath = _order.PackagePath;
+            
+            if (string.IsNullOrEmpty(packagePath))
             {
-                var packageOrders = pck.PackageOrders().ToList();
-                if (packageOrders.Any(x => x.OrderUniqueId == _order.OrderUniqueId))
+                var packages = SentOrderPackage.Packages(_parent.SelectedDate);
+                foreach (var pck in packages)
                 {
-                    packagePath = pck.PackagePath;
-                    break;
+                    var packageOrders = pck.PackageOrders().ToList();
+                    if (packageOrders.Any(x => x.OrderUniqueId == _order.OrderUniqueId))
+                    {
+                        packagePath = pck.PackagePath;
+                        break;
+                    }
                 }
             }
 
-            if (packagePath != null)
+            if (!string.IsNullOrEmpty(packagePath))
             {
                 await Shell.Current.GoToAsync($"sentordersorderslist?packagePath={Uri.EscapeDataString(packagePath)}&orderId={_order.OrderId}");
             }

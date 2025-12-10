@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:converters="clr-namespace:LaceupMigration.Converters"
              x:Class="LaceupMigration.ClientsPage"
              x:DataType="vm:ClientsPageViewModel"
              xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
@@ -22,42 +23,79 @@
         </Style>
 
         <DataTemplate x:Key="ClientItemTemplate" x:DataType="vm:ClientListItemViewModel" >
-            <Grid RowDefinitions="24,20,0.5"
-                  ColumnDefinitions="*,Auto"
-                  Padding="12,8,12,0"
-                  ColumnSpacing="12"
-                  HeightRequest="52.5">
-                <Label Grid.Row="0"
-                       Grid.Column="0"
-                       Text="{Binding Name}"
-                       FontSize="14"
-                       FontAttributes="Bold"
-                       TextColor="{Binding NameColor}"
-                       VerticalOptions="Start" />
+            <Grid RowDefinitions="Auto,Auto"
+                  ColumnDefinitions="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToColumnDefinitionsConverter}}"
+                  Padding="5"
+                  ColumnSpacing="5">
+                <!-- Stop Number (only shown when showing routes, not "All") -->
+                <Border Grid.Row="0"
+                        Grid.Column="0"
+                        BackgroundColor="{Binding StopBadgeBackground}"
+                        StrokeThickness="0"
+                        Padding="6,2"
+                        MinimumWidthRequest="24"
+                        HeightRequest="20"
+                        VerticalOptions="Center"
+                        HorizontalOptions="Start"
+                        IsVisible="{Binding ShowStop}">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Label Text="{Binding StopText}"
+                           FontSize="11"
+                           FontAttributes="Bold"
+                           TextColor="{Binding StopBadgeTextColor}"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+                </Border>
 
-                <Label Grid.Row="1"
-                       Grid.Column="0"
-                       Text="{Binding Address}"
-                       FontSize="12"
-                       TextColor="{Binding AddressColor}"
-                       IsVisible="{Binding ShowAddress}"
-                       VerticalOptions="Start" />
-
-                <Label Grid.Row="0"
-                       Grid.RowSpan="2"
+                <!-- Icon (only shown when showing routes, not "All") -->
+                <Image Grid.Row="0"
                        Grid.Column="1"
+                       Source="{Binding IconImageSource}"
+                       WidthRequest="24"
+                       HeightRequest="24"
+                       VerticalOptions="Center"
+                       IsVisible="{Binding ShowIcon}" />
+
+                <!-- Client Name and Address -->
+                <Grid Grid.Row="0"
+                      Grid.Column="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToContentColumnConverter}}"
+                      RowDefinitions="Auto,Auto"
+                      RowSpacing="2"
+                      VerticalOptions="Center">
+                    <Label Grid.Row="0"
+                           Text="{Binding Name}"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           TextColor="{Binding NameColor}"
+                           VerticalOptions="Start" />
+
+                    <Label Grid.Row="1"
+                           Text="{Binding Address}"
+                           FontSize="12"
+                           TextColor="{Binding AddressColor}"
+                           IsVisible="{Binding ShowAddress}"
+                           VerticalOptions="Start" />
+                </Grid>
+
+                <!-- Balance -->
+                <Label Grid.Row="0"
+                       Grid.Column="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToBalanceColumnConverter}}"
                        Text="{Binding Balance}"
                        FontSize="14"
                        FontAttributes="Bold"
                        TextColor="{Binding NameColor}"
                        VerticalOptions="Center"
-                       HorizontalOptions="End" />
+                       HorizontalOptions="End"
+                       LineBreakMode="NoWrap" />
 
-                <BoxView Grid.Row="2"
-                         Grid.ColumnSpan="2"
+                <BoxView Grid.Row="1"
+                         Grid.ColumnSpan="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToColumnSpanConverter}}"
                          HeightRequest="0.5"
+                         Margin="0,5,0,0"
                          Color="#E0E0E0"
-                         Margin="0,0,0,0" />
+                         VerticalOptions="End" />
             </Grid>
         </DataTemplate>
     </ContentPage.Resources>

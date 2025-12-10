@@ -612,9 +612,12 @@ namespace LaceupMigration.ViewModels
                 return;
 
             // Check if order has details
-            if (_order.Details.Count == 0)
+            bool isEmpty = _order.Details.Count == 0 || 
+                (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
+            
+            if (isEmpty)
             {
-                await _dialogService.ShowAlertAsync("Cannot send empty order.", "Alert");
+                await _dialogService.ShowAlertAsync("You can't send an empty order", "Alert");
                 return;
             }
 

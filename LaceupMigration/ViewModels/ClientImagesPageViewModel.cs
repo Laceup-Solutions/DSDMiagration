@@ -18,6 +18,7 @@ namespace LaceupMigration.ViewModels
         private readonly ILaceupAppService _appService;
         private Client? _client;
         private bool _initialized;
+        private bool _changed = false;
 
         public ObservableCollection<ClientImageViewModel> Images { get; } = new();
 
@@ -174,7 +175,7 @@ namespace LaceupMigration.ViewModels
                 var imagePath = Path.Combine(clientImageDir, $"{imageId}.png");
                 if (File.Exists(imagePath))
                 {
-                    Images.Add(new ClientImageViewModel { ImagePath = imagePath });
+                    Images.Add(new ClientImageViewModel { ImagePath = imagePath, ImageId = imageId });
                 }
             }
 
@@ -216,10 +217,10 @@ namespace LaceupMigration.ViewModels
                 if (_client != null)
                 {
                     _client.ImageList.Add(imageId);
-                    // TODO: Save client images to server
+                    _changed = true;
                 }
 
-                Images.Add(new ClientImageViewModel { ImagePath = filePath });
+                Images.Add(new ClientImageViewModel { ImagePath = filePath, ImageId = imageId });
                 ShowImages = true;
                 ShowNoImages = false;
             }
@@ -231,9 +232,105 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
+        private async Task ViewImageAsync(ClientImageViewModel image)
+        {
+            if (image == null || string.IsNullOrEmpty(image.ImagePath))
+                return;
+
+            // Show image in a simple alert dialog with image preview
+            // For full screen view, we could navigate to a dedicated page, but for now show alert with path
+            await _dialogService.ShowAlertAsync($"Image: {Path.GetFileName(image.ImagePath)}", "Image");
+        }
+
+        [RelayCommand]
+        private async Task DeleteImageAsync(ClientImageViewModel image)
+        {
+            if (image == null || _client == null)
+                return;
+
+            // Check if online - can only delete when online
+            var current = Connectivity.NetworkAccess;
+            bool isOnline = current != NetworkAccess.None;
+
+            if (!isOnline)
+            {
+                await _dialogService.ShowAlertAsync("Cannot delete client images without internet connection. Please connect to the internet and try again.", "Alert");
+                return;
+            }
+
+            var confirmed = await _dialogService.ShowConfirmationAsync("Warning", "Are you sure you want to delete this image?", "Yes", "No");
+            if (!confirmed)
+                return;
+
+            try
+            {
+                // Remove from client's image list
+                var imageId = image.ImageId;
+                if (!string.IsNullOrEmpty(imageId) && _client.ImageList.Contains(imageId))
+                {
+                    _client.ImageList.Remove(imageId);
+                    _changed = true;
+                }
+
+                // Remove from UI
+                Images.Remove(image);
+
+                // Delete file
+                if (File.Exists(image.ImagePath))
+                {
+                    File.Delete(image.ImagePath);
+                }
+
+                ShowImages = Images.Count > 0;
+                ShowNoImages = Images.Count == 0;
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog($"Error deleting image: {ex.Message}");
+                await _dialogService.ShowAlertAsync("Error deleting image.", "Error");
+            }
+        }
+
+        [RelayCommand]
         private async Task DoneAsync()
         {
-            await Shell.Current.GoToAsync("..");
+            if (_changed && _client != null)
+            {
+                await SendImagesAsync();
+            }
+            else
+            {
+                await Shell.Current.GoToAsync("..");
+            }
+        }
+
+        private async Task SendImagesAsync()
+        {
+            if (_client == null)
+                return;
+
+            var current = Connectivity.NetworkAccess;
+            bool isOnline = current != NetworkAccess.None;
+
+            string sendingString = isOnline ? "Sending..." : "Saving...";
+            await _dialogService.ShowLoadingAsync(sendingString);
+
+            try
+            {
+                await Task.Run(() =>
+                {
+                    _client.SendClientPictures(isOnline, _client.ClientId);
+                });
+
+                await _dialogService.HideLoadingAsync();
+                await Shell.Current.GoToAsync("..");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                Logger.CreateLog($"Error sending images: {ex.Message}");
+                await _dialogService.ShowAlertAsync("Error sending images.", "Error");
+            }
         }
     }
 
@@ -241,6 +338,9 @@ namespace LaceupMigration.ViewModels
     {
         [ObservableProperty]
         private string _imagePath = string.Empty;
+
+        [ObservableProperty]
+        private string _imageId = string.Empty;
     }
 }
 

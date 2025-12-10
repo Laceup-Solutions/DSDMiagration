@@ -90,42 +90,43 @@
                            Margin="0,4"
                            BackgroundColor="{StaticResource Gray100}"
                            HasShadow="False"
-                           CornerRadius="8"
-                           InputTransparent="True">
-                        <Frame.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding ViewDetailsCommand}" />
-                        </Frame.GestureRecognizers>
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" InputTransparent="True">
+                           CornerRadius="8">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
                             <CheckBox Grid.Column="0"
                                       IsChecked="{Binding IsChecked}"
                                       VerticalOptions="Center" />
 
-                            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" InputTransparent="True">
-                                <VerticalStackLayout Grid.Column="0" Spacing="4" InputTransparent="True">
-                                    <Label Text="{Binding DateClientText}"
-                                           FontSize="16"
-                                           FontAttributes="Bold" />
-                                    <Label Text="{Binding TransactionType}"
-                                           FontSize="14"
-                                           TextColor="#666666" />
-                                    <Label Text="{Binding OrderNumberText}"
-                                           FontSize="14"
-                                           TextColor="#666666" />
-                                    <Label Text="{Binding Total, StringFormat='Total: {0}'}"
-                                           FontSize="14"
-                                           FontAttributes="Bold"
-                                           IsVisible="{Binding ShowTotal}" />
-                                </VerticalStackLayout>
-                                <Button Grid.Column="1"
-                                        Text="→"
-                                        FontSize="18"
-                                        BackgroundColor="Transparent"
-                                        TextColor="#1976D2"
-                                        Command="{Binding ViewDetailsCommand}"
-                                        WidthRequest="40"
-                                        HeightRequest="40"
-                                        Padding="0" />
-                            </Grid>
+                            <VerticalStackLayout Grid.Column="1" 
+                                                  Spacing="4"
+                                                  VerticalOptions="Center">
+                                <VerticalStackLayout.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ViewDetailsCommand}" />
+                                </VerticalStackLayout.GestureRecognizers>
+                                <Label Text="{Binding DateClientText}"
+                                       FontSize="16"
+                                       FontAttributes="Bold" />
+                                <Label Text="{Binding TransactionType}"
+                                       FontSize="14"
+                                       TextColor="#666666" />
+                                <Label Text="{Binding OrderNumberText}"
+                                       FontSize="14"
+                                       TextColor="#666666"
+                                       IsVisible="{Binding ShowOrderNumber}" />
+                                <Label Text="{Binding Total, StringFormat='Total: {0}'}"
+                                       FontSize="14"
+                                       FontAttributes="Bold"
+                                       IsVisible="{Binding ShowTotal}" />
+                            </VerticalStackLayout>
+                            
+                            <Button Grid.Column="2"
+                                    Text="→"
+                                    FontSize="18"
+                                    BackgroundColor="Transparent"
+                                    TextColor="#1976D2"
+                                    Command="{Binding ViewDetailsCommand}"
+                                    WidthRequest="40"
+                                    HeightRequest="40"
+                                    Padding="0" />
                         </Grid>
                     </Frame>
                 </DataTemplate>
