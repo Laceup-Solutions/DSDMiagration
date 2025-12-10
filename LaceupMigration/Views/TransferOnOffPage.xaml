@@ -5,19 +5,22 @@
              x:Class="LaceupMigration.Views.TransferOnOffPage"
              Shell.TabBarIsVisible="False"
              Title="{Binding Title}">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="MENU" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
+    </ContentPage.ToolbarItems>
     <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
         <HorizontalStackLayout Grid.Row="0" Spacing="8" Margin="16,0">
-            <Button Text="{Binding FilterButtonText}"
+            <Button Text="{Binding FilterButtonText}" 
                     Command="{Binding ToggleFilterCommand}"
-                    HorizontalOptions="FillAndExpand"
-                    IsEnabled="{Binding ReadOnly, Converter={StaticResource InvertedBoolConverter}}" />
-            <Button Text="Save"
-                    Command="{Binding SaveCommand}"
                     HorizontalOptions="FillAndExpand"
                     IsEnabled="{Binding ReadOnly, Converter={StaticResource InvertedBoolConverter}}" />
             <Button Text="Print"
                     Command="{Binding PrintCommand}"
                     HorizontalOptions="FillAndExpand" />
+            <Button Text="Save"
+                    Command="{Binding SaveCommand}"
+                    HorizontalOptions="FillAndExpand"
+                    IsEnabled="{Binding ReadOnly, Converter={StaticResource InvertedBoolConverter}}" />
         </HorizontalStackLayout>
 
         <!-- Sort Button (positioned to the right) -->

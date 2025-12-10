@@ -4,6 +4,7 @@ using LaceupMigration.Controls;
 using LaceupMigration.Services;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace LaceupMigration.ViewModels
@@ -34,11 +35,55 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private int _selectedTermId;
         [ObservableProperty] private int _selectedRetailPriceLevelId;
         [ObservableProperty] private string _selectedRetailPriceLevel = "Not Selected";
+        [ObservableProperty] private bool _showCanChangePrices;
+        [ObservableProperty] private bool _showTerms;
+        [ObservableProperty] private List<PriceLevel> _priceLevels = new();
+        [ObservableProperty] private PriceLevel _selectedPriceLevelItem;
+        [ObservableProperty] private List<RetailPriceLevel> _retailPriceLevels = new();
+        [ObservableProperty] private RetailPriceLevel _selectedRetailPriceLevelItem;
 
         public AddClientPageViewModel(DialogService dialogService, ILaceupAppService appService)
         {
             _dialogService = dialogService;
             _appService = appService;
+            
+            // Initialize visibility properties based on Config (matching EditClientPageViewModel)
+            ShowCanChangePrices = Config.NewClientCanChangePrices;
+            ShowTerms = Term.List.Count > 0 && Config.CanSelectTermsOnCreateClient;
+            
+            // Initialize price levels list
+            PriceLevels = PriceLevel.List.OrderBy(x => x.Name).ToList();
+            
+            // Initialize retail price levels list
+            RetailPriceLevels = RetailPriceLevel.Pricelist.OrderBy(x => x.Name).ToList();
+        }
+
+        partial void OnSelectedPriceLevelItemChanged(PriceLevel value)
+        {
+            if (value != null)
+            {
+                SelectedPriceLevelId = value.Id;
+                SelectedPriceLevel = value.Name;
+            }
+            else
+            {
+                SelectedPriceLevelId = 0;
+                SelectedPriceLevel = "Not Selected";
+            }
+        }
+
+        partial void OnSelectedRetailPriceLevelItemChanged(RetailPriceLevel value)
+        {
+            if (value != null)
+            {
+                SelectedRetailPriceLevelId = value.Id;
+                SelectedRetailPriceLevel = value.Name;
+            }
+            else
+            {
+                SelectedRetailPriceLevelId = 0;
+                SelectedRetailPriceLevel = "Not Selected";
+            }
         }
 
         public void OnNavigatedTo(IDictionary<string, object> query)
@@ -52,6 +97,8 @@ namespace LaceupMigration.ViewModels
                     {
                         SelectedPriceLevel = priceLevelName?.ToString() ?? "Not Selected";
                     }
+                    // Set the selected item for the picker
+                    SelectedPriceLevelItem = PriceLevels.FirstOrDefault(x => x.Id == SelectedPriceLevelId);
                 }
 
                 if (query.TryGetValue("termId", out var termId) && termId != null)
@@ -70,6 +117,8 @@ namespace LaceupMigration.ViewModels
                     {
                         SelectedRetailPriceLevel = retailPriceLevelName?.ToString() ?? "Not Selected";
                     }
+                    // Set the selected item for the picker
+                    SelectedRetailPriceLevelItem = RetailPriceLevels.FirstOrDefault(x => x.Id == SelectedRetailPriceLevelId);
                 }
             }
         }
@@ -231,13 +280,46 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SelectPriceLevel()
         {
-            await Shell.Current.GoToAsync("selectpricelevel");
+            var levels = PriceLevel.List.OrderBy(x => x.Name).ToList();
+            var levelNames = levels.Select(x => x.Name).ToArray();
+            var currentIndex = SelectedPriceLevelId > 0 ? levels.FindIndex(x => x.Id == SelectedPriceLevelId) : -1;
+
+            var selectedIndex = await _dialogService.ShowSelectionAsync("Select Price Level", levelNames);
+            if (selectedIndex >= 0 && selectedIndex < levels.Count)
+            {
+                SelectedPriceLevelId = levels[selectedIndex].Id;
+                SelectedPriceLevel = levels[selectedIndex].Name;
+            }
         }
 
         [RelayCommand]
         private async Task SelectTerms()
         {
-            await Shell.Current.GoToAsync("selectterms");
+            var terms = Term.List.OrderBy(x => x.Name).ToList();
+            var termNames = terms.Select(x => x.Name).ToArray();
+            var currentIndex = SelectedTermId > 0 ? terms.FindIndex(x => x.Id == SelectedTermId) : -1;
+
+            var selectedIndex = await _dialogService.ShowSelectionAsync("Select Terms", termNames);
+            if (selectedIndex >= 0 && selectedIndex < terms.Count)
+            {
+                SelectedTermId = terms[selectedIndex].Id;
+                SelectedTerms = terms[selectedIndex].Name;
+            }
+        }
+
+        [RelayCommand]
+        private async Task SelectRetailPriceLevel()
+        {
+            var levels = RetailPriceLevel.Pricelist.OrderBy(x => x.Name).ToList();
+            var levelNames = levels.Select(x => x.Name).ToArray();
+            var currentIndex = SelectedRetailPriceLevelId > 0 ? levels.FindIndex(x => x.Id == SelectedRetailPriceLevelId) : -1;
+
+            var selectedIndex = await _dialogService.ShowSelectionAsync("Select Retail Price Level", levelNames);
+            if (selectedIndex >= 0 && selectedIndex < levels.Count)
+            {
+                SelectedRetailPriceLevelId = levels[selectedIndex].Id;
+                SelectedRetailPriceLevel = levels[selectedIndex].Name;
+            }
         }
 
         [RelayCommand]

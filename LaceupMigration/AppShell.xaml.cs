@@ -87,6 +87,7 @@ namespace LaceupMigration
             Routing.RegisterRoute("goals", typeof(SelectGoalPage));
             Routing.RegisterRoute("endofday", typeof(EndOfDayPage));
             Routing.RegisterRoute("selectpricelevel", typeof(SelectPriceLevelPage));
+            Routing.RegisterRoute("selectretailpricelevel", typeof(SelectRetailPriceLevelPage));
             Routing.RegisterRoute("selectterms", typeof(SelectTermsPage));
             Routing.RegisterRoute("routereturns", typeof(RouteReturnsPage));
             Routing.RegisterRoute("endinventory", typeof(EndInventoryPage));
@@ -100,6 +101,7 @@ namespace LaceupMigration
             Routing.RegisterRoute("setupprinter", typeof(SetupPrinterPage));
             Routing.RegisterRoute("setupscanner", typeof(SetupScannerPage));
             Routing.RegisterRoute("addclientbillto", typeof(AddClientBillToPage));
+            Routing.RegisterRoute("logviewer", typeof(LogViewerPage));
 
             // Self Service routes
             Routing.RegisterRoute("selfservice/selectcompany", typeof(Views.SelfService.SelfServiceSelectCompanyPage));

@@ -12,13 +12,6 @@ namespace LaceupMigration.Views
             InitializeComponent();
             _viewModel = viewModel;
             BindingContext = _viewModel;
-
-            // Wire up menu toolbar item
-            var menuItem = ToolbarItems.FirstOrDefault();
-            if (menuItem != null)
-            {
-                menuItem.Command = _viewModel.ShowMenuCommand;
-            }
         }
 
         protected override async void OnAppearing()

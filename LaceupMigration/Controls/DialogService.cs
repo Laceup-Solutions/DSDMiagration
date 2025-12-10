@@ -81,8 +81,9 @@ public class DialogService : IDialogService
     public async Task<int> ShowSelectionAsync(string title, string[] options)
     {
         var page = GetCurrentPage();
-        if (page != null && options != null && options.Length > 0)
+        if (page != null && options != null)
         {
+            // Always show the popup, even if options is empty (will show just "Cancel")
             var result = await page.DisplayActionSheet(title, "Cancel", null, options);
             if (string.IsNullOrEmpty(result) || result == "Cancel")
                 return -1;

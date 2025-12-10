@@ -4,9 +4,19 @@
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.Views.AddClientPage"
              Shell.TabBarIsVisible="False"
-             Title="Add Client">
+             Title="Add Customer">
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
+            <!-- Save Button at the top -->
+            <Button Text="Save"
+                    Command="{Binding SaveCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    FontSize="16"
+                    Padding="16,12"
+                    Margin="0,0,0,20" />
+
+            <!-- Address Fields Block -->
             <Entry Text="{Binding Name}"
                    Placeholder="Client Name *"
                    FontSize="16" />
@@ -48,13 +58,10 @@
                    Placeholder="Zip Code"
                    FontSize="16" />
 
-            <Entry Text="{Binding License}"
-                   Placeholder="License"
-                   FontSize="16" />
-
-            <HorizontalStackLayout Spacing="8">
+            <!-- Checkboxes Block -->
+            <HorizontalStackLayout Spacing="8" IsVisible="{Binding ShowCanChangePrices}">
                 <CheckBox IsChecked="{Binding CanChangePrices}" />
-                <Label Text="Can Change Prices"
+                <Label Text="User Can Change Prices"
                        VerticalOptions="Center"
                        FontSize="14" />
             </HorizontalStackLayout>
@@ -68,39 +75,42 @@
 
             <HorizontalStackLayout Spacing="8">
                 <CheckBox IsChecked="{Binding OneDoc}" />
-                <Label Text="One Document"
+                <Label Text="Allow One Doc"
                        VerticalOptions="Center"
                        FontSize="14" />
             </HorizontalStackLayout>
 
-            <Entry Text="{Binding TaxRate}"
-                   Placeholder="Tax Rate"
-                   Keyboard="Numeric"
-                   FontSize="16" />
-
-            <Button Text="{Binding SelectedPriceLevel, StringFormat='Price Level: {0}'}"
-                    Command="{Binding SelectPriceLevelCommand}"
-                    HorizontalOptions="Fill" />
-
-            <Button Text="{Binding SelectedTerms, StringFormat='Terms: {0}'}"
-                    Command="{Binding SelectTermsCommand}"
-                    HorizontalOptions="Fill" />
-
-            <Button Text="Select Bill To"
-                    Command="{Binding SelectBillToCommand}"
-                    HorizontalOptions="Fill" />
-
+            <!-- Other Fields Block -->
             <Editor Text="{Binding Comment}"
                     Placeholder="Comments"
                     HeightRequest="100"
                     FontSize="16" />
 
-            <Button Text="Save"
-                    Command="{Binding SaveCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12"
+            <Entry Text="{Binding License}"
+                   Placeholder="License"
+                   FontSize="16" />
+
+            <Picker ItemsSource="{Binding PriceLevels}"
+                    SelectedItem="{Binding SelectedPriceLevelItem}"
+                    ItemDisplayBinding="{Binding Name}"
+                    Title="Price Level"
+                    FontSize="16" />
+
+            <Picker ItemsSource="{Binding RetailPriceLevels}"
+                    SelectedItem="{Binding SelectedRetailPriceLevelItem}"
+                    ItemDisplayBinding="{Binding Name}"
+                    Title="Retail Price Level"
+                    FontSize="16" />
+
+            <Button Text="{Binding SelectedTerms, StringFormat='Terms: {0}'}"
+                    Command="{Binding SelectTermsCommand}"
+                    HorizontalOptions="Fill"
+                    IsVisible="{Binding ShowTerms}" />
+
+            <!-- Add Bill To Address at the bottom -->
+            <Button Text="Add Bill To Address"
+                    Command="{Binding SelectBillToCommand}"
+                    HorizontalOptions="Fill"
                     Margin="0,20,0,0" />
         </VerticalStackLayout>
     </ScrollView>

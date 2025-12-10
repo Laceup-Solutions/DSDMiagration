@@ -19,6 +19,14 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _state = string.Empty;
         [ObservableProperty] private string _zip = string.Empty;
         [ObservableProperty] private string _country = string.Empty;
+        [ObservableProperty] private bool _useSameAsShipTo;
+        [ObservableProperty] private bool _isAddressEnabled = true;
+
+        private string _shipToAddress1 = string.Empty;
+        private string _shipToAddress2 = string.Empty;
+        private string _shipToCity = string.Empty;
+        private string _shipToState = string.Empty;
+        private string _shipToZip = string.Empty;
 
         public AddClientBillToPageViewModel(DialogService dialogService, ILaceupAppService appService)
         {
@@ -28,34 +36,90 @@ namespace LaceupMigration.ViewModels
 
         public void OnNavigatedTo(IDictionary<string, object> query)
         {
+            // Store ship-to address but don't pre-fill fields (fields start empty)
             if (query != null && query.TryGetValue("currentAddress", out var currentAddress))
             {
-                // Parse existing address if provided
+                // Parse existing address if provided (this is the ship to address)
                 if (currentAddress is string addressString && !string.IsNullOrEmpty(addressString))
                 {
                     var parts = addressString.Split('|');
-                    if (parts.Length > 0) Address1 = parts[0];
-                    if (parts.Length > 1) Address2 = parts[1];
-                    if (parts.Length > 2) City = parts[2];
-                    if (parts.Length > 3) State = parts[3];
-                    if (parts.Length > 4) Zip = parts[4];
+                    _shipToAddress1 = parts.Length > 0 ? parts[0] : string.Empty;
+                    _shipToAddress2 = parts.Length > 1 ? parts[1] : string.Empty;
+                    _shipToCity = parts.Length > 2 ? parts[2] : string.Empty;
+                    _shipToState = parts.Length > 3 ? parts[3] : string.Empty;
+                    _shipToZip = parts.Length > 4 ? parts[4] : string.Empty;
                 }
+            }
+            
+            // Fields start empty - don't pre-fill them
+            Address1 = string.Empty;
+            Address2 = string.Empty;
+            City = string.Empty;
+            State = string.Empty;
+            Zip = string.Empty;
+        }
+
+        partial void OnUseSameAsShipToChanged(bool value)
+        {
+            if (value)
+            {
+                // Copy ship to address to bill to address
+                Address1 = _shipToAddress1;
+                Address2 = _shipToAddress2;
+                City = _shipToCity;
+                State = _shipToState;
+                Zip = _shipToZip;
+                IsAddressEnabled = false;
+            }
+            else
+            {
+                // Clear fields when unchecked
+                Address1 = string.Empty;
+                Address2 = string.Empty;
+                City = string.Empty;
+                State = string.Empty;
+                Zip = string.Empty;
+                IsAddressEnabled = true;
             }
         }
 
         [RelayCommand]
         private async Task Save()
         {
-            if (string.IsNullOrWhiteSpace(Address1) || string.IsNullOrWhiteSpace(City) || 
-                string.IsNullOrWhiteSpace(State) || string.IsNullOrWhiteSpace(Zip))
+            // If "Use same as Ship To Address" is checked, skip validation (match Xamarin behavior)
+            if (!UseSameAsShipTo)
             {
-                await _dialogService.ShowAlertAsync("Address 1, City, State, and Zip are required.", "Validation Error", "OK");
-                return;
+                if (string.IsNullOrWhiteSpace(Address1) || string.IsNullOrWhiteSpace(City) || 
+                    string.IsNullOrWhiteSpace(State) || string.IsNullOrWhiteSpace(Zip))
+                {
+                    await _dialogService.ShowAlertAsync("Address 1, City, State, and Zip are required.", "Validation Error", "OK");
+                    return;
+                }
             }
 
             try
             {
-                var addressParts = new List<string> { Address1, Address2, City, State, Zip };
+                // If checkbox is checked, use ship-to address values
+                string finalAddress1, finalAddress2, finalCity, finalState, finalZip;
+                
+                if (UseSameAsShipTo)
+                {
+                    finalAddress1 = _shipToAddress1;
+                    finalAddress2 = _shipToAddress2;
+                    finalCity = _shipToCity;
+                    finalState = _shipToState;
+                    finalZip = _shipToZip;
+                }
+                else
+                {
+                    finalAddress1 = Address1;
+                    finalAddress2 = Address2;
+                    finalCity = City;
+                    finalState = State;
+                    finalZip = Zip;
+                }
+
+                var addressParts = new List<string> { finalAddress1, finalAddress2, finalCity, finalState, finalZip };
                 if (!string.IsNullOrWhiteSpace(Country))
                     addressParts.Add(Country);
                 

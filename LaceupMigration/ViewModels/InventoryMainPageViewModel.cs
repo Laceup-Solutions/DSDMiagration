@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
 using LaceupMigration.Services;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -12,6 +13,7 @@ namespace LaceupMigration.ViewModels
     {
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
+        private readonly AdvancedOptionsService _advancedOptionsService;
 
         [ObservableProperty] private bool _showAcceptLoad;
         [ObservableProperty] private bool _acceptLoadEnabled;
@@ -24,10 +26,11 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private bool _showCycleCount;
         [ObservableProperty] private string _viewPrintText = "View/Print Inventory";
 
-        public InventoryMainPageViewModel(DialogService dialogService, ILaceupAppService appService)
+        public InventoryMainPageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService)
         {
             _dialogService = dialogService;
             _appService = appService;
+            _advancedOptionsService = advancedOptionsService;
         }
 
         public async Task OnAppearingAsync()
@@ -334,6 +337,30 @@ namespace LaceupMigration.ViewModels
         {
             // Match Xamarin's InventorySummary_Click - navigates to CurrentInventorySummaryActivity
             await Shell.Current.GoToAsync("inventorysummary");
+        }
+
+        [RelayCommand]
+        private async Task ShowMenu()
+        {
+            var options = new List<string>();
+            
+            // Advanced Options
+            options.Add("Advanced Options");
+            
+            if (options.Count == 0)
+                return;
+            
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.ToArray());
+            
+            if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
+                return;
+            
+            switch (choice)
+            {
+                case "Advanced Options":
+                    await _advancedOptionsService.ShowAdvancedOptionsAsync();
+                    break;
+            }
         }
     }
 }

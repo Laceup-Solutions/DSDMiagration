@@ -64,14 +64,57 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private string _licenseNumber = string.Empty;
 
+        [ObservableProperty]
+        private bool _oneDoc;
+
+        [ObservableProperty]
+        private List<PriceLevel> _priceLevels = new();
+        [ObservableProperty]
+        private PriceLevel _selectedPriceLevelItem;
+        [ObservableProperty]
+        private List<RetailPriceLevel> _retailPriceLevels = new();
+        [ObservableProperty]
+        private RetailPriceLevel _selectedRetailPriceLevelItem;
+
         private PriceLevel? _selectedPriceLevel;
         private int _termId;
+        private int _retailPriceLevelId;
 
         public EditClientPageViewModel(DialogService dialogService)
         {
             _dialogService = dialogService;
             ShowTerms = Term.List.Count > 0 && Config.CanSelectTermsOnCreateClient;
             ShowCanChangePrices = Config.NewClientCanChangePrices;
+            
+            // Initialize price levels lists
+            PriceLevels = PriceLevel.List.OrderBy(x => x.Name).ToList();
+            RetailPriceLevels = RetailPriceLevel.Pricelist.OrderBy(x => x.Name).ToList();
+        }
+
+        partial void OnSelectedPriceLevelItemChanged(PriceLevel value)
+        {
+            if (value != null)
+            {
+                _selectedPriceLevel = value;
+                PriceLevelText = value.Name;
+            }
+            else
+            {
+                _selectedPriceLevel = null;
+                PriceLevelText = "Select Price Level";
+            }
+        }
+
+        partial void OnSelectedRetailPriceLevelItemChanged(RetailPriceLevel value)
+        {
+            if (value != null)
+            {
+                _retailPriceLevelId = value.Id;
+            }
+            else
+            {
+                _retailPriceLevelId = 0;
+            }
         }
 
         public async Task InitializeAsync(int clientId)
@@ -100,17 +143,19 @@ namespace LaceupMigration.ViewModels
             State = addr.Length > 3 ? addr[3] : string.Empty;
             Zip = addr.Length > 4 ? addr[4] : string.Empty;
 
-            var rprice = RetailPriceLevel.Pricelist.FirstOrDefault(x => x.Id == _client.RetailPriceLevelId);
-            if (rprice != null)
-            {
-                PriceLevelText = rprice.Name;
-            }
-
             var savedPriceLevel = PriceLevel.List.FirstOrDefault(x => x.Id == _client.PriceLevel);
             if (savedPriceLevel != null)
             {
                 _selectedPriceLevel = savedPriceLevel;
                 PriceLevelText = savedPriceLevel.Name;
+                SelectedPriceLevelItem = savedPriceLevel;
+            }
+
+            var rprice = RetailPriceLevel.Pricelist.FirstOrDefault(x => x.Id == _client.RetailPriceLevelId);
+            if (rprice != null)
+            {
+                _retailPriceLevelId = rprice.Id;
+                SelectedRetailPriceLevelItem = rprice;
             }
 
             var savedTerm = Term.List.FirstOrDefault(x => x.Id == _client.TermId);
@@ -123,6 +168,7 @@ namespace LaceupMigration.ViewModels
             LicenseNumber = _client.LicenceNumber;
             Taxable = _client.Taxable;
             TaxRate = _client.TaxRate.ToString();
+            OneDoc = _client.OneDoc;
 
             var hasField = DataAccess.GetSingleUDF("pricechangeable", _client.NonvisibleExtraPropertiesAsString);
             CanChangePrices = hasField?.ToLowerInvariant() == "yes";
@@ -196,8 +242,14 @@ namespace LaceupMigration.ViewModels
                 _client.TermId = _termId;
             }
 
+            if (_retailPriceLevelId > 0)
+            {
+                _client.RetailPriceLevelId = _retailPriceLevelId;
+            }
+
             _client.LicenceNumber = LicenseNumber;
             _client.Taxable = Taxable;
+            _client.OneDoc = OneDoc;
             if (double.TryParse(TaxRate, out var taxRateValue))
             {
                 _client.TaxRate = taxRateValue;

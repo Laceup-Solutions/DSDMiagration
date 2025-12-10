@@ -17,6 +17,7 @@ namespace LaceupMigration.ViewModels
     {
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
+        private readonly AdvancedOptionsService _advancedOptionsService;
 
         private LaceupMigration.TransferAction _transferAction;
         private bool _changed;
@@ -42,10 +43,11 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _searchQuery = string.Empty;
         [ObservableProperty] private string _sortButtonText = "Sort By: Product Name";
 
-        public TransferOnOffPageViewModel(DialogService dialogService, ILaceupAppService appService)
+        public TransferOnOffPageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService)
         {
             _dialogService = dialogService;
             _appService = appService;
+            _advancedOptionsService = advancedOptionsService;
         }
 
         public async Task InitializeAsync(string action)
@@ -785,6 +787,190 @@ namespace LaceupMigration.ViewModels
                 SortDetails.SortCriteria.CategoryThenByCode => "Category Then By Code",
                 _ => "Product Name"
             };
+        }
+
+        [RelayCommand]
+        private async Task ShowMenu()
+        {
+            var options = new List<string>();
+            
+            // Submit - Match Xamarin: always visible UNLESS file doesn't exist
+            // File gets deleted after successful SendTransfer(), so Submit disappears
+            var finalFile = GetFinalFilePath();
+            if (File.Exists(finalFile) || !ReadOnly)
+            {
+                options.Add("Submit");
+            }
+
+            // Add Comments
+            options.Add("Add Comments");
+            
+            // Delete Document - only if there are changes or document exists
+            if (!ReadOnly)
+            {
+                options.Add("Delete Document");
+            }
+            
+            // Advanced Options
+            options.Add("Advanced Options");
+            
+            if (options.Count == 0)
+                return;
+            
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.ToArray());
+            
+            if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
+                return;
+            
+            switch (choice)
+            {
+                case "Submit":
+                    await SubmitAsync();
+                    break;
+                case "Add Comments":
+                    await ShowCommentsDialog();
+                    break;
+                case "Delete Document":
+                    await DeleteDocumentAsync();
+                    break;
+                case "Advanced Options":
+                    await _advancedOptionsService.ShowAdvancedOptionsAsync();
+                    break;
+            }
+        }
+        
+        private async Task SubmitAsync()
+        {
+            // Match Xamarin transferSubmit logic
+            // Check if comments are required and missing
+            if (Changed && Config.TransferComment && string.IsNullOrEmpty(_comment))
+            {
+                await ShowCommentsDialog();
+                return;
+            }
+            
+            // Show confirmation dialog - match Xamarin: Alert title, submitTransaction message
+            var confirmed = await _dialogService.ShowConfirmationAsync(
+                "Alert",
+                "Submit transaction?",
+                "Yes",
+                "No");
+            
+            if (!confirmed)
+                return;
+            
+            // Submit the transfer
+            await SubmitTransfer();
+        }
+
+        private async Task SubmitTransfer()
+        {
+            // Show loading indicator during submission
+            await _dialogService.ShowLoadingAsync("Sending all information...");
+
+            string responseMessage = null;
+            bool errorDownloadingData = false;
+
+            // Match Xamarin: Run on background thread
+            await Task.Run(() =>
+            {
+                try
+                {
+                    SaveInFinalFile();
+
+                    if (_transferAction == TransferAction.On)
+                        DataAccess.SendTransfer(Config.TransferOnFile);
+                    else
+                        DataAccess.SendTransfer(Config.TransferOffFile);
+
+                    ApplyTransfer();
+                }
+                catch (Exception e)
+                {
+                    MainThread.BeginInvokeOnMainThread(async () => await _dialogService.HideLoadingAsync());
+
+                    errorDownloadingData = true;
+                    responseMessage = "Error submitting the cycle count" + System.Environment.NewLine + e.Message;
+
+                    Logger.CreateLog(e);
+                }
+            });
+
+    // Match Xamarin: Finally block logic - always runs on UI thread
+    await MainThread.InvokeOnMainThreadAsync(async () =>
+    {
+        string title = "Alert";
+        if (string.IsNullOrEmpty(responseMessage))
+        {
+            responseMessage = "Cycle Count submitted successfully.";
+            title = "Success";
+        }
+
+        await _dialogService.HideLoadingAsync();
+
+        // Match Xamarin: Show appropriate dialog based on success/error
+        if (errorDownloadingData)
+        {
+            await _dialogService.ShowAlertAsync(responseMessage, title, "OK");
+        }
+        else
+        {
+            await _dialogService.ShowAlertAsync("Data successfully transmitted.", title, "OK");
+
+            // Match Xamarin: Update state after successful submission
+            ReadOnly = true;
+            Changed = false;
+
+            // Delete temp file if it exists
+            if (File.Exists(_tempFile)) File.Delete(_tempFile);
+
+            // Refresh the list - equivalent to adapter.NotifyDataSetChanged()
+            FilterProducts();
+
+            // Match Xamarin: Notify that ReadOnly changed so UI can update button states
+            OnPropertyChanged(nameof(ReadOnly));
+        }
+    });
+}
+        
+        private async Task DeleteDocumentAsync()
+        {
+            var confirmed = await _dialogService.ShowConfirmationAsync(
+                "Delete Document",
+                "Are you sure you want to delete this transfer document? All changes will be lost.",
+                "Yes",
+                "No");
+            
+            if (!confirmed)
+                return;
+            
+            // Delete temp file
+            if (File.Exists(_tempFile))
+                File.Delete(_tempFile);
+            
+            // Delete final file if it exists
+            var finalFile = GetFinalFilePath();
+            if (File.Exists(finalFile))
+                File.Delete(finalFile);
+            
+            // Clear all data
+            _allProductList.Clear();
+            TransferLines.Clear();
+            Changed = false;
+            _comment = string.Empty;
+            ReadOnly = false;
+            
+            // Reload inventory
+            await LoadInventoryAsync();
+            
+            await _dialogService.ShowAlertAsync("Document deleted successfully", "Success", "OK");
+        }
+        
+        private string GetFinalFilePath()
+        {
+            return _transferAction == LaceupMigration.TransferAction.On 
+                ? Config.TransferOnFile 
+                : Config.TransferOffFile;
         }
     }
 

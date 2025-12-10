@@ -206,6 +206,8 @@ namespace LaceupMigration
 		// Selection pages
 		builder.Services.AddTransient<SelectPriceLevelPage>();
 		builder.Services.AddTransient<ViewModels.SelectPriceLevelPageViewModel>();
+		builder.Services.AddTransient<SelectRetailPriceLevelPage>();
+		builder.Services.AddTransient<ViewModels.SelectRetailPriceLevelPageViewModel>();
 		builder.Services.AddTransient<SelectTermsPage>();
 		builder.Services.AddTransient<ViewModels.SelectTermsPageViewModel>();
 		
@@ -242,6 +244,10 @@ namespace LaceupMigration
 		// Client pages
 		builder.Services.AddTransient<AddClientBillToPage>();
 		builder.Services.AddTransient<ViewModels.AddClientBillToPageViewModel>();
+		
+		// Log viewer page
+		builder.Services.AddTransient<LogViewerPage>();
+		builder.Services.AddTransient<ViewModels.LogViewerPageViewModel>();
 		
 		// Self Service pages
 		builder.Services.AddTransient<Views.SelfService.SelfServiceSelectCompanyPage>();
