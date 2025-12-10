@@ -2,8 +2,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
 using LaceupMigration.Services;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Storage;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 
@@ -120,8 +124,7 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SeeLog()
         {
-            // TODO: Navigate to log viewer
-            await _dialogService.ShowAlertAsync("Log viewer functionality to be implemented.", "Info", "OK");
+            await Shell.Current.GoToAsync("logviewer");
         }
 
         [RelayCommand]
@@ -141,8 +144,135 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task RestoreData()
         {
-            // TODO: Implement data restore
-            await _dialogService.ShowAlertAsync("Data restore functionality to be implemented.", "Info", "OK");
+            try
+            {
+                // Show confirmation dialog - matches Xamarin behavior
+                var confirmed = await _dialogService.ShowConfirmationAsync(
+                    "Restore Data",
+                    "This will replace all current data with the data from the selected file. Are you sure?",
+                    "Yes",
+                    "No");
+
+                if (!confirmed)
+                    return;
+
+                // Show loading while getting backup sessions from server
+                await _dialogService.ShowLoadingAsync("Loading backup sessions...");
+
+                // Get available backup sessions from server - matches Xamarin "Select session" popup
+                List<(string sessionId, string displayName)> backupSessions = null;
+                try
+                {
+                    backupSessions = await _appService.GetAvailableBackupSessionsAsync();
+                }
+                catch (Exception ex)
+                {
+                    // Log error but don't return - we still want to show the popup (even if empty)
+                    Logger.CreateLog($"Error loading backup sessions: {ex.Message}");
+                    _appService.TrackError(ex);
+                    backupSessions = new List<(string sessionId, string displayName)>();
+                }
+                finally
+                {
+                    await _dialogService.HideLoadingAsync();
+                }
+                
+                string selectedBackupPath = null;
+
+                // Always show the "Select Session" popup, even if the list is empty - matches Xamarin behavior
+                if (backupSessions == null)
+                {
+                    backupSessions = new List<(string sessionId, string displayName)>();
+                }
+
+                // Extract display names for the selection dialog (empty array if no sessions)
+                var sessionOptions = backupSessions.Select(s => s.displayName).ToArray();
+
+                // Show selection dialog - matches Xamarin "Select session" popup
+                // This will show even with an empty list (will show just "Cancel" button)
+                var selectedIndex = await _dialogService.ShowSelectionAsync("Select Session", sessionOptions);
+                
+                if (selectedIndex >= 0 && selectedIndex < backupSessions.Count)
+                {
+                    // Download the selected backup file from server
+                    await _dialogService.ShowLoadingAsync("Downloading backup...");
+                    try
+                    {
+                        selectedBackupPath = await _appService.DownloadBackupFileAsync(backupSessions[selectedIndex].sessionId);
+                    }
+                    catch (Exception ex)
+                    {
+                        await _dialogService.HideLoadingAsync();
+                        await _dialogService.ShowAlertAsync(
+                            $"Error downloading backup: {ex.Message}",
+                            "Error",
+                            "OK");
+                        _appService.TrackError(ex);
+                        return;
+                    }
+                    finally
+                    {
+                        await _dialogService.HideLoadingAsync();
+                    }
+                }
+                else
+                {
+                    // User cancelled selection or no sessions available, fall back to file picker
+                    var fileResult = await FilePicker.Default.PickAsync(new PickOptions
+                    {
+                        PickerTitle = "Select data file to restore",
+                        FileTypes = new FilePickerFileType(
+                            new Dictionary<DevicePlatform, IEnumerable<string>>
+                            {
+                                { DevicePlatform.Android, new[] { "application/zip", "application/x-zip-compressed", ".zip" } },
+                                { DevicePlatform.iOS, new[] { "public.zip-archive", ".zip" } },
+                                { DevicePlatform.WinUI, new[] { ".zip" } }
+                            })
+                    });
+
+                    if (fileResult == null)
+                        return;
+
+                    selectedBackupPath = fileResult.FullPath;
+                }
+
+                // Show loading dialog
+                await _dialogService.ShowLoadingAsync("Restoring data...");
+
+                try
+                {
+                    // Restore data from selected backup file
+                    await _appService.RestoreDataAsync(selectedBackupPath);
+
+                    await _dialogService.HideLoadingAsync();
+
+                    // Show success message
+                    await _dialogService.ShowAlertAsync(
+                        "Data restored successfully. The application will now reload.",
+                        "Success",
+                        "OK");
+
+                    // Navigate to MainPage to reload the app - matches Xamarin behavior
+                    await Shell.Current.GoToAsync("///MainPage");
+                }
+                catch (Exception ex)
+                {
+                    await _dialogService.HideLoadingAsync();
+                    await _dialogService.ShowAlertAsync(
+                        $"Error restoring data: {ex.Message}",
+                        "Error",
+                        "OK");
+                    _appService.TrackError(ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync(
+                    $"Error selecting file: {ex.Message}",
+                    "Error",
+                    "OK");
+                _appService.TrackError(ex);
+            }
         }
 
         [RelayCommand]

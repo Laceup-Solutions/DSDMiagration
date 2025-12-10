@@ -8,6 +8,10 @@
 		<SingleProject>true</SingleProject>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		
+		<!-- Disable Hot Reload to prevent debugger connection issues -->
+		<UseInterpreter Condition="'$(TargetFramework)' == 'net9.0-android'">false</UseInterpreter>
+		<AndroidEnableAssemblyCompression>false</AndroidEnableAssemblyCompression>
 
 		<!-- Display name -->
 		<ApplicationTitle>LaceupMigration</ApplicationTitle>

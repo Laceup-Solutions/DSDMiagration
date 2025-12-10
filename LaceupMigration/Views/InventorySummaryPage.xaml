@@ -5,6 +5,9 @@
              x:Class="LaceupMigration.Views.InventorySummaryPage"
              Shell.TabBarIsVisible="False"
              Title="Current Inventory Summary">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="MENU" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
+    </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" RowSpacing="5" Padding="5">
             <!-- Print Button and UoM Selector (matches Xamarin layout) -->

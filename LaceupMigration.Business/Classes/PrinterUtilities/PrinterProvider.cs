@@ -74,6 +74,10 @@ namespace LaceupMigration
         {
             var response = await DialogHelper._dialogService.ShowPromptAsync("Alert", "Enter Copies", "Print", "Cancel", "1", 1, "1");
 
+            // If user cancelled, return early (don't show printer selection)
+            if (string.IsNullOrEmpty(response))
+                return;
+
             int qty = 1;
             Int32.TryParse(response, out qty);
             

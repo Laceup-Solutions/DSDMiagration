@@ -12,45 +12,60 @@
                    FontAttributes="Bold"
                    Margin="0,0,0,8" />
 
+            <HorizontalStackLayout Spacing="8" Margin="0,0,0,8">
+                <CheckBox IsChecked="{Binding UseSameAsShipTo}" />
+                <Label Text="Use same as Ship To Address"
+                       VerticalOptions="Center"
+                       FontSize="14" />
+            </HorizontalStackLayout>
+
             <Entry Text="{Binding Address1}"
                    Placeholder="Address 1 *"
-                   FontSize="16" />
+                   FontSize="16"
+                   IsEnabled="{Binding IsAddressEnabled}" />
 
             <Entry Text="{Binding Address2}"
                    Placeholder="Address 2"
-                   FontSize="16" />
+                   FontSize="16"
+                   IsEnabled="{Binding IsAddressEnabled}" />
 
             <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                 <Entry Grid.Column="0"
                        Text="{Binding City}"
                        Placeholder="City *"
-                       FontSize="16" />
+                       FontSize="16"
+                       IsEnabled="{Binding IsAddressEnabled}" />
                 <Entry Grid.Column="1"
                        Text="{Binding State}"
                        Placeholder="State *"
-                       FontSize="16" />
+                       FontSize="16"
+                       IsEnabled="{Binding IsAddressEnabled}" />
             </Grid>
 
             <Entry Text="{Binding Zip}"
                    Placeholder="Zip Code *"
-                   FontSize="16" />
+                   FontSize="16"
+                   IsEnabled="{Binding IsAddressEnabled}" />
 
             <Entry Text="{Binding Country}"
                    Placeholder="Country"
-                   FontSize="16" />
+                   FontSize="16"
+                   IsEnabled="{Binding IsAddressEnabled}" />
 
-            <Button Text="Save"
-                    Command="{Binding SaveCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12"
-                    Margin="0,20,0,0" />
-
-            <Button Text="Cancel"
-                    Command="{Binding CancelCommand}"
-                    FontSize="16"
-                    Padding="16,12" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,20,0,0">
+                <Button Grid.Column="0"
+                        Text="Go Back"
+                        Command="{Binding CancelCommand}"
+                        FontSize="16"
+                        Padding="16,12" />
+                <Button Grid.Column="1"
+                        Text="Save"
+                        Command="{Binding SaveCommand}"
+                        BackgroundColor="{StaticResource Primary}"
+                        TextColor="White"
+                        FontSize="16"
+                        Padding="16,12" />
+            </Grid>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

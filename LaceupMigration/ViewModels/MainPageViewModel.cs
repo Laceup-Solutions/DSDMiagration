@@ -343,7 +343,7 @@ namespace LaceupMigration.ViewModels
 			
 			// 9. Add Client
 			if (Config.CanAddClient)
-				menuItems.Add("Add Client");
+				menuItems.Add("Add New Customer");
 			
 			// 10. Product Catalog
 			if (Config.ProductCatalog)
@@ -397,6 +397,7 @@ namespace LaceupMigration.ViewModels
 			switch (choice)
 			{
 				case "Add Client":
+				case "Add New Customer":
 					await AddClient();
 					break;
 				case "Sync Data":

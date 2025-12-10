@@ -4,7 +4,10 @@
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.Views.InventoryMainPage"
              Shell.TabBarIsVisible="False"
-             Title="Inventory">
+             Title="Inventory Management">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="MENU" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
+    </ContentPage.ToolbarItems>
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
             <!-- View/Print Inventory (matches Xamarin - first in layout but always hidden in code) -->
