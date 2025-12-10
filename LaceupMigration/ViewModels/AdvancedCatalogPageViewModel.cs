@@ -45,49 +45,40 @@ namespace LaceupMigration.ViewModels
 
         public ObservableCollection<AdvancedCatalogItemViewModel> Items { get; } = new();
         public ObservableCollection<AdvancedCatalogItemViewModel> FilteredItems { get; } = new();
-        public ObservableCollection<AdvancedCatalogLineItemViewModel> LineItems { get; } = new();
+        public ObservableCollection<AdvancedCatalogItemViewModel.AdvancedCatalogLineItemViewModel> LineItems { get; } = new();
 
-        [ObservableProperty]
-        private string _searchQuery = string.Empty;
+        [ObservableProperty] private string _searchQuery = string.Empty;
 
-        [ObservableProperty]
-        private string _clientName = string.Empty;
+        [ObservableProperty] private string _clientName = string.Empty;
 
-        [ObservableProperty]
-        private string _orderTypeText = string.Empty;
+        [ObservableProperty] private string _orderTypeText = string.Empty;
 
-        [ObservableProperty]
-        private string _linesText = "Lines: 0";
+        [ObservableProperty] private string _linesText = "Lines: 0";
 
-        [ObservableProperty]
-        private bool _canEdit = true;
+        [ObservableProperty] private bool _canEdit = true;
 
-        [ObservableProperty]
-        private string _selectedItemTypeText = "Sales";
+        [ObservableProperty] private string _selectedItemTypeText = "Sales";
 
-        [ObservableProperty]
-        private bool _showSendButton = true;
+        [ObservableProperty] private bool _showSendButton = true;
 
-        [ObservableProperty]
-        private bool _showSalesButton = true;
+        [ObservableProperty] private bool _showSalesButton = true;
+        partial void OnShowSalesButtonChanged(bool value) => UpdateButtonGridColumns();
 
-        [ObservableProperty]
-        private bool _showDumpsButton = true;
+        [ObservableProperty] private bool _showDumpsButton = true;
+        partial void OnShowDumpsButtonChanged(bool value) => UpdateButtonGridColumns();
 
-        [ObservableProperty]
-        private bool _showReturnsButton = true;
+        [ObservableProperty] private bool _showReturnsButton = true;
+        partial void OnShowReturnsButtonChanged(bool value) => UpdateButtonGridColumns();
 
-        [ObservableProperty]
-        private string _buttonGridColumns = "*,*,*";
+        [ObservableProperty] private bool _showButtonGrid = true;
 
-        [ObservableProperty]
-        private int _salesButtonColumn = 0;
+        [ObservableProperty] private string _buttonGridColumns = "*,*,*";
 
-        [ObservableProperty]
-        private int _dumpsButtonColumn = 1;
+        [ObservableProperty] private int _salesButtonColumn = 0;
 
-        [ObservableProperty]
-        private int _returnsButtonColumn = 2;
+        [ObservableProperty] private int _dumpsButtonColumn = 1;
+
+        [ObservableProperty] private int _returnsButtonColumn = 2;
 
         [ObservableProperty]
         private Microsoft.Maui.Graphics.Color _salesButtonColor = Microsoft.Maui.Graphics.Colors.Transparent;
@@ -107,11 +98,9 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private Microsoft.Maui.Graphics.Color _returnsButtonTextColor = Microsoft.Maui.Graphics.Colors.Black;
 
-        [ObservableProperty]
-        private string _itemsTotalText = "Items: 0";
+        [ObservableProperty] private string _itemsTotalText = "Items: 0";
 
-        [ObservableProperty]
-        private bool _isOrderSummaryExpanded = false;
+        [ObservableProperty] private bool _isOrderSummaryExpanded = false;
 
         public bool ShowTotalInHeader => ShowTotals && !IsOrderSummaryExpanded;
 
@@ -120,52 +109,39 @@ namespace LaceupMigration.ViewModels
             OnPropertyChanged(nameof(ShowTotalInHeader));
         }
 
-        [ObservableProperty]
-        private string _termsText = "Terms: ";
+        [ObservableProperty] private string _termsText = "Terms: ";
 
-        [ObservableProperty]
-        private string _subtotalText = "Subtotal: $0.00";
+        [ObservableProperty] private string _subtotalText = "Subtotal: $0.00";
 
-        [ObservableProperty]
-        private string _discountText = "Discount: $0.00";
+        [ObservableProperty] private string _discountText = "Discount: $0.00";
 
-        [ObservableProperty]
-        private string _taxText = "Tax: $0.00";
+        [ObservableProperty] private string _taxText = "Tax: $0.00";
 
-        [ObservableProperty]
-        private string _totalText = "Total: $0.00";
+        [ObservableProperty] private string _totalText = "Total: $0.00";
 
-        [ObservableProperty]
-        private string _qtySoldText = "Qty Sold: 0";
+        [ObservableProperty] private string _qtySoldText = "Qty Sold: 0";
 
-        [ObservableProperty]
-        private string _orderAmountText = "Order: $0.00";
+        [ObservableProperty] private string _orderAmountText = "Order: $0.00";
 
-        [ObservableProperty]
-        private string _creditAmountText = "Credit: $0.00";
+        [ObservableProperty] private string _creditAmountText = "Credit: $0.00";
 
-        [ObservableProperty]
-        private string _companyText = string.Empty;
+        [ObservableProperty] private string _companyText = string.Empty;
 
-        [ObservableProperty]
-        private bool _showCompany = false;
+        [ObservableProperty] private bool _showCompany = false;
 
-        [ObservableProperty]
-        private bool _showTotals = true;
+        [ObservableProperty] private bool _showTotals = true;
 
-        [ObservableProperty]
-        private bool _showDiscount = true;
+        [ObservableProperty] private bool _showDiscount = true;
 
-        [ObservableProperty]
-        private string _sortByText = "Sort: Product Name";
+        [ObservableProperty] private string _sortByText = "Sort: Product Name";
 
-        [ObservableProperty]
-        private string _filterText = "Filter";
+        [ObservableProperty] private string _filterText = "Filter";
 
-        [ObservableProperty]
-        private bool _showPrices = true;
+        [ObservableProperty] private bool _showPrices = true;
 
-        public AdvancedCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner, AdvancedOptionsService advancedOptionsService)
+        public AdvancedCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService,
+            IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner,
+            AdvancedOptionsService advancedOptionsService)
         {
             _dialogService = dialogService;
             _appService = appService;
@@ -211,7 +187,8 @@ namespace LaceupMigration.ViewModels
                     itemType = it;
             }
 
-            MainThread.BeginInvokeOnMainThread(async () => await InitializeAsync(orderId, categoryId, search, itemType));
+            MainThread.BeginInvokeOnMainThread(async () =>
+                await InitializeAsync(orderId, categoryId, search, itemType));
         }
 
         public async Task InitializeAsync(int? orderId, int? categoryId, string? search, int? itemType)
@@ -255,7 +232,7 @@ namespace LaceupMigration.ViewModels
             {
                 ShowCompany = false;
             }
-            
+
             // Set button visibility based on OrderType and AllowOneDoc
             // If OrderType is Return or Credit, show Dumps and Returns buttons (hide Sales)
             if (_order.OrderType == OrderType.Return || _order.OrderType == OrderType.Credit)
@@ -286,6 +263,7 @@ namespace LaceupMigration.ViewModels
                     ShowDumpsButton = false;
                     ShowReturnsButton = false;
                 }
+
                 // Default to Sales (0) for regular orders
                 if (!itemType.HasValue)
                 {
@@ -303,7 +281,7 @@ namespace LaceupMigration.ViewModels
                     _itemType = 0;
                 }
             }
-            
+
             UpdateButtonGridColumns();
             UpdateItemTypeText();
             PrepareList();
@@ -325,7 +303,7 @@ namespace LaceupMigration.ViewModels
             // Clear cache to force rebuild
             _cachedItems = null;
             _cachedItemType = null;
-            
+
             PrepareList();
             Filter();
             RefreshTotals();
@@ -340,8 +318,8 @@ namespace LaceupMigration.ViewModels
 
             // Check if we can use cached items
             var categoryId = _category?.CategoryId ?? 0;
-            if (_cachedItems != null && 
-                _cachedItemType == _itemType && 
+            if (_cachedItems != null &&
+                _cachedItemType == _itemType &&
                 _cachedCategoryId == categoryId &&
                 _cachedSearchFromCategories == _searchCriteriaFromCategories)
             {
@@ -351,9 +329,10 @@ namespace LaceupMigration.ViewModels
                 {
                     // Update display properties in case order details changed
                     UpdateItemFromOrderDetails(item);
-                    item.UpdateDisplayProperties();
+                    item.UpdateDisplayProperties(_order);
                     Items.Add(item);
                 }
+
                 return;
             }
 
@@ -390,11 +369,38 @@ namespace LaceupMigration.ViewModels
                 var item = new AdvancedCatalogItemViewModel
                 {
                     Product = product,
-                    ItemType = _itemType
+                    ItemType = _itemType,
+                    Order = _order
                 };
+                // Access Details to trigger handler setup
+                _ = item.Details;
+
+
+                // Can Change Price
+                if (_order != null)
+                {
+                    item.CanChangePrice = Config.CanChangePrice(_order, product, _itemType > 0);
+
+                    // Show Select PL only if Config.ShowLowestPriceLevel is true AND product has ProductPrice entries
+                    if (Config.ShowLowestPriceLevel)
+                    {
+                        var productPrices = ProductPrice.Pricelist.Where(x => x.ProductId == product.ProductId);
+                        item.ShowSelectPL = productPrices.Any();
+                    }
+                    else
+                    {
+                        item.ShowSelectPL = false;
+                    }
+                }
+                else
+                {
+                    item.CanChangePrice = false;
+                    item.ShowSelectPL = false;
+                }
 
                 // Use more efficient lookup - try to find by ProductId directly
-                var clientSourceKey = clientSource.Keys.FirstOrDefault(x => x != null && x.ProductId == product.ProductId);
+                var clientSourceKey =
+                    clientSource.Keys.FirstOrDefault(x => x != null && x.ProductId == product.ProductId);
                 if (clientSourceKey != null && clientSource.TryGetValue(clientSourceKey, out var history))
                 {
                     item.History.Clear();
@@ -405,7 +411,7 @@ namespace LaceupMigration.ViewModels
                 // Create details for each UoM or single detail if no UoM
                 if (product.UnitOfMeasures.Count == 0)
                 {
-                    var detail = new AdvancedCatalogDetailViewModel
+                    var detail = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
                     {
                         Product = product,
                         ExpectedPrice = Product.GetPriceForProduct(product, _order, _itemType > 0, _itemType == 1)
@@ -429,10 +435,11 @@ namespace LaceupMigration.ViewModels
                 {
                     foreach (var uom in product.UnitOfMeasures)
                     {
-                        if (product.UseDefaultUOM && _order.OrderType == OrderType.Order && !uom.IsDefault && _itemType == 0)
+                        if (product.UseDefaultUOM && _order.OrderType == OrderType.Order && !uom.IsDefault &&
+                            _itemType == 0)
                             continue;
 
-                        var detail = new AdvancedCatalogDetailViewModel
+                        var detail = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
                         {
                             Product = product,
                             ExpectedPrice = Product.GetPriceForProduct(product, _order, _itemType > 0, _itemType == 1),
@@ -460,7 +467,7 @@ namespace LaceupMigration.ViewModels
 
                 // Sync with existing order details - optimize by filtering first
                 var relevantDetails = _order.Details
-                    .Where(d => 
+                    .Where(d =>
                     {
                         var it = d.IsCredit ? (d.Damaged ? 1 : 2) : 0;
                         return it == _itemType && d.Product.ProductId == product.ProductId;
@@ -469,42 +476,141 @@ namespace LaceupMigration.ViewModels
 
                 foreach (var orderDetail in relevantDetails)
                 {
-
-                    if (orderDetail.IsFreeItem || (!string.IsNullOrEmpty(orderDetail.ExtraFields) && orderDetail.ExtraFields.Contains("productfree")))
+                    var isFreeItem = orderDetail.IsFreeItem || (!string.IsNullOrEmpty(orderDetail.ExtraFields) &&
+                                                   orderDetail.ExtraFields.Contains("productfree"));
+                    
+                    if (isFreeItem)
                     {
-                        var d = new AdvancedCatalogDetailViewModel
+                        // Check if this free item detail already exists in the Details collection by OrderDetailId
+                        var existingFreeDetail = item.Details.FirstOrDefault(d => 
+                            d.Detail != null && d.Detail.OrderDetailId == orderDetail.OrderDetailId);
+                        
+                        if (existingFreeDetail != null)
                         {
-                            Product = product,
-                            Price = orderDetail.Price,
-                            ExpectedPrice = orderDetail.ExpectedPrice,
-                            UoM = orderDetail.UnitOfMeasure,
-                            Detail = orderDetail
-                        };
-                        item.Details.Add(d);
+                            // Update existing free item detail
+                            existingFreeDetail.Price = orderDetail.Price;
+                            existingFreeDetail.ExpectedPrice = orderDetail.ExpectedPrice;
+                        }
+                        else
+                        {
+                            // Check if there's already ANY free item for this product (we should only have one free item per product)
+                            var existingFreeItem = item.Details.FirstOrDefault(d => 
+                                d.Detail != null && (d.Detail.IsFreeItem || 
+                                (!string.IsNullOrEmpty(d.Detail.ExtraFields) && d.Detail.ExtraFields.Contains("productfree"))));
+                            
+                            if (existingFreeItem == null)
+                            {
+                                // No free item exists, add this one
+                                var d = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                                {
+                                    Product = product,
+                                    Price = orderDetail.Price,
+                                    ExpectedPrice = orderDetail.ExpectedPrice,
+                                    UoM = orderDetail.UnitOfMeasure,
+                                    Detail = orderDetail
+                                };
+                                item.Details.Add(d);
+                            }
+                            else
+                            {
+                                // Free item already exists, update it to point to this orderDetail (in case it changed)
+                                existingFreeItem.Price = orderDetail.Price;
+                                existingFreeItem.ExpectedPrice = orderDetail.ExpectedPrice;
+                                existingFreeItem.Detail = orderDetail;
+                            }
+                        }
                         continue;
                     }
 
-                    var detail = item.Details.FirstOrDefault(x => EqualsUom(x.UoM, orderDetail.UnitOfMeasure));
+                    // For non-free items, update or create the primary detail
+                    // The primary detail should always exist and be updated, not duplicated
+                    var detail = item.Details.FirstOrDefault(x => EqualsUom(x.UoM, orderDetail.UnitOfMeasure) && 
+                        (x.Detail == null || (!x.Detail.IsFreeItem && (string.IsNullOrEmpty(x.Detail.ExtraFields) || !x.Detail.ExtraFields.Contains("productfree")))));
+                    
                     if (detail != null)
                     {
+                        // Update existing non-free detail (this should be the primary detail)
                         detail.Price = orderDetail.Price;
                         detail.Detail = orderDetail;
                         detail.ExtraFields = orderDetail.ExtraFields;
 
                         double price = 0;
-                        if (Offer.ProductHasSpecialPriceForClient(product, _order.Client, out price, orderDetail.UnitOfMeasure))
+                        if (Offer.ProductHasSpecialPriceForClient(product, _order.Client, out price,
+                                orderDetail.UnitOfMeasure))
                         {
                             detail.IsFromEspecial = detail.Price == price;
                         }
                     }
+                    else
+                    {
+                        // No matching detail found, create a new one for the primary detail
+                        // This should only happen if the primary detail doesn't exist yet
+                        var newDetail = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                        {
+                            Product = product,
+                            Price = orderDetail.Price,
+                            ExpectedPrice = orderDetail.ExpectedPrice,
+                            UoM = orderDetail.UnitOfMeasure,
+                            Detail = orderDetail,
+                            ExtraFields = orderDetail.ExtraFields
+                        };
+
+                        double price = 0;
+                        if (Offer.ProductHasSpecialPriceForClient(product, _order.Client, out price,
+                                orderDetail.UnitOfMeasure))
+                        {
+                            newDetail.IsFromEspecial = newDetail.Price == price;
+                        }
+
+                        item.Details.Add(newDetail);
+                    }
                 }
 
-                // Set primary detail (first detail with quantity > 0, or first detail)
-                item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.Qty > 0) 
-                    ?? item.Details.FirstOrDefault();
+                // Set primary detail (prefer non-free detail for main controls)
+                // This ensures the primary detail controls always show the regular priced item
+                // PrimaryDetail can NEVER be a free item - always prefer non-free details
+                // First, try to find a non-free detail with an OrderDetail
+                var nonFreeWithDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem && 
+                                    (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")));
                 
+                item.PrimaryDetail = nonFreeWithDetail;
+                
+                // If no non-free detail with OrderDetail, try to find an empty detail (Detail == null)
+                if (item.PrimaryDetail == null)
+                {
+                    item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail == null);
+                }
+                
+                // If still null (only free items exist), create a new empty detail for adding new items
+                // This ensures PrimaryDetail is always available for operations
+                if (item.PrimaryDetail == null)
+                {
+                    // Use the first UoM or null if no UoMs
+                    var defaultUom = product.UnitOfMeasures.FirstOrDefault();
+                    var emptyDetail = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                    {
+                        Product = product,
+                        UoM = defaultUom,
+                        ExpectedPrice = Product.GetPriceForProduct(product, _order, _itemType > 0, _itemType == 1),
+                        Price = Product.GetPriceForProduct(product, _order, _itemType > 0, _itemType == 1)
+                    };
+                    
+                    // Apply UoM conversion if needed
+                    if (defaultUom != null)
+                    {
+                        emptyDetail.ExpectedPrice *= defaultUom.Conversion;
+                        emptyDetail.Price *= defaultUom.Conversion;
+                    }
+                    
+                    item.Details.Add(emptyDetail);
+                    item.PrimaryDetail = emptyDetail;
+                }
+
                 // Update display properties
-                item.UpdateDisplayProperties();
+                item.UpdateDisplayProperties(_order);
+                
+                // Access Details to trigger CollectionChanged handler which will notify property changes
+                _ = item.Details;
 
                 items.Add(item);
             }
@@ -531,7 +637,8 @@ namespace LaceupMigration.ViewModels
                 }
             });
 
-            _relatedLines = _order.Details.Where(x => x.RelatedOrderDetail > 0).Select(x => x.RelatedOrderDetail).ToList();
+            _relatedLines = _order.Details.Where(x => x.RelatedOrderDetail > 0).Select(x => x.RelatedOrderDetail)
+                .ToList();
         }
 
         private void UpdateItemFromOrderDetails(AdvancedCatalogItemViewModel item)
@@ -549,6 +656,52 @@ namespace LaceupMigration.ViewModels
                 if (orderDetail.Product.ProductId != item.Product.ProductId)
                     continue;
 
+                var isFreeItem = orderDetail.IsFreeItem || (!string.IsNullOrEmpty(orderDetail.ExtraFields) &&
+                                                   orderDetail.ExtraFields.Contains("productfree"));
+
+                if (isFreeItem)
+                {
+                    // Check if this free item detail already exists in the Details collection by OrderDetailId
+                    var existingFreeDetail = item.Details.FirstOrDefault(d => 
+                        d.Detail != null && d.Detail.OrderDetailId == orderDetail.OrderDetailId);
+                    
+                        if (existingFreeDetail != null)
+                        {
+                            // Update existing free item detail
+                            existingFreeDetail.Price = orderDetail.Price;
+                            existingFreeDetail.ExpectedPrice = orderDetail.ExpectedPrice;
+                        }
+                        else
+                        {
+                            // Check if there's already ANY free item for this product (we should only have one free item per product)
+                            var existingFreeItem = item.Details.FirstOrDefault(d => 
+                                d.Detail != null && (d.Detail.IsFreeItem || 
+                                (!string.IsNullOrEmpty(d.Detail.ExtraFields) && d.Detail.ExtraFields.Contains("productfree"))));
+                            
+                            if (existingFreeItem == null)
+                            {
+                                // No free item exists, add this one
+                                var d = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                                {
+                                    Product = item.Product,
+                                    Price = orderDetail.Price,
+                                    ExpectedPrice = orderDetail.ExpectedPrice,
+                                    UoM = orderDetail.UnitOfMeasure,
+                                    Detail = orderDetail
+                                };
+                                item.Details.Add(d);
+                            }
+                            else
+                            {
+                                // Free item already exists, update it to point to this orderDetail (in case it changed)
+                                existingFreeItem.Price = orderDetail.Price;
+                                existingFreeItem.ExpectedPrice = orderDetail.ExpectedPrice;
+                                existingFreeItem.Detail = orderDetail;
+                            }
+                        }
+                    continue;
+                }
+
                 var detail = item.Details.FirstOrDefault(x => EqualsUom(x.UoM, orderDetail.UnitOfMeasure));
                 if (detail != null)
                 {
@@ -557,16 +710,77 @@ namespace LaceupMigration.ViewModels
                     detail.ExtraFields = orderDetail.ExtraFields;
 
                     double price = 0;
-                    if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out price, orderDetail.UnitOfMeasure))
+                    if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out price,
+                            orderDetail.UnitOfMeasure))
                     {
                         detail.IsFromEspecial = detail.Price == price;
                     }
                 }
+                else
+                {
+                    // Create a new detail if it doesn't exist (non-free items)
+                    var newDetail = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                    {
+                        Product = item.Product,
+                        Price = orderDetail.Price,
+                        ExpectedPrice = orderDetail.ExpectedPrice,
+                        UoM = orderDetail.UnitOfMeasure,
+                        Detail = orderDetail,
+                        ExtraFields = orderDetail.ExtraFields
+                    };
+
+                    double price = 0;
+                    if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out price,
+                            orderDetail.UnitOfMeasure))
+                    {
+                        newDetail.IsFromEspecial = newDetail.Price == price;
+                    }
+
+                    item.Details.Add(newDetail);
+                }
+            }
+
+            // Set PrimaryDetail - can NEVER be a free item
+            var nonFreeWithDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem && 
+                                (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")));
+            
+            item.PrimaryDetail = nonFreeWithDetail;
+            
+            // If no non-free detail with OrderDetail, try to find an empty detail (Detail == null)
+            if (item.PrimaryDetail == null)
+            {
+                item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail == null);
+            }
+            
+            // If still null (only free items exist), create a new empty detail for adding new items
+            if (item.PrimaryDetail == null)
+            {
+                // Use the first UoM or null if no UoMs
+                var defaultUom = item.Product.UnitOfMeasures.FirstOrDefault();
+                var emptyDetail = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                {
+                    Product = item.Product,
+                    UoM = defaultUom,
+                    ExpectedPrice = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1),
+                    Price = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1)
+                };
+                
+                // Apply UoM conversion if needed
+                if (defaultUom != null)
+                {
+                    emptyDetail.ExpectedPrice *= defaultUom.Conversion;
+                    emptyDetail.Price *= defaultUom.Conversion;
+                }
+                
+                item.Details.Add(emptyDetail);
+                item.PrimaryDetail = emptyDetail;
             }
 
             // Update primary detail
-            item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.Qty > 0) 
-                ?? item.Details.FirstOrDefault();
+            // PrimaryDetail can NEVER be a free item
+            item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.Qty > 0 && 
+                                !d.Detail.IsFreeItem && (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")))
+                                 ?? item.Details.FirstOrDefault(d => d.Detail == null);
         }
 
         private bool EqualsUom(UnitOfMeasure? uom1, UnitOfMeasure? uom2)
@@ -578,7 +792,8 @@ namespace LaceupMigration.ViewModels
             return false;
         }
 
-        private List<AdvancedCatalogItemViewModel> SortByCriteria(SortCriteria criteria, List<AdvancedCatalogItemViewModel> source)
+        private List<AdvancedCatalogItemViewModel> SortByCriteria(SortCriteria criteria,
+            List<AdvancedCatalogItemViewModel> source)
         {
             return criteria switch
             {
@@ -588,7 +803,8 @@ namespace LaceupMigration.ViewModels
                 SortCriteria.Qty => source.OrderByDescending(x => x.Details.Sum(d => d.Detail?.Qty ?? 0)).ToList(),
                 SortCriteria.InStock => source.OrderByDescending(x => GetCurrentInventory(x.Product)).ToList(),
                 SortCriteria.Descending => source.OrderByDescending(x => x.Product.Name).ToList(),
-                SortCriteria.OrderOfEntry => source.OrderBy(x => x.Details.FirstOrDefault(d => d.Detail != null)?.Detail?.OrderDetailId ?? int.MaxValue).ToList(),
+                SortCriteria.OrderOfEntry => source.OrderBy(x =>
+                    x.Details.FirstOrDefault(d => d.Detail != null)?.Detail?.OrderDetailId ?? int.MaxValue).ToList(),
                 SortCriteria.Description => source.OrderBy(x => x.Product.Description).ToList(),
                 _ => source.OrderBy(x => x.Product.Name).ToList()
             };
@@ -644,7 +860,11 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SortAsync()
         {
-            var options = new[] { "Product Name", "Product Code", "Category", "In Stock", "Qty", "Descending", "Order of Entry", "Description" };
+            var options = new[]
+            {
+                "Product Name", "Product Code", "Category", "In Stock", "Qty", "Descending", "Order of Entry",
+                "Description"
+            };
             var selected = await _dialogService.ShowActionSheetAsync("Sort By", "Cancel", null, options);
 
             if (selected == "Cancel" || string.IsNullOrEmpty(selected))
@@ -663,7 +883,7 @@ namespace LaceupMigration.ViewModels
             };
 
             SortByText = $"Sort: {selected}";
-            
+
             // Re-sort existing items instead of rebuilding
             if (_cachedItems != null && Items.Count > 0)
             {
@@ -671,7 +891,7 @@ namespace LaceupMigration.ViewModels
                 Task.Run(() =>
                 {
                     var sorted = SortByCriteria(_selectedCriteria, Items.ToList());
-                    
+
                     // Update UI on main thread
                     MainThread.BeginInvokeOnMainThread(() =>
                     {
@@ -680,6 +900,7 @@ namespace LaceupMigration.ViewModels
                         {
                             Items.Add(item);
                         }
+
                         Filter();
                     });
                 });
@@ -717,10 +938,11 @@ namespace LaceupMigration.ViewModels
                     // Pre-compute offers once
                     var offers = Offer.GetOffersVisibleToClient(_order.Client).ToList();
                     var offerProductIds = offers.Select(x => x.ProductId).ToHashSet();
-                    var offerCategoryIds = offers.Select(x => x.Product?.DiscountCategoryId ?? 0).Where(x => x > 0).ToHashSet();
-                    
-                    filtered = filtered.Where(x => 
-                        offerProductIds.Contains(x.Product.ProductId) || 
+                    var offerCategoryIds = offers.Select(x => x.Product?.DiscountCategoryId ?? 0).Where(x => x > 0)
+                        .ToHashSet();
+
+                    filtered = filtered.Where(x =>
+                        offerProductIds.Contains(x.Product.ProductId) ||
                         (x.Product.DiscountCategoryId > 0 && offerCategoryIds.Contains(x.Product.DiscountCategoryId)));
                 }
 
@@ -758,16 +980,11 @@ namespace LaceupMigration.ViewModels
         partial void OnSearchQueryChanged(string value)
         {
             _searchCriteria = value?.ToLowerInvariant() ?? string.Empty;
-            
+
             // Debounce search
             _searchDebounceTimer?.Dispose();
-            _searchDebounceTimer = new Timer(_ =>
-            {
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    Filter();
-                });
-            }, null, SearchDebounceMs, Timeout.Infinite);
+            _searchDebounceTimer = new Timer(_ => { MainThread.BeginInvokeOnMainThread(() => { Filter(); }); }, null,
+                SearchDebounceMs, Timeout.Infinite);
         }
 
         private void RefreshTotals()
@@ -784,20 +1001,21 @@ namespace LaceupMigration.ViewModels
 
             LinesText = $"Lines: {_order.Details.Count}";
             QtySoldText = $"Qty Sold: {totalQty}";
-            
+
             // Calculate order and credit amounts
             var orderAmount = _order.Details.Where(x => !x.IsCredit).Sum(x => x.Qty * x.Price);
             var creditAmount = _order.Details.Where(x => x.IsCredit).Sum(x => x.Qty * x.Price);
             OrderAmountText = $"Order: {orderAmount.ToCustomString()}";
             CreditAmountText = $"Credit: {creditAmount.ToCustomString()}";
-            
+
             SubtotalText = $"Subtotal: {subtotal.ToCustomString()}";
             DiscountText = $"Discount: {discount.ToCustomString()}";
             TaxText = $"Tax: {tax.ToCustomString()}";
             TotalText = $"Total: {total.ToCustomString()}";
 
             ShowTotals = !Config.HidePriceInTransaction;
-            ShowDiscount = _order.Client?.UseDiscount == true || _order.Client?.UseDiscountPerLine == true || _order.IsDelivery;
+            ShowDiscount = _order.Client?.UseDiscount == true || _order.Client?.UseDiscountPerLine == true ||
+                           _order.IsDelivery;
         }
 
         private void LoadLineItems()
@@ -815,7 +1033,7 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private AdvancedCatalogLineItemViewModel CreateLineItemViewModel(OrderDetail detail)
+        private AdvancedCatalogItemViewModel.AdvancedCatalogLineItemViewModel CreateLineItemViewModel(OrderDetail detail)
         {
             var qtyText = detail.Product.SoldByWeight && detail.Weight > 0
                 ? $"Qty: {detail.Qty} (Weight: {detail.Weight})"
@@ -838,7 +1056,7 @@ namespace LaceupMigration.ViewModels
                 showType = true;
             }
 
-            return new AdvancedCatalogLineItemViewModel
+            return new AdvancedCatalogItemViewModel.AdvancedCatalogLineItemViewModel
             {
                 Detail = detail,
                 ProductName = detail.Product.Name,
@@ -875,21 +1093,21 @@ namespace LaceupMigration.ViewModels
                 var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
                 if (string.IsNullOrEmpty(scanResult))
                     return;
-                
+
                 // Find product by barcode (check UPC, SKU, Code)
                 var product = Product.Products.FirstOrDefault(p =>
                     (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
                     (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
                     (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
-                
+
                 if (product != null)
                 {
                     // Set search query to the barcode to filter products
                     SearchQuery = scanResult;
-                    
+
                     // Wait for the filter to complete (debounce is 300ms, wait a bit longer to be safe)
                     await Task.Delay(500);
-                    
+
                     // If we have an order, navigate to add item page (same as FullCategoryPageViewModel)
                     var route = $"additem?orderId={_order.OrderId}&productId={product.ProductId}";
                     if (_itemType == 1) // Dump
@@ -902,10 +1120,10 @@ namespace LaceupMigration.ViewModels
                 {
                     // Product not found, but set search query anyway (same as FullCategoryPageViewModel)
                     SearchQuery = scanResult;
-                    
+
                     // Wait for the filter to complete
                     await Task.Delay(500);
-                    
+
                     await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
                 }
             }
@@ -916,7 +1134,7 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private async Task AddItemFromScannerAsync(AdvancedCatalogDetailViewModel detail, bool excludeOffer)
+        private async Task AddItemFromScannerAsync(AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel detail, bool excludeOffer)
         {
             if (_order == null || detail.Product == null)
                 return;
@@ -943,7 +1161,8 @@ namespace LaceupMigration.ViewModels
                     var hasOffer = _order.ProductHasOffer(detail.Product, detail.UoM);
                     if (hasOffer)
                     {
-                        var applyOffer = await _dialogService.ShowConfirmationAsync("Alert", "This product has an offer, would you like to apply it?", "Yes", "No");
+                        var applyOffer = await _dialogService.ShowConfirmationAsync("Alert",
+                            "This product has an offer, would you like to apply it?", "Yes", "No");
                         if (applyOffer)
                         {
                             await AddItemFromScannerAsync(detail, false);
@@ -952,6 +1171,7 @@ namespace LaceupMigration.ViewModels
                         {
                             await AddItemFromScannerAsync(detail, true);
                         }
+
                         return;
                     }
                 }
@@ -985,21 +1205,23 @@ namespace LaceupMigration.ViewModels
 
             _order.Save();
             RefreshTotals();
-            
+
             // Update the item's display properties without full refresh
             var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
             if (item != null)
             {
-                item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.Qty > 0) 
-                    ?? item.Details.FirstOrDefault();
-                item.UpdateDisplayProperties();
+                // PrimaryDetail can NEVER be a free item
+                item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.Qty > 0 && 
+                                    !d.Detail.IsFreeItem && (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")))
+                                     ?? item.Details.FirstOrDefault(d => d.Detail == null);
+                item.UpdateDisplayProperties(_order);
             }
-            
+
             // Don't call Filter() - it resets scroll position. The item is already in the filtered list.
         }
 
         [RelayCommand]
-        private async Task ItemDetailSelectedAsync(AdvancedCatalogDetailViewModel? detail)
+        private async Task ItemDetailSelectedAsync(AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel? detail)
         {
             if (detail == null || _order == null)
                 return;
@@ -1009,10 +1231,12 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
-        private async Task IncrementQuantityAsync(AdvancedCatalogDetailViewModel? detail)
+        private async Task IncrementQuantityAsync(AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel? detail)
         {
             if (detail == null || _order == null)
+            {
                 return;
+            }
 
             if (detail.Detail == null)
             {
@@ -1024,6 +1248,9 @@ namespace LaceupMigration.ViewModels
                 detail.Detail.Damaged = _itemType == 1;
                 _order.Details.Add(detail.Detail);
             }
+
+            var isFreeItem = detail.Detail.IsFreeItem || 
+                            (!string.IsNullOrEmpty(detail.Detail.ExtraFields) && detail.Detail.ExtraFields.Contains("productfree"));
 
             _order.UpdateInventory(detail.Detail, 1);
             detail.Detail.Qty++;
@@ -1042,38 +1269,151 @@ namespace LaceupMigration.ViewModels
 
             _order.Save();
             RefreshTotals();
+            LoadLineItems(); // Update line items
+
+            // Update the item's display properties
+            // Find item by matching OrderDetailId (not by reference, since detail might be from different instance)
+            var orderDetailId = detail.Detail?.OrderDetailId ?? 0;
+            var item = Items.FirstOrDefault(i => i.Details.Any(d => d.Detail != null && d.Detail.OrderDetailId == orderDetailId));
             
-            // Update the item's display properties - no need to re-filter, just update the item
-            var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
             if (item != null)
             {
-                item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.Qty > 0) 
-                    ?? item.Details.FirstOrDefault();
-                item.UpdateDisplayProperties();
+                // Find the detail in the item's Details collection by OrderDetailId
+                var detailInItem = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.OrderDetailId == orderDetailId);
+                
+                // If operating on a free item, don't change PrimaryDetail
+                // If operating on primary detail, ensure it's not a free item
+                if (isFreeItem && detailInItem != null)
+                {
+                    // Just update display for free item - update the detail's display properties
+                    detailInItem.UpdateQuantityDisplay();
+                    item.UpdateDisplayProperties(_order);
+                }
+                else if (!isFreeItem)
+                {
+                    // Ensure PrimaryDetail is not a free item
+                    // PrimaryDetail can NEVER be a free item
+                    item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
+                        (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")) &&
+                        d.Detail.Qty > 0)
+                        ?? item.Details.FirstOrDefault(d => d.Detail == null);
+                    item.UpdateDisplayProperties(_order);
+                }
             }
-            
-            // Don't call Filter() - it resets scroll position. The item is already in the filtered list.
         }
 
         [RelayCommand]
-        private async Task DecrementQuantityAsync(AdvancedCatalogDetailViewModel? detail)
+        private async Task DecrementQuantityAsync(AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel? detail)
         {
             if (detail == null || detail.Detail == null || _order == null)
+            {
                 return;
+            }
 
             if (_relatedLines.Any(x => x == detail.Detail.OrderDetailId) && !Config.AllowEditRelated)
                 return;
 
+            var isFreeItem = detail.Detail.IsFreeItem || 
+                            (!string.IsNullOrEmpty(detail.Detail.ExtraFields) && detail.Detail.ExtraFields.Contains("productfree"));
+
             _order.UpdateInventory(detail.Detail, 1);
             detail.Detail.Qty--;
+            
             if (detail.Detail.Qty <= 0)
             {
+                // Remove from order
+                var orderDetailId = detail.Detail.OrderDetailId;
                 _order.Details.Remove(detail.Detail);
-                detail.Detail = null;
+                
+                // Remove from item.Details collection
+                var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
+                if (item != null)
+                {
+                    // Find and remove the detail from the collection
+                    var detailToRemove = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.OrderDetailId == orderDetailId);
+                    if (detailToRemove != null)
+                    {
+                        item.Details.Remove(detailToRemove);
+                    }
+                    detail.Detail = null;
+                    
+                    // Ensure PrimaryDetail is not a free item - always use non-free detail
+                    // If no details exist, create one for the primary controls
+                    if (item.Details.Count == 0)
+                    {
+                        // Create a detail without OrderDetail for primary controls
+                        // Use the same logic as PrepareList() to create details
+                        var primaryDetailEntry = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                        {
+                            Product = item.Product,
+                            ExpectedPrice = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1),
+                            Price = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1)
+                        };
+                        
+                        // Set UoM if product has UoMs
+                        if (item.Product.UnitOfMeasures.Count > 0)
+                        {
+                            var defaultUom = item.Product.UnitOfMeasures.FirstOrDefault(u => u.IsDefault) 
+                                            ?? item.Product.UnitOfMeasures.FirstOrDefault();
+                            if (defaultUom != null)
+                            {
+                                primaryDetailEntry.UoM = defaultUom;
+                                primaryDetailEntry.ExpectedPrice *= defaultUom.Conversion;
+                                primaryDetailEntry.Price *= defaultUom.Conversion;
+                            }
+                        }
+                        
+                        item.Details.Add(primaryDetailEntry);
+                        item.PrimaryDetail = primaryDetailEntry;
+                    }
+                    else
+                    {
+                        item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
+                            (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")) &&
+                            d.Detail.Qty > 0)
+                            ?? item.Details.FirstOrDefault(d => d.Detail == null)
+                            ?? item.Details.FirstOrDefault();
+                    }
+                    
+                    item.UpdateDisplayProperties(_order);
+                    LoadLineItems(); // Update line items list
+                }
+                else
+                {
+                    detail.Detail = null;
+                }
             }
             else
             {
                 _order.UpdateInventory(detail.Detail, -1);
+                
+                // Update the item's display properties
+                // Find item by matching OrderDetailId (not by reference, since detail might be from different instance)
+                var orderDetailId = detail.Detail.OrderDetailId;
+                var item = Items.FirstOrDefault(i => i.Details.Any(d => d.Detail != null && d.Detail.OrderDetailId == orderDetailId));
+                
+                if (item != null)
+                {
+                    // Find the detail in the item's Details collection by OrderDetailId
+                    var detailInItem = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.OrderDetailId == orderDetailId);
+                    
+                    // Ensure PrimaryDetail is not a free item
+                    if (isFreeItem && detailInItem != null)
+                    {
+                        // Update the detail's display properties
+                        detailInItem.UpdateQuantityDisplay();
+                        item.UpdateDisplayProperties(_order);
+                    }
+                    else if (!isFreeItem)
+                    {
+                        item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
+                            (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")) &&
+                            d.Detail.Qty > 0)
+                            ?? item.Details.FirstOrDefault(d => d.Detail == null)
+                            ?? item.Details.FirstOrDefault();
+                        item.UpdateDisplayProperties(_order);
+                    }
+                }
             }
 
             if (Config.Simone)
@@ -1083,33 +1423,26 @@ namespace LaceupMigration.ViewModels
 
             _order.Save();
             RefreshTotals();
-            
-            // Update the item's display properties without full refresh
-            var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
-            if (item != null)
-            {
-                item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.Qty > 0) 
-                    ?? item.Details.FirstOrDefault();
-                item.UpdateDisplayProperties();
-            }
-            
-            // Don't call Filter() - it resets scroll position. The item is already in the filtered list.
         }
 
         [RelayCommand]
-        private async Task EditQuantityAsync(AdvancedCatalogDetailViewModel? detail)
+        private async Task EditQuantityAsync(AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel? detail)
         {
             if (detail == null || _order == null)
                 return;
 
             var currentQty = detail.Detail?.Qty ?? 0;
-            var qtyText = await _dialogService.ShowPromptAsync("Enter Quantity", "Quantity", "OK", "Cancel", "", -1, currentQty.ToString());
-            
+            var qtyText = await _dialogService.ShowPromptAsync("Enter Quantity", "Quantity", "OK", "Cancel", "", -1,
+                currentQty.ToString());
+
             if (string.IsNullOrEmpty(qtyText) || !float.TryParse(qtyText, out var qty))
                 return;
 
             if (qty < 0)
                 qty = 0;
+
+            var isFreeItem = detail.Detail != null && (detail.Detail.IsFreeItem || 
+                            (!string.IsNullOrEmpty(detail.Detail.ExtraFields) && detail.Detail.ExtraFields.Contains("productfree")));
 
             if (detail.Detail == null)
             {
@@ -1132,8 +1465,59 @@ namespace LaceupMigration.ViewModels
 
             if (detail.Detail.Qty <= 0)
             {
+                // Remove from order
+                var orderDetailId = detail.Detail.OrderDetailId;
                 _order.Details.Remove(detail.Detail);
-                detail.Detail = null;
+                
+                // Remove from item.Details collection
+                var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
+                if (item != null)
+                {
+                    // Find and remove the detail from the collection
+                    var detailToRemove = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.OrderDetailId == orderDetailId);
+                    if (detailToRemove != null)
+                    {
+                        item.Details.Remove(detailToRemove);
+                    }
+                    detail.Detail = null;
+                    
+                    // Ensure PrimaryDetail is not a free item
+                    // PrimaryDetail can NEVER be a free item
+                    item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
+                        (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")) &&
+                        d.Detail.Qty > 0)
+                        ?? item.Details.FirstOrDefault(d => d.Detail == null);
+                    
+                    item.UpdateDisplayProperties(_order);
+                    LoadLineItems(); // Update line items list
+                }
+                else
+                {
+                    detail.Detail = null;
+                }
+            }
+            else
+            {
+                // Update the item's display properties
+                var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
+                if (item != null)
+                {
+                    if (isFreeItem)
+                    {
+                        // Don't change PrimaryDetail if we're operating on a free item
+                        item.UpdateDisplayProperties(_order);
+                    }
+                    else
+                    {
+                        // Ensure PrimaryDetail is not a free item
+                        item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
+                            (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")) &&
+                            d.Detail.Qty > 0)
+                            ?? item.Details.FirstOrDefault(d => d.Detail == null)
+                            ?? item.Details.FirstOrDefault();
+                        item.UpdateDisplayProperties(_order);
+                    }
+                }
             }
 
             if (Config.Simone)
@@ -1143,17 +1527,6 @@ namespace LaceupMigration.ViewModels
 
             _order.Save();
             RefreshTotals();
-            
-            // Update the item's display properties - no need to re-filter, just update the item
-            var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
-            if (item != null)
-            {
-                item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.Qty > 0) 
-                    ?? item.Details.FirstOrDefault();
-                item.UpdateDisplayProperties();
-            }
-            
-            // Don't call Filter() - it resets scroll position. The item is already in the filtered list.
         }
 
         [RelayCommand]
@@ -1184,16 +1557,31 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
-        public async Task ToggleFreeItemAsync(AdvancedCatalogItemViewModel? item)
+        private async Task ChangePriceAsync(AdvancedCatalogItemViewModel? item)
         {
             if (item == null || item.PrimaryDetail == null || _order == null)
                 return;
 
             var detail = item.PrimaryDetail;
-            
+            var currentPrice = detail.Detail?.Price ?? detail.Price;
+
+            // Show simple price input dialog
+            var priceText = await _dialogService.ShowPromptAsync(
+                "Price",
+                "Price:",
+                "Set",
+                "Cancel",
+                "",
+                -1,
+                currentPrice.ToString("F2"),
+                Keyboard.Numeric);
+
+            if (string.IsNullOrEmpty(priceText) || !double.TryParse(priceText, out var newPrice))
+                return;
+
+            // Ensure detail exists
             if (detail.Detail == null)
             {
-                // Create new detail if needed
                 detail.Detail = new OrderDetail(detail.Product, 0, _order);
                 detail.Detail.ExpectedPrice = detail.ExpectedPrice;
                 detail.Detail.Price = detail.Price;
@@ -1203,34 +1591,223 @@ namespace LaceupMigration.ViewModels
                 _order.Details.Add(detail.Detail);
             }
 
-            detail.Detail.IsFreeItem = !detail.Detail.IsFreeItem;
-            if (detail.Detail.IsFreeItem)
+            // Update price
+            detail.Detail.Price = newPrice;
+            detail.Price = newPrice;
+
+            // Mark as price changed
+            if (Math.Round(newPrice, Config.Round) != Math.Round(detail.Detail.ExpectedPrice, Config.Round))
             {
-                detail.Detail.Price = 0;
-            }
-            else
-            {
-                detail.Detail.Price = detail.ExpectedPrice;
+                detail.Detail.ExtraFields = DataAccess.SyncSingleUDF("pricechanged", "yes", detail.Detail.ExtraFields);
             }
 
             _order.Save();
-            
-            // Update display properties immediately
-            item.UpdateDisplayProperties();
-            
+
+            // Update display properties
+            item.UpdateDisplayProperties(_order);
             RefreshTotals();
-            
-            // Don't call Filter() - it resets scroll position. The item is already in the filtered list.
         }
 
         [RelayCommand]
-        private async Task LineItemSelectedAsync(AdvancedCatalogLineItemViewModel? item)
+        private async Task SelectPriceLevelAsync(AdvancedCatalogItemViewModel? item)
+        {
+            if (item == null || _order == null)
+                return;
+
+            var detail = item.PrimaryDetail;
+            var currentPrice = detail.Detail != null ? detail.Detail.Price : detail.Price;
+            var currentPriceLevelSelected =
+                detail.Detail != null ? detail.Detail.PriceLevelSelected : detail.PriceLevelSelected;
+            var currentComments = detail.Detail != null ? detail.Detail.Comments : detail.Comment;
+
+            // Show price level selection dialog
+            var result = await _dialogService.ShowPriceLevelDialogAsync(
+                item.Product.Name,
+                item.Product,
+                _order,
+                detail?.UoM,
+                currentPriceLevelSelected,
+                Math.Round(currentPrice, Config.Round).ToString(),
+                currentComments);
+
+            if (result.priceLevelId == null)
+                return;
+
+            // Update client price level if changed
+            if (_order.Client != null && result.priceLevelId.Value != _order.Client.PriceLevel)
+            {
+                _order.Client.PriceLevel = result.priceLevelId.Value;
+            }
+
+            // Ensure detail exists
+            if (detail != null)
+            {
+                if (detail.Detail == null)
+                {
+                    detail.Detail = new OrderDetail(detail.Product, 0, _order);
+                    detail.Detail.ExpectedPrice = detail.ExpectedPrice;
+                    detail.Detail.Price = detail.Price;
+                    detail.Detail.UnitOfMeasure = detail.UoM;
+                    detail.Detail.IsCredit = _itemType > 0;
+                    detail.Detail.Damaged = _itemType == 1;
+                    _order.Details.Add(detail.Detail);
+                }
+
+                // Update price level selected
+                if (result.priceLevelId.HasValue)
+                {
+                    detail.Detail.PriceLevelSelected = result.priceLevelId.Value;
+                    detail.PriceLevelSelected = result.priceLevelId.Value;
+                }
+
+                // Update price if provided
+                if (!string.IsNullOrEmpty(result.price) && double.TryParse(result.price, out var newPrice))
+                {
+                    detail.Detail.Price = newPrice;
+                    detail.Price = newPrice;
+
+                    // Mark as price changed if different from expected
+                    if (Math.Round(newPrice, Config.Round) != Math.Round(detail.Detail.ExpectedPrice, Config.Round))
+                    {
+                        detail.Detail.ExtraFields =
+                            DataAccess.SyncSingleUDF("pricechanged", "yes", detail.Detail.ExtraFields);
+                    }
+                }
+
+                // Update comments if provided
+                if (!string.IsNullOrEmpty(result.comments))
+                {
+                    detail.Detail.Comments = result.comments;
+                    detail.Comment = result.comments;
+                }
+            }
+
+            _order.Save();
+
+            // Update display properties
+            item.UpdateDisplayProperties(_order);
+            RefreshTotals();
+        }
+
+        [RelayCommand]
+        public async Task AddFreeItemAsync(AdvancedCatalogItemViewModel? item)
+        {
+            if (item == null || item.PrimaryDetail == null || _order == null) return;
+
+            var detail = item.PrimaryDetail;
+
+            // Validation: Check if detail exists and has qty > 0
+            if (detail.Detail == null || detail.Detail.Qty == 0)
+            {
+                await _dialogService.ShowAlertAsync("Please add qty to make it a free product.", "Alert");
+                return;
+            }
+
+            // Validation: Check if free item already exists
+            if (item.HasFreeItemDetail)
+            {
+                await _dialogService.ShowAlertAsync("This product already has a free item.", "Alert");
+                return;
+            }
+
+            // Validation: Check if order is locked or item is from offer
+            if (_order.Locked() || (detail.Detail != null && detail.Detail.FromOffer))
+            {
+                await _dialogService.ShowAlertAsync("This item cannot be modified.", "Alert");
+                return;
+            }
+
+            // Get the qty from the existing detail
+            var qtyToUse = detail.Detail.Qty;
+
+            // Remove any existing free items for this product to ensure only one free item exists
+            var existingFreeItems = _order.Details.Where(d => 
+                d.Product.ProductId == item.Product.ProductId && 
+                (d.IsFreeItem || (!string.IsNullOrEmpty(d.ExtraFields) && d.ExtraFields.Contains("productfree"))) &&
+                (d.IsCredit ? (d.Damaged ? 1 : 2) : 0) == _itemType).ToList();
+            
+            if (existingFreeItems.Any())
+            {
+                foreach (var existingFree in existingFreeItems)
+                {
+                    _order.Details.Remove(existingFree);
+                }
+            }
+
+            // Create a new OrderDetail for the free item
+            var newDetail = new OrderDetail(detail.Product, qtyToUse, _order);
+            newDetail.ExpectedPrice = 0;
+            newDetail.Price = 0;
+            newDetail.UnitOfMeasure = detail.UoM;
+            newDetail.IsCredit = _itemType > 0;
+            newDetail.Damaged = _itemType == 1;
+            newDetail.IsFreeItem = true;
+
+            // Add the new free detail
+            _order.Details.Add(newDetail);
+
+            // Handle related items
+            var related = _order.Details.FirstOrDefault(x => newDetail.RelatedOrderDetail == x.OrderDetailId);
+            if (related == null)
+            {
+                var f = _order.Details.FirstOrDefault(x => x.Product.ProductId == newDetail.Product.ProductId);
+                if (f != null)
+                    related = _order.Details.FirstOrDefault(x => x.OrderDetailId == f.RelatedOrderDetail);
+            }
+
+            if (related == null)
+            {
+                related = OrderDetail.AddRelatedItem(newDetail, _order);
+            }
+            else
+            {
+                related.Qty += qtyToUse;
+            }
+
+            // Recalculate discounts
+            if (!OrderDiscount.HasDiscounts)
+            {
+                var nonFreeDetail = _order.Details.FirstOrDefault(x =>
+                    x.Product.ProductId == item.Product.ProductId && !x.IsFreeItem &&
+                    (string.IsNullOrEmpty(x.ExtraFields) || !x.ExtraFields.Contains("productfree")));
+
+                if (nonFreeDetail != null)
+                {
+                    if (nonFreeDetail.CalculateOfferDetail())
+                    {
+                        var detailVm = item.Details.FirstOrDefault(d =>
+                            d.Detail != null && d.Detail.OrderDetailId == nonFreeDetail.OrderDetailId);
+                        if (detailVm != null) detailVm.Price = nonFreeDetail.Price;
+                    }
+                }
+            }
+
+            if (Config.Simone)
+                _order.SimoneCalculateDiscount();
+            else
+                _order.RecalculateDiscounts();
+
+            _order.Save();
+            
+            // Optimize: Update the specific item instead of rebuilding the entire list
+            // This is much faster than PrepareList() which rebuilds everything
+            UpdateItemFromOrderDetails(item);
+            item.UpdateDisplayProperties(_order);
+            
+            // Update totals and line items in background
+            RefreshTotals();
+            LoadLineItems();
+        }
+
+        [RelayCommand]
+        private async Task LineItemSelectedAsync(AdvancedCatalogItemViewModel.AdvancedCatalogLineItemViewModel? item)
         {
             if (item == null || item.Detail == null || _order == null)
                 return;
 
             // Navigate to AddItemPage to edit the line item
-            await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&orderDetailId={item.Detail.OrderDetailId}");
+            await Shell.Current.GoToAsync(
+                $"additem?orderId={_order.OrderId}&orderDetailId={item.Detail.OrderDetailId}");
         }
 
         [RelayCommand]
@@ -1240,7 +1817,7 @@ namespace LaceupMigration.ViewModels
                 return;
 
             OrderDetail? lastDetail = null;
-            
+
             if (Config.CatalogQuickAdd)
             {
                 lastDetail = _order.Details.OrderByDescending(x => x.OrderDetailId).FirstOrDefault();
@@ -1252,7 +1829,8 @@ namespace LaceupMigration.ViewModels
 
             if (lastDetail != null)
             {
-                await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&categoryId={lastDetail.Product.CategoryId}&productId={lastDetail.Product.ProductId}");
+                await Shell.Current.GoToAsync(
+                    $"fullcategory?orderId={_order.OrderId}&categoryId={lastDetail.Product.CategoryId}&productId={lastDetail.Product.ProductId}");
             }
             else
             {
@@ -1271,12 +1849,14 @@ namespace LaceupMigration.ViewModels
                 var category = Category.Categories.FirstOrDefault();
                 if (category != null)
                 {
-                    await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&categoryId={category.CategoryId}");
+                    await Shell.Current.GoToAsync(
+                        $"fullcategory?orderId={_order.OrderId}&categoryId={category.CategoryId}");
                 }
             }
             else
             {
-                await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}");
+                await Shell.Current.GoToAsync(
+                    $"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}");
             }
         }
 
@@ -1288,12 +1868,13 @@ namespace LaceupMigration.ViewModels
 
             var searchOptions = new[] { "Search in Product List", "Search in Current Transaction" };
             var choice = await _dialogService.ShowActionSheetAsync("Search", "Cancel", null, searchOptions);
-            
+
             if (choice == null || choice == "Cancel")
                 return;
 
-            var searchTerm = await _dialogService.ShowPromptAsync("Enter Product Name", "Search", "OK", "Cancel", "Product name, UPC, SKU, or code");
-            
+            var searchTerm = await _dialogService.ShowPromptAsync("Enter Product Name", "Search", "OK", "Cancel",
+                "Product name, UPC, SKU, or code");
+
             if (string.IsNullOrWhiteSpace(searchTerm))
                 return;
 
@@ -1301,9 +1882,9 @@ namespace LaceupMigration.ViewModels
 
             if (choice == "Search in Current Transaction")
             {
-                var matchingLine = LineItems.FirstOrDefault(x => 
+                var matchingLine = LineItems.FirstOrDefault(x =>
                     x.ProductName.ToLowerInvariant().IndexOf(searchTerm) != -1);
-                
+
                 if (matchingLine != null)
                 {
                     await _dialogService.ShowAlertAsync($"Found: {matchingLine.ProductName}", "Search Result");
@@ -1336,11 +1917,11 @@ namespace LaceupMigration.ViewModels
                 return;
 
             _itemType = newItemType;
-            
+
             // Clear cache when item type changes
             _cachedItems = null;
             _cachedItemType = null;
-            
+
             UpdateItemTypeText();
             PrepareList();
             Filter();
@@ -1362,6 +1943,9 @@ namespace LaceupMigration.ViewModels
             if (ShowDumpsButton) visibleCount++;
             if (ShowReturnsButton) visibleCount++;
 
+            // Show the grid only if at least one button is visible
+            ShowButtonGrid = visibleCount > 0;
+
             // Set column definitions based on visible count
             ButtonGridColumns = visibleCount switch
             {
@@ -1373,7 +1957,7 @@ namespace LaceupMigration.ViewModels
 
             // Set column positions for each button based on visibility
             int currentColumn = 0;
-            
+
             if (ShowSalesButton)
             {
                 SalesButtonColumn = currentColumn++;
@@ -1461,9 +2045,9 @@ namespace LaceupMigration.ViewModels
                 return;
 
             // Check if order has details
-            bool isEmpty = _order.Details.Count == 0 || 
-                (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
-            
+            bool isEmpty = _order.Details.Count == 0 ||
+                           (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
+
             if (isEmpty)
             {
                 await _dialogService.ShowAlertAsync("You can't send an empty order", "Alert");
@@ -1477,7 +2061,7 @@ namespace LaceupMigration.ViewModels
             try
             {
                 await _dialogService.ShowLoadingAsync("Sending order...");
-                
+
                 var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
                 if (batch == null)
                 {
@@ -1513,8 +2097,8 @@ namespace LaceupMigration.ViewModels
             }
 
             // Check if order is empty
-            bool isEmpty = _order.Details.Count == 0 || 
-                (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
+            bool isEmpty = _order.Details.Count == 0 ||
+                           (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
 
             if (isEmpty)
             {
@@ -1560,6 +2144,7 @@ namespace LaceupMigration.ViewModels
                         _order.Save();
                         return true; // Allow navigation
                     }
+
                     return false; // Don't navigate
                 }
             }
@@ -1568,7 +2153,8 @@ namespace LaceupMigration.ViewModels
                 // Make sure that all the weighted lines have value
                 if (!_order.AsPresale)
                 {
-                    if (_order.Details.Any(x => x.Product.SoldByWeight && x.Weight == 0) && !Config.MustSetWeightInDelivery)
+                    if (_order.Details.Any(x => x.Product.SoldByWeight && x.Weight == 0) &&
+                        !Config.MustSetWeightInDelivery)
                     {
                         var result = await _dialogService.ShowConfirmAsync(
                             "Some weight items don't have weight. Do you want to delete them?",
@@ -1583,10 +2169,12 @@ namespace LaceupMigration.ViewModels
                             {
                                 _order.Details.Remove(detail);
                             }
+
                             _order.Save();
                             // Recursively call FinalizeOrder
                             return await FinalizeOrderAsync();
                         }
+
                         return false; // Don't navigate
                     }
                 }
@@ -1599,14 +2187,16 @@ namespace LaceupMigration.ViewModels
                 }
 
                 // Check mandatory PO
-                if ((Config.POIsMandatory || _order.Client?.POIsMandatory == true) && string.IsNullOrEmpty(_order.PONumber) && _order.Client?.POIsMandatory == true)
+                if ((Config.POIsMandatory || _order.Client?.POIsMandatory == true) &&
+                    string.IsNullOrEmpty(_order.PONumber) && _order.Client?.POIsMandatory == true)
                 {
                     await _dialogService.ShowAlertAsync("You need to enter PO number.", "Alert");
                     return false; // Don't navigate
                 }
 
                 // Check Bill number
-                if (_order.OrderType == OrderType.Bill && string.IsNullOrEmpty(_order.PONumber) && Config.BillNumRequired)
+                if (_order.OrderType == OrderType.Bill && string.IsNullOrEmpty(_order.PONumber) &&
+                    Config.BillNumRequired)
                 {
                     await _dialogService.ShowAlertAsync("You need to enter Bill number.", "Alert");
                     return false; // Don't navigate
@@ -1627,10 +2217,12 @@ namespace LaceupMigration.ViewModels
                 }
 
                 // Check case in/out requirements
-                if (Config.MustEnterCaseInOut && (_order.OrderType == OrderType.Order || _order.OrderType == OrderType.Credit) && !_order.AsPresale)
+                if (Config.MustEnterCaseInOut &&
+                    (_order.OrderType == OrderType.Order || _order.OrderType == OrderType.Credit) && !_order.AsPresale)
                 {
                     // TODO: Implement EnterCasesInOut
-                    await _dialogService.ShowAlertAsync("Case in/out functionality is not yet fully implemented.", "Info");
+                    await _dialogService.ShowAlertAsync("Case in/out functionality is not yet fully implemented.",
+                        "Info");
                     return false; // Don't navigate
                 }
 
@@ -1673,11 +2265,11 @@ namespace LaceupMigration.ViewModels
             if (!Config.CloseRouteInPresale)
                 return;
 
-            var stop = RouteEx.Routes.FirstOrDefault(x => 
-                x.Date.Date == DateTime.Today && 
-                x.Client != null && 
+            var stop = RouteEx.Routes.FirstOrDefault(x =>
+                x.Date.Date == DateTime.Today &&
+                x.Client != null &&
                 x.Client.ClientId == _order?.Client.ClientId);
-            
+
             if (stop != null && _order != null)
             {
                 if (close)
@@ -1697,7 +2289,9 @@ namespace LaceupMigration.ViewModels
             if (options.Count == 0)
                 return;
 
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.Select(o => o.Title).ToArray());
+            var choice =
+                await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null,
+                    options.Select(o => o.Title).ToArray());
             if (string.IsNullOrWhiteSpace(choice))
                 return;
 
@@ -1722,10 +2316,7 @@ namespace LaceupMigration.ViewModels
             // Add Send Order as first option if applicable
             if (ShowSendButton && CanEdit)
             {
-                options.Add(new MenuOption("Send Order", async () =>
-                {
-                    await SendOrderAsync();
-                }));
+                options.Add(new MenuOption("Send Order", async () => { await SendOrderAsync(); }));
             }
 
             if (asPresale)
@@ -1733,17 +2324,20 @@ namespace LaceupMigration.ViewModels
                 // Presale menu items
                 if (allowDiscount && !_order.Locked())
                 {
-                    options.Add(new MenuOption("Add Discount", async () =>
-                    {
-                        await _dialogService.ShowAlertAsync("Add Discount functionality is not yet fully implemented.", "Info");
-                    }));
+                    options.Add(new MenuOption("Add Discount",
+                        async () =>
+                        {
+                            await _dialogService.ShowAlertAsync(
+                                "Add Discount functionality is not yet fully implemented.", "Info");
+                        }));
                 }
 
                 if (Config.SetPO && (_order.OrderType != OrderType.Order || Config.POIsMandatory))
                 {
                     options.Add(new MenuOption("Set PO", async () =>
                     {
-                        var po = await _dialogService.ShowPromptAsync("Set PO", "Enter PO Number:", initialValue: _order.PONumber ?? string.Empty);
+                        var po = await _dialogService.ShowPromptAsync("Set PO", "Enter PO Number:",
+                            initialValue: _order.PONumber ?? string.Empty);
                         if (!string.IsNullOrWhiteSpace(po))
                         {
                             _order.PONumber = po;
@@ -1755,16 +2349,19 @@ namespace LaceupMigration.ViewModels
 
                 if (Config.PrinterAvailable)
                 {
-                    options.Add(new MenuOption("Print", async () =>
-                    {
-                        await _dialogService.ShowAlertAsync("Print functionality is not yet fully implemented.", "Info");
-                    }));
+                    options.Add(new MenuOption("Print",
+                        async () =>
+                        {
+                            await _dialogService.ShowAlertAsync("Print functionality is not yet fully implemented.",
+                                "Info");
+                        }));
                 }
 
                 options.Add(new MenuOption("Set Ship Date", async () =>
                 {
                     var currentShipDate = _order.ShipDate.Year == 1 ? DateTime.Now : _order.ShipDate;
-                    var selectedDate = await _dialogService.ShowDatePickerAsync("Set Ship Date", currentShipDate, DateTime.Now, null);
+                    var selectedDate =
+                        await _dialogService.ShowDatePickerAsync("Set Ship Date", currentShipDate, DateTime.Now, null);
                     if (selectedDate.HasValue)
                     {
                         _order.ShipDate = selectedDate.Value;
@@ -1774,15 +2371,19 @@ namespace LaceupMigration.ViewModels
 
                 if (!(_order.Client.SplitInvoices.Count > 0))
                 {
-                    options.Add(new MenuOption("Send by Email", async () =>
-                    {
-                        await _dialogService.ShowAlertAsync("Send by Email functionality is not yet fully implemented.", "Info");
-                    }));
+                    options.Add(new MenuOption("Send by Email",
+                        async () =>
+                        {
+                            await _dialogService.ShowAlertAsync(
+                                "Send by Email functionality is not yet fully implemented.", "Info");
+                        }));
 
-                    options.Add(new MenuOption("Share PDF", async () =>
-                    {
-                        await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.", "Info");
-                    }));
+                    options.Add(new MenuOption("Share PDF",
+                        async () =>
+                        {
+                            await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.",
+                                "Info");
+                        }));
                 }
             }
             else
@@ -1792,7 +2393,8 @@ namespace LaceupMigration.ViewModels
                 {
                     options.Add(new MenuOption("Set PO", async () =>
                     {
-                        var po = await _dialogService.ShowPromptAsync("Set PO", "Enter PO Number:", initialValue: _order.PONumber ?? string.Empty);
+                        var po = await _dialogService.ShowPromptAsync("Set PO", "Enter PO Number:",
+                            initialValue: _order.PONumber ?? string.Empty);
                         if (!string.IsNullOrWhiteSpace(po))
                         {
                             _order.PONumber = po;
@@ -1804,10 +2406,12 @@ namespace LaceupMigration.ViewModels
 
                 if (allowDiscount && !finalized && !_order.Locked())
                 {
-                    options.Add(new MenuOption("Add Discount", async () =>
-                    {
-                        await _dialogService.ShowAlertAsync("Add Discount functionality is not yet fully implemented.", "Info");
-                    }));
+                    options.Add(new MenuOption("Add Discount",
+                        async () =>
+                        {
+                            await _dialogService.ShowAlertAsync(
+                                "Add Discount functionality is not yet fully implemented.", "Info");
+                        }));
                 }
 
                 if (!Config.LockOrderAfterPrinted)
@@ -1815,31 +2419,38 @@ namespace LaceupMigration.ViewModels
                     var isSplitClient = _order.Client.SplitInvoices.Count > 0;
                     if (!isSplitClient || _order.Finished)
                     {
-                        options.Add(new MenuOption("Print", async () =>
-                        {
-                            await _dialogService.ShowAlertAsync("Print functionality is not yet fully implemented.", "Info");
-                        }));
+                        options.Add(new MenuOption("Print",
+                            async () =>
+                            {
+                                await _dialogService.ShowAlertAsync("Print functionality is not yet fully implemented.",
+                                    "Info");
+                            }));
                     }
                 }
 
                 if (!(_order.Client.SplitInvoices.Count > 0))
                 {
-                    options.Add(new MenuOption("Send by Email", async () =>
-                    {
-                        await _dialogService.ShowAlertAsync("Send by Email functionality is not yet fully implemented.", "Info");
-                    }));
+                    options.Add(new MenuOption("Send by Email",
+                        async () =>
+                        {
+                            await _dialogService.ShowAlertAsync(
+                                "Send by Email functionality is not yet fully implemented.", "Info");
+                        }));
 
-                    options.Add(new MenuOption("Share PDF", async () =>
-                    {
-                        await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.", "Info");
-                    }));
+                    options.Add(new MenuOption("Share PDF",
+                        async () =>
+                        {
+                            await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.",
+                                "Info");
+                        }));
                 }
             }
 
             // Common menu items
             options.Add(new MenuOption("Add Comments", async () =>
             {
-                var comments = await _dialogService.ShowPromptAsync("Add Comments", "Enter comments:", initialValue: _order.Comments ?? string.Empty);
+                var comments = await _dialogService.ShowPromptAsync("Add Comments", "Enter comments:",
+                    initialValue: _order.Comments ?? string.Empty);
                 if (comments != null)
                 {
                     _order.Comments = comments;
@@ -1876,6 +2487,7 @@ namespace LaceupMigration.ViewModels
                 {
                     return order.IsQuote ? "Quote" : "Sales Order";
                 }
+
                 return "Sales Invoice";
             }
             else if (order.OrderType == OrderType.Credit)
@@ -1902,6 +2514,7 @@ namespace LaceupMigration.ViewModels
             {
                 return "Work Order";
             }
+
             return order.OrderType.ToString();
         }
 
@@ -1925,9 +2538,54 @@ namespace LaceupMigration.ViewModels
         public Product Product { get; set; } = null!;
         public int ItemType { get; set; }
         public List<InvoiceDetail> History { get; } = new();
-        public ObservableCollection<AdvancedCatalogDetailViewModel> Details { get; } = new();
+        private ObservableCollection<AdvancedCatalogDetailViewModel> _details = new();
+        public ObservableCollection<AdvancedCatalogDetailViewModel> Details 
+        { 
+            get
+            {
+                // Set up CollectionChanged handler on first access if not already set
+                if (_details != null && !_hasDetailsHandlerSet)
+                {
+                    _details.CollectionChanged += Details_CollectionChanged;
+                    _hasDetailsHandlerSet = true;
+                }
+                return _details;
+            }
+            set
+            {
+                if (_details != null)
+                    _details.CollectionChanged -= Details_CollectionChanged;
+                    
+                if (SetProperty(ref _details, value))
+                {
+                    if (_details != null)
+                    {
+                        _details.CollectionChanged += Details_CollectionChanged;
+                        _hasDetailsHandlerSet = true;
+                    }
+                    OnPropertyChanged(nameof(HasMultipleDetails));
+                    OnPropertyChanged(nameof(HasSingleDetail));
+                }
+            }
+        }
+        
+        private bool _hasDetailsHandlerSet = false;
+        
+        private void Details_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(HasMultipleDetails));
+            OnPropertyChanged(nameof(HasSingleDetail));
+            OnPropertyChanged(nameof(HasFreeItemDetail));
+            OnPropertyChanged(nameof(DetailsWithOrderDetail));
+            OnPropertyChanged(nameof(CanAddFreeItem));
+            OnPropertyChanged(nameof(FreeItemButtonText));
+            OnPropertyChanged(nameof(FreeItemButtonColor));
+        }
+        
+        public Order? Order { get; set; }
 
         private AdvancedCatalogDetailViewModel? _primaryDetail;
+
         public AdvancedCatalogDetailViewModel? PrimaryDetail
         {
             get => _primaryDetail;
@@ -1935,215 +2593,283 @@ namespace LaceupMigration.ViewModels
             {
                 if (SetProperty(ref _primaryDetail, value))
                 {
-                    UpdateDisplayProperties();
+                    UpdateDisplayProperties(Order);
                 }
             }
         }
 
-        [ObservableProperty]
-        private string _productDisplayName = string.Empty;
+        [ObservableProperty] private string _productDisplayName = string.Empty;
 
-        [ObservableProperty]
-        private string _onHandText = string.Empty;
+        [ObservableProperty] private string _onHandText = string.Empty;
 
-        [ObservableProperty]
-        private string _listPriceText = string.Empty;
+        [ObservableProperty] private string _listPriceText = string.Empty;
 
-        [ObservableProperty]
-        private string _currentPriceText = string.Empty;
+        [ObservableProperty] private string _currentPriceText = string.Empty;
 
-        [ObservableProperty]
-        private string _historyText = string.Empty;
+        [ObservableProperty] private string _historyText = string.Empty;
 
-        [ObservableProperty]
-        private bool _hasHistory;
+        [ObservableProperty] private bool _hasHistory;
 
-        [ObservableProperty]
-        private bool _hasNoHistory;
+        [ObservableProperty] private bool _hasNoHistory;
 
-        [ObservableProperty]
-        private string _productImagePath = string.Empty;
+        [ObservableProperty] private string _productImagePath = string.Empty;
 
-        [ObservableProperty]
-        private bool _hasImage;
+        [ObservableProperty] private bool _hasImage;
+        
+        [ObservableProperty] private bool _canAddFreeItem = false;
 
-        [ObservableProperty]
-        private bool _isFreeItem;
+        [ObservableProperty] private string _freeItemButtonText = "Add Free Item";
 
-        [ObservableProperty]
-        private string _quantityText = "0";
+        [ObservableProperty] private Microsoft.Maui.Graphics.Color _freeItemButtonColor = Microsoft.Maui.Graphics.Color.FromArgb("#007AFF"); // Blue
 
-        [ObservableProperty]
-        private string _typeText = string.Empty;
+        [ObservableProperty] private string _quantityText = "0";
+
+        [ObservableProperty] private string _typeText = string.Empty;
 
         [ObservableProperty]
         private Microsoft.Maui.Graphics.Color _typeColor = Microsoft.Maui.Graphics.Colors.Transparent;
 
-        [ObservableProperty]
-        private bool _showTypeText = false;
+        [ObservableProperty] private bool _showTypeText = false;
 
-        public void UpdateDisplayProperties()
+        [ObservableProperty] private bool _canChangePrice = false;
+
+        [ObservableProperty] private bool _showSelectPL = false;
+
+        public bool HasMultipleDetails => HasFreeItemDetail;
+        public bool HasSingleDetail => !HasFreeItemDetail;
+        
+        public bool HasFreeItemDetail => Details.Any(d => d.Detail != null && (d.Detail.IsFreeItem || 
+            (!string.IsNullOrEmpty(d.Detail.ExtraFields) && d.Detail.ExtraFields.Contains("productfree"))));
+        
+        // Only show details that have OrderDetail attached (for sublines display)
+        // This includes free items - they show as sublines
+        // DetailsWithOrderDetail should only show free items as sublines
+        // Primary detail should NOT be included here, even if it has an OrderDetail
+        public IEnumerable<AdvancedCatalogDetailViewModel> DetailsWithOrderDetail => 
+            Details.Where(d => d.Detail != null && 
+                (d.Detail.IsFreeItem || (!string.IsNullOrEmpty(d.Detail.ExtraFields) && d.Detail.ExtraFields.Contains("productfree"))));
+
+        public void UpdateDisplayProperties(Order? order = null, bool skipFreeItemUpdate = false)
         {
-            if (Product == null)
-                return;
-
-            // Product Display Name (Code + Name)
-            ProductDisplayName = $"{Product.Code} {Product.Name}";
-
-            // On-Hand
-            var oh = Product.CurrentWarehouseInventory;
-            OnHandText = $"OH: {oh:F0}";
-
-            // List Price
-            var listPrice = Product.PriceLevel0;
-            ListPriceText = $"List Price: {listPrice.ToCustomString()}";
-
-            // Current Price (from primary detail or product)
-            if (PrimaryDetail != null && PrimaryDetail.Detail != null)
+            // Use stored order if not provided
+            order ??= Order;
             {
-                CurrentPriceText = $"Price:{PrimaryDetail.Detail.Price.ToCustomString()}";
-                QuantityText = PrimaryDetail.Detail.Qty.ToString("F0");
-                IsFreeItem = PrimaryDetail.Detail.IsFreeItem || 
-                    (!string.IsNullOrEmpty(PrimaryDetail.Detail.ExtraFields) && PrimaryDetail.Detail.ExtraFields.Contains("productfree"));
-                
-                // Set type text based on detail
-                if (PrimaryDetail.Detail.IsCredit)
+                if (Product == null)
+                    return;
+
+                // Product Display Name (Code + Name)
+                ProductDisplayName = $"{Product.Code} {Product.Name}";
+
+                // On-Hand
+                var oh = Product.CurrentWarehouseInventory;
+                OnHandText = $"OH: {oh:F0}";
+
+                // List Price
+                var listPrice = Product.PriceLevel0;
+                ListPriceText = $"List Price: {listPrice.ToCustomString()}";
+
+                // CanAddFreeItem: enabled if main line has qty > 0 and no free items exist yet
+                var mainDetailQty = PrimaryDetail?.Detail?.Qty ?? 0;
+                var hasFreeItems = HasFreeItemDetail;
+                CanAddFreeItem = Config.AllowFreeItems && 
+                                 order != null && 
+                                 !order.Locked() && 
+                                 mainDetailQty > 0 && 
+                                 !hasFreeItems;
+
+                // Update Free Item button text and color
+                if (hasFreeItems)
                 {
-                    TypeText = PrimaryDetail.Detail.Damaged ? "Dump" : "Return";
-                    TypeColor = Microsoft.Maui.Graphics.Colors.Orange;
-                    ShowTypeText = true;
+                    FreeItemButtonText = "Free Item Added";
+                    FreeItemButtonColor = Microsoft.Maui.Graphics.Color.FromArgb("#34C759"); // Green
                 }
                 else
                 {
+                    FreeItemButtonText = "Add Free Item";
+                    FreeItemButtonColor = Microsoft.Maui.Graphics.Color.FromArgb("#007AFF"); // Blue
+                }
+
+                // Current Price (from primary detail or product)
+                // Ensure primary detail is not a free item - use non-free detail for main controls
+                if (PrimaryDetail != null && PrimaryDetail.Detail != null)
+                {
+                    // If primary detail is free, find a non-free one
+                    if (PrimaryDetail.Detail.IsFreeItem || 
+                        (!string.IsNullOrEmpty(PrimaryDetail.Detail.ExtraFields) && 
+                         PrimaryDetail.Detail.ExtraFields.Contains("productfree")))
+                    {
+                        var nonFreeDetail = Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
+                            (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")));
+                        if (nonFreeDetail != null)
+                        {
+                            PrimaryDetail = nonFreeDetail;
+                        }
+                        else
+                        {
+                            // No non-free detail exists, use a detail without OrderDetail
+                            var emptyDetail = Details.FirstOrDefault(d => d.Detail == null && d.UoM?.Id == PrimaryDetail.UoM?.Id)
+                                             ?? Details.FirstOrDefault(d => d.Detail == null)
+                                             ?? PrimaryDetail;
+                            PrimaryDetail = emptyDetail;
+                        }
+                    }
+                }
+                
+                if (PrimaryDetail != null && PrimaryDetail.Detail != null && 
+                    !PrimaryDetail.Detail.IsFreeItem &&
+                    (string.IsNullOrEmpty(PrimaryDetail.Detail.ExtraFields) || !PrimaryDetail.Detail.ExtraFields.Contains("productfree")))
+                {
+                    CurrentPriceText = $"Price:{PrimaryDetail.Detail.Price.ToCustomString()}";
+                    QuantityText = PrimaryDetail.Detail.Qty.ToString("F0");
+                    
+                    // Update CanAddFreeItem
+                    var mainQty = PrimaryDetail.Detail.Qty;
+                    CanAddFreeItem = Config.AllowFreeItems && 
+                                     order != null && 
+                                     !order.Locked() && 
+                                     mainQty > 0 && 
+                                     !HasFreeItemDetail;
+
+                    // Set type text based on detail
+                    if (PrimaryDetail.Detail.IsCredit)
+                    {
+                        TypeText = PrimaryDetail.Detail.Damaged ? "Dump" : "Return";
+                        TypeColor = Microsoft.Maui.Graphics.Colors.Orange;
+                        ShowTypeText = true;
+                    }
+                    else
+                    {
+                        TypeText = string.Empty;
+                        TypeColor = Microsoft.Maui.Graphics.Colors.Transparent;
+                        ShowTypeText = false;
+                    }
+                }
+                else if (PrimaryDetail != null)
+                {
+                    CurrentPriceText = $"Price:{PrimaryDetail.Price.ToCustomString()}";
+                    QuantityText = "0";
+                    CanAddFreeItem = false; // No qty, can't add free item
                     TypeText = string.Empty;
                     TypeColor = Microsoft.Maui.Graphics.Colors.Transparent;
                     ShowTypeText = false;
                 }
-            }
-            else if (PrimaryDetail != null)
-            {
-                CurrentPriceText = $"Price:{PrimaryDetail.Price.ToCustomString()}";
-                QuantityText = "0";
-                IsFreeItem = false;
-                TypeText = string.Empty;
-                TypeColor = Microsoft.Maui.Graphics.Colors.Transparent;
-                ShowTypeText = false;
-            }
-            else
-            {
-                var price = Product.GetPriceForProduct(Product, null, ItemType > 0, ItemType == 1);
-                CurrentPriceText = $"Price:{price.ToCustomString()}";
-                QuantityText = "0";
-                IsFreeItem = false;
-                TypeText = string.Empty;
-                TypeColor = Microsoft.Maui.Graphics.Colors.Transparent;
-                ShowTypeText = false;
-            }
-
-            // History Text
-            HasHistory = History != null && History.Count > 0;
-            HasNoHistory = !HasHistory;
-            
-            if (HasHistory)
-            {
-                var historyLines = History.Take(3).Select(h => 
-                    $"{h.Date:M/d/yyyy} {h.Quantity} @ {h.Price.ToCustomString()}");
-                HistoryText = string.Join(", ", historyLines);
-            }
-            else
-            {
-                HistoryText = string.Empty;
-            }
-
-            // Product Image
-            var imagePath = ProductImage.GetProductImage(Product.ProductId);
-            HasImage = !string.IsNullOrEmpty(imagePath);
-            ProductImagePath = imagePath ?? string.Empty;
-        }
-    }
-
-    public partial class AdvancedCatalogDetailViewModel : ObservableObject
-    {
-        public Product Product { get; set; } = null!;
-        
-        private UnitOfMeasure? _uom;
-        public UnitOfMeasure? UoM 
-        { 
-            get => _uom;
-            set
-            {
-                if (SetProperty(ref _uom, value))
+                else
                 {
-                    UomText = value != null ? value.Name : string.Empty;
+                    // Use order's client if available, otherwise null
+                    var client = order?.Client;
+                    var price = Product.GetPriceForProduct(Product, client, ItemType > 0, ItemType == 1);
+                    CurrentPriceText = $"Price:{price.ToCustomString()}";
+                    QuantityText = "0";
+                    CanAddFreeItem = false; // No qty, can't add free item
+                    TypeText = string.Empty;
+                    TypeColor = Microsoft.Maui.Graphics.Colors.Transparent;
+                    ShowTypeText = false;
+                }
+
+                // History Text
+                HasHistory = History != null && History.Count > 0;
+                HasNoHistory = !HasHistory;
+
+                if (HasHistory)
+                {
+                    var historyLines = History.Take(3).Select(h =>
+                        $"{h.Date:M/d/yyyy} {h.Quantity} @ {h.Price.ToCustomString()}");
+                    HistoryText = string.Join(", ", historyLines);
+                }
+                else
+                {
+                    HistoryText = string.Empty;
+                }
+
+                // Product Image
+                var imagePath = ProductImage.GetProductImage(Product.ProductId);
+                HasImage = !string.IsNullOrEmpty(imagePath);
+                ProductImagePath = imagePath ?? string.Empty;
+            }
+        }
+
+        public partial class AdvancedCatalogDetailViewModel : ObservableObject
+        {
+            public Product Product { get; set; } = null!;
+
+            private UnitOfMeasure? _uom;
+
+            public UnitOfMeasure? UoM
+            {
+                get => _uom;
+                set
+                {
+                    if (SetProperty(ref _uom, value))
+                    {
+                        UomText = value != null ? value.Name : string.Empty;
+                    }
+                }
+            }
+
+            [ObservableProperty] private double _expectedPrice;
+
+            [ObservableProperty] private double _price;
+
+            [ObservableProperty] private bool _isFromEspecial;
+
+            [ObservableProperty] private OrderDetail? _detail;
+
+            public int ItemType { get; set; }
+            public int PriceLevelSelected { get; set; }
+            public double InStore { get; set; }
+            public string ExtraFields { get; set; } = string.Empty;
+            public string Comment { get; set; } = string.Empty;
+
+            [ObservableProperty] private string _quantityText = "0";
+
+            [ObservableProperty] private string _priceText = "$0.00";
+
+            [ObservableProperty] private string _uomText = string.Empty;
+
+            partial void OnDetailChanged(OrderDetail? value)
+            {
+                if (value != null)
+                {
+                    QuantityText = value.Qty.ToString();
+                    PriceText = value.Price.ToCustomString();
+                    // Subscribe to property changes on the OrderDetail if possible
+                    // For now, we'll update manually in the increment/decrement methods
+                }
+                else
+                {
+                    QuantityText = "0";
+                    PriceText = Price.ToCustomString();
+                }
+            }
+            
+            // Method to update display when qty changes
+            public void UpdateQuantityDisplay()
+            {
+                if (Detail != null)
+                {
+                    QuantityText = Detail.Qty.ToString();
+                    PriceText = Detail.Price.ToCustomString();
                 }
             }
         }
-        
-        [ObservableProperty]
-        private double _expectedPrice;
-        
-        [ObservableProperty]
-        private double _price;
-        
-        [ObservableProperty]
-        private bool _isFromEspecial;
-        
-        [ObservableProperty]
-        private OrderDetail? _detail;
-        
-        public int ItemType { get; set; }
-        public int PriceLevelSelected { get; set; }
-        public double InStore { get; set; }
-        public string ExtraFields { get; set; } = string.Empty;
-        public string Comment { get; set; } = string.Empty;
 
-        [ObservableProperty]
-        private string _quantityText = "0";
-
-        [ObservableProperty]
-        private string _priceText = "$0.00";
-
-        [ObservableProperty]
-        private string _uomText = string.Empty;
-
-        partial void OnDetailChanged(OrderDetail? value)
+        public partial class AdvancedCatalogLineItemViewModel : ObservableObject
         {
-            if (value != null)
-            {
-                QuantityText = value.Qty.ToString();
-                PriceText = value.Price.ToCustomString();
-            }
-            else
-            {
-                QuantityText = "0";
-                PriceText = Price.ToCustomString();
-            }
+            [ObservableProperty] private string _productName = string.Empty;
+
+            [ObservableProperty] private string _qtyText = string.Empty;
+
+            [ObservableProperty] private string _priceText = string.Empty;
+
+            [ObservableProperty] private string _amountText = string.Empty;
+
+            [ObservableProperty] private string _typeText = string.Empty;
+
+            [ObservableProperty] private Microsoft.Maui.Graphics.Color _typeColor;
+
+            [ObservableProperty] private bool _showType;
+
+            public OrderDetail Detail { get; set; } = null!;
         }
-    }
-
-    public partial class AdvancedCatalogLineItemViewModel : ObservableObject
-    {
-        [ObservableProperty]
-        private string _productName = string.Empty;
-
-        [ObservableProperty]
-        private string _qtyText = string.Empty;
-
-        [ObservableProperty]
-        private string _priceText = string.Empty;
-
-        [ObservableProperty]
-        private string _amountText = string.Empty;
-
-        [ObservableProperty]
-        private string _typeText = string.Empty;
-
-        [ObservableProperty]
-        private Microsoft.Maui.Graphics.Color _typeColor;
-
-        [ObservableProperty]
-        private bool _showType;
-
-        public OrderDetail Detail { get; set; } = null!;
     }
 }

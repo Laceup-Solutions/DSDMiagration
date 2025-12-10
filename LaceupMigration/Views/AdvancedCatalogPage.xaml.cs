@@ -82,8 +82,15 @@ namespace LaceupMigration.Views
             return true; // Prevent default back navigation
         }
 
+
         private async void OnShellNavigating(object? sender, ShellNavigatingEventArgs e)
         {
+            // Don't intercept modal navigation (modals use Navigation.PushModalAsync, not Shell navigation)
+            // Check if there's a modal on the stack - if so, don't interfere
+            var currentPage = Shell.Current.CurrentPage;
+            if (currentPage != null && currentPage.Navigation != null && currentPage.Navigation.ModalStack.Count > 0)
+                return;
+
             // Only intercept if we're navigating away from this page and it's a back navigation
             if (_isNavigatingBack || e.Target.Location.OriginalString.Contains("advancedcatalog"))
                 return;
@@ -106,13 +113,6 @@ namespace LaceupMigration.Views
             }
         }
 
-        private void FreeItemCheckBox_CheckedChanged(object? sender, CheckedChangedEventArgs e)
-        {
-            if (sender is CheckBox checkBox && checkBox.BindingContext is AdvancedCatalogItemViewModel item)
-            {
-                _viewModel.ToggleFreeItemCommand.ExecuteAsync(item);
-            }
-        }
     }
 }
 

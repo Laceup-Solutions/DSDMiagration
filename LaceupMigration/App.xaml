@@ -20,6 +20,10 @@
             <converters:HasLeftContentToContentColumnConverter x:Key="HasLeftContentToContentColumnConverter" />
             <converters:HasLeftContentToBalanceColumnConverter x:Key="HasLeftContentToBalanceColumnConverter" />
             <converters:HasLeftContentToColumnSpanConverter x:Key="HasLeftContentToColumnSpanConverter" />
+            <converters:BoolToTextDecorationsConverter x:Key="BoolToTextDecorationsConverter" />
+            <converters:BoolToUnderlineConverter x:Key="BoolToUnderlineConverter" />
+            <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
+            <converters:IsNotFreeItemConverter x:Key="IsNotFreeItemConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

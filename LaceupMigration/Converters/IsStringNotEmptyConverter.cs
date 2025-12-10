@@ -197,5 +197,105 @@ namespace LaceupMigration.Converters
             throw new NotImplementedException();
         }
     }
+    
+    /// <summary>
+    /// Converter that returns TextDecorations.Underline if value is true, otherwise TextDecorations.None.
+    /// </summary>
+    public class BoolToTextDecorationsConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is bool boolValue && boolValue)
+            {
+                return TextDecorations.Underline;
+            }
+            return TextDecorations.None;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    
+    /// <summary>
+    /// Converter that returns FontAttributes.Bold if value is true, otherwise FontAttributes.None.
+    /// Used to keep Bold when price is not clickable, or add underline when clickable.
+    /// </summary>
+    public class BoolToUnderlineConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            // Always return Bold, underline is handled by TextDecorations
+            return FontAttributes.Bold;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    
+    /// <summary>
+    /// Converter that returns a color based on boolean value.
+    /// Parameter format: "TrueColor|FalseColor" (e.g., "#F5F5F5|Transparent")
+    /// </summary>
+    public class BoolToColorConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (parameter is string paramStr && !string.IsNullOrEmpty(paramStr))
+            {
+                var colors = paramStr.Split('|');
+                if (colors.Length == 2)
+                {
+                    bool boolValue = false;
+                    if (value is bool b)
+                        boolValue = b;
+                    else if (value is OrderDetail detail && detail != null)
+                        boolValue = detail.IsFreeItem;
+                    
+                    var colorStr = boolValue ? colors[0].Trim() : colors[1].Trim();
+                    if (colorStr.Equals("Transparent", StringComparison.OrdinalIgnoreCase))
+                        return Microsoft.Maui.Graphics.Colors.Transparent;
+                    return Microsoft.Maui.Graphics.Color.FromArgb(colorStr);
+                }
+            }
+            return Microsoft.Maui.Graphics.Colors.Transparent;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    
+    /// <summary>
+    /// Converter that checks if an OrderDetail is a free item.
+    /// Returns true if Detail is not null and IsFreeItem is true.
+    /// If parameter is "Inverted", returns the inverted value.
+    /// </summary>
+    public class IsNotFreeItemConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            bool isFreeItem = false;
+            if (value is OrderDetail detail && detail != null)
+            {
+                isFreeItem = detail.IsFreeItem;
+            }
+            
+            bool result = !isFreeItem;
+            if (parameter is string paramStr && paramStr == "Inverted")
+                result = !result;
+            
+            return result;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
 
