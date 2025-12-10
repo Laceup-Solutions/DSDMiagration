@@ -22,6 +22,7 @@ namespace LaceupMigration.ViewModels
         private List<Order> _sourceOrders = new();
         private bool[] _selectedOrders = Array.Empty<bool>();
         private bool _ordersAlreadyLoaded = false;
+        private bool _isNavigatingToAcceptLoad = false;
 
         [ObservableProperty] private ObservableCollection<AcceptLoadOrderItemViewModel> _orders = new();
         [ObservableProperty] private string _selectedDateText = string.Empty;
@@ -59,12 +60,25 @@ namespace LaceupMigration.ViewModels
         {
             // Called when navigating from InventoryMainPage with a selected date
             // Match Xamarin: activity.PutExtra("loadDate", date.Ticks.ToString());
-            _currentDate = date;
+            // Store the date part only to avoid time component issues
+            var selectedDate = date.Date;
+            
+            // Update current date and display text immediately
+            _currentDate = selectedDate;
             SelectedDateText = _currentDate.ToShortDateString();
+            
             // Orders are already loaded by RefreshAndNavigateToAcceptLoadAsync in InventoryMainPageViewModel
             // Just refresh the UI with the existing orders
             _ordersAlreadyLoaded = true;
             RefreshOrders();
+            
+            // [MIGRATION]: Ensure date persists after refresh - defensive check
+            // This prevents the date from being reset if OnAppearingAsync or other methods are called
+            if (_currentDate.Date != selectedDate)
+            {
+                _currentDate = selectedDate;
+                SelectedDateText = _currentDate.ToShortDateString();
+            }
         }
 
         public async Task InitializeWithOrderIdAsync(int orderId)
@@ -110,6 +124,13 @@ namespace LaceupMigration.ViewModels
 
         public async Task OnAppearingAsync()
         {
+            // Reset flag when coming back to the page
+            _isNavigatingToAcceptLoad = false;
+            
+            // [MIGRATION]: Preserve the current date when appearing
+            // Store the date before any operations to ensure it's not reset
+            var preservedDate = _currentDate;
+            
             // Match Xamarin OnResume behavior - just refresh the UI with existing orders
             // Xamarin doesn't auto-sync on appearing, only when user clicks date button or toggles ViewAll
             // If orders are already loaded from InitializeWithDateAsync, just refresh the display
@@ -124,6 +145,14 @@ namespace LaceupMigration.ViewModels
                 RefreshOrders();
             }
             // If orders exist, they're already displayed, no need to refresh
+            
+            // [MIGRATION]: Restore the date if it was changed during refresh
+            // This ensures the date persists even if something resets it
+            if (_currentDate.Date != preservedDate.Date)
+            {
+                _currentDate = preservedDate;
+                SelectedDateText = _currentDate.ToShortDateString();
+            }
             
             _ordersAlreadyLoaded = false; // Reset for next time
         }
@@ -206,16 +235,50 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // Show the date picker on the page - it will auto-focus and open native calendar
-            ShowDatePicker = true;
+            // Show date picker dialog (matches Xamarin DatePickerDialogFragment)
+            try
+            {
+                var selectedDate = await _dialogService.ShowDatePickerAsync("Select Date", _currentDate);
+                
+                if (selectedDate.HasValue)
+                {
+                    await OnDateSelectedAsync(selectedDate.Value);
+                }
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error showing date picker: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
+            }
+        }
+        
+        private async Task OnDateSelectedAsync(DateTime date)
+        {
+            // Store the selected date before any operations to ensure it persists
+            var selectedDate = date.Date; // Store just the date part to avoid time component issues
+            var previousDate = _currentDate.Date; // Store previous date for comparison
+            
+            // Update current date and display text immediately (before refresh)
+            _currentDate = selectedDate;
+            SelectedDateText = _currentDate.ToShortDateString();
+            
+            // Only refresh if the date is different from previous date (match Xamarin behavior)
+            if (selectedDate != previousDate)
+            {
+                await RefreshAsync(false);
+            }
+            else
+            {
+                // Even if same date, refresh the display to ensure consistency
+                RefreshOrders();
+            }
         }
 
         public async void OnDateSelected(DateTime date)
         {
-            ShowDatePicker = false;
-            _currentDate = date;
-            SelectedDateText = _currentDate.ToShortDateString();
-            await RefreshAsync(false);
+            // This method is called from the XAML DatePicker control (if used)
+            // But we're now using DialogService.ShowDatePickerAsync instead
+            await OnDateSelectedAsync(date);
         }
 
         partial void OnViewAllChanged(bool value)
@@ -398,6 +461,7 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
+            _isNavigatingToAcceptLoad = true;
             var orderIds = string.Join("|", selectedOrders.Select(x => x.OrderId.ToString()));
             // Match Xamarin: Navigate to AcceptInventoryResumeActivity (which is equivalent to AcceptLoadEditDelivery)
             await Shell.Current.GoToAsync($"acceptloadeditdelivery?orderIds={orderIds}");
@@ -406,8 +470,30 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task CancelAsync()
         {
-            DataAccess.DeletePengingLoads();
+            // Match Xamarin: Cancel_Click - delete pending loads when canceling
+            DeletePendingLoads();
             await Shell.Current.GoToAsync("..");
+        }
+
+        public void DeletePendingLoads()
+        {
+            // Match Xamarin: DeletePengingLoads() is called when:
+            // 1. Back button is pressed (OnKeyDown)
+            // 2. Cancel button is clicked (Cancel_Click)
+            // 3. Page is disappearing and not navigating forward to accept load
+            // This deletes pending load orders that haven't been accepted yet
+            DataAccess.DeletePengingLoads();
+        }
+
+        public void OnDisappearing()
+        {
+            // Match Xamarin: Handle force quit or navigation away
+            // Only delete pending loads if we're not navigating forward to accept the load
+            // This handles cases like force quit, app termination, or navigating away
+            if (!_isNavigatingToAcceptLoad)
+            {
+                DeletePendingLoads();
+            }
         }
 
         [RelayCommand]
@@ -449,6 +535,7 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
+            _isNavigatingToAcceptLoad = true;
             var orderIds = string.Join("|", selectedOrders.Select(x => x.OrderId.ToString()));
             await Shell.Current.GoToAsync($"acceptloadeditdelivery?orderIds={orderIds}");
         }

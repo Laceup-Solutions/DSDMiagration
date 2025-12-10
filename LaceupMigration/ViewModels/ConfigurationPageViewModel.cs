@@ -70,9 +70,14 @@ namespace LaceupMigration.ViewModels
                         Config.SalesmanId = salesmanId;
                     }
                     Config.VendorName = VendorName;
+                    
+                    // [MIGRATION]: Save SalesmanId to both Preferences and file system
+                    // SaveSettings() saves to Preferences (used by Initialize())
+                    Config.SaveSettings();
+                    // SaveSystemSettings() saves to file (used by LoadSystemSettings() which overrides Preferences)
+                    Config.SaveSystemSettings();
                 }
 
-                // TODO: Save all configuration changes
                 await _dialogService.ShowAlertAsync("Configuration saved successfully.", "Success", "OK");
                 
                 // Navigate back after successful save

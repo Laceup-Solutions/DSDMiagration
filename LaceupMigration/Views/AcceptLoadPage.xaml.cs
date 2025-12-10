@@ -7,6 +7,7 @@ namespace LaceupMigration.Views
     public partial class AcceptLoadPage : ContentPage, IQueryAttributable
     {
         private readonly AcceptLoadPageViewModel _viewModel;
+        private DateTime? _lastInitializedDate; // Track the last date we initialized with
 
         public AcceptLoadPage(AcceptLoadPageViewModel viewModel)
         {
@@ -30,7 +31,15 @@ namespace LaceupMigration.Views
                 if (long.TryParse(value.ToString(), out var ticks))
                 {
                     var date = new System.DateTime(ticks);
-                    Dispatcher.Dispatch(async () => await _viewModel.InitializeWithDateAsync(date));
+                    
+                    // [MIGRATION]: Only initialize if this is a new date or first time
+                    // This prevents re-initialization with an old date after refresh completes
+                    // If we've already initialized with this date, skip to avoid resetting
+                    if (!_lastInitializedDate.HasValue || _lastInitializedDate.Value.Date != date.Date)
+                    {
+                        _lastInitializedDate = date;
+                        Dispatcher.Dispatch(async () => await _viewModel.InitializeWithDateAsync(date));
+                    }
                 }
             }
 
@@ -74,6 +83,24 @@ namespace LaceupMigration.Views
                     });
                 }
             };
+        }
+
+        protected override bool OnBackButtonPressed()
+        {
+            // Match Xamarin: OnKeyDown - when back button is pressed, delete pending loads
+            // Match Xamarin AcceptLoadOrderList.cs line 234-247
+            // In Xamarin: if (keyCode == Keycode.Back) { ActivityState.RemoveState(state); DataAccess.DeletePengingLoads(); }
+            _viewModel.DeletePendingLoads();
+            return base.OnBackButtonPressed();
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            // Match Xamarin: Handle force quit or app termination scenarios
+            // OnDisappearing is called when the page is removed from the navigation stack,
+            // including force quit scenarios where OnBackButtonPressed might not be called
+            _viewModel.OnDisappearing();
         }
 
         private void SelectAll_CheckedChanged(object sender, CheckedChangedEventArgs e)

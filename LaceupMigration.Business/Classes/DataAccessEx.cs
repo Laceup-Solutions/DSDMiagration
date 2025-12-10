@@ -1142,11 +1142,6 @@ namespace LaceupMigration
             {
                 using (var access = new NetAccess())
                 {
-                    Term.List.Clear();
-
-                    if (File.Exists(Config.TermsPath))
-                        File.Delete(Config.TermsPath);
-
                     access.OpenConnection();
                     access.WriteStringToNetwork("HELO");
                     access.WriteStringToNetwork(Config.GetAuthString());

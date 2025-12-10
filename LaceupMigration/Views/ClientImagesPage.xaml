@@ -32,12 +32,32 @@
                                 IsVisible="{Binding ShowImages}">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="vm:ClientImageViewModel">
-                            <Grid Padding="8" Margin="0,0,0,8" InputTransparent="True">
-                                <Image Source="{Binding ImagePath}"
-                                       Aspect="AspectFill"
-                                       HeightRequest="200"
-                                       WidthRequest="200" />
-                            </Grid>
+                            <Frame Padding="8" Margin="0,0,0,8" 
+                                   BackgroundColor="{StaticResource Gray100}"
+                                   HasShadow="False"
+                                   CornerRadius="8">
+                                <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                        <Button Grid.Column="1"
+                                                Text="Delete"
+                                                BackgroundColor="#DC3545"
+                                                TextColor="White"
+                                                FontSize="12"
+                                                Padding="12,6"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ClientImagesPageViewModel}}, Path=DeleteImageCommand}"
+                                                CommandParameter="{Binding .}" />
+                                    </Grid>
+                                    <Image Grid.Row="1"
+                                           Source="{Binding ImagePath}"
+                                           Aspect="AspectFill"
+                                           HeightRequest="200">
+                                        <Image.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ClientImagesPageViewModel}}, Path=ViewImageCommand}"
+                                                                   CommandParameter="{Binding .}" />
+                                        </Image.GestureRecognizers>
+                                    </Image>
+                                </Grid>
+                            </Frame>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>

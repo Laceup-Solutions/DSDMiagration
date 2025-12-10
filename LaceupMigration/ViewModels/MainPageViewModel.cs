@@ -24,11 +24,18 @@ namespace LaceupMigration.ViewModels
 			_dialogService = dialogService;
 			_appService = appService;
 			_advancedOptionsService = advancedOptionsService;
+			
+			// [MIGRATION]: Initialize menu visibility in constructor
+			// This ensures menu is correct when ViewModel is created (e.g., after app restart)
+			// Config.Initialize() is called in App.xaml.cs constructor, so DataAccess.ReceivedData should be loaded
+			RefreshMenuVisibility();
 		}
 
 		public void OnAppearing()
 		{
 			UpdateCompanyName();
+			// [MIGRATION]: Refresh menu visibility on appearing to ensure it's up-to-date
+			// This handles cases where user changes or sync happens between page navigations
 			RefreshMenuVisibility();
 		}
 
@@ -294,6 +301,10 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task ShowMenu()
 		{
+			// [MIGRATION]: Refresh menu visibility before showing menu
+			// This ensures menu is correct even if user changed or config updated since last refresh
+			RefreshMenuVisibility();
+			
 			var menuItems = new List<string>();
 			
 			// Match Xamarin mainMenu.xml order exactly
@@ -572,6 +583,22 @@ namespace LaceupMigration.ViewModels
 				SubscribeToNotifications();
 			}
 
+			// Fix: Add delivery clients for already accepted deliveries after sync
+			// This ensures clients are saved to file so DeletePendingLoads won't delete them
+			if (!errorDownloadingData)
+			{
+				var acceptedDeliveryOrders = Order.Orders.Where(x => x.IsDelivery && !x.PendingLoad).ToList();
+				var processedClientIds = new HashSet<int>();
+				foreach (var order in acceptedDeliveryOrders)
+				{
+					if (order.Client != null && !processedClientIds.Contains(order.Client.ClientId))
+					{
+						DataAccess.AddDeliveryClient(order.Client);
+						processedClientIds.Add(order.Client.ClientId);
+					}
+				}
+			}
+
 			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1733-1738
 			// Check for NewSyncLoadOnDemand and RouteOrdersCount
 			if (!errorDownloadingData && Config.NewSyncLoadOnDemand && DataAccess.RouteOrdersCount > 0)
@@ -619,28 +646,86 @@ namespace LaceupMigration.ViewModels
 			// Check for pending load to accept after sync
 			if (!errorDownloadingData && Config.TrackInventory && updateInventory && DataAccess.PendingLoadToAccept)
 			{
-				if (Config.AutoAcceptLoad)
+			if (Config.AutoAcceptLoad)
+			{
+				// Auto-accept load logic (Xamarin lines 1744-1758)
+				// Update inventory for all products with RequestedLoadInventory > 0
+				foreach (var product in Product.Products)
 				{
-					// Auto-accept load logic (Xamarin lines 1744-1758)
-					// Update inventory for all products with RequestedLoadInventory > 0
-					foreach (var product in Product.Products)
+					if (product.RequestedLoadInventory > 0)
 					{
-						if (product.RequestedLoadInventory > 0)
-						{
-							product.UpdateInventory(product.RequestedLoadInventory, null, 1, 0);
-							product.AddLoadedInventory(product.RequestedLoadInventory, null, 0);
-						}
+						product.UpdateInventory(product.RequestedLoadInventory, null, 1, 0);
+						product.AddLoadedInventory(product.RequestedLoadInventory, null, 0);
 					}
-
-					DataAccess.PendingLoadToAccept = false;
-					Config.SaveAppStatus();
-					DataAccess.SaveInventory();
 				}
+
+				// Fix: Call AddDeliveryClient for accepted delivery orders (missing in Xamarin too)
+				// This saves delivery clients to file so they can be loaded on app restart
+				var acceptedDeliveryOrders = Order.Orders.Where(x => x.IsDelivery && !x.PendingLoad).ToList();
+				var processedClientIds = new HashSet<int>();
+				foreach (var order in acceptedDeliveryOrders)
+				{
+					if (order.Client != null && !processedClientIds.Contains(order.Client.ClientId))
+					{
+						DataAccess.AddDeliveryClient(order.Client);
+						processedClientIds.Add(order.Client.ClientId);
+					}
+				}
+
+				DataAccess.PendingLoadToAccept = false;
+				Config.SaveAppStatus();
+				DataAccess.SaveInventory();
+			}
 				else
 				{
 					// Navigate to inventory page (Xamarin lines 1762-1765)
 					// Pass actionIntent=1 to trigger AcceptLoad automatically
 					await Shell.Current.GoToAsync("inventorymain?actionIntent=1");
+				}
+			}
+
+			// Check for deliveries after sync and navigate to accept load if AutoAcceptLoad is OFF
+			// Only check if PendingLoadToAccept flag was set during DownloadData (prevents checking every sync)
+			if (!errorDownloadingData && !Config.AutoAcceptLoad && DataAccess.PendingLoadToAccept)
+			{
+				await _dialogService.ShowLoadingAsync("Checking for deliveries...");
+				string loadOrdersResponseMessage = null;
+				bool hasDeliveries = false;
+				
+				try
+				{
+					await Task.Run(() =>
+					{
+						try
+						{
+							// Get pending load orders for today
+							DataAccess.GetPendingLoadOrders(DateTime.Now, Config.ShowAllAvailableLoads);
+							
+							// Check if there are any pending load orders
+							var pendingOrders = Order.Orders.Where(x => (x.OrderType == OrderType.Load || x.IsDelivery) && x.PendingLoad).ToList();
+							hasDeliveries = pendingOrders.Any();
+						}
+						catch (Exception e)
+						{
+							Logger.CreateLog(e);
+							loadOrdersResponseMessage = "Error checking for deliveries.";
+						}
+					});
+				}
+				finally
+				{
+					await _dialogService.HideLoadingAsync();
+				}
+
+				if (!string.IsNullOrEmpty(loadOrdersResponseMessage))
+				{
+					await _dialogService.ShowAlertAsync(loadOrdersResponseMessage, "Alert", "OK");
+				}
+				else if (hasDeliveries)
+				{
+					// Navigate to AcceptLoad page with today's date
+					await Shell.Current.GoToAsync($"acceptload?loadDate={DateTime.Now.Ticks}");
+					return;
 				}
 			}
 		}
@@ -1020,23 +1105,113 @@ namespace LaceupMigration.ViewModels
 
 		private async Task AcceptLoadAsync()
 		{
-			if (!string.IsNullOrEmpty(Config.AddInventoryPassword))
+			// [MIGRATION]: Matches Xamarin InventoryMainActivity.AcceptLoad_Click() logic
+			if (string.IsNullOrEmpty(Config.AddInventoryPassword))
 			{
-				// Show password dialog
-				var password = await _dialogService.ShowPromptAsync("Enter password", "Accept Load", "OK", "Cancel", "Password", keyboard: Keyboard.Default);
-				if (password != null && string.Compare(password, Config.AddInventoryPassword, StringComparison.CurrentCultureIgnoreCase) == 0)
-					await ContinueAcceptLoadAsync();
+				if (Config.SyncLoadOnDemand || Config.NewSyncLoadOnDemand)
+				{
+					// AcceptLoadOnDemand - show date picker first, then download and navigate
+					await AcceptLoadOnDemandAsync();
+				}
 				else
-					await _dialogService.ShowAlertAsync("Invalid password.", "Alert", "OK");
+				{
+					// Navigate to ReceiveLoadActivity (old accept load page - not the list)
+					await Shell.Current.GoToAsync("acceptload");
+				}
+				return;
+			}
+
+			// Ask for password first
+			var password = await _dialogService.ShowPromptAsync("Accept Load", "Enter Password", "OK", "Cancel", "Password", keyboard: Keyboard.Default);
+			if (string.IsNullOrEmpty(password))
+				return; // User cancelled
+
+			if (string.Compare(password, Config.AddInventoryPassword, StringComparison.CurrentCultureIgnoreCase) != 0)
+			{
+				await _dialogService.ShowAlertAsync("Invalid password.", "Alert", "OK");
+				return;
+			}
+
+			// Password is correct
+			// [MIGRATION]: Match Xamarin - when password is correct, only check SyncLoadOnDemand (not NewSyncLoadOnDemand)
+			if (Config.SyncLoadOnDemand)
+			{
+				// AcceptLoadOnDemand - show date picker first, then download and navigate
+				await AcceptLoadOnDemandAsync();
 			}
 			else
-				await ContinueAcceptLoadAsync();
+			{
+				// Navigate to ReceiveLoadActivity (old accept load page)
+				await Shell.Current.GoToAsync("acceptload");
+			}
 		}
 
-		private async Task ContinueAcceptLoadAsync()
+		private async Task AcceptLoadOnDemandAsync()
 		{
-			// Navigate to accept load page when created
-			await Shell.Current.GoToAsync("acceptload");
+			try
+			{
+				// [MIGRATION]: Match Xamarin AcceptLoadOnDemand() - show date picker with today's date
+				// Match Xamarin: DateTime dt = DateTime.Today; var dialog = new DatePickerDialogFragment(this, dt);
+				DateTime selectedDate = DateTime.Today;
+				var date = await _dialogService.ShowDatePickerAsync("Select Date", selectedDate);
+				
+				if (date.HasValue)
+				{
+					// Match Xamarin Refresh(date) - download and navigate
+					await RefreshAndNavigateToAcceptLoadAsync(date.Value);
+				}
+			}
+			catch (Exception ex)
+			{
+				await _dialogService.ShowAlertAsync($"Error showing date picker: {ex.Message}", "Error", "OK");
+				_appService.TrackError(ex);
+			}
+		}
+
+		private async Task RefreshAndNavigateToAcceptLoadAsync(DateTime date)
+		{
+			// [MIGRATION]: Match Xamarin Refresh(DateTime date) method
+			await _dialogService.ShowLoadingAsync("Downloading load orders...");
+			string responseMessage = null;
+
+			try
+			{
+				await Task.Run(() =>
+				{
+					try
+					{
+						// Download products first
+						DataAccess.DownloadProducts();
+
+						// Get pending load orders for the selected date
+						DataAccess.GetPendingLoadOrders(date);
+					}
+					catch (Exception e)
+					{
+						Logger.CreateLog(e);
+						responseMessage = "Error downloading load orders.";
+					}
+				});
+
+				await _dialogService.HideLoadingAsync();
+
+				if (!string.IsNullOrEmpty(responseMessage))
+				{
+					await _dialogService.ShowAlertAsync(responseMessage, "Alert", "OK");
+				}
+				else
+				{
+					// Navigate to AcceptLoadOrderList (AcceptLoadPage) with the selected date
+					// Match Xamarin: activity.PutExtra("loadDate", date.Ticks.ToString());
+					await Shell.Current.GoToAsync($"acceptload?loadDate={date.Ticks}");
+				}
+			}
+			catch (Exception ex)
+			{
+				await _dialogService.HideLoadingAsync();
+				await _dialogService.ShowAlertAsync("Error refreshing load orders.", "Alert", "OK");
+				_appService.TrackError(ex);
+			}
 		}
 
 		private async Task SelectSiteHandlerAsync()

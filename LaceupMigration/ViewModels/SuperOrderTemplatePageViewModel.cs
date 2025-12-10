@@ -577,9 +577,14 @@ namespace LaceupMigration.ViewModels
                 return;
 
             // Similar validation to OrderDetailsPageViewModel but handle both order and credit
-            if (_order.Details.Count == 0 && (_credit == null || _credit.Details.Count == 0))
+            bool orderIsEmpty = _order.Details.Count == 0 || 
+                (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
+            bool creditIsEmpty = _credit == null || _credit.Details.Count == 0 || 
+                (_credit.Details.Count == 1 && _credit.Details[0].Product.ProductId == Config.DefaultItem);
+            
+            if (orderIsEmpty && creditIsEmpty)
             {
-                await _dialogService.ShowAlertAsync("Cannot send empty order.", "Alert");
+                await _dialogService.ShowAlertAsync("You can't send an empty order", "Alert");
                 return;
             }
 

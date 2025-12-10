@@ -16,6 +16,10 @@
             <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
             <converters:CreditTypeConverter x:Key="CreditTypeConverter" />
             <converters:ExpandIconConverter x:Key="ExpandIconConverter" />
+            <converters:HasLeftContentToColumnDefinitionsConverter x:Key="HasLeftContentToColumnDefinitionsConverter" />
+            <converters:HasLeftContentToContentColumnConverter x:Key="HasLeftContentToContentColumnConverter" />
+            <converters:HasLeftContentToBalanceColumnConverter x:Key="HasLeftContentToBalanceColumnConverter" />
+            <converters:HasLeftContentToColumnSpanConverter x:Key="HasLeftContentToColumnSpanConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
