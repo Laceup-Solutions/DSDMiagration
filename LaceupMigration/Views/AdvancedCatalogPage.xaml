@@ -277,70 +277,69 @@
                                 </VerticalStackLayout>
 
                                 <!-- Details Sublines (for free items) - Show when free item exists, below primary controls -->
-                                <CollectionView Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2"
+                                <!-- Separator between main line and free item subline -->
+                                <BoxView Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2"
+                                         HeightRequest="1"
+                                         Color="{StaticResource Gray300}"
+                                         Margin="0,8,0,4"
+                                         IsVisible="{Binding HasFreeItemDetail}" />
+                                
+                                <CollectionView Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2"
                                                 ItemsSource="{Binding DetailsWithOrderDetail}"
                                                 IsVisible="{Binding HasFreeItemDetail}"
                                                 SelectionMode="None"
                                                 Margin="0,4">
                                     <CollectionView.ItemTemplate>
                                         <DataTemplate x:DataType="vm:AdvancedCatalogItemViewModel+AdvancedCatalogDetailViewModel">
-                                            <Frame Padding="8" Margin="0,2" HasShadow="False" CornerRadius="4" BackgroundColor="{StaticResource Gray50}">
-                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
-                                                    <!-- Free Item Indicator -->
-                                                    <Label Grid.Column="0"
-                                                           Text="FREE"
+                                            <Grid Padding="0" Margin="0,2" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8" VerticalOptions="Center">
+                                                <!-- Free Item Label and UoM -->
+                                                <HorizontalStackLayout Grid.Column="0" 
+                                                                       Spacing="8"
+                                                                       VerticalOptions="Center">
+                                                    <Label Text="FREE"
                                                            FontSize="10"
                                                            FontAttributes="Bold"
                                                            TextColor="{StaticResource PrimaryDark}"
                                                            VerticalOptions="Center"
                                                            IsVisible="{Binding Detail.IsFreeItem}" />
-                                                    
-                                                    <!-- UoM Label -->
-                                                    <Label Grid.Column="1"
-                                                           Text="{Binding UomText, StringFormat='UoM: {0}'}"
+                                                    <Label Text="{Binding UomText, StringFormat='UoM: {0}'}"
                                                            FontSize="11"
                                                            TextColor="{StaticResource Gray600}"
                                                            VerticalOptions="Center"
                                                            IsVisible="{Binding UomText, Converter={StaticResource IsStringNotEmptyConverter}}" />
-                                                    
-                                                    <!-- Price -->
-                                                    <Label Grid.Column="2"
-                                                           Text="{Binding PriceText, StringFormat='Price: {0}'}"
-                                                           FontSize="11"
-                                                           TextColor="{StaticResource Gray700}"
-                                                           VerticalOptions="Center"
-                                                           IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=ShowPrices}" />
-                                                    
-                                                    <!-- Quantity Controls -->
-                                                    <Button Text="-"
-                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=DecrementQuantityCommand}"
-                                                            CommandParameter="{Binding .}"
-                                                            WidthRequest="32"
-                                                            HeightRequest="32"
-                                                            FontSize="16"
-                                                            Grid.Column="3" />
-                                                    <Label Text="{Binding QuantityText}"
-                                                           FontSize="14"
-                                                           FontAttributes="Bold"
-                                                           TextColor="{StaticResource PrimaryDark}"
-                                                           VerticalOptions="Center"
-                                                           HorizontalOptions="Center"
-                                                           Grid.Column="4"
-                                                           Padding="8,0">
-                                                        <Label.GestureRecognizers>
-                                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=EditQuantityCommand}"
-                                                                                  CommandParameter="{Binding .}" />
-                                                        </Label.GestureRecognizers>
-                                                    </Label>
-                                                    <Button Text="+"
-                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=IncrementQuantityCommand}"
-                                                            CommandParameter="{Binding .}"
-                                                            WidthRequest="32"
-                                                            HeightRequest="32"
-                                                            FontSize="16"
-                                                            Grid.Column="5" />
-                                                </Grid>
-                                            </Frame>
+                                                </HorizontalStackLayout>
+                                                
+                                                <!-- Quantity Controls - aligned with main controls -->
+                                                <Button Text="-"
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=DecrementQuantityCommand}"
+                                                        CommandParameter="{Binding .}"
+                                                        WidthRequest="40"
+                                                        HeightRequest="40"
+                                                        FontSize="18"
+                                                        VerticalOptions="Center"
+                                                        Grid.Column="1" />
+                                                <Label Text="{Binding QuantityText}"
+                                                       FontSize="16"
+                                                       FontAttributes="Bold"
+                                                       TextColor="{StaticResource PrimaryDark}"
+                                                       VerticalOptions="Center"
+                                                       HorizontalOptions="Center"
+                                                       Grid.Column="2"
+                                                       Padding="12,0">
+                                                    <Label.GestureRecognizers>
+                                                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=EditQuantityCommand}"
+                                                                              CommandParameter="{Binding .}" />
+                                                    </Label.GestureRecognizers>
+                                                </Label>
+                                                <Button Text="+"
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=IncrementQuantityCommand}"
+                                                        CommandParameter="{Binding .}"
+                                                        WidthRequest="40"
+                                                        HeightRequest="40"
+                                                        FontSize="18"
+                                                        VerticalOptions="Center"
+                                                        Grid.Column="3" />
+                                            </Grid>
                                         </DataTemplate>
                                     </CollectionView.ItemTemplate>
                                 </CollectionView>

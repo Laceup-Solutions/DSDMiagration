@@ -1368,11 +1368,47 @@ namespace LaceupMigration.ViewModels
                     }
                     else
                     {
-                        item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
+                        // Ensure PrimaryDetail is not a free item - always use non-free detail
+                        // PrimaryDetail can NEVER be a free item
+                        var nonFreeWithDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
                             (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")) &&
-                            d.Detail.Qty > 0)
-                            ?? item.Details.FirstOrDefault(d => d.Detail == null)
-                            ?? item.Details.FirstOrDefault();
+                            d.Detail.Qty > 0);
+                        
+                        item.PrimaryDetail = nonFreeWithDetail;
+                        
+                        // If no non-free detail with OrderDetail, try to find an empty detail (Detail == null)
+                        if (item.PrimaryDetail == null)
+                        {
+                            item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail == null);
+                        }
+                        
+                        // If still null (only free items exist), create a new empty detail for adding new items
+                        // This ensures PrimaryDetail is always available and never a free item
+                        if (item.PrimaryDetail == null)
+                        {
+                            var primaryDetailEntry = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                            {
+                                Product = item.Product,
+                                ExpectedPrice = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1),
+                                Price = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1)
+                            };
+                            
+                            // Set UoM if product has UoMs
+                            if (item.Product.UnitOfMeasures.Count > 0)
+                            {
+                                var defaultUom = item.Product.UnitOfMeasures.FirstOrDefault(u => u.IsDefault) 
+                                                ?? item.Product.UnitOfMeasures.FirstOrDefault();
+                                if (defaultUom != null)
+                                {
+                                    primaryDetailEntry.UoM = defaultUom;
+                                    primaryDetailEntry.ExpectedPrice *= defaultUom.Conversion;
+                                    primaryDetailEntry.Price *= defaultUom.Conversion;
+                                }
+                            }
+                            
+                            item.Details.Add(primaryDetailEntry);
+                            item.PrimaryDetail = primaryDetailEntry;
+                        }
                     }
                     
                     item.UpdateDisplayProperties(_order);
@@ -1406,11 +1442,48 @@ namespace LaceupMigration.ViewModels
                     }
                     else if (!isFreeItem)
                     {
-                        item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
+                        // Ensure PrimaryDetail is not a free item - always use non-free detail
+                        // PrimaryDetail can NEVER be a free item
+                        var nonFreeWithDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
                             (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")) &&
-                            d.Detail.Qty > 0)
-                            ?? item.Details.FirstOrDefault(d => d.Detail == null)
-                            ?? item.Details.FirstOrDefault();
+                            d.Detail.Qty > 0);
+                        
+                        item.PrimaryDetail = nonFreeWithDetail;
+                        
+                        // If no non-free detail with OrderDetail, try to find an empty detail (Detail == null)
+                        if (item.PrimaryDetail == null)
+                        {
+                            item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail == null);
+                        }
+                        
+                        // If still null (only free items exist), create a new empty detail for adding new items
+                        // This ensures PrimaryDetail is always available and never a free item
+                        if (item.PrimaryDetail == null)
+                        {
+                            var primaryDetailEntry = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                            {
+                                Product = item.Product,
+                                ExpectedPrice = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1),
+                                Price = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1)
+                            };
+                            
+                            // Set UoM if product has UoMs
+                            if (item.Product.UnitOfMeasures.Count > 0)
+                            {
+                                var defaultUom = item.Product.UnitOfMeasures.FirstOrDefault(u => u.IsDefault) 
+                                                ?? item.Product.UnitOfMeasures.FirstOrDefault();
+                                if (defaultUom != null)
+                                {
+                                    primaryDetailEntry.UoM = defaultUom;
+                                    primaryDetailEntry.ExpectedPrice *= defaultUom.Conversion;
+                                    primaryDetailEntry.Price *= defaultUom.Conversion;
+                                }
+                            }
+                            
+                            item.Details.Add(primaryDetailEntry);
+                            item.PrimaryDetail = primaryDetailEntry;
+                        }
+                        
                         item.UpdateDisplayProperties(_order);
                     }
                 }
@@ -1481,12 +1554,47 @@ namespace LaceupMigration.ViewModels
                     }
                     detail.Detail = null;
                     
-                    // Ensure PrimaryDetail is not a free item
+                    // Ensure PrimaryDetail is not a free item - always use non-free detail
                     // PrimaryDetail can NEVER be a free item
-                    item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
+                    var nonFreeWithDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
                         (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")) &&
-                        d.Detail.Qty > 0)
-                        ?? item.Details.FirstOrDefault(d => d.Detail == null);
+                        d.Detail.Qty > 0);
+                    
+                    item.PrimaryDetail = nonFreeWithDetail;
+                    
+                    // If no non-free detail with OrderDetail, try to find an empty detail (Detail == null)
+                    if (item.PrimaryDetail == null)
+                    {
+                        item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail == null);
+                    }
+                    
+                    // If still null (only free items exist), create a new empty detail for adding new items
+                    // This ensures PrimaryDetail is always available and never a free item
+                    if (item.PrimaryDetail == null)
+                    {
+                        var primaryDetailEntry = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                        {
+                            Product = item.Product,
+                            ExpectedPrice = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1),
+                            Price = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1)
+                        };
+                        
+                        // Set UoM if product has UoMs
+                        if (item.Product.UnitOfMeasures.Count > 0)
+                        {
+                            var defaultUom = item.Product.UnitOfMeasures.FirstOrDefault(u => u.IsDefault) 
+                                            ?? item.Product.UnitOfMeasures.FirstOrDefault();
+                            if (defaultUom != null)
+                            {
+                                primaryDetailEntry.UoM = defaultUom;
+                                primaryDetailEntry.ExpectedPrice *= defaultUom.Conversion;
+                                primaryDetailEntry.Price *= defaultUom.Conversion;
+                            }
+                        }
+                        
+                        item.Details.Add(primaryDetailEntry);
+                        item.PrimaryDetail = primaryDetailEntry;
+                    }
                     
                     item.UpdateDisplayProperties(_order);
                     LoadLineItems(); // Update line items list
@@ -1499,23 +1607,73 @@ namespace LaceupMigration.ViewModels
             else
             {
                 // Update the item's display properties
-                var item = Items.FirstOrDefault(i => i.Details.Any(d => d == detail));
+                // Find item by matching OrderDetailId (not by reference, since detail might be from different instance)
+                var orderDetailId = detail.Detail.OrderDetailId;
+                var item = Items.FirstOrDefault(i => i.Details.Any(d => d.Detail != null && d.Detail.OrderDetailId == orderDetailId));
+                
                 if (item != null)
                 {
                     if (isFreeItem)
                     {
+                        // Find the detail in the item's Details collection by OrderDetailId
+                        var detailInItem = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.OrderDetailId == orderDetailId);
+                        
+                        if (detailInItem != null)
+                        {
+                            // Update the detail's display properties (quantity display)
+                            detailInItem.UpdateQuantityDisplay();
+                        }
+                        
                         // Don't change PrimaryDetail if we're operating on a free item
                         item.UpdateDisplayProperties(_order);
+                        LoadLineItems(); // Update line items list to reflect quantity changes
                     }
                     else
                     {
-                        // Ensure PrimaryDetail is not a free item
-                        item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
+                        // Ensure PrimaryDetail is not a free item - always use non-free detail
+                        // PrimaryDetail can NEVER be a free item
+                        var nonFreeWithDetail = item.Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem &&
                             (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")) &&
-                            d.Detail.Qty > 0)
-                            ?? item.Details.FirstOrDefault(d => d.Detail == null)
-                            ?? item.Details.FirstOrDefault();
+                            d.Detail.Qty > 0);
+                        
+                        item.PrimaryDetail = nonFreeWithDetail;
+                        
+                        // If no non-free detail with OrderDetail, try to find an empty detail (Detail == null)
+                        if (item.PrimaryDetail == null)
+                        {
+                            item.PrimaryDetail = item.Details.FirstOrDefault(d => d.Detail == null);
+                        }
+                        
+                        // If still null (only free items exist), create a new empty detail for adding new items
+                        // This ensures PrimaryDetail is always available and never a free item
+                        if (item.PrimaryDetail == null)
+                        {
+                            var primaryDetailEntry = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                            {
+                                Product = item.Product,
+                                ExpectedPrice = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1),
+                                Price = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1)
+                            };
+                            
+                            // Set UoM if product has UoMs
+                            if (item.Product.UnitOfMeasures.Count > 0)
+                            {
+                                var defaultUom = item.Product.UnitOfMeasures.FirstOrDefault(u => u.IsDefault) 
+                                                ?? item.Product.UnitOfMeasures.FirstOrDefault();
+                                if (defaultUom != null)
+                                {
+                                    primaryDetailEntry.UoM = defaultUom;
+                                    primaryDetailEntry.ExpectedPrice *= defaultUom.Conversion;
+                                    primaryDetailEntry.Price *= defaultUom.Conversion;
+                                }
+                            }
+                            
+                            item.Details.Add(primaryDetailEntry);
+                            item.PrimaryDetail = primaryDetailEntry;
+                        }
+                        
                         item.UpdateDisplayProperties(_order);
+                        LoadLineItems(); // Update line items list
                     }
                 }
             }
@@ -1719,6 +1877,7 @@ namespace LaceupMigration.ViewModels
 
             // Get the qty from the existing detail
             var qtyToUse = detail.Detail.Qty;
+            var orderDetailIdToRemove = detail.Detail.OrderDetailId;
 
             // Remove any existing free items for this product to ensure only one free item exists
             var existingFreeItems = _order.Details.Where(d => 
@@ -1734,6 +1893,12 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
+            // Update inventory: remove qty from the main detail before removing it
+            _order.UpdateInventory(detail.Detail, 1);
+
+            // Remove the main line's OrderDetail from the order (qty is being moved to free item)
+            _order.Details.Remove(detail.Detail);
+
             // Create a new OrderDetail for the free item
             var newDetail = new OrderDetail(detail.Product, qtyToUse, _order);
             newDetail.ExpectedPrice = 0;
@@ -1745,6 +1910,9 @@ namespace LaceupMigration.ViewModels
 
             // Add the new free detail
             _order.Details.Add(newDetail);
+            
+            // Update inventory: add qty to the free item
+            _order.UpdateInventory(newDetail, -1);
 
             // Handle related items
             var related = _order.Details.FirstOrDefault(x => newDetail.RelatedOrderDetail == x.OrderDetailId);
@@ -1788,6 +1956,48 @@ namespace LaceupMigration.ViewModels
                 _order.RecalculateDiscounts();
 
             _order.Save();
+            
+            // Remove the OrderDetail from the primary detail and reset it to empty
+            // Set the primary detail's Detail to null (we know this is the one we just removed)
+            detail.Detail = null;
+            
+            // Also find and reset any other detail in the item's Details collection that references the removed OrderDetail
+            var detailToReset = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.OrderDetailId == orderDetailIdToRemove);
+            if (detailToReset != null)
+            {
+                detailToReset.Detail = null;
+            }
+            
+            // Ensure PrimaryDetail is set to an empty detail (Detail == null)
+            // PrimaryDetail can NEVER be a free item
+            var emptyDetail = item.Details.FirstOrDefault(d => d.Detail == null);
+            if (emptyDetail == null)
+            {
+                // Create a new empty detail if none exists
+                emptyDetail = new AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel
+                {
+                    Product = item.Product,
+                    ExpectedPrice = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1),
+                    Price = Product.GetPriceForProduct(item.Product, _order, _itemType > 0, _itemType == 1)
+                };
+                
+                // Set UoM if product has UoMs
+                if (item.Product.UnitOfMeasures.Count > 0)
+                {
+                    var defaultUom = item.Product.UnitOfMeasures.FirstOrDefault(u => u.IsDefault) 
+                                    ?? item.Product.UnitOfMeasures.FirstOrDefault();
+                    if (defaultUom != null)
+                    {
+                        emptyDetail.UoM = defaultUom;
+                        emptyDetail.ExpectedPrice *= defaultUom.Conversion;
+                        emptyDetail.Price *= defaultUom.Conversion;
+                    }
+                }
+                
+                item.Details.Add(emptyDetail);
+            }
+            
+            item.PrimaryDetail = emptyDetail;
             
             // Optimize: Update the specific item instead of rebuilding the entire list
             // This is much faster than PrepareList() which rebuilds everything
