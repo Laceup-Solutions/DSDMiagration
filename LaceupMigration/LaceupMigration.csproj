@@ -9,10 +9,6 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		
-		<!-- Disable Hot Reload to prevent debugger connection issues -->
-		<UseInterpreter Condition="'$(TargetFramework)' == 'net9.0-android'">false</UseInterpreter>
-		<AndroidEnableAssemblyCompression>false</AndroidEnableAssemblyCompression>
-
 		<!-- Display name -->
 		<ApplicationTitle>LaceupMigration</ApplicationTitle>
 
@@ -20,12 +16,16 @@
 		<ApplicationId>com.laceupsolutions.laceupmigration</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.04</ApplicationDisplayVersion>
-		<ApplicationVersion>104</ApplicationVersion>
+		<ApplicationDisplayVersion>1.05</ApplicationDisplayVersion>
+		<ApplicationVersion>105</ApplicationVersion>
 		<WindowsPackageType>None</WindowsPackageType>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">22.0</SupportedOSPlatformVersion>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+	  <AndroidSupportedAbis>armeabi-v7a;arm64-v8a</AndroidSupportedAbis>
 	</PropertyGroup>
 
 	<ItemGroup>
