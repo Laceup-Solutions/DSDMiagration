@@ -1,4 +1,5 @@
 ﻿using Microsoft.Maui;
+using System.Collections.Generic;
 
 namespace LaceupMigration;
 
@@ -17,6 +18,7 @@ public interface IDialogService
     Task UpdateLoadingMessageAsync(string message);
     Task<(string qty, string comments, UnitOfMeasure selectedUoM)> ShowAddItemDialogAsync(string productName, Product product, string initialQty = "1", string initialComments = "", UnitOfMeasure initialUoM = null);
     Task<(int? priceLevelId, string price, string comments)> ShowPriceLevelDialogAsync(string productName, Product product, Order order, UnitOfMeasure uom, int currentPriceLevelSelected, string initialPrice = "", string initialComments = "");
+    Task<(List<int> selectedCategoryIds, bool selectAll, bool showPrice, bool showUPC, bool showUoM)?> ShowCatalogFilterDialogAsync(List<Category> categories);
 }
 
 public class DialogHelper

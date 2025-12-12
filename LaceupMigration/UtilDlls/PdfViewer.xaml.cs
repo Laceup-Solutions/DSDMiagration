@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.Maui.ApplicationModel.Communication;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Extensions.DependencyInjection;
 #if ANDROID
@@ -190,12 +191,59 @@ namespace LaceupMigration.UtilDlls
         {
             try
             {
-                if (_order == null)
+                if (string.IsNullOrEmpty(_pdfPath) || !File.Exists(_pdfPath))
                 {
-                    await DisplayAlert("Error", "Order information not available.", "OK");
+                    await DisplayAlert("Error", "PDF file not available.", "OK");
                     return;
                 }
 
+                // Handle catalog PDF (no order) - matches Xamarin ProductCatalogPdfViewerActivity
+                if (_order == null)
+                {
+                    try
+                    {
+                        var emailMessage = new EmailMessage();
+
+                        // Set subject and body if Config.SoutoBottomEmailText is set (matches Xamarin)
+                        if (!string.IsNullOrEmpty(Config.SoutoBottomEmailText))
+                        {
+                            emailMessage.Subject = "Souto Foods Product Catalog";
+                            emailMessage.BodyFormat = EmailBodyFormat.Html;
+                            emailMessage.Body = $"<html><body>{Config.SoutoBottomEmailText}</body></html>";
+                        }
+                        else
+                        {
+                            // Default subject if no custom text
+                            emailMessage.Subject = "Product Catalog";
+                        }
+
+                        // Add PDF attachment
+                        emailMessage.Attachments.Add(new EmailAttachment(_pdfPath));
+
+                        await Email.ComposeAsync(emailMessage);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog($"Error sending catalog email via Email.ComposeAsync: {ex.Message}");
+                        Logger.CreateLog(ex);
+                        
+                        // Fall back to platform-specific method if Email.ComposeAsync fails
+                        // This is more reliable and matches how other reports are sent
+                        try
+                        {
+                            Config.helper?.SendReportByEmail(_pdfPath);
+                        }
+                        catch (Exception fallbackEx)
+                        {
+                            Logger.CreateLog($"Error sending catalog email via SendReportByEmail: {fallbackEx.Message}");
+                            Logger.CreateLog(fallbackEx);
+                            await DisplayAlert("Error", $"Unable to send email: {ex.Message}. Please check if an email client is configured.", "OK");
+                        }
+                    }
+                    return;
+                }
+
+                // Handle order PDF (existing logic)
                 // Get email addresses
                 var toAddresses = new List<string>();
                 
