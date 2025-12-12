@@ -5,6 +5,7 @@ using LaceupMigration.Services;
 using LaceupMigration.Business.Interfaces;
 using Microsoft.Maui.ApplicationModel;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -77,7 +78,13 @@ namespace LaceupMigration.ViewModels
             _productId = productId;
             _consignmentCounting = consignmentCounting;
             _comingFrom = comingFrom;
-
+            
+            if (comingFromSearch && !string.IsNullOrEmpty(productSearch))
+            {
+                SearchByProduct = true;
+                SearchByCategory = false;
+                SearchQuery = productSearch;
+            }
             if (orderId.HasValue)
             {
                 _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId.Value);
@@ -136,7 +143,7 @@ namespace LaceupMigration.ViewModels
 
                 // If categoryId is provided, show products; otherwise show categories
                 _initialized = true;
-                if (categoryId.HasValue && categoryId.Value > 0)
+                if ((categoryId.HasValue && categoryId.Value > 0) || (comingFromSearch && !string.IsNullOrEmpty(productSearch)))
                 {
                     ShowCategories = false;
                     ShowProducts = true;
@@ -167,8 +174,8 @@ namespace LaceupMigration.ViewModels
                 }
 
                 _initialized = true;
-                // If categoryId is provided, show products; otherwise show categories
-                if (categoryId.HasValue && categoryId.Value > 0)
+                // If categoryId is provided or coming from search, show products; otherwise show categories
+                if ((categoryId.HasValue && categoryId.Value > 0) || (comingFromSearch && !string.IsNullOrEmpty(productSearch)))
                 {
                     ShowCategories = false;
                     ShowProducts = true;
@@ -185,11 +192,11 @@ namespace LaceupMigration.ViewModels
             }
             else
             {
-                // No clientId or orderId - show products if categoryId provided, otherwise show categories (matches Xamarin behavior)
+                // No clientId or orderId - show products if categoryId provided or coming from search, otherwise show categories (matches Xamarin behavior)
                 _initialized = true;
-                if (categoryId.HasValue && categoryId.Value > 0)
+                if ((categoryId.HasValue && categoryId.Value > 0) || (comingFromSearch && !string.IsNullOrEmpty(productSearch)))
                 {
-                    // Show products for this category (matches Xamarin FullProductListActivity when clientId is 0)
+                    // Show products for this category or search (matches Xamarin FullProductListActivity when clientId is 0)
                     ShowCategories = false;
                     ShowProducts = true;
                     Title = "Products";
@@ -239,15 +246,16 @@ namespace LaceupMigration.ViewModels
 
         private void LoadCategories()
         {
+            
             var allCategories = Category.Categories.ToList();
             var categoryList = new System.Collections.Generic.List<CategoryItem>();
 
-            // Get parent categories
+            // Get parent categories (matches Xamarin FillCategoryList lines 158-161)
             foreach (var category in allCategories.Where(x => x.ParentCategoryId == 0))
             {
                 var item = new CategoryItem { Category = category };
-                
-                // Add subcategories
+
+                // Add subcategories (matches Xamarin FillCategoryList lines 163-168)
                 foreach (var subcat in allCategories.Where(x => x.ParentCategoryId == category.CategoryId))
                 {
                     item.Subcategories.Add(subcat);
@@ -256,7 +264,7 @@ namespace LaceupMigration.ViewModels
                 categoryList.Add(item);
             }
 
-            // Filter by site if Config.SalesmanCanChangeSite is enabled (matches Xamarin's FillCategoryList)
+            // Filter by site if Config.SalesmanCanChangeSite is enabled (matches Xamarin's FillCategoryList lines 170-179)
             if (Config.SalesmanCanChangeSite)
             {
                 if (ProductAllowedSite.List.Count > 0 && Config.SalesmanSelectedSite > 0)
@@ -268,33 +276,16 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            // Apply search filter
+            // Apply search filter (matches Xamarin RefreshListView lines 221-222 exactly)
+            // Note: In Xamarin, templateCriteria is set to e.NewText (not lowercased) in QueryTextChange
+            // but the comparison uses ToLowerInvariant() on both sides
             if (!string.IsNullOrWhiteSpace(SearchQuery))
             {
-                var searchLower = SearchQuery.ToLowerInvariant();
-                if (SearchByCategory)
-                {
-                    categoryList = categoryList.Where(x => 
-                        x.Category.Name.ToLowerInvariant().Contains(searchLower) ||
-                        x.Subcategories.Any(s => s.Name.ToLowerInvariant().Contains(searchLower))).ToList();
-                }
-                else
-                {
-                    // Search by product - filter categories that have matching products
-                    var matchingProductIds = Product.Products
-                        .Where(p => p.Name.ToLowerInvariant().Contains(searchLower) || 
-                                   p.Upc.ToLowerInvariant().Contains(searchLower))
-                        .Select(p => p.CategoryId)
-                        .Distinct()
-                        .ToList();
-
-                    categoryList = categoryList.Where(x => 
-                        matchingProductIds.Contains(x.Category.CategoryId) ||
-                        x.Subcategories.Any(s => matchingProductIds.Contains(s.CategoryId))).ToList();
-                }
+                // Match Xamarin line 222: x.Category.Name.ToLowerInvariant().Contains(templateCriteria.ToLowerInvariant())
+                categoryList = categoryList.Where(x => x.Category.Name.ToLowerInvariant().Contains(SearchQuery.ToLowerInvariant())).ToList();
             }
 
-            // Update UI
+            // Update UI (matches Xamarin: categoryList is already ordered in FillCategoryList line 181)
             Categories.Clear();
             foreach (var item in categoryList.OrderBy(x => x.Category.Name))
             {
@@ -325,77 +316,34 @@ namespace LaceupMigration.ViewModels
 
         partial void OnSearchQueryChanged(string value)
         {
-            // When search is cleared, also clear the stored product search and comingFromSearch flag
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                _productSearch = null;
-                _comingFromSearch = false;
-                
-                // If we were showing products from a search and have an orderId, switch back to categories
-                if (ShowProducts && _orderId.HasValue && !_categoryId.HasValue)
-                {
-                    ShowProducts = false;
-                    ShowCategories = true;
-                    SearchByProduct = false;
-                    SearchByCategory = true;
-                    Title = "Categories";
-                    LoadCategories();
-                    return;
-                }
-                
-                // If showing products without orderId or with categoryId, reload all products (clear the search filter)
-                if (ShowProducts)
-                {
-                    // Reset search mode to category if we have an orderId
-                    if (_orderId.HasValue && !_categoryId.HasValue)
-                    {
-                        // This case is handled above, but just in case
-                        ShowProducts = false;
-                        ShowCategories = true;
-                        SearchByProduct = false;
-                        SearchByCategory = true;
-                        Title = "Categories";
-                        LoadCategories();
-                    }
-                    else
-                    {
-                        // Reload products without search filter
-                        LoadProducts();
-                    }
-                    return;
-                }
-                
-                // If we're showing categories, just reload them
-                if (ShowCategories)
-                {
-                    LoadCategories();
-                    return;
-                }
-            }
+            if (SearchByProduct)
+                return;
             
-            // Match Xamarin's SearchBar_QueryTextChange behavior
+            // When searching by category, ensure we're showing categories
             if (ShowProducts)
             {
-                // When showing products (FullProductListActivity), filter products in real-time
-                LoadProducts();
+                ShowCategories = true;
+                ShowProducts = false;
+                Title = "Categories";
             }
-            else if (ShowCategories)
-            {
-                // When showing categories (FullCategoryActivity), only filter categories in real-time when "By Category" is selected
-                // When "By Product" is selected, do nothing on text change (only on submit)
-                if (SearchByCategory)
-                {
-                    LoadCategories();
-                }
-                // When SearchByProduct is selected, do nothing on text change
-                // Navigation will happen on SearchButtonPressed (matches Xamarin's SearchView_QueryTextSubmit)
-            }
+            
+            LoadCategories();
         }
 
         partial void OnSearchByCategoryChanged(bool value)
         {
             if (value)
+            {
                 SearchByProduct = false;
+                // When switching to "By Category", show categories if not already showing
+                if (ShowProducts)
+                {
+                    ShowCategories = true;
+                    ShowProducts = false;
+                    Title = "Categories";
+                    LoadCategories();
+                }
+            }
         }
 
         partial void OnSearchByProductChanged(bool value)
@@ -406,36 +354,81 @@ namespace LaceupMigration.ViewModels
 
         public async Task HandleProductSearchSubmitAsync()
         {
-            // Match Xamarin's SearchView_QueryTextSubmit behavior
-            // When "By Product" is selected and search button is pressed, navigate to FullProductListActivity (FullCategoryPage)
-            // Xamarin always navigates to FullProductListActivity with clientId and search term, regardless of orderId
-            if (SearchByProduct && !string.IsNullOrWhiteSpace(SearchQuery))
+            var templateCriteria = SearchQuery.ToLower();
+
+            if (!SearchByProduct || string.IsNullOrWhiteSpace(templateCriteria)) 
+                return;
+    
+            var route = $"fullcategory?productSearch={Uri.EscapeDataString(templateCriteria)}&comingFromSearch=yes";
+
+            if (_orderId.HasValue)
             {
-                var searchTerm = SearchQuery.ToLowerInvariant();
-                
-                // Always navigate to FullCategoryPage (FullProductListActivity) with search term (matches Xamarin exactly)
-                var route = $"fullcategory?productSearch={Uri.EscapeDataString(searchTerm)}&comingFromSearch=yes";
-                
-                if (_orderId.HasValue)
+                route =
+                    $"fullcategory?orderId={_orderId.Value}&productSearch={Uri.EscapeDataString(templateCriteria)}&comingFromSearch=yes";
+            }
+            else if (_client != null)
+            {
+                route =
+                    $"fullcategory?clientId={_client.ClientId}&productSearch={Uri.EscapeDataString(templateCriteria)}&comingFromSearch=yes";
+            }
+
+            await Shell.Current.GoToAsync(route);
+        }
+        
+        private async Task SelectCreditTypeAsync(int productId, int defaultType = 0)
+        {
+            List<CreditType> items = new List<CreditType>();
+    
+            if (defaultType == 0)
+            {
+                items.Add(new CreditType { Description = "Dump", Damaged = true });
+                items.Add(new CreditType { Description = "Return", Damaged = false });
+            }
+
+            if (Config.CreditReasonInLine)
+            {
+                List<Reason> reason = new List<Reason>();
+                if (defaultType == 0 || defaultType == 1)
+                    reason.AddRange(Reason.GetReasonsByType(ReasonType.Dump));
+                if (defaultType == 0 || defaultType == 2)
+                    reason.AddRange(Reason.GetReasonsByType(ReasonType.Return));
+
+                if (reason.Count > 0)
                 {
-                    // Include orderId if available
-                    route = $"fullcategory?orderId={_orderId.Value}&productSearch={Uri.EscapeDataString(searchTerm)}&comingFromSearch=yes";
-                    if (_asCreditItem)
-                        route += "&asCreditItem=1";
-                    if (_asReturnItem)
-                        route += "&asReturnItem=1";
-                    if (!string.IsNullOrEmpty(_comingFrom))
-                        route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
+                    items = new List<CreditType>();
+                    foreach (var r in reason)
+                        items.Add(new CreditType 
+                        { 
+                            Description = r.Description, 
+                            Damaged = (r.AvailableIn & (int)ReasonType.Dump) > 0, 
+                            ReasonId = r.Id 
+                        });
                 }
-                else if (_client != null)
-                {
-                    // Include clientId if available (matches Xamarin's clientIdIntent)
-                    route = $"fullcategory?clientId={_client.ClientId}&productSearch={Uri.EscapeDataString(searchTerm)}&comingFromSearch=yes";
-                }
-                
-                await Shell.Current.GoToAsync(route);
+            }
+
+            if (items.Count == 0)
+            {
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={productId}&asCreditItem=0");
+                return;
+            }
+
+            var choice = await _dialogService.ShowActionSheetAsync(
+                "Type of Credit Item", 
+                "Cancel", 
+                null, 
+                items.Select(x => x.Description).ToArray());
+
+            if (choice == null || choice == "Cancel")
+                return;
+
+            var selectedItem = items.FirstOrDefault(x => x.Description == choice);
+            if (selectedItem != null)
+            {
+                var type = selectedItem.Damaged ? 1 : 0;
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={productId}&asCreditItem=1&type={type}");
             }
         }
+
 
         public async Task ToggleCategoryExpanded(CategoryViewModel viewModel)
         {
@@ -613,48 +606,54 @@ namespace LaceupMigration.ViewModels
             }
             else if (_client != null)
             {
-                // No order but have client - use GetProductListForClient (matches Xamarin behavior)
-                // Only use _productSearch if SearchQuery is empty (for initial load), otherwise use SearchQuery
-                var searchForClient = !string.IsNullOrWhiteSpace(SearchQuery) ? SearchQuery : (_productSearch ?? string.Empty);
-                products = Product.GetProductListForClient(_client, _categoryId ?? 0, searchForClient).ToList();
+                // No order but have client - use GetProductListForClient (matches Xamarin line 63)
+                // Match Xamarin: pass empty string for search, filter after (lines 79-82)
+                products = SortDetails.SortedDetails(Product.GetProductListForClient(_client, _categoryId ?? 0, string.Empty)).ToList();
             }
             else
             {
-                // No order or client - load all products filtered by categoryId (matches Xamarin FullProductListActivity when clientId is 0)
+                // No order or client - load all products filtered by categoryId (matches Xamarin FullProductListActivity lines 53-56)
                 if (_categoryId.HasValue && _categoryId.Value > 0)
                 {
-                    products = Product.Products.Where(x => x.CategoryId == _categoryId.Value).ToList();
+                    products = SortDetails.SortedDetails(Product.Products.Where(x => x.CategoryId == _categoryId.Value).ToList()).ToList();
                 }
                 else
                 {
-                    products = Product.Products.Where(x => x.CategoryId > 0).ToList();
+                    products = SortDetails.SortedDetails(Product.Products.Where(x => x.CategoryId > 0).ToList()).ToList();
                 }
             }
 
-            // Apply search filter if provided (from initialization or current search query)
-            // Priority: Use SearchQuery if set, otherwise use _productSearch (for initial load with search parameter)
-            // When user clears SearchQuery, _productSearch is also cleared in OnSearchQueryChanged
+            // Apply site filtering if enabled (matches Xamarin lines 66-73)
+            if (Config.SalesmanCanChangeSite)
+            {
+                if (ProductAllowedSite.List.Count > 0 && Config.SalesmanSelectedSite > 0)
+                {
+                    var allowedProducts = ProductAllowedSite.List.Where(x => x.SiteId == Config.SalesmanSelectedSite).Select(x => x.ProductId).ToList();
+                    products = products.Where(x => allowedProducts.Contains(x.ProductId)).ToList();
+                }
+            }
+
+            // Apply search filter if provided (matches Xamarin lines 79-86)
+            // Match Xamarin: only filter by Name, and only if searchIntent is provided
             var searchTerm = !string.IsNullOrWhiteSpace(SearchQuery) ? SearchQuery : _productSearch;
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var searchLower = searchTerm.ToLowerInvariant();
-                products = products.Where(x =>
-                    x.Name.ToLowerInvariant().IndexOf(searchLower) != -1 ||
-                    x.Upc.ToLowerInvariant().Contains(searchLower) ||
-                    x.Sku.ToLowerInvariant().Contains(searchLower) ||
-                    x.Code.ToLowerInvariant().Contains(searchLower) ||
-                    x.Description.ToLowerInvariant().Contains(searchLower)
-                ).ToList();
+                // Match Xamarin lines 81-82: filter by Name only
+                var products_temp = products.Where(x => x.CategoryId > 0);
+                products = products_temp.Where(x => x.Name.ToLowerInvariant().Contains(searchLower)).ToList();
             }
-
-            // Apply category filter if provided
-            if (_categoryId.HasValue && _categoryId.Value > 0)
+            else
             {
-                products = products.Where(x => x.CategoryId == _categoryId.Value).ToList();
+                // Match Xamarin line 90: if no search, show all products with CategoryId > 0
+                products = products.Where(x => x.CategoryId > 0).ToList();
             }
 
-            // Sort products
-            products = SortDetails.SortedDetails(products.Where(x => x.CategoryId > 0).ToList()).ToList();
+            // Apply category filter if provided (this is already handled in the initial product loading above)
+            // Note: In Xamarin, categoryId is used when getting products, not as a separate filter after
+
+            // Sort products (already sorted above, but ensure CategoryId > 0 filter is applied)
+            // Note: Xamarin doesn't re-sort after search filter, but we ensure CategoryId > 0
 
             // Update UI
             Products.Clear();
@@ -866,8 +865,108 @@ namespace LaceupMigration.ViewModels
 
         private async Task SendByEmailAsync()
         {
-            await _dialogService.ShowAlertAsync("Send by Email functionality is not yet fully implemented in the MAUI version.", "Info");
-            // TODO: Implement catalog PDF generation and email sending
+            try
+            {
+                // Get category list for filter dialog (matches Xamarin FullCategoryActivity SendByEmail)
+                var allCategories = Category.Categories.ToList();
+                var categoryList = new List<CategoryItem>();
+
+                // Get parent categories
+                foreach (var category in allCategories.Where(x => x.ParentCategoryId == 0))
+                {
+                    var item = new CategoryItem { Category = category };
+                    
+                    // Add subcategories
+                    foreach (var subcat in allCategories.Where(x => x.ParentCategoryId == category.CategoryId))
+                    {
+                        item.Subcategories.Add(subcat);
+                    }
+
+                    categoryList.Add(item);
+                }
+
+                // Filter by site if Config.SalesmanCanChangeSite is enabled (matches Xamarin's FillCategoryList)
+                if (Config.SalesmanCanChangeSite)
+                {
+                    if (ProductAllowedSite.List.Count > 0 && Config.SalesmanSelectedSite > 0)
+                    {
+                        var allowedProducts = ProductAllowedSite.List.Where(x => x.SiteId == Config.SalesmanSelectedSite).Select(x => x.ProductId).ToList();
+                        var allow_categories = Product.Products.Where(x => allowedProducts.Contains(x.ProductId)).Select(x => x.CategoryId).Distinct().ToList();
+
+                        categoryList = categoryList.Where(x => allow_categories.Contains(x.Category.CategoryId)).ToList();
+                    }
+                }
+
+                // Show filter dialog (matches Xamarin FullCategoryActivity SendByEmail)
+                var categoriesForDialog = categoryList.Select(x => x.Category).ToList();
+                var filterResult = await _dialogService.ShowCatalogFilterDialogAsync(categoriesForDialog);
+
+                if (filterResult == null)
+                {
+                    // User cancelled
+                    return;
+                }
+
+                var (selectedCategoryIds, selectAll, showPrice, showUPC, showUoM) = filterResult.Value;
+
+                await _dialogService.ShowLoadingAsync("Generating PDF...");
+
+                // Get all products (matches Xamarin: Product.Products.OrderBy(x => x.Name).Where(p => p.Name.Trim() != "" && p.CategoryId != 0).ToList())
+                List<Product> elements = Product.Products.OrderBy(x => x.Name).Where(p => p.Name.Trim() != "" && p.CategoryId != 0).ToList();
+
+                // Filter products by selected categories (matches Xamarin logic)
+                var childs = Category.Categories.Where(x => selectedCategoryIds.Contains(x.ParentCategoryId)).Select(x => x.CategoryId).Distinct().ToList();
+                var filteredProducts = selectAll ? elements : elements.Where(p => selectedCategoryIds.Contains(p.CategoryId) || childs.Contains(p.CategoryId)).ToList();
+
+                if (filteredProducts.Count == 0)
+                {
+                    await _dialogService.HideLoadingAsync();
+                    await _dialogService.ShowAlertAsync("No products found to include in catalog.", "Info");
+                    return;
+                }
+
+                // Collect category IDs from filtered products (matches Xamarin FullCategoryActivity SendByEmail)
+                List<int> categoriesids = new List<int>();
+                foreach (var p in filteredProducts)
+                {
+                    if (!categoriesids.Contains(p.CategoryId))
+                        categoriesids.Add(p.CategoryId);
+                }
+
+                string pdfFile = null;
+
+                // Try to get PDF from server first, then fall back to local generation (matches Xamarin logic)
+                int priceLevel = _client != null ? _client.PriceLevel : 0;
+
+                // First try to get PDF from server (matches Xamarin: DataAccess.GetCatalogPdf)
+                if (DataAccess.GetCatalogPdf(priceLevel, showPrice, showUPC, showUoM, categoriesids))
+                {
+                    pdfFile = Config.CatalogPDFPath;
+                }
+                else
+                {
+                    // Fall back to local generation (matches Xamarin: pdfHelper.GeneratePdfCatalog)
+                    var pdfHelper = new PdfHelper();
+                    pdfFile = pdfHelper.GeneratePdfCatalog(null, filteredProducts, _client);
+                }
+
+                await _dialogService.HideLoadingAsync();
+
+                if (string.IsNullOrEmpty(pdfFile) || !System.IO.File.Exists(pdfFile))
+                {
+                    await _dialogService.ShowAlertAsync("Error generating PDF catalog.", "Alert", "OK");
+                    return;
+                }
+
+                // Navigate to PDF viewer with the PDF path (matches other email sending implementations)
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
+            }
         }
 
         private async Task ShowAdvancedOptionsAsync()

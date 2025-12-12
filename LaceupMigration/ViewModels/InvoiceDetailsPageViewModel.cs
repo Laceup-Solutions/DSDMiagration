@@ -150,19 +150,35 @@ namespace LaceupMigration.ViewModels
                 if (detail.Product.Name == "PRODUCT NOT FOUND")
                     continue;
 
+                string uomText = string.Empty;
+                bool hasUoM = false;
+                if (detail.UnitOfMeasureId > 0)
+                {
+                    var uom = UnitOfMeasure.List.FirstOrDefault(x => x.Id == detail.UnitOfMeasureId);
+                    if (uom != null)
+                    {
+                        uomText = $"UoM: {uom.Name}";
+                        hasUoM = true;
+                    }
+                }
+
                 InvoiceDetails.Add(new InvoiceDetailItemViewModel
                 {
                     ProductName = detail.Product.Name,
                     QuantityText = $"Qty: {detail.Quantity}",
                     PriceText = $"Price: {detail.Price.ToCustomString()}",
+                    TotalText = $"Total: {(detail.Quantity * detail.Price).ToCustomString()}",
+                    UoMText = uomText,
+                    HasUoM = hasUoM,
                     ShowPrice = !Config.HidePriceInTransaction,
                     Notes = detail.Comments,
                     HasNotes = !string.IsNullOrWhiteSpace(detail.Comments)
                 });
             }
 
-            Comments = _invoice.Comments ?? string.Empty;
-            HasComments = !string.IsNullOrWhiteSpace(Comments);
+            // Always set comments text (matches Xamarin: commentsTV.Text = GetString(Resource.String.commentsData) + invoice.Comments;)
+            Comments = $"Comments: {_invoice.Comments ?? string.Empty}";
+            HasComments = true; // Always show comments label (matches Xamarin behavior)
         }
 
         [RelayCommand]
@@ -336,6 +352,9 @@ namespace LaceupMigration.ViewModels
         public string ProductName { get; set; } = string.Empty;
         public string QuantityText { get; set; } = string.Empty;
         public string PriceText { get; set; } = string.Empty;
+        public string TotalText { get; set; } = string.Empty;
+        public string UoMText { get; set; } = string.Empty;
+        public bool HasUoM { get; set; }
         public bool ShowPrice { get; set; } = true;
         public string Notes { get; set; } = string.Empty;
         public bool HasNotes { get; set; }
