@@ -158,7 +158,26 @@ public partial class Config
 
     public static string StaticDataPath => Path.Combine(BasePath, "DataStatic");
 
-    public static string CodeBase => Path.Combine(BasePath, "LaceupData");
+    public static string CodeBase
+    {
+        get
+        {
+            var codeBase = Path.Combine(BasePath, "LaceupData");
+            // Ensure the directory exists to prevent path errors
+            if (!Directory.Exists(codeBase))
+            {
+                try
+                {
+                    Directory.CreateDirectory(codeBase);
+                }
+                catch
+                {
+                    // If creation fails, still return the path
+                }
+            }
+            return codeBase;
+        }
+    }
 
     public static string OrderPath => Path.Combine(CodeBase, orderpath);
 
@@ -168,7 +187,27 @@ public partial class Config
 
     public static string SapStatusPath => Path.Combine(BasePath, "sapStatuses.cvs");
 
-    public static string DataPath => Path.Combine(CodeBase, datapath);
+    public static string DataPath
+    {
+        get
+        {
+            var codeBase = CodeBase;
+            var dataPath = Path.Combine(codeBase, datapath);
+            // Ensure the directory exists to prevent path errors
+            if (!Directory.Exists(dataPath))
+            {
+                try
+                {
+                    Directory.CreateDirectory(dataPath);
+                }
+                catch
+                {
+                    // If creation fails, still return the path
+                }
+            }
+            return dataPath;
+        }
+    }
 
     public static string CurrentOrdersPath => Path.Combine(CodeBase, tempOrderspath);
 
@@ -246,7 +285,27 @@ public partial class Config
 
     public static string CurrentCheckInventoryFile => Path.Combine(DataPath, "CurrentCheckInventoryFile.cvs");
 
-    public static string CompanyInfoStoreFile => Path.Combine(DataPath, "companies.cvs");
+    public static string CompanyInfoStoreFile
+    {
+        get
+        {
+            // Ensure DataPath directory exists before returning the file path
+            // This prevents "Could not find a part of the path" errors
+            var dataPath = DataPath;
+            if (!Directory.Exists(dataPath))
+            {
+                try
+                {
+                    Directory.CreateDirectory(dataPath);
+                }
+                catch
+                {
+                    // If creation fails, still return the path - the caller will handle the error
+                }
+            }
+            return Path.Combine(dataPath, "companies.cvs");
+        }
+    }
 
     public static string InventoryStoreFile => Path.Combine(DataPath, "inventory.cvs");
 

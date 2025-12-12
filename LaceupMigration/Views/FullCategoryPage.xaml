@@ -112,8 +112,9 @@
                             IsVisible="{Binding ShowProducts}">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:ProductViewModel">
-                        <Frame Padding="0" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" BorderColor="{StaticResource Gray200}">
-                            <Grid Padding="12">
+                        <Grid Style="{StaticResource CollectionViewItemStyle}">
+                            <Frame Padding="0" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" BorderColor="{StaticResource Gray200}">
+                                <Grid Padding="12">
                                 <Grid.GestureRecognizers>
                                     <TapGestureRecognizer Tapped="ProductCell_Tapped" />
                                 </Grid.GestureRecognizers>
@@ -201,8 +202,9 @@
                                     </VerticalStackLayout>
                                 </Grid>
                             </VerticalStackLayout>
+                                </Grid>
+                            </Frame>
                         </Grid>
-                        </Frame>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>

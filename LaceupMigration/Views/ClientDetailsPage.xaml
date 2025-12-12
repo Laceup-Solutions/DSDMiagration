@@ -67,12 +67,13 @@
                                 SelectionMode="Single">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="vm:ClientOrderViewModel">
-                            <Frame Padding="12"
-                                   Margin="0,0,0,8"
-                                   BackgroundColor="{StaticResource Gray100}"
-                                   HasShadow="False"
-                                   CornerRadius="8"
-                                   InputTransparent="True">
+                            <Grid Style="{StaticResource CollectionViewItemStyle}">
+                                <Frame Padding="12"
+                                       Margin="0,0,0,8"
+                                       BackgroundColor="{StaticResource Gray100}"
+                                       HasShadow="False"
+                                       CornerRadius="8"
+                                       InputTransparent="True">
                                 <Frame.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.HandleOrderSelectedCommand}" 
                                                           CommandParameter="{Binding}" />
@@ -89,7 +90,8 @@
                                            FontSize="13"
                                            TextColor="{Binding StatusColor}" />
                                 </VerticalStackLayout>
-                            </Frame>
+                                </Frame>
+                            </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
@@ -129,7 +131,8 @@
                     <!-- [MIGRATION]: ItemTemplate receives ClientInvoiceViewModel items from the group -->
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="vm:ClientInvoiceViewModel">
-                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
+                            <Grid Style="{StaticResource CollectionViewItemStyle}">
+                                <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
                                 <Frame.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding Source={x:Reference InvoicesCollectionView}, Path=BindingContext.HandleInvoiceSelectedCommand}" 
                                                           CommandParameter="{Binding}" />
@@ -152,7 +155,8 @@
                                         <Label Text="{Binding PendingDaysText}" FontSize="12" TextColor="{StaticResource Gray600}" />
                                     </StackLayout>
                                 </VerticalStackLayout>
-                            </Frame>
+                                </Frame>
+                            </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>

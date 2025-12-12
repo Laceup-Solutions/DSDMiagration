@@ -1,12 +1,20 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using LaceupMigration.Controls;
+using LaceupMigration.Services;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Collections.ObjectModel;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace LaceupMigration.ViewModels
 {
     public partial class ProductDetailsPageViewModel : ObservableObject
     {
+        private readonly DialogService _dialogService;
+        private readonly AdvancedOptionsService _advancedOptionsService;
         [ObservableProperty]
         private Product? _product;
 
@@ -33,6 +41,10 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private string _regularPrice = string.Empty;
+
+        private double _regularPriceValue = 0;
+        private double _salesPriceValue = 0;
+        private double _unitPriceValue = 0;
 
         [ObservableProperty]
         private string _salesPrice = string.Empty;
@@ -84,6 +96,18 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private int _selectedUomIndex = -1;
+
+        [ObservableProperty]
+        private ObservableCollection<ExtraPropertyItem> _extraProperties = new();
+
+        [ObservableProperty]
+        private bool _hasExtraProperties = false;
+
+        public ProductDetailsPageViewModel(DialogService dialogService, AdvancedOptionsService advancedOptionsService)
+        {
+            _dialogService = dialogService;
+            _advancedOptionsService = advancedOptionsService;
+        }
 
         public void Initialize(int productId, int? clientId = null)
         {
@@ -143,6 +167,7 @@ namespace LaceupMigration.ViewModels
             }
 
             CalculatePrices();
+            LoadExtraProperties();
         }
 
         private void CalculatePrices()
@@ -192,6 +217,9 @@ namespace LaceupMigration.ViewModels
             if (package == 1)
                 unitPrice /= conversion;
 
+            _regularPriceValue = rprice;
+            _salesPriceValue = sprice;
+            _unitPriceValue = unitPrice;
             RegularPrice = rprice.ToCustomString();
             SalesPrice = sprice.ToCustomString();
             UnitPrice = unitPrice.ToCustomString();
@@ -215,13 +243,48 @@ namespace LaceupMigration.ViewModels
                 Cost = (_product.Cost * conversion).ToCustomString();
             }
 
-            // Retail price (initial calculation)
+            // Retail price (initial calculation) - starts with sales price (matches Xamarin: gRegPrice = sprice)
             RetailPrice = sprice.ToCustomString();
             RetailPriceUnit = $"Retail Price(Unit): {unitPrice.ToCustomString()}";
             RetailPricePercent = 0;
 
             // Pallet Capacity
             PalletCapacity = "0"; // This would need to come from product data if available
+        }
+
+        private void LoadExtraProperties()
+        {
+            ExtraProperties.Clear();
+            HasExtraProperties = false;
+            
+            if (_product == null)
+                return;
+                
+            // Check if ExtraPropertiesAsString exists and is not empty (matches Xamarin logic)
+            if (string.IsNullOrEmpty(_product.ExtraPropertiesAsString))
+                return;
+                
+            // Access ExtraProperties to ensure it's loaded
+            var extraProps = _product.ExtraProperties;
+            
+            if (extraProps != null && extraProps.Count > 0)
+            {
+                foreach (var tuple in extraProps)
+                {
+                    // Skip certain system properties that shouldn't be displayed
+                    if (string.IsNullOrEmpty(tuple.Item1) || string.IsNullOrEmpty(tuple.Item2))
+                        continue;
+
+                    ExtraProperties.Add(new ExtraPropertyItem
+                    {
+                        Key = tuple.Item1,
+                        Value = tuple.Item2
+                    });
+                }
+                
+                // Only show if we have properties to display
+                HasExtraProperties = ExtraProperties.Count > 0;
+            }
         }
 
         partial void OnSelectedUomIndexChanged(int value)
@@ -238,45 +301,143 @@ namespace LaceupMigration.ViewModels
             if (_product == null)
                 return;
 
-            // Calculate retail price based on percentage
-            double basePrice = 0;
-            if (_client != null)
+            // Use the stored sales price value (matches Xamarin: gRegPrice = sprice, line 295)
+            // This ensures we're calculating from the exact same base price used in Xamarin
+            double basePrice = _salesPriceValue;
+            double baseUnitPrice = _unitPriceValue;
+            
+            if (basePrice == 0)
             {
-                basePrice = Product.GetPriceForProduct(_product, _client, true, false);
+                // Fallback: recalculate if not set yet
+                int package = 1;
+                double conversion = 1;
+                double weight = 1;
+
+                if (Config.IncludeAvgWeightInCatalogPrice && _product.Weight > 0)
+                    weight = _product.Weight;
+
+                int.TryParse(_product.Package, out package);
+
+                UnitOfMeasure uom = null;
+                if (!string.IsNullOrEmpty(SelectedUom) && !string.IsNullOrEmpty(_product.UoMFamily))
+                {
+                    uom = UnitOfMeasure.List.FirstOrDefault(x => x.Name == SelectedUom && x.FamilyId == _product.UoMFamily);
+                    if (uom != null)
+                        conversion = uom.Conversion;
+                }
+
+                conversion *= weight;
+                
+                if (_client != null)
+                {
+                    basePrice = Product.GetPriceForProduct(_product, _client, true, false);
+                }
+                else
+                {
+                    basePrice = _product.PriceLevel0;
+                }
+                basePrice = basePrice * conversion;
+                
+                baseUnitPrice = basePrice / package;
+                if (package == 1)
+                    baseUnitPrice /= conversion;
             }
-            else
-            {
-                basePrice = _product.PriceLevel0;
-            }
 
-            int package = 1;
-            double conversion = 1;
-            double weight = 1;
-
-            if (Config.IncludeAvgWeightInCatalogPrice && _product.Weight > 0)
-                weight = _product.Weight;
-
-            int.TryParse(_product.Package, out package);
-
-            UnitOfMeasure uom = null;
-            if (!string.IsNullOrEmpty(SelectedUom) && !string.IsNullOrEmpty(_product.UoMFamily))
-            {
-                uom = UnitOfMeasure.List.FirstOrDefault(x => x.Name == SelectedUom && x.FamilyId == _product.UoMFamily);
-                if (uom != null)
-                    conversion = uom.Conversion;
-            }
-
-            conversion *= weight;
-            basePrice = basePrice * conversion;
-            double unitPrice = basePrice / package;
-            if (package == 1)
-                unitPrice /= conversion;
-
-            double retailPrice = basePrice * (1 + (value / 100.0));
-            double retailUnitPrice = unitPrice * (1 + (value / 100.0));
+            // Calculate retail price using exact Xamarin formula: gRegPrice / percentage
+            // Where percentage = 1 - (e.Progress * 0.01)
+            // This matches Xamarin SeekBar_ProgressChanged (line 890-897)
+            double percentage = 1.0 - (value * 0.01);
+            double retailPrice = basePrice / percentage;
+            double retailUnitPrice = baseUnitPrice / percentage;
 
             RetailPrice = retailPrice.ToCustomString();
             RetailPriceUnit = $"Retail Price(Unit): {retailUnitPrice.ToCustomString()}";
         }
+
+        [RelayCommand]
+        private async Task ShowMenuAsync()
+        {
+            var options = new List<string> { "Print Label", "Advanced Options" };
+            
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.ToArray());
+            
+            if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
+                return;
+            
+            switch (choice)
+            {
+                case "Print Label":
+                    await PrintProductLabelAsync();
+                    break;
+                case "Advanced Options":
+                    await ShowAdvancedOptionsAsync();
+                    break;
+            }
+        }
+
+        private async Task ShowAdvancedOptionsAsync()
+        {
+            await _advancedOptionsService.ShowAdvancedOptionsAsync();
+        }
+
+        private async Task PrintProductLabelAsync()
+        {
+            if (_product == null)
+                return;
+
+            try
+            {
+                PrinterProvider.PrintDocument((int number) =>
+                {
+                    if (number < 1)
+                        return "Please enter a valid number of copies.";
+
+                    // Generate label string (matches Xamarin GenerateLabel method)
+                    string labelDefinition = @"
+            ^XA^PR4^MD17
+            ^FO20,10^ADN,18,10^FD{PRODUCTNAME}^FS
+            ^FO50,40^BY3^BUN,58^FD{BARCODE}^FS
+            ^FO150,145^ADN,18,10^FD{PRICE}^FS
+            ^XZ";
+
+                    double price = 0;
+                    if (_client != null)
+                        price = Product.GetPriceForProduct(_product, _client, false, false);
+                    else
+                        price = _product.PriceLevel0;
+
+                    StringBuilder sb = new StringBuilder();
+                    for (int x = 0; x < number; x++)
+                    {
+                        var labelAsString = labelDefinition.Replace("{PRODUCTNAME}", _product.Name);
+                        labelAsString = labelAsString.Replace("{BARCODE}", _product.Upc ?? "");
+                        labelAsString = labelAsString.Replace("{PRICE}", Math.Round(price, Config.Round).ToCustomString());
+                        sb.Append(labelAsString);
+                    }
+
+                    CompanyInfo.SelectedCompany = CompanyInfo.Companies.Count > 0 ? CompanyInfo.Companies[0] : null;
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    
+                    if (!printer.PrintProductLabel(sb.ToString()))
+                        return "Error printing product label.";
+                    
+                    return string.Empty;
+                });
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error printing product label: {ex.Message}", "Error", "OK");
+                Logger.CreateLog(ex);
+            }
+        }
+    }
+
+    public partial class ExtraPropertyItem : ObservableObject
+    {
+        [ObservableProperty]
+        private string _key = string.Empty;
+        
+        [ObservableProperty]
+        private string _value = string.Empty;
     }
 }

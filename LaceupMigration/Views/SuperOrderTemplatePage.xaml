@@ -91,34 +91,36 @@
                                 SelectionChangedCommand="{Binding LineItemSelectedCommand}">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="vm:SuperOrderLineItemViewModel">
-                            <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
-                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" InputTransparent="True">
-                                    <Label Grid.Column="0" Grid.Row="0"
-                                           Text="{Binding ProductName}"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource Gray900}" />
-                                    <Label Grid.Column="1" Grid.Row="0"
-                                           Text="{Binding AmountText}"
-                                           HorizontalOptions="End"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource Gray900}" />
-                                    <Label Grid.Column="0" Grid.Row="1"
-                                           Text="{Binding QtyText}"
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray600}" />
-                                    <Label Grid.Column="1" Grid.Row="1"
-                                           Text="{Binding PriceText}"
-                                           HorizontalOptions="End"
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray600}" />
-                                    <Label Grid.Column="0" Grid.Row="2"
-                                           Text="{Binding TypeText}"
-                                           IsVisible="{Binding ShowType}"
-                                           FontSize="12"
-                                           FontAttributes="Bold"
-                                           TextColor="{Binding TypeColor}" />
-                                </Grid>
-                            </Frame>
+                            <Grid Style="{StaticResource CollectionViewItemStyle}">
+                                <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
+                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" InputTransparent="True">
+                                        <Label Grid.Column="0" Grid.Row="0"
+                                               Text="{Binding ProductName}"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource Gray900}" />
+                                        <Label Grid.Column="1" Grid.Row="0"
+                                               Text="{Binding AmountText}"
+                                               HorizontalOptions="End"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource Gray900}" />
+                                        <Label Grid.Column="0" Grid.Row="1"
+                                               Text="{Binding QtyText}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource Gray600}" />
+                                        <Label Grid.Column="1" Grid.Row="1"
+                                               Text="{Binding PriceText}"
+                                               HorizontalOptions="End"
+                                               FontSize="13"
+                                               TextColor="{StaticResource Gray600}" />
+                                        <Label Grid.Column="0" Grid.Row="2"
+                                               Text="{Binding TypeText}"
+                                               IsVisible="{Binding ShowType}"
+                                               FontSize="12"
+                                               FontAttributes="Bold"
+                                               TextColor="{Binding TypeColor}" />
+                                    </Grid>
+                                </Frame>
+                            </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>

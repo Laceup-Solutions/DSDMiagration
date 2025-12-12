@@ -120,8 +120,7 @@ namespace LaceupMigration.Services
 				var sessions = new List<(string sessionId, string displayName)>();
 				try
 				{
-					// Try to get backup session list from server - matches Xamarin behavior
-					// The server returns a list of session names/IDs, not the actual backup files
+					// Matches Xamarin RestoreData1() - uses BackgroundDataSyncAvailableSessionsCommand
 					using (var netaccess = new NetAccess())
 					{
 						try
@@ -129,35 +128,47 @@ namespace LaceupMigration.Services
 							netaccess.OpenConnection();
 							netaccess.WriteStringToNetwork("HELO");
 							netaccess.WriteStringToNetwork(Config.GetAuthString());
-							netaccess.WriteStringToNetwork("GetBackupListCommand");
+							netaccess.WriteStringToNetwork("BackgroundDataSyncAvailableSessionsCommand");
 							
-							// Read the number of backup sessions available
-							var countStr = netaccess.ReadStringFromNetwork();
-							if (int.TryParse(countStr, out int sessionCount) && sessionCount > 0)
+							// Read single string response containing all sessions separated by '|'
+							var avail = netaccess.ReadStringFromNetwork();
+							netaccess.CloseConnection();
+							
+							if (string.IsNullOrEmpty(avail))
 							{
-								// Read each session name/ID
-								for (int i = 0; i < sessionCount; i++)
-								{
-									var sessionInfo = netaccess.ReadStringFromNetwork();
-									if (!string.IsNullOrEmpty(sessionInfo))
-									{
-										// sessionInfo might be in format "sessionId|displayName" or just "displayName"
-										var parts = sessionInfo.Split('|');
-										if (parts.Length >= 2)
-										{
-											sessions.Add((parts[0], parts[1])); // sessionId, displayName
-										}
-										else
-										{
-											// Use sessionInfo as both ID and display name
-											sessions.Add((sessionInfo, sessionInfo));
-										}
-									}
-								}
+								// No sessions available - return empty list
+								return sessions;
 							}
 							
-							netaccess.WriteStringToNetwork("Goodbye");
-							netaccess.CloseConnection();
+							// Split by '|' to get individual sessions
+							var availableSessionsArray = avail.Split(new char[] { '|' });
+							
+							// Get current salesman ID for filtering
+							var currentId = Config.SalesmanId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+							
+							// Process each session - matches Xamarin RestoreData1() logic
+							foreach (var part in availableSessionsArray)
+							{
+								if (string.IsNullOrEmpty(part))
+									continue;
+								
+								// Each session is in format: sessionId=salesmanId=part2=dateTime
+								var parts1 = part.Split(new char[] { '=' });
+								
+								// Filter: only show sessions matching current salesman ID
+								if (parts1.Length > 1 && parts1[1] == currentId)
+								{
+									// Display format: "Android Backup" + NewLine + "createdOnData" + dateTime
+									// Source format: "{0}={1}={2}" (sessionId=salesmanId=part2)
+									var displayName = "Android Backup" + System.Environment.NewLine + "createdOnData" + (parts1.Length > 3 ? parts1[3] : "");
+									var sessionId = string.Format("{0}={1}={2}", 
+										parts1[0], 
+										parts1[1], 
+										parts1.Length > 2 ? parts1[2] : "");
+									
+									sessions.Add((sessionId, displayName));
+								}
+							}
 						}
 						catch (Exception ex)
 						{
@@ -181,25 +192,25 @@ namespace LaceupMigration.Services
 			{
 				try
 				{
-					// Download the specific backup file for the selected session
+					// Matches Xamarin RestoreData3() - uses BackgroundDataSyncSendFileCommand
+					// sessionId is in format: "{0}={1}={2}" (sessionId=salesmanId=part2)
+					var tempFile = Path.GetTempFileName();
+					
 					using (var netaccess = new NetAccess())
 					{
 						netaccess.OpenConnection();
 						netaccess.WriteStringToNetwork("HELO");
 						netaccess.WriteStringToNetwork(Config.GetAuthString());
-						netaccess.WriteStringToNetwork("GetBackupFileCommand");
+						netaccess.WriteStringToNetwork("BackgroundDataSyncSendFileCommand");
 						netaccess.WriteStringToNetwork(sessionId);
 						
 						// Download the backup file
-						var tempBackupFile = Path.Combine(Path.GetTempPath(), $"backup_{sessionId}_{DateTime.Now.Ticks}.zip");
-						var received = netaccess.ReceiveFile(tempBackupFile);
-						
-						netaccess.WriteStringToNetwork("Goodbye");
+						var received = netaccess.ReceiveFile(tempFile);
 						netaccess.CloseConnection();
 						
-						if (received > 0 && File.Exists(tempBackupFile))
+						if (received > 0 && File.Exists(tempFile))
 						{
-							return tempBackupFile;
+							return tempFile;
 						}
 						else
 						{
@@ -221,7 +232,7 @@ namespace LaceupMigration.Services
 			{
 				try
 				{
-					// Restore data from zip file - matches Xamarin RestoreData logic
+					// Matches Xamarin RestoreData3() logic
 					RestoreDataFromZip(zipFilePath);
 				}
 				catch (Exception ex)
@@ -243,27 +254,53 @@ namespace LaceupMigration.Services
 						throw new FileNotFoundException("Zip file not found.");
 					}
 
-					// Extract zip file to CodeBase directory - matches Xamarin restore logic
+					// EXACTLY matches Xamarin RestoreData3() - step by step:
+					// Step 1: ClearData(false, true) - clears data and settings
+					DataAccess.ClearData();
+					Config.ClearSettings();
+
+					// Step 2: Config.Initialize() - creates all directories
+					Config.Initialize();
+
+					// Step 3: Download static data (products, clients) from server
+					// In Xamarin this happens after SaveConfiguration() and downloading backup,
+					// but we already have the backup file, so we do this now
+					var responseMessage = DataAccessEx.DownloadStaticData();
+					if (!string.IsNullOrEmpty(responseMessage))
+					{
+						throw new Exception(responseMessage);
+					}
+
+					// Step 4: Extract zip file to CodeBase - EXACTLY as Xamarin does
 					var fastZip = new FastZip();
-					bool recurse = true;
-					string filter = null;
+					string fileFilter = null;
 
-					// Extract the zip file to CodeBase (overwrites existing files)
-					fastZip.ExtractZip(zipFilePath, Config.CodeBase, filter);
+					// Will always overwrite if target filenames already exist
+					fastZip.ExtractZip(zipFilePath, Config.CodeBase, fileFilter);
 
-					// After extracting, reload all data - matches Xamarin behavior
-					// This will reload products, clients, orders, etc. from the restored files
-					DataAccessEx.Initialize();
+					// Step 5: Config.Initialize() again after extraction - EXACTLY as Xamarin
+					Config.Initialize();
 
-					// Reload other data that might have been restored
-					Client.LoadClients();
-					DataAccess.LoadBatches();
-					DataAccess.LoadOrders();
-					DataAccess.LoadPayments();
-					Client.LoadNotes();
-					ParLevel.LoadList();
-					LoadOrder.LoadList();
-					BuildToQty.LoadList();
+					// Step 6: Set ReceivedData and save app status - EXACTLY as Xamarin
+					DataAccess.ReceivedData = true;
+					Config.SaveAppStatus();
+
+					// Step 7: DataAccess.Initialize() - EXACTLY as Xamarin (not DataAccessEx)
+					// This will call CompanyInfo.Load() which now handles missing files gracefully
+					DataAccess.Initialize();
+
+					// Step 8: Delete temp file - EXACTLY as Xamarin
+					if (File.Exists(zipFilePath) && zipFilePath.Contains(Path.GetTempPath()))
+					{
+						try
+						{
+							File.Delete(zipFilePath);
+						}
+						catch
+						{
+							// Ignore deletion errors
+						}
+					}
 
 					Logger.CreateLog("Data restored successfully from: " + zipFilePath);
 				}
