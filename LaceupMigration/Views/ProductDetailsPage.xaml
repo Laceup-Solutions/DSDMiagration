@@ -8,6 +8,9 @@
              Shell.TabBarIsVisible="False"
              Title="Product Details"
              BackgroundColor="White">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="MENU" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
+    </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <ScrollView>
             <VerticalStackLayout Spacing="0" Padding="5">
@@ -251,7 +254,7 @@
 
                 <!-- Retail Price Section -->
                 <VerticalStackLayout Spacing="10" Margin="10,20,10,5" IsVisible="{Binding ShowPrice}">
-                    <Grid ColumnDefinitions="*,*,*">
+                    <Grid ColumnDefinitions="*,Auto">
                         <Label Grid.Column="0"
                                Text="{Binding RetailPrice, StringFormat='Retail Price:{0}'}"
                                FontSize="12"
@@ -259,12 +262,6 @@
                                TextColor="{StaticResource colorLaceupDark}"
                                HorizontalOptions="Start" />
                         <Label Grid.Column="1"
-                               Text="{Binding RetailPriceUnit}"
-                               FontSize="12"
-                               FontAttributes="Bold"
-                               TextColor="{StaticResource colorLaceupDark}"
-                               HorizontalOptions="Start" />
-                        <Label Grid.Column="2"
                                Text="{Binding RetailPricePercent, StringFormat='{0}%'}"
                                FontSize="12"
                                FontAttributes="Bold"
@@ -277,6 +274,42 @@
                             ThumbColor="{StaticResource colorLaceupDark}"
                             MinimumTrackColor="{StaticResource colorLaceupDark}"
                             MaximumTrackColor="{StaticResource Gray300}" />
+                </VerticalStackLayout>
+
+                <!-- Extra Properties Section (below slider with border) -->
+                <VerticalStackLayout Spacing="4" Margin="10,20,10,5" IsVisible="{Binding HasExtraProperties}">
+                    <Label Text="Extra Properties"
+                           FontSize="12"
+                           FontAttributes="Bold"
+                           Margin="0,0,0,5" />
+                    <Border Padding="3"
+                            Stroke="{StaticResource Gray300}"
+                            StrokeThickness="1"
+                            BackgroundColor="{StaticResource White}"
+                            StrokeShape="RoundRectangle 5">
+                        <CollectionView ItemsSource="{Binding ExtraProperties}"
+                                        SelectionMode="None"
+                                        BackgroundColor="Transparent">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ExtraPropertyItem">
+                                    <Grid ColumnDefinitions="Auto,*" Padding="3,2">
+                                        <Label Grid.Column="0"
+                                               Text="{Binding Key, StringFormat='{0}:'}"
+                                               FontSize="11"
+                                               FontAttributes="Bold"
+                                               HorizontalOptions="End"
+                                               VerticalOptions="Center" />
+                                        <Label Grid.Column="1"
+                                               Text="{Binding Value}"
+                                               FontSize="11"
+                                               TextColor="{StaticResource Gray900}"
+                                               Margin="5,0,0,0"
+                                               VerticalOptions="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </Border>
                 </VerticalStackLayout>
             </VerticalStackLayout>
         </ScrollView>

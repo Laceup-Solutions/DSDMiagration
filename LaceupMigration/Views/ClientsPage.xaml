@@ -173,7 +173,8 @@
                         EmptyView="No customers available.">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:ClientGroupViewModel">
-                    <VerticalStackLayout Spacing="4">
+                    <Grid Style="{StaticResource CollectionViewItemStyle}">
+                        <VerticalStackLayout Spacing="4">
                         <Grid ColumnDefinitions="*,Auto"
                               Padding="8"
                               BackgroundColor="#E0E0E0">
@@ -197,6 +198,7 @@
                                         ItemSizingStrategy="MeasureFirstItem">
                         </CollectionView>
                     </VerticalStackLayout>
+                    </Grid>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>

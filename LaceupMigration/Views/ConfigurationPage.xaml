@@ -12,135 +12,159 @@
                      Priority="0" />
     </ContentPage.ToolbarItems>
     <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="16">
+        <VerticalStackLayout Spacing="0">
+            <!-- Version Section -->
             <Label Text="{Binding Version, StringFormat='Version: {0}'}"
-                   FontSize="16"
-                   FontAttributes="Bold" />
-
-            <Label Text="Connection Settings"
-                   FontSize="18"
+                   FontSize="20"
                    FontAttributes="Bold"
-                   Margin="0,10,0,0" />
+                   TextColor="#017CBA"
+                   Padding="20,20,20,10"
+                   BackgroundColor="#E3F2FD" />
 
-            <Entry Text="{Binding InternetServer}"
-                   Placeholder="Internet Server"
-                   IsEnabled="{Binding CanModifyConnectionSettings}"
-                   FontSize="16" />
+            <!-- Company ID, Salesman ID, Name Section (Light Blue Background) -->
+            <VerticalStackLayout Spacing="12" 
+                               Padding="20,15,20,20"
+                               BackgroundColor="#E3F2FD">
+                <!-- Company ID with + button -->
+                <Grid ColumnDefinitions="Auto,*,Auto" 
+                      ColumnSpacing="10"
+                      VerticalOptions="Center">
+                    <Label Text="Company ID:"
+                           FontSize="16"
+                           TextColor="Black"
+                           VerticalOptions="Center"
+                           Grid.Column="0" />
+                    <Entry Text="{Binding CompanyId}"
+                           FontSize="16"
+                           BackgroundColor="#E3F2FD"
+                           IsReadOnly="True"
+                           Grid.Column="1" />
+                    <Button Text="+"
+                           Command="{Binding ShowConnectionSettingsCommand}"
+                           BackgroundColor="Transparent"
+                           TextColor="#017CBA"
+                           BorderColor="#017CBA"
+                           BorderWidth="2"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           WidthRequest="35"
+                           HeightRequest="35"
+                           CornerRadius="20"
+                           Padding="0"
+                           Grid.Column="2" />
+                </Grid>
 
-            <Entry Text="{Binding LanServer}"
-                   Placeholder="LAN Server"
-                   IsEnabled="{Binding CanModifyConnectionSettings}"
-                   FontSize="16" />
+                <!-- Salesman ID -->
+                <Grid ColumnDefinitions="Auto,*" 
+                      ColumnSpacing="10"
+                      VerticalOptions="Center">
+                    <Label Text="Salesman ID:"
+                           FontSize="16"
+                           TextColor="Black"
+                           VerticalOptions="Center"
+                           Grid.Column="0" />
+                    <Entry Text="{Binding VendorId}"
+                           FontSize="16"
+                           BackgroundColor="#E3F2FD"
+                           IsEnabled="{Binding CanChangeSalesmanId}"
+                           Keyboard="Numeric"
+                           Grid.Column="1" />
+                </Grid>
 
-            <Entry Text="{Binding Port}"
-                   Placeholder="Port"
-                   IsEnabled="{Binding CanModifyConnectionSettings}"
-                   Keyboard="Numeric"
-                   FontSize="16" />
+                <!-- Name -->
+                <Grid ColumnDefinitions="Auto,*" 
+                      ColumnSpacing="10"
+                      VerticalOptions="Center">
+                    <Label Text="Name:"
+                           FontSize="16"
+                           TextColor="Black"
+                           VerticalOptions="Center"
+                           Grid.Column="0" />
+                    <Entry Text="{Binding VendorName}"
+                           FontSize="16"
+                           BackgroundColor="#E3F2FD"
+                           IsEnabled="{Binding CanChangeSalesmanId}"
+                           Grid.Column="1" />
+                </Grid>
+            </VerticalStackLayout>
 
-            <Entry Text="{Binding SSID}"
-                   Placeholder="SSID"
-                   IsEnabled="{Binding CanModifyConnectionSettings}"
-                   FontSize="16" />
+            <!-- Actions Section (White Background) -->
+            <VerticalStackLayout Spacing="0" 
+                               Padding="0,10,0,20"
+                               BackgroundColor="White">
+                <Button Text="Configure Printer"
+                        Command="{Binding SetupPrinterCommand}"
+                        IsVisible="{Binding ShowPrinterButton}"
+                        BackgroundColor="#017CBA"
+                        TextColor="White"
+                        FontSize="16"
+                        Padding="16,12"
+                        Margin="20,5" />
 
-            <Label Text="{Binding CurrentSSID}"
-                   FontSize="14"
-                   TextColor="#666666" />
+                <Button Text="Select Scanner"
+                        Command="{Binding SetupScannerCommand}"
+                        BackgroundColor="#017CBA"
+                        TextColor="White"
+                        FontSize="16"
+                        Padding="16,12"
+                        Margin="20,5" />
 
-            <Label Text="Salesman Settings"
-                   FontSize="18"
-                   FontAttributes="Bold"
-                   Margin="0,10,0,0" />
+                <Button Text="Select Logo"
+                        Command="{Binding SelectLogoCommand}"
+                        BackgroundColor="#017CBA"
+                        TextColor="White"
+                        FontSize="16"
+                        Padding="16,12"
+                        Margin="20,5" />
 
-            <Entry Text="{Binding VendorName}"
-                   Placeholder="Vendor Name"
-                   IsEnabled="{Binding CanChangeSalesmanId}"
-                   FontSize="16" />
+                <Button Text="Reset Password"
+                        Command="{Binding ResetPasswordCommand}"
+                        BackgroundColor="#017CBA"
+                        TextColor="White"
+                        FontSize="16"
+                        Padding="16,12"
+                        Margin="20,5" />
 
-            <Entry Text="{Binding VendorId}"
-                   Placeholder="Vendor ID"
-                   IsEnabled="{Binding CanChangeSalesmanId}"
-                   Keyboard="Numeric"
-                   FontSize="16" />
+                <Button Text="See Log File"
+                        Command="{Binding SeeLogCommand}"
+                        BackgroundColor="#017CBA"
+                        TextColor="White"
+                        FontSize="16"
+                        Padding="16,12"
+                        Margin="20,5" />
 
-            <Label Text="{Binding DeviceId, StringFormat='Device ID: {0}'}"
-                   FontSize="14"
-                   TextColor="#666666" />
+                <Button Text="Send Log File"
+                        Command="{Binding SendLogCommand}"
+                        BackgroundColor="#017CBA"
+                        TextColor="White"
+                        FontSize="16"
+                        Padding="16,12"
+                        Margin="20,5" />
 
-            <Entry Text="{Binding NextOrderId}"
-                   Placeholder="Next Order ID"
-                   Keyboard="Numeric"
-                   FontSize="16" />
+                <Button Text="Export Data"
+                        Command="{Binding ExportDataCommand}"
+                        BackgroundColor="#017CBA"
+                        TextColor="White"
+                        FontSize="16"
+                        Padding="16,12"
+                        Margin="20,5" />
 
-            <Label Text="Actions"
-                   FontSize="18"
-                   FontAttributes="Bold"
-                   Margin="0,10,0,0" />
+                <Button Text="Restore Data"
+                        Command="{Binding RestoreDataCommand}"
+                        BackgroundColor="#017CBA"
+                        TextColor="White"
+                        FontSize="16"
+                        Padding="16,12"
+                        Margin="20,5" />
 
-            <Button Text="Setup Printer"
-                    Command="{Binding SetupPrinterCommand}"
-                    IsVisible="{Binding ShowPrinterButton}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="Setup Scanner"
-                    Command="{Binding SetupScannerCommand}"
-                    IsVisible="{Binding ShowScannerButton}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="Select Logo"
-                    Command="{Binding SelectLogoCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="Reset Password"
-                    Command="{Binding ResetPasswordCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="See Log"
-                    Command="{Binding SeeLogCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="Send Log"
-                    Command="{Binding SendLogCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="Export Data"
-                    Command="{Binding ExportDataCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="Restore Data"
-                    Command="{Binding RestoreDataCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
-
-            <Button Text="Clear Data"
-                    Command="{Binding CleanDataCommand}"
-                    BackgroundColor="Red"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="16,12" />
+                <Button Text="Clear Data"
+                        Command="{Binding CleanDataCommand}"
+                        BackgroundColor="Red"
+                        TextColor="White"
+                        FontSize="16"
+                        Padding="16,12"
+                        Margin="20,5" />
+            </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

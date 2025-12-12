@@ -4,7 +4,7 @@
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.Views.InventorySummaryPage"
              Shell.TabBarIsVisible="False"
-             Title="Current Inventory Summary">
+             Title="Inventory Summary">
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="MENU" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
     </ContentPage.ToolbarItems>
@@ -172,7 +172,8 @@
                            Margin="0,5">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:InventorySummaryProductViewModel">
-                        <VerticalStackLayout Spacing="4" Padding="5,8" Margin="0,1" BackgroundColor="{StaticResource White}">
+                        <Grid Style="{StaticResource CollectionViewItemStyle}">
+                            <VerticalStackLayout Spacing="4" Padding="5,8" Margin="0,1" BackgroundColor="{StaticResource White}">
                             <!-- Product Name -->
                             <Label Text="{Binding ProductName}"
                                    FontSize="13"
@@ -244,6 +245,7 @@
                                        HorizontalOptions="Center" />
                             </Grid>
                         </VerticalStackLayout>
+                        </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>

@@ -163,15 +163,16 @@
                           SelectionMode="None">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:AcceptLoadOrderItemViewModel">
-                        <Frame Padding="10"
-                               Margin="0,2"
-                               BackgroundColor="{StaticResource Gray100}"
-                               HasShadow="False"
-                               CornerRadius="5">
-                            <Frame.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding OrderTappedCommand}" />
-                            </Frame.GestureRecognizers>
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                        <Grid Style="{StaticResource CollectionViewItemStyle}">
+                            <Frame Padding="10"
+                                   Margin="0,2"
+                                   BackgroundColor="{StaticResource Gray100}"
+                                   HasShadow="False"
+                                   CornerRadius="5">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding OrderTappedCommand}" />
+                                </Frame.GestureRecognizers>
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                                 <CheckBox Grid.Column="0"
                                          IsChecked="{Binding IsSelected}"
                                          VerticalOptions="Center"
@@ -220,8 +221,9 @@
                                            IsVisible="{Binding ShowComment}"
                                            TextColor="Gray" />
                                 </Grid>
-                            </Grid>
-                        </Frame>
+                                </Grid>
+                            </Frame>
+                        </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>

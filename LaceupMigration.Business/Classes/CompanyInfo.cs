@@ -214,83 +214,139 @@ namespace LaceupMigration
         public static void Load()
         {
             companies.Clear();
-            if (File.Exists(Config.CompanyInfoStoreFile))
+            try
             {
-                using (StreamReader reader = new StreamReader(Config.CompanyInfoStoreFile))
+                // Ensure the directory exists before checking for the file
+                string directory = null;
+                try
                 {
-                    string line;
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        try
-                        {
-                            string[] parts = line.Split(new char[] { (char)20 });
-                            var ci = new CompanyInfo()
-                            {
-                                CompanyName = parts[0],
-                                CompanyAddress1 = parts[1],
-                                CompanyAddress2 = parts[2],
-                                CompanyPhone = parts[3]
-                            };
-                            if (parts.Length > 4)
-                                ci.DUNS = parts[4];
-                            if (parts.Length > 5)
-                                ci.Location = parts[5];
-                            if (parts.Length > 6)
-                                ci.CommId = parts[6];
-                            if (parts.Length > 7)
-                                ci.CompanyFax = parts[7];
-                            if (parts.Length > 8)
-                                ci.CompanyEmail = parts[8];
-                            if (parts.Length > 9)
-                                ci.DexUOM = parts[9];
-                            if (parts.Length > 10)
-                                ci.CompanyLicenses = parts[10];
-
-                            if (parts.Length > 11)
-                                ci.FromFile = Convert.ToInt32(parts[11]) > 0;
-                            
-                            if (parts.Length > 12)
-                                ci.ExtraFields = parts[12];  
-                            if (parts.Length > 13)
-                                ci.CompanyLogo = parts[13];
-                            if (parts.Length > 14)
-                                ci.CompanyLogoHeight = Convert.ToInt32(parts[14]);
-                            if (parts.Length > 15)
-                                ci.CompanyLogoSize = Convert.ToInt32(parts[15]);  
-                            if (parts.Length > 16)
-                                ci.CompanyLogoWidth = Convert.ToInt32(parts[16]); 
-                            if (parts.Length > 17)
-                                ci.LogoId = Convert.ToInt32(parts[17]);
-
-                            if (parts.Length > 18)
-                                ci.IsDefault = Convert.ToInt32(parts[18]) > 0;
-
-                            if (parts.Length > 19)
-                                ci.CompanyLogoPath = parts[19];
-
-                            if (parts.Length > 20)
-                                ci.PaymentClientSecret = parts[20];
-
-                            if (parts.Length > 21)
-                                ci.PaymentClientId = parts[21];
-
-                            if (parts.Length > 22)
-                                ci.PaymentMerchant = parts[22];
-
-                            if (parts.Length > 23)
-                                ci.BottomTextPrint = parts[23];
-
-
-                            companies.Add(ci);
-                        }
-                        catch (Exception ee)
-                        {
-                            Logger.CreateLog(ee);
-                            //Xamarin.Insights.Report(ee);
-                        }
-                    }
-                    reader.Close();
+                    directory = Path.GetDirectoryName(Config.CompanyInfoStoreFile);
                 }
+                catch (Exception dirEx)
+                {
+                    // If Path.GetDirectoryName throws, log and skip file loading
+                    Logger.CreateLog($"Error getting directory name for CompanyInfoStoreFile: {dirEx.Message}");
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(directory))
+                {
+                    Logger.CreateLog("CompanyInfoStoreFile directory is null or empty");
+                    return;
+                }
+
+                // Ensure directory exists
+                if (!Directory.Exists(directory))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(directory);
+                    }
+                    catch (Exception createEx)
+                    {
+                        Logger.CreateLog($"Error creating directory {directory}: {createEx.Message}");
+                        return;
+                    }
+                }
+
+                // Check if file exists - wrap in try-catch as File.Exists can throw on some platforms
+                bool fileExists = false;
+                try
+                {
+                    fileExists = File.Exists(Config.CompanyInfoStoreFile);
+                }
+                catch (Exception fileEx)
+                {
+                    // If File.Exists throws, log and assume file doesn't exist
+                    Logger.CreateLog($"Error checking if CompanyInfoStoreFile exists: {fileEx.Message}");
+                    fileExists = false;
+                }
+
+                if (fileExists)
+                {
+                    using (StreamReader reader = new StreamReader(Config.CompanyInfoStoreFile))
+                    {
+                        string line;
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            try
+                            {
+                                string[] parts = line.Split(new char[] { (char)20 });
+                                var ci = new CompanyInfo()
+                                {
+                                    CompanyName = parts[0],
+                                    CompanyAddress1 = parts[1],
+                                    CompanyAddress2 = parts[2],
+                                    CompanyPhone = parts[3]
+                                };
+                                if (parts.Length > 4)
+                                    ci.DUNS = parts[4];
+                                if (parts.Length > 5)
+                                    ci.Location = parts[5];
+                                if (parts.Length > 6)
+                                    ci.CommId = parts[6];
+                                if (parts.Length > 7)
+                                    ci.CompanyFax = parts[7];
+                                if (parts.Length > 8)
+                                    ci.CompanyEmail = parts[8];
+                                if (parts.Length > 9)
+                                    ci.DexUOM = parts[9];
+                                if (parts.Length > 10)
+                                    ci.CompanyLicenses = parts[10];
+
+                                if (parts.Length > 11)
+                                    ci.FromFile = Convert.ToInt32(parts[11]) > 0;
+
+                                if (parts.Length > 12)
+                                    ci.ExtraFields = parts[12];
+                                if (parts.Length > 13)
+                                    ci.CompanyLogo = parts[13];
+                                if (parts.Length > 14)
+                                    ci.CompanyLogoHeight = Convert.ToInt32(parts[14]);
+                                if (parts.Length > 15)
+                                    ci.CompanyLogoSize = Convert.ToInt32(parts[15]);
+                                if (parts.Length > 16)
+                                    ci.CompanyLogoWidth = Convert.ToInt32(parts[16]);
+                                if (parts.Length > 17)
+                                    ci.LogoId = Convert.ToInt32(parts[17]);
+
+                                if (parts.Length > 18)
+                                    ci.IsDefault = Convert.ToInt32(parts[18]) > 0;
+
+                                if (parts.Length > 19)
+                                    ci.CompanyLogoPath = parts[19];
+
+                                if (parts.Length > 20)
+                                    ci.PaymentClientSecret = parts[20];
+
+                                if (parts.Length > 21)
+                                    ci.PaymentClientId = parts[21];
+
+                                if (parts.Length > 22)
+                                    ci.PaymentMerchant = parts[22];
+
+                                if (parts.Length > 23)
+                                    ci.BottomTextPrint = parts[23];
+
+
+                                companies.Add(ci);
+                            }
+                            catch (Exception ee)
+                            {
+                                Logger.CreateLog(ee);
+                                //Xamarin.Insights.Report(ee);
+                            }
+                        }
+
+                        reader.Close();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't throw - allow the app to continue even if companies.cvs can't be loaded
+                Logger.CreateLog($"Error loading CompanyInfo: {ex.Message}");
+                Logger.CreateLog(ex);
             }
         }
 

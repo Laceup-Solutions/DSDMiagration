@@ -91,7 +91,7 @@
                         EmptyView="No invoices available.">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:InvoiceGroupItemViewModel">
-                    <Grid>
+                    <Grid Style="{StaticResource CollectionViewItemStyle}">
                         <!-- Group Header -->
                         <Frame Padding="12"
                                Margin="0,8,0,4"
