@@ -131,6 +131,16 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
+        private void SearchBar_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // Update the ViewModel's SearchQuery to trigger OnSearchQueryChanged
+            // This ensures the binding works correctly and search filters in real-time
+            if (sender is SearchBar searchBar && _viewModel != null)
+            {
+                _viewModel.SearchQuery = searchBar.Text ?? string.Empty;
+            }
+        }
+
         private async void SearchBar_SearchButtonPressed(object sender, EventArgs e)
         {
             if (sender is SearchBar searchBar)

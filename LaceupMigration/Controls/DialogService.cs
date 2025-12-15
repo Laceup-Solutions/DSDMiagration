@@ -484,7 +484,7 @@ public class DialogService : IDialogService
             BackgroundColor = Colors.Gray,
             TextColor = Colors.White,
             FontSize = 16,
-            Margin = new Thickness(0,0,5,10),
+            Margin = new Thickness(0),
             CornerRadius = 0
         };
 
@@ -494,7 +494,7 @@ public class DialogService : IDialogService
             BackgroundColor = Color.FromArgb("#017CBA"), // Match Laceup blue
             TextColor = Colors.White,
             FontSize = 16,
-            Margin = new Thickness(5,0,0,10),
+            Margin = new Thickness(0),
             CornerRadius = 0
         };
 
@@ -505,8 +505,9 @@ public class DialogService : IDialogService
                 new ColumnDefinition { Width = GridLength.Star },
                 new ColumnDefinition { Width = GridLength.Star }
             },
-            ColumnSpacing = 0,
+            ColumnSpacing = 2,
             Padding = new Thickness(0),
+            Margin = new Thickness(0),
             BackgroundColor = Colors.White
         };
 
@@ -543,6 +544,8 @@ public class DialogService : IDialogService
         {
             Spacing = 0,
             BackgroundColor = Colors.White,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0,0,0,0),
             Children =
             {
                 new Label
@@ -748,6 +751,335 @@ public class DialogService : IDialogService
         }
     }
     
+    public async Task<(List<int> selectedCategoryIds, bool selectAll, bool showPrice, bool showUPC, bool showUoM)?> ShowCatalogFilterDialogAsync(List<Category> categories)
+    {
+        var page = GetCurrentPage();
+        if (page == null)
+            return null;
+
+        var tcs = new TaskCompletionSource<(List<int> selectedCategoryIds, bool selectAll, bool showPrice, bool showUPC, bool showUoM)?>();
+
+        // Create checkboxes for categories
+        var categoryCheckboxes = new List<(CheckBox checkbox, Label label, int categoryId)>();
+        var allCategoriesCheckbox = new CheckBox
+        {
+            IsChecked = true
+        };
+        var allCategoriesLabel = new Label
+        {
+            Text = "All Categories",
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        // Add category checkboxes
+        foreach (var category in categories)
+        {
+            var checkbox = new CheckBox
+            {
+                IsChecked = false
+            };
+            var label = new Label
+            {
+                Text = category.Name,
+                VerticalOptions = LayoutOptions.Center
+            };
+            categoryCheckboxes.Add((checkbox, label, category.CategoryId));
+        }
+
+        // Create "Show In PDF" checkboxes
+        var showPriceCheckbox = new CheckBox
+        {
+            IsChecked = false
+        };
+        var showPriceLabel = new Label
+        {
+            Text = "Show Price",
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        var showUPCCheckbox = new CheckBox
+        {
+            IsChecked = true
+        };
+        var showUPCLabel = new Label
+        {
+            Text = "Show UPC",
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        var showUoMCheckbox = new CheckBox
+        {
+            IsChecked = true
+        };
+        var showUoMLabel = new Label
+        {
+            Text = "Show UoM",
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        // Check if filters should be visible (matches Xamarin: DataAccess.CheckCommunicatorVersion >= "46.2.0")
+        bool filtersVisible = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.2.0");
+
+        // Handle price checkbox visibility/state (matches Xamarin logic)
+        if (Config.DisableSendCatalogWithPrices || Config.HidePriceInTransaction)
+        {
+            showPriceCheckbox.IsEnabled = false;
+            showPriceCheckbox.IsChecked = false;
+            showPriceCheckbox.IsVisible = false;
+        }
+
+        // Category selection layout
+        var categoryLayout = new VerticalStackLayout
+        {
+            Spacing = 8,
+            Padding = new Thickness(20, 10, 20, 10)
+        };
+
+        var allCategoriesRow = new HorizontalStackLayout
+        {
+            Spacing = 8
+        };
+        allCategoriesRow.Children.Add(allCategoriesCheckbox);
+        allCategoriesRow.Children.Add(allCategoriesLabel);
+        categoryLayout.Children.Add(allCategoriesRow);
+
+        foreach (var (checkbox, label, _) in categoryCheckboxes)
+        {
+            var row = new HorizontalStackLayout
+            {
+                Spacing = 8
+            };
+            row.Children.Add(checkbox);
+            row.Children.Add(label);
+            categoryLayout.Children.Add(row);
+        }
+
+        // Filters layout (Show In PDF options)
+        var filtersLayout = new VerticalStackLayout
+        {
+            Spacing = 8,
+            Padding = new Thickness(20, 10, 20, 10),
+            IsVisible = filtersVisible
+        };
+
+        var filtersLabel = new Label
+        {
+            Text = "Show In PDF:",
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Colors.Black,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+        filtersLayout.Children.Add(filtersLabel);
+
+        var showPriceRow = new HorizontalStackLayout
+        {
+            Spacing = 8
+        };
+        showPriceRow.Children.Add(showPriceCheckbox);
+        showPriceRow.Children.Add(showPriceLabel);
+        filtersLayout.Children.Add(showPriceRow);
+
+        var showUPCRow = new HorizontalStackLayout
+        {
+            Spacing = 8
+        };
+        showUPCRow.Children.Add(showUPCCheckbox);
+        showUPCRow.Children.Add(showUPCLabel);
+        filtersLayout.Children.Add(showUPCRow);
+
+        var showUoMRow = new HorizontalStackLayout
+        {
+            Spacing = 8
+        };
+        showUoMRow.Children.Add(showUoMCheckbox);
+        showUoMRow.Children.Add(showUoMLabel);
+        filtersLayout.Children.Add(showUoMRow);
+
+        // Handle "All Categories" checkbox - when checked, disable individual checkboxes
+        allCategoriesCheckbox.CheckedChanged += (s, e) =>
+        {
+            bool isChecked = allCategoriesCheckbox.IsChecked;
+            foreach (var (checkbox, label, _) in categoryCheckboxes)
+            {
+                checkbox.IsEnabled = !isChecked;
+                label.Opacity = isChecked ? 0.5 : 1.0; // Visual feedback for disabled state
+                if (isChecked)
+                    checkbox.IsChecked = false;
+            }
+        };
+
+        // Scrollable content
+        var scrollContent = new ScrollView
+        {
+            Content = new VerticalStackLayout
+            {
+                Spacing = 0,
+                Children =
+                {
+                    categoryLayout,
+                    new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0, 10) },
+                    filtersLayout
+                }
+            },
+            MaximumHeightRequest = 500
+        };
+
+        // Main container
+        var mainContainer = new VerticalStackLayout
+        {
+            Spacing = 0,
+            BackgroundColor = Colors.White,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0),
+            Children =
+            {
+                new Label
+                {
+                    Text = "Filter",
+                    FontSize = 18,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Colors.Black,
+                    Padding = new Thickness(20, 20, 20, 15),
+                    BackgroundColor = Colors.White
+                },
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") },
+                scrollContent
+            }
+        };
+
+        // Buttons
+        var cancelButton = new Button
+        {
+            Text = "Cancel",
+            BackgroundColor = Color.FromArgb("#E0E0E0"), // Light gray - different from disabled/grayed out background
+            TextColor = Colors.Black,
+            FontSize = 16,
+            Margin = new Thickness(0),
+            CornerRadius = 0
+        };
+
+        var okButton = new Button
+        {
+            Text = "OK",
+            BackgroundColor = Color.FromArgb("#017CBA"),
+            TextColor = Colors.White,
+            FontSize = 16,
+            Margin = new Thickness(0),
+            CornerRadius = 0
+        };
+
+        var buttonRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = GridLength.Star }
+            },
+            ColumnSpacing = 0,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0),
+            BackgroundColor = Colors.White
+        };
+
+        Grid.SetColumn(cancelButton, 0);
+        Grid.SetColumn(okButton, 1);
+        buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(okButton);
+
+        mainContainer.Children.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") });
+        mainContainer.Children.Add(buttonRow);
+
+        var dialogBorder = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 0,
+            Padding = new Thickness(0),
+            Margin = new Thickness(20),
+            WidthRequest = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density * 0.85,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(8) },
+            Content = mainContainer
+        };
+
+        var overlayGrid = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"),
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            },
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        Grid.SetRow(dialogBorder, 1);
+        Grid.SetColumn(dialogBorder, 1);
+        overlayGrid.Children.Add(dialogBorder);
+
+        var dialog = new ContentPage
+        {
+            BackgroundColor = Colors.Transparent,
+            Content = overlayGrid
+        };
+
+        async Task SafePopModalAsync()
+        {
+            try
+            {
+                var currentPage = GetCurrentPage();
+                if (currentPage != null)
+                {
+                    if (currentPage == dialog && currentPage.Navigation.ModalStack.Count > 0)
+                    {
+                        await currentPage.Navigation.PopModalAsync();
+                    }
+                    else if (page != null && page.Navigation.ModalStack.Count > 0)
+                    {
+                        await page.Navigation.PopModalAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error popping modal: {ex.Message}");
+            }
+        }
+
+        okButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            
+            bool selectAll = allCategoriesCheckbox.IsChecked;
+            List<int> selectedCategoryIds = new List<int>();
+
+            if (!selectAll)
+            {
+                foreach (var (checkbox, label, categoryId) in categoryCheckboxes)
+                {
+                    if (checkbox.IsChecked)
+                        selectedCategoryIds.Add(categoryId);
+                }
+            }
+
+            tcs.SetResult((selectedCategoryIds, selectAll, showPriceCheckbox.IsChecked, showUPCCheckbox.IsChecked, showUoMCheckbox.IsChecked));
+        };
+
+        cancelButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult(null);
+        };
+
+        await page.Navigation.PushModalAsync(dialog);
+        return await tcs.Task;
+    }
+
     private Page GetCurrentPage()
     {
         // Try Shell first (most common in MAUI)
