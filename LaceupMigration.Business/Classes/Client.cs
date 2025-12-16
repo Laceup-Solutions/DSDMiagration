@@ -1417,25 +1417,21 @@ namespace LaceupMigration
         private void AddLocalImages(FileInfo[] files1, FileInfo file1)
         {
             //add local images
-            List<Tuple<int, string>> imageMap = new List<Tuple<int, string>>();
-
-            DirectoryInfo dir = new DirectoryInfo(Path.Combine(Config.ClientPicturesPath, ClientId.ToString()));
+            var clientPicturesPath = Path.Combine(Config.ClientPicturesPath, ClientId.ToString());
+            DirectoryInfo dir = new DirectoryInfo(clientPicturesPath);
 
             if (dir.Exists)
                 dir.Delete(true);
 
-            Directory.CreateDirectory(System.IO.Path.Combine(Config.ClientPicturesPath, ClientId.ToString()));
+            Directory.CreateDirectory(clientPicturesPath);
 
-            FileInfo[] files = dir.GetFiles();
-
-            FileInfo file = files.FirstOrDefault(x => x.Name.Contains("ordersImgMap"));
-
-            if (file == null)
+            // Copy all files from temp folder to client pictures folder
+            if (files1 != null)
             {
-                if (files1 != null)
+                foreach (var f in files1)
                 {
-                    foreach (var f in files1)
-                        f.CopyTo(Path.Combine(Config.ClientPicturesPath, ClientId.ToString()));
+                    var destPath = Path.Combine(clientPicturesPath, f.Name);
+                    f.CopyTo(destPath, true);
                 }
             }
         }

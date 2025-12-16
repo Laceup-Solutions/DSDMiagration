@@ -912,9 +912,10 @@ namespace LaceupMigration.ViewModels
 					if (o.OrderType == OrderType.Load) continue;
 					if (Config.MustEndOrders && !o.Finished && !o.Voided && !o.AsPresale && o.Details.Count > 0)
 					{
-						var msg = $"Have not finalized invoices {(o.Client != null ? o.Client.ClientName : "Customer not found")}";
+						var msg = $"You have invoices in the system that are not finalized. In order to close your day, you must either finalize," +
+						          $" void or no service your remaining invoices. The Invoice is for: {(o.Client != null ? o.Client.ClientName : "Customer not found")}";
 						if (!string.IsNullOrEmpty(o.PrintedOrderId))
-							msg += $"\nInvoice number: {o.PrintedOrderId}";
+							msg += $"\nInvoice #: {o.PrintedOrderId}";
 						await _dialogService.ShowAlertAsync(msg, "Alert", "OK");
 						return;
 					}
