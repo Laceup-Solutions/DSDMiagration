@@ -2787,6 +2787,7 @@ namespace LaceupMigration.ViewModels
             OnPropertyChanged(nameof(HasSingleDetail));
             OnPropertyChanged(nameof(HasFreeItemDetail));
             OnPropertyChanged(nameof(DetailsWithOrderDetail));
+            OnPropertyChanged(nameof(FreeItemDetail));
             OnPropertyChanged(nameof(CanAddFreeItem));
             OnPropertyChanged(nameof(FreeItemButtonText));
             OnPropertyChanged(nameof(FreeItemButtonColor));
@@ -2858,6 +2859,10 @@ namespace LaceupMigration.ViewModels
         public IEnumerable<AdvancedCatalogDetailViewModel> DetailsWithOrderDetail => 
             Details.Where(d => d.Detail != null && 
                 (d.Detail.IsFreeItem || (!string.IsNullOrEmpty(d.Detail.ExtraFields) && d.Detail.ExtraFields.Contains("productfree"))));
+        
+        // Single free item detail for Grid binding (first free item)
+        public AdvancedCatalogDetailViewModel? FreeItemDetail => 
+            DetailsWithOrderDetail.FirstOrDefault();
 
         public void UpdateDisplayProperties(Order? order = null, bool skipFreeItemUpdate = false)
         {

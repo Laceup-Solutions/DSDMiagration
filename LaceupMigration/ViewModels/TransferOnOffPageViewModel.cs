@@ -63,6 +63,22 @@ namespace LaceupMigration.ViewModels
         {
             await Task.Run(() =>
             {
+                // If ReadOnly and we already have data with details, preserve the details
+                bool preserveDetails = ReadOnly && _allProductList.Any(x => x.Details.Count > 0);
+                var preservedDetails = new Dictionary<int, List<TransferLineDet>>();
+                
+                if (preserveDetails)
+                {
+                    // Preserve existing details
+                    foreach (var line in _allProductList)
+                    {
+                        if (line.Details.Count > 0)
+                        {
+                            preservedDetails[line.Product.ProductId] = new List<TransferLineDet>(line.Details);
+                        }
+                    }
+                }
+
                 _allProductList = new List<TransferLine>();
 
                 foreach (var item in Product.Products.Where(x => x.CategoryId > 0 && x.ProductType == ProductType.Inventory))
@@ -75,15 +91,23 @@ namespace LaceupMigration.ViewModels
                     if (Config.ButlerCustomization)
                         uom = item.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
 
-                    _allProductList.Add(new TransferLine
+                    var transferLine = new TransferLine
                     {
                         Product = item,
                         UoM = uom
-                    });
+                    };
+                    
+                    // Restore preserved details if ReadOnly
+                    if (preserveDetails && preservedDetails.ContainsKey(item.ProductId))
+                    {
+                        transferLine.Details = preservedDetails[item.ProductId];
+                    }
+                    
+                    _allProductList.Add(transferLine);
                 }
 
-                // Load from temp file if exists
-                if (File.Exists(_tempFile))
+                // Load from temp file if exists (only if not ReadOnly or no preserved details)
+                if (File.Exists(_tempFile) && (!ReadOnly || !preserveDetails))
                 {
                     LoadList();
                     Changed = true;
@@ -187,6 +211,8 @@ namespace LaceupMigration.ViewModels
                 ReadOnly = true;
                 Changed = false;
 
+                // Delete temp file after save (match Xamarin behavior)
+                // Details are preserved in _allProductList and will be restored on reload if ReadOnly is true
                 if (File.Exists(_tempFile))
                     File.Delete(_tempFile);
 
@@ -334,13 +360,7 @@ namespace LaceupMigration.ViewModels
         public async Task ShowAddQtyDialog(TransferLineViewModel lineViewModel)
         {
             // Match Xamarin ShowQtyDialog logic
-            // This will be implemented with a custom dialog showing:
-            // - Qty input
-            // - UoM spinner (if product has UoM family)
-            // - Lot selector (if product uses lot)
-            // - Lot expiration (if configured)
-            
-            // For now, show a simple prompt - will be enhanced later
+            // Get quantity input
             var qtyText = await _dialogService.ShowPromptAsync(
                 lineViewModel.Product.Name,
                 "Enter quantity",
@@ -351,13 +371,33 @@ namespace LaceupMigration.ViewModels
                 "1",
                 Keyboard.Numeric);
 
-            if (!string.IsNullOrEmpty(qtyText) && float.TryParse(qtyText, out var qty))
+            if (string.IsNullOrEmpty(qtyText) || !float.TryParse(qtyText, out var qty))
+                return;
+
+            // Match Xamarin: use absolute value
+            qty = Math.Abs(qty);
+            
+            // Select UoM if product has UoM family and config allows it
+            UnitOfMeasure unit = lineViewModel.Uom; // Default to line's UoM
+            
+            if (!string.IsNullOrEmpty(lineViewModel.Product.UoMFamily) && Config.CanChangeUoMInTransfer)
             {
-                // Match Xamarin: use absolute value and default values
-                qty = Math.Abs(qty);
-                string lot = ""; // TODO: Add lot selection when implementing full dialog
-                DateTime lotExp = DateTime.MinValue; // TODO: Add lot expiration when implementing full dialog
-                UnitOfMeasure unit = lineViewModel.Uom; // TODO: Use selected UoM from spinner when implementing full dialog
+                var familyItems = UnitOfMeasure.List.Where(x => x.FamilyId == lineViewModel.Product.UoMFamily).ToList();
+                if (familyItems.Count > 0)
+                {
+                    var uomNames = familyItems.Select(x => x.Name).ToArray();
+                    var response = await _dialogService.ShowActionSheetAsync("Select Unit of Measure","Cancel", "", uomNames);
+
+                    var selectedIndex = uomNames.ToList().IndexOf(response);
+                    if (selectedIndex >= 0 && selectedIndex < familyItems.Count)
+                    {
+                        unit = familyItems[selectedIndex];
+                    }
+                }
+            }
+            
+            string lot = ""; // TODO: Add lot selection when implementing full dialog
+            DateTime lotExp = DateTime.MinValue; // TODO: Add lot expiration when implementing full dialog
 
                 // Calculate baseQty (converted to base UoM) - match Xamarin line 1718-1719
                 double baseQty = qty;
@@ -428,7 +468,6 @@ namespace LaceupMigration.ViewModels
                 }
                 
                 UpdateTotal();
-            }
         }
 
         public async Task ShowEditQtyDialog(TransferLineDetViewModel detailViewModel, TransferLineViewModel lineViewModel)
@@ -1062,6 +1101,17 @@ namespace LaceupMigration.ViewModels
             OnPropertyChanged(nameof(StartingInventoryText));
         }
 
+        /// <summary>
+        /// Notifies that UoM-related properties have changed
+        /// </summary>
+        public void NotifyUomChanged()
+        {
+            OnPropertyChanged(nameof(UomText));
+            OnPropertyChanged(nameof(ShowUom));
+            OnPropertyChanged(nameof(StartingInventoryText));
+            OnPropertyChanged(nameof(CurrentInventoryText));
+        }
+
         [RelayCommand]
         private async Task AddQty()
         {
@@ -1110,6 +1160,19 @@ namespace LaceupMigration.ViewModels
         public bool ShowUom => Uom != null;
         public string LotText => Product.UseLot ? $"Lot: {Lot}" : string.Empty;
         public bool ShowLot => Product.UseLot && !string.IsNullOrEmpty(Lot);
+
+        // Notify QtyText when Qty changes
+        partial void OnQtyChanged(float value)
+        {
+            OnPropertyChanged(nameof(QtyText));
+        }
+
+        // Notify UomText and ShowUom when Uom changes
+        partial void OnUomChanged(UnitOfMeasure? value)
+        {
+            OnPropertyChanged(nameof(UomText));
+            OnPropertyChanged(nameof(ShowUom));
+        }
 
         [RelayCommand]
         private async Task EditQty()
