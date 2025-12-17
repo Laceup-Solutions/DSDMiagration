@@ -31,6 +31,7 @@ namespace LaceupMigration.ViewModels
         private int? _productId;
         private bool _consignmentCounting;
         private string? _comingFrom; // "Credit" or "PreviouslyOrdered"
+        private int? _scannedProductId; // Product ID from camera scan
 
         public ObservableCollection<CategoryViewModel> Categories { get; } = new();
         public ObservableCollection<ProductViewModel> Products { get; } = new();
@@ -78,6 +79,7 @@ namespace LaceupMigration.ViewModels
             _productId = productId;
             _consignmentCounting = consignmentCounting;
             _comingFrom = comingFrom;
+            _scannedProductId = null; // Clear scanned product ID on initialization
             
             if (comingFromSearch && !string.IsNullOrEmpty(productSearch))
             {
@@ -316,6 +318,14 @@ namespace LaceupMigration.ViewModels
 
         partial void OnSearchQueryChanged(string value)
         {
+            // Clear scanned product ID when user manually changes search query
+            if (SearchByProduct && !string.IsNullOrEmpty(value))
+            {
+                _scannedProductId = null;
+                LoadProducts();
+                return;
+            }
+            
             if (SearchByProduct)
                 return;
             
@@ -349,7 +359,11 @@ namespace LaceupMigration.ViewModels
         partial void OnSearchByProductChanged(bool value)
         {
             if (value)
+            {
                 SearchByCategory = false;
+                // Clear scanned product ID when switching to product search mode manually
+                _scannedProductId = null;
+            }
         }
 
         public async Task HandleProductSearchSubmitAsync()
@@ -633,20 +647,28 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            // Apply search filter if provided (matches Xamarin lines 79-86)
-            // Match Xamarin: only filter by Name, and only if searchIntent is provided
-            var searchTerm = !string.IsNullOrWhiteSpace(SearchQuery) ? SearchQuery : _productSearch;
-            if (!string.IsNullOrWhiteSpace(searchTerm))
+            // If we have a scanned product ID, filter to show only that product
+            if (_scannedProductId.HasValue)
             {
-                var searchLower = searchTerm.ToLowerInvariant();
-                // Match Xamarin lines 81-82: filter by Name only
-                var products_temp = products.Where(x => x.CategoryId > 0);
-                products = products_temp.Where(x => x.Name.ToLowerInvariant().Contains(searchLower)).ToList();
+                products = products.Where(x => x.ProductId == _scannedProductId.Value).ToList();
             }
             else
             {
-                // Match Xamarin line 90: if no search, show all products with CategoryId > 0
-                products = products.Where(x => x.CategoryId > 0).ToList();
+                // Apply search filter if provided (matches Xamarin lines 79-86)
+                // Match Xamarin: only filter by Name, and only if searchIntent is provided
+                var searchTerm = !string.IsNullOrWhiteSpace(SearchQuery) ? SearchQuery : _productSearch;
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    var searchLower = searchTerm.ToLowerInvariant();
+                    // Match Xamarin lines 81-82: filter by Name only
+                    var products_temp = products.Where(x => x.CategoryId > 0);
+                    products = products_temp.Where(x => x.Name.ToLowerInvariant().Contains(searchLower)).ToList();
+                }
+                else
+                {
+                    // Match Xamarin line 90: if no search, show all products with CategoryId > 0
+                    products = products.Where(x => x.CategoryId > 0).ToList();
+                }
             }
 
             // Apply category filter if provided (this is already handled in the initial product loading above)
@@ -798,14 +820,19 @@ namespace LaceupMigration.ViewModels
 
                 if (product != null)
                 {
-                    // Set search query to the barcode to filter products
-                    SearchQuery = scanResult;
+                    // Set the scanned product ID to filter to only this product
+                    _scannedProductId = product.ProductId;
                     
-                    // Switch to product search mode
+                    // Switch to product search mode and show products view
                     SearchByProduct = true;
                     SearchByCategory = false;
+                    ShowProducts = true;
+                    ShowCategories = false;
                     
-                    // Reload products with the barcode filter
+                    // Clear search query since we're filtering by product ID
+                    SearchQuery = string.Empty;
+                    
+                    // Reload products - will filter to show only the scanned product
                     LoadProducts();
                     
                     // If we have an order, navigate to add item page
@@ -820,15 +847,13 @@ namespace LaceupMigration.ViewModels
                             route += "&consignmentCounting=1";
                         await Shell.Current.GoToAsync(route);
                     }
-                    else
-                    {
-                        // Just show the product in the list
-                        await _dialogService.ShowAlertAsync($"Found product: {product.Name}", "Barcode Scan");
-                    }
+                    // If no order, the product will be shown filtered in the list
                 }
                 else
                 {
-                    // Product not found, but set search query anyway
+                    // Product not found - clear scanned product ID and use search query
+                    _scannedProductId = null;
+                    
                     // Ensure we're showing products view (not categories)
                     ShowProducts = true;
                     ShowCategories = false;

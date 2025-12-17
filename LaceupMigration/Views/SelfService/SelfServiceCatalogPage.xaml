@@ -31,7 +31,7 @@
                                BackgroundColor="Transparent"
                                Margin="0" />
                     <ImageButton Grid.Column="1"
-                                 Source="{mi:MaterialOutlined Icon=QrCode, IconColor=Black}"
+                                 Source="{mi:MaterialOutlined Icon=QrCodeScanner, IconColor=Black}"
                                  WidthRequest="40"
                                  HeightRequest="40"
                                  BackgroundColor="Transparent"

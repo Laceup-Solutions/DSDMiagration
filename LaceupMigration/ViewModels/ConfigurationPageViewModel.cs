@@ -313,6 +313,17 @@ namespace LaceupMigration.ViewModels
                     {
                         Config.SSID = Ssid;
                     }
+
+                    int _port = 0;
+                    
+                    Int32.TryParse(Port, out _port);
+                    
+                    Config.Port = _port;
+                    
+                    var server_port_config = await ServerHelper.GetIdForServer(Config.IPAddressGateway, Config.Port);
+                    Config.IPAddressGateway = server_port_config.Item1;
+                    Config.Port = server_port_config.Item2;
+                    
                     Config.SaveSystemSettings();
                 }
 
@@ -322,14 +333,16 @@ namespace LaceupMigration.ViewModels
                     {
                         Config.SalesmanId = salesmanId;
                     }
-                    Config.VendorName = VendorName;
                     
-                    // [MIGRATION]: Save SalesmanId to both Preferences and file system
-                    // SaveSettings() saves to Preferences (used by Initialize())
+                    Config.VendorName = VendorName;
+                }
+
+                if (CanModifyConnectionSettings || CanChangeSalesmanId)
+                {
                     Config.SaveSettings();
-                    // SaveSystemSettings() saves to file (used by LoadSystemSettings() which overrides Preferences)
                     Config.SaveSystemSettings();
                 }
+                
 
                 await _dialogService.ShowAlertAsync("Configuration saved successfully.", "Success", "OK");
                 
