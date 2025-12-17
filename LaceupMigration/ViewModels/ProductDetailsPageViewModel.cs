@@ -225,17 +225,17 @@ namespace LaceupMigration.ViewModels
             UnitPrice = unitPrice.ToCustomString();
             LowestPrice = (_product.LowestAcceptablePrice * conversion).ToCustomString();
 
-            // Inventory
+            // Inventory (matches Xamarin RecalculatePrices method - lines 865, 868)
             if (uom != null)
             {
-                OnHand = Math.Round((_product.CurrentWarehouseInventory / uom.Conversion), 2).ToString();
+                OnHand = Math.Round((_product.CurrentWarehouseInventory / uom.Conversion), Config.Round).ToString();
+                TruckInventory = Math.Round((_product.CurrentInventory / uom.Conversion), Config.Round).ToString();
             }
             else
             {
                 OnHand = _product.CurrentWarehouseInventory.ToString();
+                TruckInventory = _product.CurrentInventory.ToString();
             }
-
-            TruckInventory = _product.CurrentInventory.ToString();
 
             // Cost
             if (ShowCost)
@@ -248,8 +248,8 @@ namespace LaceupMigration.ViewModels
             RetailPriceUnit = $"Retail Price(Unit): {unitPrice.ToCustomString()}";
             RetailPricePercent = 0;
 
-            // Pallet Capacity
-            PalletCapacity = "0"; // This would need to come from product data if available
+            // Pallet Capacity (matches Xamarin: ProductDetailsPalletCapacity.Text = product.PalletSize.ToString())
+            PalletCapacity = _product.PalletSize.ToString();
         }
 
         private void LoadExtraProperties()
