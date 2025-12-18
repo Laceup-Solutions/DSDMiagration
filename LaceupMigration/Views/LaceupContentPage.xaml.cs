@@ -88,16 +88,16 @@ namespace LaceupMigration.Views
 
         protected void UpdateMenuToolbarItem()
         {
+            // Don't modify menu if using custom menu
+            if (UseCustomMenu)
+                return;
+
             // Remove existing menu item if present
             var existingItem = ToolbarItems.FirstOrDefault(x => x.Text == "MENU" && x.Order == ToolbarItemOrder.Primary);
             if (existingItem != null)
             {
                 ToolbarItems.Remove(existingItem);
             }
-
-            // Don't add menu if using custom menu
-            if (UseCustomMenu)
-                return;
 
             // Check if there will be any menu options
             if (!HasMenuOptions())
