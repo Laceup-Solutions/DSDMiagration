@@ -45,9 +45,6 @@ namespace LaceupMigration.ViewModels
         private string _paymentGoalText = string.Empty;
 
         [ObservableProperty]
-        private string _totalSelectedText = "Total Selected: $0.00";
-
-        [ObservableProperty]
         private bool _canAddPayment;
 
         [ObservableProperty]
@@ -64,6 +61,24 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private string _searchQuery = string.Empty;
+
+        [ObservableProperty]
+        private string _openBalanceValue = "$0.00";
+
+        [ObservableProperty]
+        private string _discountValue = "$0.00";
+
+        [ObservableProperty]
+        private string _invoiceValue = "$0.00";
+
+        [ObservableProperty]
+        private string _creditValue = "$0.00";
+
+        [ObservableProperty]
+        private string _totalValue = "$0.00";
+
+        [ObservableProperty]
+        private string _totalBalanceValue = "$0.00";
 
         public SelectInvoicePageViewModel(DialogService dialogService)
         {
@@ -346,6 +361,50 @@ namespace LaceupMigration.ViewModels
             CanAddPayment = InvoiceItems.Count > 0;
             ShowCreditAccount = Config.UseCreditAccount && !Config.HidePriceInTransaction;
             ShowPaymentCard = false;
+            
+            UpdateSummaryTotals();
+        }
+        
+        private void UpdateSummaryTotals()
+        {
+            // Calculate totals from all items (not just selected)
+            var allTotal = _masterList.Sum(x => x.OpenAmount);
+            
+            // For selected items
+            var selected = InvoiceItems.Where(x => x.IsSelected).ToList();
+            var selectedOpenAmount = selected.Where(x => x.OpenAmount > 0).Sum(x => x.OpenAmount);
+            var selectedCreditAmount = selected.Where(x => x.OpenAmount < 0).Sum(x => x.OpenAmount);
+            var selectedTotal = selected.Sum(x => x.OpenAmount);
+            
+            // Calculate discount for selected items only (matching Xamarin logic)
+            double selectedDiscountTotal = 0;
+            if (_term != null && Config.UsePaymentDiscount)
+            {
+                foreach (var item in selected.Where(x => x.Invoice != null && x.OpenAmount > 0))
+                {
+                    selectedDiscountTotal += item.DiscountAmount;
+                }
+            }
+            
+            // Open Balance = Client Balance - Selected Total (matching Xamarin: openBalance.Text = (balance - total).ToCustomString())
+            var clientBalance = _client != null ? _client.ClientBalanceInDevice : 0;
+            OpenBalanceValue = (clientBalance - selectedTotal).ToCustomString();
+            
+            // Discount = discount for selected items (matching Xamarin: paymentDiscount.Text = discountTotal.ToCustomString())
+            DiscountValue = selectedDiscountTotal.ToCustomString();
+            
+            // Invoice = sum of selected items where OpenAmount > 0 (matching Xamarin: invoiceTotal.Text = openAmount.ToCustomString())
+            InvoiceValue = selectedOpenAmount.ToCustomString();
+            
+            // Credit = sum of selected items where OpenAmount < 0 (NEGATIVE value, no Math.Abs - matching Xamarin: creditTotal.Text = creditAmount.ToCustomString())
+            CreditValue = selectedCreditAmount.ToCustomString();
+            
+            // Total = sum of all selected items (matching Xamarin: TotalLabel.Text = total.ToCustomString())
+            TotalValue = selectedTotal.ToCustomString();
+            
+            // Total Balance = GrandTotal = all items total - selected total (matching Xamarin: balanceTotal.Text = GrandTotal.ToCustomString() where GrandTotal = masterList.Sum(x => x.Open) - total)
+            var grandTotal = allTotal - selectedTotal;
+            TotalBalanceValue = grandTotal.ToCustomString();
         }
 
         private void UpdateTotals()
@@ -365,10 +424,11 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            TotalSelectedText = $"Total Selected: {total.ToCustomString()}";
             CanAddPayment = selected.Count > 0 && total >= 0; // Can't add payment if total is negative
             CanCreditAccount = CanAddPayment;
             CanPaymentCard = CanAddPayment;
+            
+            UpdateSummaryTotals();
         }
 
         [RelayCommand]

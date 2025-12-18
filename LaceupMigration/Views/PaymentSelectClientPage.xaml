@@ -28,12 +28,20 @@
                             EmptyView="No clients with open invoices available.">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:ClientItemViewModel">
-                        <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
-                            <Label Text="{Binding ClientName}"
-                                   FontSize="16"
-                                   FontAttributes="Bold"
-                                   TextColor="{StaticResource Gray900}" />
-                        </Frame>
+                        <Grid Style="{StaticResource CollectionViewItemStyle}">
+                            <Border Padding="12" 
+                                    Margin="0,0,0,8" 
+                                    StrokeThickness="1"
+                                    Stroke="{StaticResource Gray200}"
+                                    StrokeShape="RoundRectangle 8"
+                                    BackgroundColor="{StaticResource White}"
+                                    InputTransparent="True">
+                                <Label Text="{Binding ClientName}"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource Gray900}" />
+                            </Border>
+                        </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>

@@ -6,15 +6,16 @@
              x:Class="LaceupMigration.Views.ClientDetailsPage"
              x:DataType="vm:ClientDetailsPageViewModel"
              Shell.TabBarIsVisible="False"
-             Shell.Title="Client Details">
+             Shell.Title="Customer Details">
     <ContentPage.Resources>
         <converters:IsStringNotEmptyConverter x:Key="IsStringNotEmptyConverter" />
+        <converters:StringToHeightConverter x:Key="StringToHeightConverter" />
     </ContentPage.Resources>
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Menu" Order="Primary" Priority="0" />
     </ContentPage.ToolbarItems>
 
-    <ScrollView>
+    <ScrollView x:Name="MainScrollView">
         <VerticalStackLayout Padding="16" Spacing="16">
             <Border BackgroundColor="#BA2D0B"
                     StrokeShape="RoundRectangle 8"
@@ -101,61 +102,81 @@
                 <Label Text="Recent and Open Transactions"
                        FontAttributes="Bold"
                        FontSize="14"
-                       TextColor="{StaticResource PrimaryDark}" />
-                <SearchBar Placeholder="Search invoice number"
-                           Text="{Binding InvoiceSearchQuery}"/>
-                <!-- [MIGRATION]: CollectionView with grouping enabled, matching Xamarin ListView IsGroupingEnabled="True" -->
-                <!-- Groups invoices by CompanyName, exactly like Xamarin ClientInvoicesAdapter -->
+                       TextColor="{StaticResource Gray400}" />
+                <SearchBar Placeholder="Search invoice number" Margin="0,0,0,5"
+                           Text="{Binding InvoiceSearchQuery}"
+                           SearchButtonPressed="SearchBar_SearchButtonPressed"/>
                 <CollectionView x:Name="InvoicesCollectionView"
                                 ItemsSource="{Binding FilteredInvoices}"
                                 IsGrouped="True"
                                 SelectionMode="Single"
                                 RemainingItemsThreshold="1"
                                 RemainingItemsThresholdReachedCommand="{Binding LoadMoreInvoicesCommand}">
-                    <!-- [MIGRATION]: GroupHeaderTemplate matches Xamarin headerLayout.xml style -->
-                    <!-- Xamarin: gray background (#EEEEEE), bold text, 18dp, padding 5dp -->
-                    <!-- [MIGRATION]: Hide header when empty (matches Xamarin - invoices without CompanyName have no header) -->
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout Orientation="Vertical" ItemSpacing="0" />
+                    </CollectionView.ItemsLayout>
                     <CollectionView.GroupHeaderTemplate>
                         <DataTemplate x:DataType="vm:InvoiceGroup">
-                            <Border BackgroundColor="#EEEEEE"
-                                    Padding="5"
-                                    Margin="0,8,0,0"
-                                    IsVisible="{Binding Header, Converter={StaticResource IsStringNotEmptyConverter}}">
+                            <Grid BackgroundColor="#EEEEEE"
+                                  Padding="5"
+                                  HeightRequest="{Binding Header, Converter={StaticResource StringToHeightConverter}}">
                                 <Label Text="{Binding Header}"
                                        FontSize="18"
                                        FontAttributes="Bold"
-                                       TextColor="#333333" />
-                            </Border>
+                                       TextColor="#333333"
+                                       IsVisible="{Binding Header, Converter={StaticResource IsStringNotEmptyConverter}}" />
+                            </Grid>
                         </DataTemplate>
                     </CollectionView.GroupHeaderTemplate>
-                    <!-- [MIGRATION]: ItemTemplate receives ClientInvoiceViewModel items from the group -->
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="vm:ClientInvoiceViewModel">
-                            <Grid Style="{StaticResource CollectionViewItemStyle}">
-                                <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" InputTransparent="True">
-                                <Frame.GestureRecognizers>
+                            <Grid BackgroundColor="{StaticResource White}"
+                                  Margin="0,5,0,5">
+                                <Grid.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding Source={x:Reference InvoicesCollectionView}, Path=BindingContext.HandleInvoiceSelectedCommand}" 
                                                           CommandParameter="{Binding}" />
-                                </Frame.GestureRecognizers>
-                                <VerticalStackLayout Spacing="4" InputTransparent="True">
+                                </Grid.GestureRecognizers>
+                                <BoxView BackgroundColor="{StaticResource Gray200}"
+                                         HeightRequest="1"
+                                         VerticalOptions="End"
+                                         HorizontalOptions="Fill"
+                                         Margin="0,0,0,0" />
+                                <VerticalStackLayout Padding="0"
+                                                     Spacing="4">
                                     <Label Text="{Binding NumberText}"
+                                           FontSize="16"
                                            FontAttributes="Bold"
-                                           TextColor="{StaticResource Gray900}" />
-                                    <Label Text="{Binding CreatedText}" FontSize="13" TextColor="{StaticResource Gray600}" />
-                                    <Label Text="{Binding DueText}" FontSize="13" TextColor="{Binding DueTextColor}" />
-                                    <Label Text="{Binding TotalText}" FontSize="13" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowAmount}" />
-                                    <Label Text="{Binding OpenText}" FontSize="13" TextColor="{Binding OpenTextColor}" IsVisible="{Binding ShowAmount}" />
-                                    <Label Text="{Binding StatusText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray600}" IsVisible="{Binding HasStatus}" />
-                                    <Label Text="{Binding DiscountText}" FontSize="13" TextColor="{StaticResource colorLaceupGreen}" IsVisible="{Binding HasDiscount}" />
-                                    <Label Text="{Binding PastDueText}" FontSize="12" TextColor="{StaticResource colorLaceupRed}" IsVisible="{Binding ShowPastDue}" />
+                                           TextColor="{Binding DueTextColor}" />
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                            <Label Text="{Binding CreatedText}" FontSize="14" TextColor="{StaticResource Gray600}" />
+                                            <Label Text="{Binding DueText}" FontSize="14" TextColor="{Binding DueTextColor}" />
+                                        </VerticalStackLayout>
+                                        <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="End">
+                                            <Label Text="{Binding TotalText}" 
+                                                   FontSize="14" 
+                                                   TextColor="{StaticResource Gray900}" 
+                                                   HorizontalOptions="End"
+                                                   HorizontalTextAlignment="End"
+                                                   IsVisible="{Binding ShowAmount}" />
+                                            <Label Text="{Binding OpenText}" 
+                                                   FontSize="14" 
+                                                   TextColor="{Binding DueTextColor}" 
+                                                   HorizontalOptions="End"
+                                                   HorizontalTextAlignment="End"
+                                                   IsVisible="{Binding ShowAmount}" />
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                    <Label Text="{Binding StatusText}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource Gray600}" IsVisible="{Binding HasStatus}" />
+                                    <Label Text="{Binding DiscountText}" FontSize="14" TextColor="{StaticResource colorLaceupGreen}" IsVisible="{Binding HasDiscount}" />
+                                    <Label Text="{Binding PastDueText}" FontSize="13" TextColor="{StaticResource colorLaceupRed}" IsVisible="{Binding ShowPastDue}" />
                                     <StackLayout Orientation="Vertical"
                                                  Spacing="2"
                                                  IsVisible="{Binding ShowPaymentGoal}">
-                                        <Label Text="{Binding GoalPaymentText}" FontSize="12" TextColor="{StaticResource colorLaceupGreen}" />
-                                        <Label Text="{Binding PendingDaysText}" FontSize="12" TextColor="{StaticResource Gray600}" />
+                                        <Label Text="{Binding GoalPaymentText}" FontSize="13" TextColor="{StaticResource colorLaceupGreen}" />
+                                        <Label Text="{Binding PendingDaysText}" FontSize="13" TextColor="{StaticResource Gray600}" />
                                     </StackLayout>
                                 </VerticalStackLayout>
-                                </Frame>
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>

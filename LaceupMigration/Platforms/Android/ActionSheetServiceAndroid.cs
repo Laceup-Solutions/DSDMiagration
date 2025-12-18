@@ -166,7 +166,13 @@ namespace LaceupMigration.Platforms.Android
                         
                         clickableItem.SetGravity(GravityFlags.CenterVertical);
 
-                        clickableItem.SetBackgroundResource(global::Android.Resource.Drawable.ListSelectorBackground);
+                        // Use custom drawable with Gray100 (#E1E1E1) instead of default orange
+                        // Create ripple drawable with Gray100 for selection highlight
+                        var gray100Color = global::Android.Graphics.Color.ParseColor("#E1E1E1");
+                        var colorStateList = global::Android.Content.Res.ColorStateList.ValueOf(gray100Color);
+                        var contentDrawable = new global::Android.Graphics.Drawables.ColorDrawable(global::Android.Graphics.Color.Transparent);
+                        var rippleDrawable = new global::Android.Graphics.Drawables.RippleDrawable(colorStateList, contentDrawable, null);
+                        clickableItem.Background = rippleDrawable;
                         
                         var clickableLayoutParams = new AndroidLinearLayout.LayoutParams(
                             global::Android.Views.ViewGroup.LayoutParams.MatchParent,

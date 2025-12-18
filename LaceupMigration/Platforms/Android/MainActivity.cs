@@ -6,6 +6,7 @@ using Android.App;
 using Android.Content.PM;
 using Android.OS;
 using Android.Runtime;
+using Android.Views;
 using AndroidX.AppCompat.App;
 using AndroidX.Core.App;
 using AndroidX.Core.Content;
@@ -19,7 +20,16 @@ namespace LaceupMigration
         const int RequestStoragePermissionsCode = 100;
         protected override void OnCreate(Bundle savedInstanceState)
         {
+            // Apply theme overlay BEFORE base.OnCreate to ensure ripple color is set early
+            if (Theme != null)
+            {
+                Theme.ApplyStyle(Resource.Style.LaceupThemeOverlay, true);
+            }
+            
             base.OnCreate(savedInstanceState);
+
+            // Configure window to adjust for keyboard, allowing scrolling when keyboard is visible
+            Window?.SetSoftInputMode(SoftInput.AdjustResize);
 
             AppCompatDelegate.DefaultNightMode = AppCompatDelegate.ModeNightNo;
             

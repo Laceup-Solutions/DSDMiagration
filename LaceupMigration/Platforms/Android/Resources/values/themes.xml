@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Apply LaceupThemeOverlay to the main theme to override ripple colors -->
+    <style name="MainTheme" parent="@style/Maui.MainTheme">
+        <item name="colorControlActivated">@color/colorControlActivated</item>
+        <item name="android:colorControlActivated">@color/colorControlActivated</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:colorAccent">@color/colorAccent</item>
+        
+    </style>
+    
+</resources>

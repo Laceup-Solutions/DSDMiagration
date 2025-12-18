@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Override control highlight colors to use Laceup blue -->
-    <!-- Using Theme.AppCompat.Light as parent - this is a standard Android theme that exists -->
+    <!-- Override control highlight colors to use Gray100 for ripple effects -->
+    <!-- This overlay will be applied to the main theme to change ripple color from orange to Gray100 -->
     <style name="LaceupThemeOverlay" parent="Theme.AppCompat.Light">
-        <item name="colorControlHighlight">@color/colorControlHighlight</item>
-        <item name="android:colorControlHighlight">@color/colorControlHighlight</item>
+        <item name="colorControlHighlight">@color/Gray100</item>
+        <item name="android:colorControlHighlight">@color/Gray100</item>
         <item name="colorControlActivated">@color/colorControlActivated</item>
         <item name="android:colorControlActivated">@color/colorControlActivated</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="android:colorAccent">@color/colorAccent</item>
+        <!-- Apply list item selector for RecyclerView items -->
+<!--        <item name="android:listChoiceBackgroundIndicator">@drawable/list_item_selector</item>-->
     </style>
 </resources>
 
