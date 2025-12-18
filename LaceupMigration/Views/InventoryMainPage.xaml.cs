@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class InventoryMainPage : ContentPage, IQueryAttributable
+    public partial class InventoryMainPage : IQueryAttributable
     {
         private readonly InventoryMainPageViewModel _viewModel;
         private int? _actionIntent;

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.Views.BatchPage"
@@ -18,26 +18,18 @@
                 <Button Text="Print"
                         Command="{Binding PrintCommand}"
                         IsEnabled="{Binding CanPrint}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="0" />
                 <Button Text="Finalize"
                         Command="{Binding FinalizeCommand}"
                         IsEnabled="{Binding CanFinalize}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="1" />
                 <Button Text="Void"
                         Command="{Binding VoidCommand}"
                         IsEnabled="{Binding CanVoid}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="2" />
                 <Button Text="Clock Out"
                         Command="{Binding ClockOutCommand}"
                         IsEnabled="{Binding CanClockOut}"
-                        BackgroundColor="{StaticResource Gray500}"
-                        TextColor="White"
                         Grid.Column="3" />
             </Grid>
 
@@ -88,10 +80,17 @@
                                            FontSize="16"
                                            FontAttributes="Bold"
                                            TextColor="{StaticResource PrimaryDark}" />
-                                    <Label Text="{Binding InvoiceAmountText}"
+                                    <Label Text="{Binding TotalText}"
                                            FontSize="14"
                                            TextColor="{StaticResource Gray900}"
                                            IsVisible="{Binding ShowTotal}" />
+                                    <!-- Status Label (Finalized/Voided/Reshipped/Ready To Finalize) -->
+                                    <Label Text="{Binding StatusText}"
+                                           FontSize="13"
+                                           FontAttributes="Bold"
+                                           TextColor="{Binding StatusColor}"
+                                           IsVisible="{Binding ShowStatus}"
+                                           Margin="0,2,0,0" />
                                     <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                                         <Label Text="{Binding TermText}"
                                                FontSize="13"
@@ -111,4 +110,4 @@
             </CollectionView>
         </Grid>
     </ContentPage.Content>
-</ContentPage>
+</local:LaceupContentPage>

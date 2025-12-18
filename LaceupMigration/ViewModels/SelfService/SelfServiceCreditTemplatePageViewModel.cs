@@ -40,6 +40,9 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private string _totalText = "Total: $0.00";
 
+        [ObservableProperty]
+        private bool _canEdit = true;
+
         public SelfServiceCreditTemplatePageViewModel(IDialogService dialogService, ILaceupAppService appService)
         {
             _dialogService = dialogService;
@@ -53,6 +56,10 @@ namespace LaceupMigration.ViewModels.SelfService
                 _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId);
                 if (_order != null)
                 {
+                    // Xamarin PreviouslyOrderedTemplateActivity logic:
+                    // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
+                    CanEdit = !(!_order.AsPresale && (_order.Finished || _order.Voided));
+                    
                     ClientName = _order.Client?.ClientName ?? string.Empty;
                     LoadOrderLines();
                     RefreshTotals();
@@ -62,6 +69,12 @@ namespace LaceupMigration.ViewModels.SelfService
 
         public void OnAppearing()
         {
+            if (_order != null)
+            {
+                // Xamarin PreviouslyOrderedTemplateActivity logic:
+                // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
+                CanEdit = !(!_order.AsPresale && (_order.Finished || _order.Voided));
+            }
             LoadOrderLines();
             RefreshTotals();
         }
@@ -92,37 +105,37 @@ namespace LaceupMigration.ViewModels.SelfService
             TotalText = $"Total: {_order.OrderTotalCost().ToCustomString()}";
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanEdit))]
         private async Task History()
         {
-            if (_order == null)
+            if (_order == null || !CanEdit)
                 return;
 
             await Shell.Current.GoToAsync($"selfservice/template?orderId={_order.OrderId}");
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanEdit))]
         private async Task Catalog()
         {
-            if (_order == null)
+            if (_order == null || !CanEdit)
                 return;
 
             await Shell.Current.GoToAsync($"selfservice/catalog?orderId={_order.OrderId}");
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanEdit))]
         private async Task Search()
         {
-            if (_order == null)
+            if (_order == null || !CanEdit)
                 return;
 
             await Shell.Current.GoToAsync($"selfservice/categories?orderId={_order.OrderId}");
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanEdit))]
         private async Task Send()
         {
-            if (_order == null)
+            if (_order == null || !CanEdit)
                 return;
 
             var confirm = await _dialogService.ShowConfirmationAsync(
@@ -150,10 +163,10 @@ namespace LaceupMigration.ViewModels.SelfService
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanEdit))]
         private async Task RemoveLine(OrderLineItemViewModel lineItem)
         {
-            if (lineItem == null || _order == null)
+            if (lineItem == null || _order == null || !CanEdit)
                 return;
 
             var confirm = await _dialogService.ShowConfirmationAsync(

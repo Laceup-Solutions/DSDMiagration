@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.FinalizeBatchPage"
+             x:DataType="vm:FinalizeBatchPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Finalize Batch">
+    <ContentPage.Content>
+        <VerticalStackLayout Spacing="10" Padding="16">
+            <!-- Action Buttons -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                <!-- Signature Button -->
+                <Button Grid.Row="0" Grid.Column="0"
+                        Text="Signature"
+                        Command="{Binding SignatureCommand}"
+                        IsEnabled="{Binding IsSignatureEnabled}"
+                        IsVisible="{Binding ShowSignatureButton}" />
+
+                <!-- Payment Button -->
+                <Button Grid.Row="0" Grid.Column="1"
+                        Text="Payment"
+                        Command="{Binding PaymentCommand}"
+                        IsEnabled="{Binding IsPaymentEnabled}"
+                        IsVisible="{Binding ShowPaymentButton}" />
+
+                <!-- Print Button -->
+                <Button Grid.Row="1" Grid.Column="0"
+                        Text="Print"
+                        Command="{Binding PrintCommand}"
+                        IsVisible="{Binding ShowPrintButton}" />
+
+                <!-- Send By Email Button -->
+                <Button Grid.Row="1" Grid.Column="1"
+                        Text="Send By Email"
+                        Command="{Binding SendByEmailCommand}"
+                        IsVisible="{Binding ShowSendByEmailButton}" />
+
+                <!-- Print Proof of Delivery Button -->
+                <Button Grid.Row="2" Grid.Column="0"
+                        Text="Print POD"
+                        Command="{Binding PrintProofOfDeliveryCommand}"
+                        IsVisible="{Binding ShowPrintProofOfDeliveryButton}" />
+
+                <!-- Print Pick Ticket Button -->
+                <Button Grid.Row="2" Grid.Column="1"
+                        Text="Print Pick Ticket"
+                        Command="{Binding PrintPickTicketCommand}"
+                        IsVisible="{Binding ShowPrintPickTicketButton}" />
+
+                <!-- Done Button -->
+                <Button Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                        Text="Done"
+                        Command="{Binding DoneCommand}"
+                        BackgroundColor="{StaticResource PrimaryDark}"
+                        TextColor="White"
+                        FontSize="16"
+                        Margin="0,10,0,0" />
+            </Grid>
+        </VerticalStackLayout>
+    </ContentPage.Content>
+</local:LaceupContentPage>
+

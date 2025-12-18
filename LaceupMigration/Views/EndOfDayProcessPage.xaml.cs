@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class EndOfDayProcessPage : ContentPage
+    public partial class EndOfDayProcessPage 
     {
         private readonly EndOfDayProcessPageViewModel _viewModel;
 

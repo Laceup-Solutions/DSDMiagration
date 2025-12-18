@@ -1,10 +1,11 @@
 using LaceupMigration.ViewModels;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace LaceupMigration.Views
 {
-    public partial class OrderCreditPage : ContentPage, IQueryAttributable
+    public partial class OrderCreditPage : LaceupContentPage, IQueryAttributable
     {
         private readonly OrderCreditPageViewModel _viewModel;
 
@@ -13,13 +14,13 @@ namespace LaceupMigration.Views
             InitializeComponent();
             _viewModel = viewModel;
             BindingContext = _viewModel;
+        }
 
-            // Wire up menu toolbar item
-            var menuItem = ToolbarItems.FirstOrDefault();
-            if (menuItem != null)
-            {
-                menuItem.Command = _viewModel.ShowMenuCommand;
-            }
+        // Override to integrate ViewModel menu with base menu
+        protected override List<MenuOption> GetPageSpecificMenuOptions()
+        {
+            // Get menu options from ViewModel - they're already MenuOption type
+            return _viewModel.BuildMenuOptions();
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)

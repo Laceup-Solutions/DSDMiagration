@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace LaceupMigration.Views
 {
-    public partial class SentPaymentsInPackagePage : ContentPage, IQueryAttributable
+    public partial class SentPaymentsInPackagePage : IQueryAttributable
     {
         private readonly SentPaymentsInPackagePageViewModel _viewModel;
 

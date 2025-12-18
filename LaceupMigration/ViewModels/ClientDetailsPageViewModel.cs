@@ -119,6 +119,14 @@ namespace LaceupMigration.ViewModels
             await Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Gets the current client ID for state saving purposes.
+        /// </summary>
+        public int GetClientId()
+        {
+            return _client?.ClientId ?? 0;
+        }
+
         private async Task RefreshAsync()
         {
             BuildClientDetails();

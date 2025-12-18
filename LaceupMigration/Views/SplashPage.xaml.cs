@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration
 {
-	public partial class SplashPage : ContentPage
+	public partial class SplashPage 
 	{
 		private readonly SplashPageViewModel _viewModel;
 

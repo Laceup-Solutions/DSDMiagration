@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
-             x:Class="LaceupMigration.Views.OrderCreditPage"
-             x:DataType="vm:OrderCreditPageViewModel"
-             Shell.NavBarIsVisible="True"
-             Shell.TabBarIsVisible="False"
-             Title="Add Credit Items">
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="MENU" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
-    </ContentPage.ToolbarItems>
+<local:LaceupContentPage
+    xmlns:local="clr-namespace:LaceupMigration.Views"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+    x:Class="LaceupMigration.Views.OrderCreditPage"
+    x:DataType="vm:OrderCreditPageViewModel"
+    Shell.NavBarIsVisible="True"
+    Shell.TabBarIsVisible="False"
+    Title="Add Credit Items">
+    
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,Auto,Auto,*">
             <!-- Action Buttons -->
@@ -17,26 +17,18 @@
                 <Button Text="Prod"
                         Command="{Binding AddProductCommand}"
                         IsEnabled="{Binding CanEdit}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="0" />
                 <Button Text="Cats"
                         Command="{Binding ViewCategoriesCommand}"
                         IsEnabled="{Binding CanEdit}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="1" />
                 <Button Text="Search"
                         Command="{Binding SearchCommand}"
                         IsEnabled="{Binding CanEdit}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="2" />
                 <Button Text="{Binding DoneButtonText}"
                         Command="{Binding DoneCommand}"
                         IsEnabled="{Binding CanEdit}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="3" />
             </Grid>
 
@@ -153,10 +145,9 @@
                                         Text="{Binding QuantityButtonText}"
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type vm:OrderCreditPageViewModel}}, Path=EditLineItemCommand}"
                                         CommandParameter="{Binding .}"
+                                        IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:OrderCreditPageViewModel}}, Path=CanEdit}"
                                         WidthRequest="50"
                                         HeightRequest="50"
-                                        BackgroundColor="{StaticResource PrimaryDark}"
-                                        TextColor="White"
                                         FontSize="18"
                                         FontAttributes="Bold"
                                         CornerRadius="4"
@@ -177,4 +168,4 @@
             </CollectionView>
         </Grid>
     </ContentPage.Content>
-</ContentPage>
+</local:LaceupContentPage >

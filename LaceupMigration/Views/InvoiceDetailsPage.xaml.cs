@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class InvoiceDetailsPage : ContentPage, IQueryAttributable
+    public partial class InvoiceDetailsPage : IQueryAttributable
     {
         private readonly InvoiceDetailsPageViewModel _viewModel;
 

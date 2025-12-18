@@ -219,7 +219,20 @@ namespace LaceupMigration.ViewModels
             ClientName = _order.Client?.ClientName ?? "Unknown Client";
             OrderTypeText = GetOrderTypeText(_order);
             TermsText = "Terms: " + _order.Term;
-            CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
+            
+            // Xamarin PreviouslyOrderedTemplateActivity logic:
+            // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
+            bool isReadOnly = !_order.AsPresale && (_order.Finished || _order.Voided);
+            
+            if (isReadOnly)
+            {
+                CanEdit = false;
+            }
+            else
+            {
+                CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
+            }
+            
             ShowSendButton = _order.AsPresale;
 
             // Company info
@@ -300,6 +313,22 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task RefreshAsync()
         {
+            if (_order != null)
+            {
+                // Xamarin PreviouslyOrderedTemplateActivity logic:
+                // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
+                bool isReadOnly = !_order.AsPresale && (_order.Finished || _order.Voided);
+                
+                if (isReadOnly)
+                {
+                    CanEdit = false;
+                }
+                else
+                {
+                    CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
+                }
+            }
+
             // Clear cache to force rebuild
             _cachedItems = null;
             _cachedItemType = null;
@@ -1498,10 +1527,10 @@ namespace LaceupMigration.ViewModels
             RefreshTotals();
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanEdit))]
         private async Task EditQuantityAsync(AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel? detail)
         {
-            if (detail == null || _order == null)
+            if (detail == null || _order == null || !CanEdit)
                 return;
 
             var currentQty = detail.Detail?.Qty ?? 0;
@@ -2685,6 +2714,15 @@ namespace LaceupMigration.ViewModels
             var canNavigate = await FinalizeOrderAsync();
             if (canNavigate)
             {
+                // [ACTIVITY STATE]: Remove state when properly exiting
+                // Build route with orderId if available
+                var route = "advancedcatalog";
+                if (_order != null)
+                {
+                    route += $"?orderId={_order.OrderId}";
+                }
+                Helpers.NavigationHelper.RemoveNavigationState(route);
+                
                 await Shell.Current.GoToAsync("..");
             }
         }
@@ -2786,6 +2824,7 @@ namespace LaceupMigration.ViewModels
             OnPropertyChanged(nameof(HasMultipleDetails));
             OnPropertyChanged(nameof(HasSingleDetail));
             OnPropertyChanged(nameof(HasFreeItemDetail));
+            OnPropertyChanged(nameof(ShowFreeItemDetail));
             OnPropertyChanged(nameof(DetailsWithOrderDetail));
             OnPropertyChanged(nameof(FreeItemDetail));
             OnPropertyChanged(nameof(CanAddFreeItem));
@@ -2829,6 +2868,8 @@ namespace LaceupMigration.ViewModels
         
         [ObservableProperty] private bool _canAddFreeItem = false;
 
+        [ObservableProperty] private bool _showFreeItemButton = false;
+
         [ObservableProperty] private string _freeItemButtonText = "Add Free Item";
 
         [ObservableProperty] private Microsoft.Maui.Graphics.Color _freeItemButtonColor = Microsoft.Maui.Graphics.Color.FromArgb("#007AFF"); // Blue
@@ -2851,6 +2892,9 @@ namespace LaceupMigration.ViewModels
         
         public bool HasFreeItemDetail => Details.Any(d => d.Detail != null && (d.Detail.IsFreeItem || 
             (!string.IsNullOrEmpty(d.Detail.ExtraFields) && d.Detail.ExtraFields.Contains("productfree"))));
+        
+        // Show free item detail section only if free item exists AND it's a Sales item in Order order
+        public bool ShowFreeItemDetail => HasFreeItemDetail && ShowFreeItemButton;
         
         // Only show details that have OrderDetail attached (for sublines display)
         // This includes free items - they show as sublines
@@ -2883,14 +2927,23 @@ namespace LaceupMigration.ViewModels
                 var listPrice = Product.PriceLevel0;
                 ListPriceText = $"List Price: {listPrice.ToCustomString()}";
 
+                // ShowFreeItemButton: only visible for Sales items (ItemType == 0) and OrderType.Order (not Credit or Return)
+                ShowFreeItemButton = order != null && 
+                                     order.OrderType == OrderType.Order && 
+                                     ItemType == 0;
+
                 // CanAddFreeItem: enabled if main line has qty > 0 and no free items exist yet
+                // Only available for Sales items in Order orders
                 var mainDetailQty = PrimaryDetail?.Detail?.Qty ?? 0;
                 var hasFreeItems = HasFreeItemDetail;
-                CanAddFreeItem = Config.AllowFreeItems && 
-                                 order != null && 
+                CanAddFreeItem = ShowFreeItemButton &&
+                                 Config.AllowFreeItems && 
                                  !order.Locked() && 
                                  mainDetailQty > 0 && 
                                  !hasFreeItems;
+                
+                // Notify ShowFreeItemDetail property change
+                OnPropertyChanged(nameof(ShowFreeItemDetail));
 
                 // Update Free Item button text and color
                 if (hasFreeItems)

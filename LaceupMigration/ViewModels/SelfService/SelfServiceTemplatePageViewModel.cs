@@ -19,6 +19,9 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private ObservableCollection<TemplateItemViewModel> _templateItems = new();
 
+        [ObservableProperty]
+        private bool _canEdit = true;
+
         public SelfServiceTemplatePageViewModel(IDialogService dialogService, ILaceupAppService appService)
         {
             _dialogService = dialogService;
@@ -49,6 +52,10 @@ namespace LaceupMigration.ViewModels.SelfService
         {
             if (_order == null) return;
 
+            // Xamarin PreviouslyOrderedTemplateActivity logic:
+            // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
+            CanEdit = !(!_order.AsPresale && (_order.Finished || _order.Voided));
+
             ClientName = _order.Client.ClientName;
             _order.Client.EnsurePreviouslyOrdered();
 
@@ -59,16 +66,18 @@ namespace LaceupMigration.ViewModels.SelfService
                 {
                     if (item.Last?.Product != null)
                     {
-                        TemplateItems.Add(new TemplateItemViewModel(item.Last));
+                        var viewModel = new TemplateItemViewModel(item.Last);
+                        viewModel.IsEnabled = CanEdit;
+                        TemplateItems.Add(viewModel);
                     }
                 }
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanEdit))]
         private async Task AddItem(TemplateItemViewModel item)
         {
-            if (item?.LastDetail == null || _order == null) return;
+            if (item?.LastDetail == null || _order == null || !CanEdit) return;
 
             var product = item.LastDetail.Product;
             var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
@@ -110,6 +119,9 @@ namespace LaceupMigration.ViewModels.SelfService
     public partial class TemplateItemViewModel : ObservableObject
     {
         public InvoiceDetail LastDetail { get; }
+
+        [ObservableProperty]
+        private bool _isEnabled = true;
 
         public string ProductName => LastDetail?.Product?.Name ?? string.Empty;
         public string LastOrderedText => LastDetail != null ? $"Last ordered: {LastDetail.Date.ToShortDateString()}" : string.Empty;

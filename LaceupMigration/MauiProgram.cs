@@ -59,6 +59,7 @@ namespace LaceupMigration
 
 			builder.Services.AddSingleton<Services.ILaceupAppService, Services.LaceupAppService>();
 			builder.Services.AddSingleton<Services.AdvancedOptionsService>();
+			builder.Services.AddSingleton<Services.IActivityStateRestorationService, Services.ActivityStateRestorationService>();
 
 			// Register AppShell
 			builder.Services.AddSingleton<AppShell>();
@@ -96,6 +97,10 @@ namespace LaceupMigration
 		// Order related pages
 		builder.Services.AddTransient<BatchPage>();
 		builder.Services.AddTransient<ViewModels.BatchPageViewModel>();
+		builder.Services.AddTransient<FinalizeBatchPage>();
+		builder.Services.AddTransient<ViewModels.FinalizeBatchPageViewModel>();
+		builder.Services.AddTransient<OrderSignaturePage>();
+		builder.Services.AddTransient<ViewModels.OrderSignaturePageViewModel>();
 		builder.Services.AddTransient<OrderDetailsPage>();
 		builder.Services.AddTransient<ViewModels.OrderDetailsPageViewModel>();
 		builder.Services.AddTransient<OrderCreditPage>();

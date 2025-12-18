@@ -33,6 +33,8 @@ namespace LaceupMigration
 
             // Order related routes
             Routing.RegisterRoute("batch", typeof(BatchPage));
+            Routing.RegisterRoute("finalizebatch", typeof(FinalizeBatchPage));
+            Routing.RegisterRoute("ordersignature", typeof(OrderSignaturePage));
             Routing.RegisterRoute("orderdetails", typeof(OrderDetailsPage));
             Routing.RegisterRoute("ordercredit", typeof(OrderCreditPage));
             Routing.RegisterRoute("superordertemplate", typeof(SuperOrderTemplatePage));

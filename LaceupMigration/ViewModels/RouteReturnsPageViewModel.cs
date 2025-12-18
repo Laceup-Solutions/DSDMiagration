@@ -717,6 +717,9 @@ namespace LaceupMigration.ViewModels
             if (File.Exists(_fileName))
                 File.Delete(_fileName);
             
+            // [ACTIVITY STATE]: Remove state when properly exiting
+            Helpers.NavigationHelper.RemoveNavigationState("routereturns");
+            
             // Allow navigation
             await Shell.Current.GoToAsync("..");
             return false;
@@ -725,8 +728,13 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task Done()
         {
-            if (File.Exists(_fileName))
+            // Only delete the file if it hasn't been saved (temp/unsaved state)
+            // If saved, the file should remain to indicate route returns are completed
+            if (!_saved && File.Exists(_fileName))
                 File.Delete(_fileName);
+            
+            // [ACTIVITY STATE]: Remove state when properly exiting
+            Helpers.NavigationHelper.RemoveNavigationState("routereturns");
             
             // If emptyTruckOption, pass it back to EndOfDay page
             if (_emptyTruckOption)

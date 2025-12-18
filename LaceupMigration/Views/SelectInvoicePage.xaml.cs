@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace LaceupMigration.Views
 {
-    public partial class SelectInvoicePage : ContentPage, IQueryAttributable
+    public partial class SelectInvoicePage : IQueryAttributable
     {
         private readonly SelectInvoicePageViewModel _viewModel;
 

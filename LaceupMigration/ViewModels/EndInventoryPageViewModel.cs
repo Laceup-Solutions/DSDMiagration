@@ -629,6 +629,9 @@ namespace LaceupMigration.ViewModels
             if (File.Exists(_fileName))
                 File.Delete(_fileName);
 
+            // [ACTIVITY STATE]: Remove state when properly exiting
+            Helpers.NavigationHelper.RemoveNavigationState("endinventory");
+
             // Allow navigation
             await Shell.Current.GoToAsync("..");
             return false;

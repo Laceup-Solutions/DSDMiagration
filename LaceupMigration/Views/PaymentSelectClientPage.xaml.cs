@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LaceupMigration.Views
 {
-    public partial class PaymentSelectClientPage : ContentPage, IQueryAttributable
+    public partial class PaymentSelectClientPage : IQueryAttributable
     {
         private readonly PaymentSelectClientPageViewModel _viewModel;
 

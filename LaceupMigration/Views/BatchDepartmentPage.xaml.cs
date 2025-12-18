@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class BatchDepartmentPage : ContentPage, IQueryAttributable
+    public partial class BatchDepartmentPage : IQueryAttributable
     {
         private readonly BatchDepartmentPageViewModel _viewModel;
 

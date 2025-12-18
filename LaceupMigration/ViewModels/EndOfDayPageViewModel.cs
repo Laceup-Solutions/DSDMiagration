@@ -28,6 +28,9 @@ namespace LaceupMigration.ViewModels
         private bool _parLevel = false;
         private bool _canLeaveScreen = true;
 
+        // Public property for CanLeaveScreen (used by OnBackButtonPressed)
+        public bool CanLeaveScreen => _canLeaveScreen;
+
         [ObservableProperty] private bool _showExpenses;
         [ObservableProperty] private bool _showRouteReturns;
         [ObservableProperty] private bool _showEndInventory;
@@ -36,6 +39,15 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private bool _showLoadOrder;
         [ObservableProperty] private bool _showSetParLevel;
         [ObservableProperty] private bool _showClockOut;
+
+        // Button enabled states (inverse of completion - buttons are disabled when task is completed)
+        [ObservableProperty] private bool _isRouteReturnsEnabled = true;
+        [ObservableProperty] private bool _isEndInventoryEnabled = true;
+        [ObservableProperty] private bool _isPrintReportsEnabled = true;
+        [ObservableProperty] private bool _isClockOutEnabled = true;
+        [ObservableProperty] private bool _isLoadOrderEnabled = true;
+        [ObservableProperty] private bool _isSetParLevelEnabled = true;
+        [ObservableProperty] private bool _isRouteExpensesEnabled = true;
 
         public EndOfDayPageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService)
         {
@@ -63,8 +75,10 @@ namespace LaceupMigration.ViewModels
             var routeReturnFile = Path.Combine(Config.DataPath, "routeReturn.xml");
             _routeReturns = File.Exists(routeReturnFile);
             
-            var endingInventoryFile = Path.Combine(Config.DataPath, "endingInventory.xml");
-            _endInventory = File.Exists(endingInventoryFile);
+            // Check if end inventory is completed
+            // Use Config.EndingInventoryCounted (set when end inventory is saved)
+            // Also check if EmptyTruckAtEndOfDay is enabled (auto-completes end inventory)
+            _endInventory = Config.EndingInventoryCounted || Config.EmptyTruckAtEndOfDay;
             
             // Check if load order is completed (check if there's a load order that's finished or not pending)
             _loadOrder = Order.Orders.Any(x => x.OrderType == OrderType.Load && (x.Finished || !x.PendingLoad));
@@ -74,13 +88,18 @@ namespace LaceupMigration.ViewModels
             var tempParLevelFile = Path.Combine(Config.DataPath, "temp_ParLevelPath.xml");
             _parLevel = File.Exists(parLevelFile) || (!File.Exists(tempParLevelFile) && ParLevel.List.Count == 0);
             
-            // Check if clocked out (would need to check SalesmanSession or similar)
-            // For now, assume false unless we have a way to check
+            // Check if clocked out using SalesmanSession
+            _clockedOut = SalesmanSession.ClockedOut;
             
-            // If DisablePrintEndOfDayReport, automatically set reportsPrinted
+            // Check if reports were printed (check flag file)
             if (Config.DisablePrintEndOfDayReport)
             {
                 _reportsPrinted = true;
+            }
+            else
+            {
+                var reportsPrintedFile = Path.Combine(Config.DataPath, "reportsPrinted.flag");
+                _reportsPrinted = File.Exists(reportsPrintedFile);
             }
             
             // Auto-calculate route returns if disabled and not done
@@ -90,17 +109,66 @@ namespace LaceupMigration.ViewModels
                 if (Config.EmptyTruckAtEndOfDay)
                     _endInventory = true;
             }
+            
+            // Reset canLeaveScreen if End of Day hasn't been completed
+            // canLeaveScreen is only true when End of Day completes successfully (Xamarin line 983)
+            // Otherwise, if any action was started, it should be false
+            if (!_sentAll)
+            {
+                // If any action was completed, canLeaveScreen should be false until End of Day completes
+                // This prevents leaving the screen until End of Day is done
+                if (_routeReturns || _endInventory || _reportsPrinted || _clockedOut || _loadOrder || _parLevel)
+                {
+                    _canLeaveScreen = false;
+                }
+            }
+            
+            // Update button enabled states (buttons are disabled when task is completed)
+            // This matches Xamarin OnResume logic (lines 1089-1092)
+            UpdateButtonStates();
         }
 
-        [RelayCommand]
+        private void UpdateButtonStates()
+        {
+            // Buttons are disabled when their corresponding task is completed
+            // Following Xamarin EndOfDayActivity logic:
+            // - RouteReturns: disabled when completed
+            // - EndInventory: disabled when completed
+            // - PrintReports: ALWAYS enabled (can print multiple times)
+            // - ClockOut: disabled when completed
+            // - LoadOrder: disabled when completed
+            // - SetParLevel: disabled when completed
+            // - RouteExpenses: disabled when reportsPrinted (Xamarin line 1092: routeExpenses.Enabled = !reportsPrinted)
+            IsRouteReturnsEnabled = !_routeReturns;
+            IsEndInventoryEnabled = !_endInventory;
+            IsPrintReportsEnabled = true; // Always enabled - can print multiple times (Xamarin never disables this)
+            IsClockOutEnabled = !_clockedOut;
+            IsLoadOrderEnabled = !_loadOrder;
+            IsSetParLevelEnabled = !_parLevel;
+            // Route expenses is disabled when reports are printed (Xamarin EndOfDayActivity line 1092)
+            IsRouteExpensesEnabled = !_reportsPrinted;
+            
+            // Notify commands that their CanExecute status may have changed
+            RouteReturnsCommand.NotifyCanExecuteChanged();
+            EndInventoryCommand.NotifyCanExecuteChanged();
+            PrintReportsCommand.NotifyCanExecuteChanged();
+            ClockOutCommand.NotifyCanExecuteChanged();
+            LoadOrderCommand.NotifyCanExecuteChanged();
+            SetParLevelCommand.NotifyCanExecuteChanged();
+        }
+
+        [RelayCommand(CanExecute = nameof(IsRouteReturnsEnabled))]
         private async Task RouteReturns()
         {
             _appService.RecordEvent("routeReturnsButton button");
             
-            // Check if route returns is already completed
+            // Double-check if route returns is already completed (defensive check)
             var routeReturnFile = Path.Combine(Config.DataPath, "routeReturn.xml");
             if (File.Exists(routeReturnFile))
             {
+                // Update state and button
+                _routeReturns = true;
+                UpdateButtonStates();
                 await _dialogService.ShowAlertAsync("You already did the route returns. You cannot modify it.", "Alert", "OK");
                 return;
             }
@@ -143,9 +211,19 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(IsEndInventoryEnabled))]
         private async Task EndInventory()
         {
+            // Double-check if end inventory is already completed (defensive check)
+            if (Config.EndingInventoryCounted || Config.EmptyTruckAtEndOfDay)
+            {
+                // Update state and button
+                _endInventory = true;
+                UpdateButtonStates();
+                await _dialogService.ShowAlertAsync("You already did the end inventory. You cannot modify it.", "Alert", "OK");
+                return;
+            }
+            
             await Shell.Current.GoToAsync("endinventory");
         }
 
@@ -158,7 +236,19 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task PrintReports()
         {
+            var reportsPrintedFile = Path.Combine(Config.DataPath, "reportsPrinted.flag");
+
             _appService.RecordEvent("creditReportButton button");
+
+            // Check if reports printing is disabled
+            if (Config.DisablePrintEndOfDayReport)
+            {
+                await _dialogService.ShowAlertAsync("Reports printing is disabled.", "Alert", "OK");
+                return;
+            }
+            
+            // Note: Allow printing even if already printed (button remains enabled)
+            // The flag file is just for tracking, not for preventing re-printing
 
             // Check prerequisites (matches Xamarin PrintReportsButtonHandler)
             if (!_routeReturns)
@@ -185,6 +275,11 @@ namespace LaceupMigration.ViewModels
             }
 
             _reportsPrinted = true;
+            
+            
+            File.WriteAllText(reportsPrintedFile, DateTime.Now.ToString());
+            
+            UpdateButtonStates();
 
             // If using Milagro printer, print directly
             if (_isUsingMilagroPrinter)
@@ -441,6 +536,7 @@ namespace LaceupMigration.ViewModels
             DataAccess.SaveInventory();
 
             _routeReturns = true;
+            UpdateButtonStates();
         }
 
         [RelayCommand]
@@ -450,6 +546,9 @@ namespace LaceupMigration.ViewModels
 
             if (_sentAll)
             {
+                // [ACTIVITY STATE]: Remove state when end of day was already completed
+                Helpers.NavigationHelper.RemoveNavigationState("endofday");
+                
                 await _dialogService.ShowAlertAsync("You already did end of day.", "Alert", "OK");
                 await Shell.Current.GoToAsync("///MainPage");
                 return;
@@ -601,6 +700,8 @@ namespace LaceupMigration.ViewModels
 
         private async Task EndOfDayHandler()
         {
+            var reportsPrintedFile = Path.Combine(Config.DataPath, "reportsPrinted.flag");
+
             await _dialogService.ShowLoadingAsync("Sending all information...");
 
             string responseMessage = null;
@@ -630,6 +731,27 @@ namespace LaceupMigration.ViewModels
                         DataAccess.LastEndOfDay = DateTime.Now;
 
                         VehicleInformation.Clear();
+
+                        // Clear product inventory
+                        ProductInventory.ClearAll();
+                        
+                        // Clean up EOD flag files - reset state for next day
+                        var routeReturnFile = Path.Combine(Config.DataPath, "routeReturn.xml");
+                        if (File.Exists(routeReturnFile))
+                            File.Delete(routeReturnFile);
+                        
+                        if (File.Exists(reportsPrintedFile))
+                            File.Delete(reportsPrintedFile);
+                        
+                        // Reset end inventory state
+                        Config.EndingInventoryCounted = false;
+                        
+                        // Reset internal state variables
+                        _routeReturns = false;
+                        _endInventory = false;
+                        _reportsPrinted = false;
+                        // Note: _clockedOut will be checked from SalesmanSession on next load
+                        // Note: _loadOrder and _parLevel are checked from Order/ParLevel data on next load
 
                         Config.SaveAppStatus();
                     }
@@ -662,6 +784,13 @@ namespace LaceupMigration.ViewModels
             {
                 Config.SaveLastEndOfDay();
 
+                // Update button states after clearing (in case user navigates back)
+                UpdateButtonStates();
+
+                // [ACTIVITY STATE]: Remove state when end of day completes successfully
+                // This prevents the app from restoring to EndOfDayPage after completion
+                Helpers.NavigationHelper.RemoveNavigationState("endofday");
+
                 await _dialogService.ShowAlertAsync("Data successfully transmitted.", "Success", "OK");
                 
                 // Navigate to MainPage
@@ -669,15 +798,24 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(IsLoadOrderEnabled))]
         private async Task LoadOrder()
         {
             _appService.RecordEvent("LoadOrderButton button");
             
+            // Double-check if load order is already completed (defensive check)
+            if (Order.Orders.Any(x => x.OrderType == OrderType.Load && (x.Finished || !x.PendingLoad)))
+            {
+                _loadOrder = true;
+                UpdateButtonStates();
+                await _dialogService.ShowAlertAsync("Load order is already completed.", "Alert", "OK");
+                return;
+            }
+            
             try
             {
                 _loadOrder = true;
-                _canLeaveScreen = false;
+                _canLeaveScreen = false; // Xamarin line 344: canLeaveScreen = false when LoadOrder clicked
 
                 // Create or get load order for salesman
                 var client = Client.Clients.FirstOrDefault(x => x.ClientName.StartsWith("Salesman: "));
@@ -703,15 +841,38 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(IsSetParLevelEnabled))]
         private async Task SetParLevel()
         {
+            // Double-check if par level is already completed (defensive check)
+            var parLevelFile = Config.ParLevelFile;
+            var tempParLevelFile = Path.Combine(Config.DataPath, "temp_ParLevelPath.xml");
+            if (File.Exists(parLevelFile) || (!File.Exists(tempParLevelFile) && ParLevel.List.Count == 0))
+            {
+                _parLevel = true;
+                UpdateButtonStates();
+                await _dialogService.ShowAlertAsync("Par level is already set.", "Alert", "OK");
+                return;
+            }
+            
+            _parLevel = true;
+            _canLeaveScreen = false; // Xamarin line 374: canLeaveScreen = false when ParLevel clicked
+            
             await Shell.Current.GoToAsync("setparlevel");
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(IsClockOutEnabled))]
         private async Task ClockOut()
         {
+            // Double-check if already clocked out (defensive check)
+            if (SalesmanSession.ClockedOut)
+            {
+                _clockedOut = true;
+                UpdateButtonStates();
+                await _dialogService.ShowAlertAsync("You are already clocked out.", "Alert", "OK");
+                return;
+            }
+            
             var confirmed = await _dialogService.ShowConfirmationAsync(
                 "Clock Out",
                 "Clock out for the day?",
@@ -727,6 +888,7 @@ namespace LaceupMigration.ViewModels
                 SalesmanSession.CloseSession();
                 
                 _clockedOut = true;
+                UpdateButtonStates();
                 
                 await _dialogService.ShowAlertAsync("Clocked out successfully.", "Success", "OK");
             }
@@ -737,10 +899,17 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(IsRouteExpensesEnabled))]
         private async Task RouteExpenses()
         {
+            // Xamarin doesn't check if reports are printed before allowing route expenses
+            // But the button is disabled when reportsPrinted (line 1092)
             await Shell.Current.GoToAsync("routeexpenses");
+        }
+
+        public async Task ShowCannotLeaveDialog()
+        {
+            await _dialogService.ShowAlertAsync("You cannot leave until end of day is completed.", "Alert", "OK");
         }
 
         [RelayCommand]

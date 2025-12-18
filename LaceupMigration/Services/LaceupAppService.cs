@@ -31,14 +31,8 @@ namespace LaceupMigration.Services
 					DataAccessEx.Initialize();
 					ActivityState.Load();
 					
-					//clear previous Data (empty batches and orders)
-					var orders = Order.Orders.Where(x => x.OrderType != OrderType.NoService && x.Details.Count == 0 && string.IsNullOrEmpty(x.PrintedOrderId)).ToList();
-					foreach (var order in orders)
-						order.Delete();
-
-					var batches = Batch.List.Where(x => x.Orders().Count == 0).ToList();
-					foreach (var batch in batches)
-						batch.Delete();
+					// Note: Empty orders and batches are no longer deleted on initialization
+					// since we're keeping state and need to preserve orders for state restoration
 
 					BackgroundDataSync.StartThreadh();
 

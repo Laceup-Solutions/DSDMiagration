@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace LaceupMigration.Views
 {
-    public partial class ManageRoutePage : ContentPage, IQueryAttributable
+    public partial class ManageRoutePage : IQueryAttributable
     {
         private readonly ManageRoutePageViewModel _viewModel;
 

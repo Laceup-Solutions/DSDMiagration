@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.Views.AdvancedCatalogPage"
@@ -28,6 +28,7 @@
                             CommandParameter="Sales"
                             BackgroundColor="{Binding SalesButtonColor}"
                             TextColor="{Binding SalesButtonTextColor}"
+                            IsEnabled="{Binding CanEdit}"
                             FontSize="14"
                             FontAttributes="Bold"
                             CornerRadius="8"
@@ -40,6 +41,7 @@
                             CommandParameter="Dumps"
                             BackgroundColor="{Binding DumpsButtonColor}"
                             TextColor="{Binding DumpsButtonTextColor}"
+                            IsEnabled="{Binding CanEdit}"
                             FontSize="14"
                             FontAttributes="Bold"
                             CornerRadius="8"
@@ -52,6 +54,7 @@
                             CommandParameter="Returns"
                             BackgroundColor="{Binding ReturnsButtonColor}"
                             TextColor="{Binding ReturnsButtonTextColor}"
+                            IsEnabled="{Binding CanEdit}"
                             FontSize="14"
                             FontAttributes="Bold"
                             CornerRadius="8"
@@ -282,12 +285,12 @@
                                          HeightRequest="1"
                                          Color="{StaticResource Gray300}"
                                          Margin="0,8,0,4"
-                                         IsVisible="{Binding HasFreeItemDetail}" />
+                                         IsVisible="{Binding ShowFreeItemDetail}" />
                                 
                                 <Grid Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2"
                                       ColumnDefinitions="*,Auto,Auto,Auto" 
                                       ColumnSpacing="8"
-                                      IsVisible="{Binding HasFreeItemDetail}"
+                                      IsVisible="{Binding ShowFreeItemDetail}"
                                       Margin="0,4"
                                       Padding="0"
                                       VerticalOptions="Center"
@@ -314,6 +317,7 @@
                                     <Button Text="-"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=DecrementQuantityCommand}"
                                             CommandParameter="{Binding FreeItemDetail}"
+                                            IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}"
                                             WidthRequest="40"
                                             HeightRequest="40"
                                             FontSize="18"
@@ -335,6 +339,7 @@
                                     <Button Text="+"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=IncrementQuantityCommand}"
                                             CommandParameter="{Binding FreeItemDetail}"
+                                            IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}"
                                             WidthRequest="40"
                                             HeightRequest="40"
                                             FontSize="18"
@@ -352,6 +357,7 @@
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=AddFreeItemCommand}"
                                             CommandParameter="{Binding}"
                                             IsEnabled="{Binding CanAddFreeItem}"
+                                            IsVisible="{Binding ShowFreeItemButton}"
                                             FontSize="12"
                                             FontAttributes="Bold"
                                             TextColor="{Binding FreeItemButtonColor}"
@@ -362,6 +368,7 @@
                                     <Button Text="-"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=DecrementQuantityCommand}"
                                             CommandParameter="{Binding PrimaryDetail}"
+                                            IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}"
                                             WidthRequest="40"
                                             HeightRequest="40"
                                             FontSize="18"
@@ -382,6 +389,7 @@
                                     <Button Text="+"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=IncrementQuantityCommand}"
                                             CommandParameter="{Binding PrimaryDetail}"
+                                            IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}"
                                             WidthRequest="40"
                                             HeightRequest="40"
                                             FontSize="18"
@@ -394,4 +402,4 @@
             </CollectionView>
         </Grid>
     </ContentPage.Content>
-</ContentPage>
+</local:LaceupContentPage>

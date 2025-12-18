@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.OrderSignaturePage"
+             x:DataType="vm:OrderSignaturePageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Order Signature">
+    <ContentPage.Content>
+        <VerticalStackLayout Spacing="10" Padding="16">
+            <!-- Signature Name Entry -->
+            <Label Text="Signature Name:"
+                   FontSize="14"
+                   FontAttributes="Bold" />
+            <Entry Text="{Binding SignatureName}"
+                   Placeholder="Enter signature name"
+                   FontSize="14" />
+
+            <!-- Signature Pad -->
+            <Label Text="Sign Here:"
+                   FontSize="14"
+                   FontAttributes="Bold"
+                   Margin="0,10,0,5" />
+            <Border StrokeThickness="2"
+                    Stroke="{StaticResource Gray400}"
+                    BackgroundColor="White"
+                    HeightRequest="300">
+                <GraphicsView x:Name="SignaturePad"
+                              Drawable="{Binding SignatureDrawable}"
+                              BackgroundColor="White" />
+            </Border>
+
+            <!-- Action Buttons -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,10,0,0">
+                <Button Grid.Column="0"
+                        Text="Clear"
+                        Command="{Binding ClearCommand}"
+                        BackgroundColor="{StaticResource Gray500}"
+                        TextColor="White" />
+                <Button Grid.Column="1"
+                        Text="Save"
+                        Command="{Binding SaveCommand}"
+                        BackgroundColor="{StaticResource PrimaryDark}"
+                        TextColor="White" />
+            </Grid>
+        </VerticalStackLayout>
+    </ContentPage.Content>
+</local:LaceupContentPage>
+

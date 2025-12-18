@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class AddOrdersToRoutePage : ContentPage
+    public partial class AddOrdersToRoutePage 
     {
         private readonly AddOrdersToRoutePageViewModel _viewModel;
 

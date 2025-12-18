@@ -128,18 +128,32 @@ namespace LaceupMigration.ViewModels
         {
             if (_order == null) return;
 
-            // Update button states based on order state
-            CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
-            ShowAddProduct = CanEdit;
-            ShowViewCategories = CanEdit && !_order.Dexed;
-            ShowSearch = CanEdit;
-
-            if (_order.Dexed || _order.Voided || _order.Finished)
+            // Xamarin PreviouslyOrderedTemplateActivity logic:
+            // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
+            bool isReadOnly = !_order.AsPresale && (_order.Finished || _order.Voided);
+            
+            if (isReadOnly)
             {
                 CanEdit = false;
                 ShowAddProduct = false;
                 ShowViewCategories = false;
                 ShowSearch = false;
+            }
+            else
+            {
+                // Update button states based on order state
+                CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
+                ShowAddProduct = CanEdit;
+                ShowViewCategories = CanEdit && !_order.Dexed;
+                ShowSearch = CanEdit;
+
+                if (_order.Dexed || _order.Voided || _order.Finished)
+                {
+                    CanEdit = false;
+                    ShowAddProduct = false;
+                    ShowViewCategories = false;
+                    ShowSearch = false;
+                }
             }
 
             // Handle LoadNextActivity - process pending activities
@@ -167,17 +181,31 @@ namespace LaceupMigration.ViewModels
                 ShowCompany = false;
             }
 
-            CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
-            ShowAddProduct = CanEdit;
-            ShowViewCategories = CanEdit && !_order.Dexed;
-            ShowSearch = CanEdit;
-
-            if (_order.Dexed || _order.Voided || _order.Finished)
+            // Xamarin PreviouslyOrderedTemplateActivity logic:
+            // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
+            bool isReadOnly = !_order.AsPresale && (_order.Finished || _order.Voided);
+            
+            if (isReadOnly)
             {
                 CanEdit = false;
                 ShowAddProduct = false;
                 ShowViewCategories = false;
                 ShowSearch = false;
+            }
+            else
+            {
+                CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
+                ShowAddProduct = CanEdit;
+                ShowViewCategories = CanEdit && !_order.Dexed;
+                ShowSearch = CanEdit;
+
+                if (_order.Dexed || _order.Voided || _order.Finished)
+                {
+                    CanEdit = false;
+                    ShowAddProduct = false;
+                    ShowViewCategories = false;
+                    ShowSearch = false;
+                }
             }
 
             if (_asPresale && _order.OrderType == OrderType.Credit)
@@ -818,11 +846,28 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        List<MenuOption> BuildMenuOptions()
+        public List<MenuOption> BuildMenuOptions()
         {
             var options = new List<MenuOption>();
 
             if (_order == null) return options;
+
+            // Xamarin PreviouslyOrderedTemplateActivity logic:
+            // If !AsPresale && (Finished || Voided), only show Print option
+            bool isReadOnly = !_order.AsPresale && (_order.Finished || _order.Voided);
+            
+            if (isReadOnly)
+            {
+                // Only allow Print when read-only
+                if (Config.PrinterAvailable)
+                {
+                    options.Add(new MenuOption("Print", async () =>
+                    {
+                        await PrintAsync();
+                    }));
+                }
+                return options;
+            }
 
             var finalized = _order.Finished;
             var allowDiscount = _order.Client.UseDiscount;
@@ -962,7 +1007,6 @@ namespace LaceupMigration.ViewModels
             await _advancedOptionsService.ShowAdvancedOptionsAsync();
         }
 
-        private record MenuOption(string Title, Func<Task> Action);
 
         private async Task PrintAsync()
         {

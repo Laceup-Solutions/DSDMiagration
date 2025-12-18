@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace LaceupMigration.Views
 {
-    public partial class TransferOnOffPage : ContentPage, IQueryAttributable
+    public partial class TransferOnOffPage : IQueryAttributable
     {
         private readonly TransferOnOffPageViewModel _viewModel;
 

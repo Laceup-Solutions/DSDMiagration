@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class CheckInventoryPage : ContentPage
+    public partial class CheckInventoryPage 
     {
         private readonly CheckInventoryPageViewModel _viewModel;
 

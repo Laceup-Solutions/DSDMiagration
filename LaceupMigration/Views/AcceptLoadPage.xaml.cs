@@ -4,7 +4,7 @@ using System;
 
 namespace LaceupMigration.Views
 {
-    public partial class AcceptLoadPage : ContentPage, IQueryAttributable
+    public partial class AcceptLoadPage : IQueryAttributable
     {
         private readonly AcceptLoadPageViewModel _viewModel;
         private DateTime? _lastInitializedDate; // Track the last date we initialized with
@@ -64,6 +64,22 @@ namespace LaceupMigration.Views
                     Dispatcher.Dispatch(async () => await _viewModel.RefreshAsync(true));
                 }
             }
+            
+            // [ACTIVITY STATE]: Save navigation state with query parameters
+            // Build route with query parameters for state saving
+            var route = "acceptload";
+            if (query != null && query.Count > 0)
+            {
+                var queryParams = query
+                    .Where(kvp => kvp.Value != null)
+                    .Select(kvp => $"{System.Uri.EscapeDataString(kvp.Key)}={System.Uri.EscapeDataString(kvp.Value.ToString())}")
+                    .ToArray();
+                if (queryParams.Length > 0)
+                {
+                    route += "?" + string.Join("&", queryParams);
+                }
+            }
+            Helpers.NavigationHelper.SaveNavigationState(route);
         }
 
         protected override async void OnAppearing()
@@ -91,6 +107,20 @@ namespace LaceupMigration.Views
             // Match Xamarin AcceptLoadOrderList.cs line 234-247
             // In Xamarin: if (keyCode == Keycode.Back) { ActivityState.RemoveState(state); DataAccess.DeletePengingLoads(); }
             _viewModel.DeletePendingLoads();
+            
+            // [ACTIVITY STATE]: Remove state when properly exiting
+            // Build route from current state or use saved route
+            var currentRoute = Shell.Current.CurrentState?.Location?.OriginalString ?? "";
+            if (currentRoute.Contains("acceptload"))
+            {
+                Helpers.NavigationHelper.RemoveNavigationState(currentRoute);
+            }
+            else
+            {
+                // Fallback: try to remove by route name (will remove any acceptload state)
+                Helpers.NavigationHelper.RemoveNavigationState("acceptload");
+            }
+            
             return base.OnBackButtonPressed();
         }
 

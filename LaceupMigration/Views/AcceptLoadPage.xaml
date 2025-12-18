@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.Views.AcceptLoadPage"
@@ -7,11 +7,11 @@
              Title="Accept Orders">
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="MENU" Order="Primary" Priority="0" />
-    </ContentPage.ToolbarItems>
-    <ContentPage.Content>
-        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="5" Padding="5">
-            <!-- Date Picker (hidden by default, shown when selecting date) -->
-            <DatePicker x:Name="DatePickerControl"
+        </ContentPage.ToolbarItems>
+        <ContentPage.Content>
+            <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="5" Padding="5">
+                <!-- Date Picker (hidden by default, shown when selecting date) -->
+                <DatePicker x:Name="DatePickerControl"
                        Grid.Row="0"
                        Format="MM/dd/yyyy"
                        IsVisible="{Binding ShowDatePicker}"
@@ -21,15 +21,15 @@
                        WidthRequest="44"
                        HorizontalOptions="Center"
                        VerticalOptions="Start" />
-            
-            <!-- Date and View All Toggle -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,*" ColumnSpacing="5" Margin="5,10,5,0">
-                <HorizontalStackLayout Grid.Column="0" Spacing="5" VerticalOptions="Center">
-                    <Label Text="Date:"
+
+                <!-- Date and View All Toggle -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,*" ColumnSpacing="5" Margin="5,10,5,0">
+                    <HorizontalStackLayout Grid.Column="0" Spacing="5" VerticalOptions="Center">
+                        <Label Text="Date:"
                            FontSize="14"
                            FontAttributes="Bold"
                            VerticalOptions="Center" />
-                    <Button Text="{Binding SelectedDateText}"
+                        <Button Text="{Binding SelectedDateText}"
                            Command="{Binding SelectDateCommand}"
                            BackgroundColor="Transparent"
                            TextColor="{StaticResource colorLaceupDark}"
@@ -40,207 +40,207 @@
                            BorderWidth="1"
                            CornerRadius="3"
                            HorizontalOptions="Start" />
-                </HorizontalStackLayout>
-                <VerticalStackLayout Grid.Column="1" 
+                    </HorizontalStackLayout>
+                    <VerticalStackLayout Grid.Column="1" 
                                    Spacing="5"
                                    IsVisible="{Binding ShowViewAllToggle}"
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center">
-                    <Label Text="Toggle To View All"
+                        <Label Text="Toggle To View All"
                            FontSize="14"
                            FontAttributes="Bold"
                            HorizontalOptions="Center" />
-                    <Switch IsToggled="{Binding ViewAll}"
+                        <Switch IsToggled="{Binding ViewAll}"
                            HorizontalOptions="Center" />
-                </VerticalStackLayout>
-            </Grid>
+                    </VerticalStackLayout>
+                </Grid>
 
-            <!-- Statistics -->
-            <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="5" Margin="5,5,5,0">
-                <!-- Left Column -->
-                <VerticalStackLayout Grid.Column="0" Spacing="3">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
-                        <Label Grid.Column="0"
+                <!-- Statistics -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="5" Margin="5,5,5,0">
+                    <!-- Left Column -->
+                    <VerticalStackLayout Grid.Column="0" Spacing="3">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
+                            <Label Grid.Column="0"
                                Text="Load Orders:"
                                FontSize="14"
                                FontAttributes="Bold"
                                HorizontalOptions="End" />
-                        <Label Grid.Column="1"
+                            <Label Grid.Column="1"
                                Text="{Binding TotalLoads}"
                                FontSize="14"
                                FontAttributes="Bold" />
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
-                        <Label Grid.Column="0"
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
+                            <Label Grid.Column="0"
                                Text="Stops:"
                                FontSize="14"
                                FontAttributes="Bold"
                                HorizontalOptions="End" />
-                        <Label Grid.Column="1"
+                            <Label Grid.Column="1"
                                Text="{Binding TotalStops}"
                                FontSize="14"
                                FontAttributes="Bold" />
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
-                        <Label Grid.Column="0"
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
+                            <Label Grid.Column="0"
                                Text="Documents:"
                                FontSize="14"
                                FontAttributes="Bold"
                                HorizontalOptions="End" />
-                        <Label Grid.Column="1"
+                            <Label Grid.Column="1"
                                Text="{Binding TotalDeliveries}"
                                FontSize="14"
                                FontAttributes="Bold" />
-                    </Grid>
-                </VerticalStackLayout>
-                <!-- Right Column -->
-                <VerticalStackLayout Grid.Column="1" Spacing="3">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
-                        <Label Grid.Column="0"
+                        </Grid>
+                    </VerticalStackLayout>
+                    <!-- Right Column -->
+                    <VerticalStackLayout Grid.Column="1" Spacing="3">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
+                            <Label Grid.Column="0"
                                Text="Items Total:"
                                FontSize="14"
                                FontAttributes="Bold"
                                HorizontalOptions="End" />
-                        <Label Grid.Column="1"
+                            <Label Grid.Column="1"
                                Text="{Binding TotalItems}"
                                FontSize="14"
                                FontAttributes="Bold" />
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5" IsVisible="{Binding ShowTotalQty}">
-                        <Label Grid.Column="0"
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5" IsVisible="{Binding ShowTotalQty}">
+                            <Label Grid.Column="0"
                                Text="Total Qty:"
                                FontSize="14"
                                FontAttributes="Bold"
                                HorizontalOptions="End" />
-                        <Label Grid.Column="1"
+                            <Label Grid.Column="1"
                                Text="{Binding TotalQty}"
                                FontSize="14"
                                FontAttributes="Bold" />
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5" IsVisible="{Binding ShowTotalWeight}">
-                        <Label Grid.Column="0"
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5" IsVisible="{Binding ShowTotalWeight}">
+                            <Label Grid.Column="0"
                                Text="Total Weight:"
                                FontSize="14"
                                FontAttributes="Bold"
                                HorizontalOptions="End" />
-                        <Label Grid.Column="1"
+                            <Label Grid.Column="1"
                                Text="{Binding TotalWeight}"
                                FontSize="14"
                                FontAttributes="Bold" />
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
-                        <Label Grid.Column="0"
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
+                            <Label Grid.Column="0"
                                Text="Amount:"
                                FontSize="14"
                                FontAttributes="Bold"
                                HorizontalOptions="End" />
-                        <Label Grid.Column="1"
+                            <Label Grid.Column="1"
                                Text="{Binding TotalAmount}"
                                FontSize="14"
                                FontAttributes="Bold" />
-                    </Grid>
-                </VerticalStackLayout>
-            </Grid>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Grid>
 
-            <!-- Select All Checkbox -->
-            <HorizontalStackLayout Grid.Row="2" Spacing="5" Margin="10,5">
-                <CheckBox IsChecked="{Binding SelectAll}"
+                <!-- Select All Checkbox -->
+                <HorizontalStackLayout Grid.Row="2" Spacing="5" Margin="10,5">
+                    <CheckBox IsChecked="{Binding SelectAll}"
                          VerticalOptions="Center"
                          CheckedChanged="SelectAll_CheckedChanged" />
-                <Label Text="Select All"
+                    <Label Text="Select All"
                        FontSize="14"
                        VerticalOptions="Center">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="SelectAllLabel_Tapped" />
-                    </Label.GestureRecognizers>
-                </Label>
-            </HorizontalStackLayout>
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="SelectAllLabel_Tapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                </HorizontalStackLayout>
 
-            <!-- Orders List -->
-            <CollectionView Grid.Row="3"
+                <!-- Orders List -->
+                <CollectionView Grid.Row="3"
                           ItemsSource="{Binding Orders}"
                           Margin="5"
                           SelectionMode="None">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="vm:AcceptLoadOrderItemViewModel">
-                        <Grid Style="{StaticResource CollectionViewItemStyle}">
-                            <Frame Padding="10"
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:AcceptLoadOrderItemViewModel">
+                            <Grid Style="{StaticResource CollectionViewItemStyle}">
+                                <Frame Padding="10"
                                    Margin="0,2"
                                    BackgroundColor="{StaticResource Gray100}"
                                    HasShadow="False"
                                    CornerRadius="5">
-                                <Frame.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding OrderTappedCommand}" />
-                                </Frame.GestureRecognizers>
-                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                                <CheckBox Grid.Column="0"
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding OrderTappedCommand}" />
+                                    </Frame.GestureRecognizers>
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                        <CheckBox Grid.Column="0"
                                          IsChecked="{Binding IsSelected}"
                                          VerticalOptions="Center"
                                          CheckedChanged="OrderCheckBox_CheckedChanged" />
-                                <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="3">
-                                    <Grid Grid.Row="0" ColumnDefinitions="*,*" ColumnSpacing="5">
-                                        <Label Grid.Column="0"
+                                        <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="3">
+                                            <Grid Grid.Row="0" ColumnDefinitions="*,*" ColumnSpacing="5">
+                                                <Label Grid.Column="0"
                                                Text="{Binding DocTypeLabel}"
                                                FontSize="14"
                                                FontAttributes="Bold"
                                                TextColor="{StaticResource colorLaceupDark}" />
-                                        <Label Grid.Column="1"
+                                                <Label Grid.Column="1"
                                                Text="{Binding OrderNumberLabel}"
                                                FontSize="14"
                                                FontAttributes="Bold"
                                                TextColor="{Binding OrderNumberColor}" />
-                                    </Grid>
-                                    <Label Grid.Row="1"
+                                            </Grid>
+                                            <Label Grid.Row="1"
                                            Text="{Binding ClientName}"
                                            FontSize="14"
                                            IsVisible="{Binding ShowClientName}" />
-                                    <Label Grid.Row="2"
+                                            <Label Grid.Row="2"
                                            Text="{Binding AssetText}"
                                            FontSize="14"
                                            IsVisible="{Binding ShowAsset}" />
-                                    <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="5">
-                                        <Label Grid.Column="0"
+                                            <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="5">
+                                                <Label Grid.Column="0"
                                                Text="{Binding TotalItemsLabel}"
                                                FontSize="14" />
-                                        <Label Grid.Column="1"
+                                                <Label Grid.Column="1"
                                                Text="{Binding TotalWeightLabel}"
                                                FontSize="14" />
-                                    </Grid>
-                                    <Grid Grid.Row="4" ColumnDefinitions="*,*" ColumnSpacing="5">
-                                        <Label Grid.Column="0"
+                                            </Grid>
+                                            <Grid Grid.Row="4" ColumnDefinitions="*,*" ColumnSpacing="5">
+                                                <Label Grid.Column="0"
                                                Text="{Binding TotalQtyLabel}"
                                                FontSize="14"
                                                IsVisible="{Binding ShowTotalQty}" />
-                                        <Label Grid.Column="1"
+                                                <Label Grid.Column="1"
                                                Text="{Binding AmountLabel}"
                                                FontSize="14" />
-                                    </Grid>
-                                    <Label Grid.Row="5"
+                                            </Grid>
+                                            <Label Grid.Row="5"
                                            Text="{Binding CommentText}"
                                            FontSize="14"
                                            IsVisible="{Binding ShowComment}"
                                            TextColor="Gray" />
-                                </Grid>
-                                </Grid>
-                            </Frame>
-                        </Grid>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+                                        </Grid>
+                                    </Grid>
+                                </Frame>
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
 
-            <!-- Bottom Buttons -->
-            <Grid Grid.Row="4" ColumnDefinitions="*,*" ColumnSpacing="10" Margin="5">
-                <Button Grid.Column="0"
+                <!-- Bottom Buttons -->
+                <Grid Grid.Row="4" ColumnDefinitions="*,*" ColumnSpacing="10" Margin="5">
+                    <Button Grid.Column="0"
                        Text="Cancel"
                        Command="{Binding CancelCommand}"
                        BackgroundColor="{StaticResource colorLaceupDark}"
                        TextColor="White" />
-                <Button Grid.Column="1"
+                    <Button Grid.Column="1"
                        Text="Accept"
                        Command="{Binding AcceptCommand}"
                        BackgroundColor="{StaticResource colorLaceupDark}"
                        TextColor="White" />
+                </Grid>
             </Grid>
-        </Grid>
-    </ContentPage.Content>
-</ContentPage>
+            </ContentPage.Content>
+        </local:LaceupContentPage>
