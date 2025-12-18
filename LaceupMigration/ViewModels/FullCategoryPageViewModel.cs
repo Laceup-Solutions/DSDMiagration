@@ -345,14 +345,16 @@ namespace LaceupMigration.ViewModels
             if (value)
             {
                 SearchByProduct = false;
-                // When switching to "By Category", show categories if not already showing
-                if (ShowProducts)
-                {
-                    ShowCategories = true;
-                    ShowProducts = false;
-                    Title = "Categories";
-                    LoadCategories();
-                }
+                // When switching to "By Category", always show categories and reload them
+                // Clear search query and reset search-related flags when switching from product search to category search
+                // This ensures categories are shown without product search filter
+                SearchQuery = string.Empty;
+                _productSearch = null;
+                _comingFromSearch = false;
+                ShowCategories = true;
+                ShowProducts = false;
+                Title = "Categories";
+                LoadCategories();
             }
         }
 

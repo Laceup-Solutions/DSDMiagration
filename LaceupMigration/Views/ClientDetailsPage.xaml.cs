@@ -102,5 +102,13 @@ namespace LaceupMigration.Views
                 cv.SelectedItem = null;
             }
         }
+
+        private void SearchBar_SearchButtonPressed(object sender, EventArgs e)
+        {
+            if (sender is SearchBar searchBar)
+            {
+                searchBar.Unfocus();
+            }
+        }
     }
 }

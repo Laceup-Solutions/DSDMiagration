@@ -360,9 +360,9 @@ namespace LaceupMigration.ViewModels
             var numberText = GetInvoiceTitle(invoice);
             var createdText = $"Created: {invoice.Date.ToShortDateString()}";
             var dueText = $"Due: {invoice.DueDate.ToShortDateString()}";
-            var totalText = $"Total: {invoice.Amount.ToCustomString()}";
+            var totalText = FormatAmountWithParentheses(invoice.Amount, "Total: ");
             var openAmount = invoice.Balance - invoice.Paid;
-            var openText = $"Open: {openAmount.ToCustomString()}";
+            var openText = FormatAmountWithParentheses(openAmount, "Open: ");
             var showAmounts = !Config.HidePriceInTransaction;
 
             var isOverdue = invoice.DueDate < DateTime.Today && invoice.Balance > 0;
@@ -450,6 +450,19 @@ namespace LaceupMigration.ViewModels
                 invoice: invoice);
         }
 
+        private string FormatAmountWithParentheses(double amount, string prefix)
+        {
+            if (amount < 0)
+            {
+                // Format the absolute value and wrap in parentheses
+                var absAmount = Math.Abs(amount);
+                var formatted = absAmount.ToCustomString();
+                return $"{prefix}({formatted})";
+            }
+            var formattedPositive = amount.ToCustomString();
+            return $"{prefix}{formattedPositive}";
+        }
+
         private string GetInvoiceTitle(Invoice invoice)
         {
             return invoice.InvoiceType switch
@@ -522,35 +535,23 @@ namespace LaceupMigration.ViewModels
             {
                 FilteredInvoices.Clear();
 
-                // [MIGRATION]: Separate invoices with and without CompanyName (matches Xamarin behavior)
-                // Invoices without CompanyName appear as individual items at the top, with NO group header
-                var invoicesWithoutCompany = invoicesToGroup
-                    .Where(invoice => string.IsNullOrEmpty(invoice.CompanyName))
-                    .ToList();
-
-                var invoicesWithCompany = invoicesToGroup
-                    .Where(invoice => !string.IsNullOrEmpty(invoice.CompanyName))
-                    .ToList();
-
-                // Add invoices without CompanyName as individual groups with empty header (header will be hidden in XAML)
-                // These appear at the top of the list, matching Xamarin behavior
-                foreach (var invoice in invoicesWithoutCompany)
-                {
-                    var singleItemGroup = new InvoiceGroup(string.Empty, new[] { invoice });
-                    FilteredInvoices.Add(singleItemGroup);
-                }
-
-                // Group invoices with CompanyName by CompanyName (matches Xamarin ClientInvoicesAdapter grouping)
-                var grouped = invoicesWithCompany
+                // Group invoices by CompanyName (matches Xamarin ClientInvoicesAdapter grouping)
+                // Invoices with empty/null CompanyName are grouped together with an empty header (which will be hidden)
+                var grouped = invoicesToGroup
                     .GroupBy(invoice => invoice.CompanyName ?? string.Empty)
+                    .Where(group => group.Any()) // Only include groups that have items
                     .Select(group => new InvoiceGroup(
-                        header: group.Key, // CompanyName as the header
+                        header: group.Key, // CompanyName as the header (empty string for invoices without CompanyName)
                         items: group.ToList()))
                     .ToList();
 
+                // Only add groups that have items
                 foreach (var group in grouped)
                 {
-                    FilteredInvoices.Add(group);
+                    if (group.Count > 0)
+                    {
+                        FilteredInvoices.Add(group);
+                    }
                 }
 
                 ShowNoInvoices = FilteredInvoices.Count == 0;
@@ -1850,6 +1851,11 @@ namespace LaceupMigration.ViewModels
             PendingDaysText = pendingDaysText;
             Invoice = invoice;
             CompanyName = invoice.CompanyName ?? string.Empty;
+            HasHeader = !string.IsNullOrEmpty(CompanyName);
+            IsFirstInGroup = false;
+            IsLastInGroup = false;
+            NextGroupHasHeader = false;
+            BottomMargin = new Thickness(0, 0, 0, 0);
         }
 
         public string NumberText { get; }
@@ -1872,6 +1878,11 @@ namespace LaceupMigration.ViewModels
         public string PendingDaysText { get; }
         public Invoice Invoice { get; }
         public string CompanyName { get; }
+        public bool HasHeader { get; }
+        public bool IsLastInGroup { get; set; }
+        public bool IsFirstInGroup { get; set; }
+        public bool NextGroupHasHeader { get; set; }
+        public Thickness BottomMargin { get; set; }
     }
 
     // [MIGRATION]: InvoiceGroup class matches Xamarin Section structure

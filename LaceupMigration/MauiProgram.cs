@@ -24,7 +24,10 @@ namespace LaceupMigration
 				.ConfigureMauiHandlers(handlers =>
 				{
 					handlers.AddHandler(typeof(Shell), typeof(CustomTabBarRenderer));
-
+#if ANDROID
+					// Map CollectionView to apply Gray100 ripple to RecyclerView items
+					Microsoft.Maui.Controls.Handlers.Items.CollectionViewHandler.Mapper.AppendToMapping("RippleEffect", Platforms.Android.Handlers.CollectionViewRippleMapper.MapCollectionView);
+#endif
 					handlers.AddCompatibilityRenderers();
 				})
 				.UseBarcodeReader()

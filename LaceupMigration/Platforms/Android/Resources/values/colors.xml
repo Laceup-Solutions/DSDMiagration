@@ -3,7 +3,9 @@
     <color name="colorPrimary">#0379cb</color>
     <color name="colorPrimaryDark">#0379cb</color>
     <color name="colorAccent">#0379cb</color>
-    <color name="colorControlHighlight">#b6e3f1</color>
+    <color name="colorControlHighlight">#E1E1E1</color>
     <color name="colorControlActivated">#0379cb</color>
     <color name="colorControlNormal">#0379cb</color>
+
+    <color name="Gray100">#E1E1E1</color>
 </resources>

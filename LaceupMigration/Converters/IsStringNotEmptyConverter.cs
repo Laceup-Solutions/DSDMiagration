@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Controls.Shapes;
 
 namespace LaceupMigration.Converters
 {
@@ -290,6 +291,83 @@ namespace LaceupMigration.Converters
                 result = !result;
             
             return result;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    
+    /// <summary>
+    /// Converter that returns a RoundRectangle with appropriate corner radius based on HasHeader boolean.
+    /// When true (has header), returns rounded bottom corners only (0,0,8,8).
+    /// When false (standalone), returns all rounded corners (8).
+    /// </summary>
+    public class HasHeaderToCornerRadiusConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is bool hasHeader)
+            {
+                if (hasHeader)
+                {
+                    // Has header: rounded bottom corners only (top-left, top-right, bottom-right, bottom-left)
+                    return new RoundRectangle { CornerRadius = new CornerRadius(0, 0, 8, 8) };
+                }
+                else
+                {
+                    // Standalone: all rounded corners
+                    return new RoundRectangle { CornerRadius = new CornerRadius(8) };
+                }
+            }
+            // Default: all rounded corners
+            return new RoundRectangle { CornerRadius = new CornerRadius(8) };
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    
+    /// <summary>
+    /// Converter that returns a Thickness margin based on whether header is empty.
+    /// When header is empty, returns no top margin (0,0,0,0).
+    /// When header has value, returns top margin (0,8,0,0) to match Xamarin spacing.
+    /// </summary>
+    public class HeaderToMarginConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is string header && !string.IsNullOrEmpty(header))
+            {
+                // Header has value: add top margin
+                return new Thickness(0, 8, 0, 0);
+            }
+            // Header is empty: no margin
+            return new Thickness(0, 0, 0, 0);
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    
+    /// <summary>
+    /// Converter that returns 0 height when string is empty, otherwise returns -1 (auto).
+    /// Used to collapse empty group headers completely.
+    /// </summary>
+    public class StringToHeightConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is string str && !string.IsNullOrEmpty(str))
+            {
+                return -1.0; // Auto height
+            }
+            return 0.0; // Zero height for empty strings
         }
 
         public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

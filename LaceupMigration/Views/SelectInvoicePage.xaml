@@ -8,34 +8,122 @@
              Shell.TabBarIsVisible="False"
              Title="Select Invoice">
     <ContentPage.Content>
-        <Grid RowDefinitions="Auto,*">
-            <Border Grid.Row="0"
-                    StrokeThickness="0"
-                    BackgroundColor="#F2F2F7"
-                    Padding="12,4"
-                    StrokeShape="RoundRectangle 12"
-                    Margin="16,16,16,12">
-                <SearchBar Placeholder="Search invoices"
-                           FontSize="14"
-                           Text="{Binding SearchQuery}"
-                           SearchButtonPressed="SearchBar_SearchButtonPressed" />
-            </Border>
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <!-- Buttons at the top -->
+                <Button Text="Add Payment"
+                        Command="{Binding AddPaymentCommand}"
+                        IsEnabled="{Binding CanAddPayment}"
+                        Style="{StaticResource PrimaryButton}" />
 
-            <ScrollView Grid.Row="1">
-                <VerticalStackLayout Padding="16" Spacing="16">
-                    <Label Text="{Binding ClientName}"
-                           FontSize="20"
-                           FontAttributes="Bold"
-                           TextColor="{StaticResource PrimaryDark}" />
+                <Button Text="Credit Account"
+                        Command="{Binding CreditAccountCommand}"
+                        IsEnabled="{Binding CanCreditAccount}"
+                        IsVisible="{Binding ShowCreditAccount}"
+                        Style="{StaticResource SecondaryButton}" />
 
-                    <Label Text="{Binding PaymentTermText}"
-                           IsVisible="{Binding ShowPaymentTerm}"
-                           TextColor="{StaticResource Gray600}" />
+                <Button Text="Payment Card"
+                        Command="{Binding PaymentCardCommand}"
+                        IsEnabled="{Binding CanPaymentCard}"
+                        IsVisible="{Binding ShowPaymentCard}"
+                        Style="{StaticResource SecondaryButton}" />
 
-                    <Label Text="{Binding PaymentGoalText}"
-                           IsVisible="{Binding ShowPaymentGoal}"
-                           TextColor="{StaticResource colorLaceupGreen}"
-                           FontAttributes="Bold" />
+                <!-- Search Bar -->
+                <Border StrokeThickness="0"
+                        BackgroundColor="#F2F2F7"
+                        Padding="12,4"
+                        StrokeShape="RoundRectangle 12">
+                    <SearchBar Placeholder="Search invoices"
+                               FontSize="14"
+                               Text="{Binding SearchQuery}"
+                               SearchButtonPressed="SearchBar_SearchButtonPressed" />
+                </Border>
+
+                <!-- Payment Term -->
+                <Label Text="{Binding PaymentTermText}"
+                       IsVisible="{Binding ShowPaymentTerm}"
+                       TextColor="{StaticResource Gray600}" />
+
+                <!-- Client Name -->
+                <Label Text="{Binding ClientName}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryDark}" />
+
+                <!-- Payment Goal -->
+                <Label Text="{Binding PaymentGoalText}"
+                       IsVisible="{Binding ShowPaymentGoal}"
+                       TextColor="{StaticResource colorLaceupGreen}"
+                       FontAttributes="Bold" />
+
+                <!-- Summary Section with Border -->
+                <Border StrokeThickness="1"
+                        Stroke="{StaticResource Gray200}"
+                        StrokeShape="RoundRectangle 8"
+                        Padding="12"
+                        BackgroundColor="{StaticResource White}">
+                    <VerticalStackLayout Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <Label Grid.Column="0"
+                                   Text="Open Balance:"
+                                   FontSize="14"
+                                   FontAttributes="Bold" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding OpenBalanceValue}"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource Primary}"
+                                   HorizontalOptions="End" />
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <Label Grid.Column="0"
+                                   Text="Discount:"
+                                   FontSize="14" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding DiscountValue}"
+                                   FontSize="14"
+                                   HorizontalOptions="End" />
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <Label Grid.Column="0"
+                                   Text="Invoice:"
+                                   FontSize="14" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding InvoiceValue}"
+                                   FontSize="14"
+                                   HorizontalOptions="End" />
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <Label Grid.Column="0"
+                                   Text="Credit:"
+                                   FontSize="14" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding CreditValue}"
+                                   FontSize="14"
+                                   HorizontalOptions="End" />
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <Label Grid.Column="0"
+                                   Text="Total:"
+                                   FontSize="14" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding TotalValue}"
+                                   FontSize="14"
+                                   HorizontalOptions="End" />
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <Label Grid.Column="0"
+                                   Text="Total Balance:"
+                                   FontSize="14"
+                                   FontAttributes="Bold" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding TotalBalanceValue}"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   HorizontalOptions="End" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
 
                     <CollectionView ItemsSource="{Binding InvoiceItems}"
                                     SelectionMode="Multiple"
@@ -90,32 +178,8 @@
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
-
-                <Label Text="{Binding TotalSelectedText}"
-                       FontSize="16"
-                       FontAttributes="Bold"
-                       TextColor="{StaticResource PrimaryDark}"
-                       HorizontalOptions="End" />
-
-                <Button Text="Add Payment"
-                        Command="{Binding AddPaymentCommand}"
-                        IsEnabled="{Binding CanAddPayment}"
-                        Style="{StaticResource PrimaryButton}" />
-
-                <Button Text="Credit Account"
-                        Command="{Binding CreditAccountCommand}"
-                        IsEnabled="{Binding CanCreditAccount}"
-                        IsVisible="{Binding ShowCreditAccount}"
-                        Style="{StaticResource SecondaryButton}" />
-
-                <Button Text="Payment Card"
-                        Command="{Binding PaymentCardCommand}"
-                        IsEnabled="{Binding CanPaymentCard}"
-                        IsVisible="{Binding ShowPaymentCard}"
-                        Style="{StaticResource SecondaryButton}" />
             </VerticalStackLayout>
         </ScrollView>
-            </Grid>
     </ContentPage.Content>
 </local:LaceupContentPage>
 

@@ -76,7 +76,8 @@
                            FontSize="12"
                            TextColor="{Binding AddressColor}"
                            IsVisible="{Binding ShowAddress}"
-                           VerticalOptions="Start" />
+                           VerticalOptions="Start"
+                           LineBreakMode="WordWrap" />
                 </Grid>
 
                 <!-- Balance -->
