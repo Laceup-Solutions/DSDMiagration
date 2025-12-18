@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class TimeSheetPage : ContentPage
+    public partial class TimeSheetPage 
     {
         private readonly TimeSheetPageViewModel _viewModel;
 

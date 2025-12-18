@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class AcceptLoadEditDeliveryPage : ContentPage, IQueryAttributable
+    public partial class AcceptLoadEditDeliveryPage : IQueryAttributable
     {
         private readonly AcceptLoadEditDeliveryPageViewModel _viewModel;
 

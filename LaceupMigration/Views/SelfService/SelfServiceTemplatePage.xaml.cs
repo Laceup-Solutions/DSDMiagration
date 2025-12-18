@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels.SelfService;
 
 namespace LaceupMigration.Views.SelfService
 {
-    public partial class SelfServiceTemplatePage : ContentPage
+    public partial class SelfServiceTemplatePage 
     {
         public SelfServiceTemplatePage(SelfServiceTemplatePageViewModel viewModel)
         {

@@ -37,11 +37,18 @@ namespace LaceupMigration
 				// Log but don't crash - directories will be created on-demand if this fails
 				System.Diagnostics.Debug.WriteLine($"[MIGRATION] Config.Initialize() error: {ex.Message}");
 			}
+
 		}
 
 		protected override Window CreateWindow(IActivationState? activationState)
 		{
-			return new Window(_appShell);
+			var window = new Window(_appShell);
+			
+			// [ACTIVITY STATE]: Initialize navigation tracking after window is created
+			// Shell is now available
+			Helpers.NavigationTracker.Initialize(_appShell);
+			
+			return window;
 		}
 	}
 }

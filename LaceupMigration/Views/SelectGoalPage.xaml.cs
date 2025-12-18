@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class SelectGoalPage : ContentPage
+    public partial class SelectGoalPage 
     {
         private readonly SelectGoalPageViewModel _viewModel;
 

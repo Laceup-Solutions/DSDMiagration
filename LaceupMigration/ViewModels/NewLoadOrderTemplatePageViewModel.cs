@@ -57,7 +57,9 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            _readOnly = false; // Can be set from savedIntent if needed
+            // Xamarin PreviouslyOrderedTemplateActivity logic:
+            // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
+            _readOnly = !_loadOrder.AsPresale && (_loadOrder.Finished || _loadOrder.Voided);
             IsNotReadOnly = !_readOnly;
 
             // Load sites if available
@@ -146,7 +148,9 @@ namespace LaceupMigration.ViewModels
                 {
                     if (detail != null && detail.Product != null)
                     {
-                        OrderDetails.Add(new LoadOrderDetailViewModel(detail, _loadOrder));
+                        var viewModel = new LoadOrderDetailViewModel(detail, _loadOrder);
+                        viewModel.IsEnabled = IsNotReadOnly;
+                        OrderDetails.Add(viewModel);
                     }
                 }
 
@@ -566,6 +570,7 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _onHandText;
         [ObservableProperty] private string _truckInventoryText;
         [ObservableProperty] private bool _showInventory = true;
+        [ObservableProperty] private bool _isEnabled = true;
 
         public OrderDetail OrderDetail { get; set; }
         public Product Product => _odLine.Product;

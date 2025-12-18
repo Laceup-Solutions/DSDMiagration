@@ -3,7 +3,7 @@ using Microsoft.Maui.ApplicationModel;
 
 namespace LaceupMigration.Views
 {
-    public partial class RouteReturnsPage : ContentPage
+    public partial class RouteReturnsPage 
     {
         private readonly RouteReturnsPageViewModel _viewModel;
 
@@ -17,6 +17,11 @@ namespace LaceupMigration.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            
+            // [ACTIVITY STATE]: Save navigation state for this protected screen
+            // This allows restoration if the app is force-quit
+            Helpers.NavigationHelper.SaveNavigationState("routereturns");
+            
             await _viewModel.OnAppearingAsync();
         }
         
@@ -26,6 +31,13 @@ namespace LaceupMigration.Views
             // Return true to prevent default back navigation, false to allow it
             // Note: We need to block here because OnBackButtonPressed must return synchronously
             bool preventNavigation = _viewModel.OnBackButtonPressed().GetAwaiter().GetResult();
+            
+            // [ACTIVITY STATE]: If navigation is allowed, remove state
+            if (!preventNavigation)
+            {
+                Helpers.NavigationHelper.RemoveNavigationState("routereturns");
+            }
+            
             return preventNavigation;
         }
 

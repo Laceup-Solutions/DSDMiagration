@@ -19,8 +19,17 @@ namespace LaceupMigration.ViewModels
         private readonly AdvancedOptionsService _advancedOptionsService;
         private Batch? _batch;
         private bool _initialized;
+        private bool _canLeaveScreen = true;
 
         public ObservableCollection<BatchOrderViewModel> Orders { get; } = new();
+
+        /// <summary>
+        /// Gets the current batch ID for ActivityState management.
+        /// </summary>
+        public int? GetBatchId()
+        {
+            return _batch?.Id;
+        }
 
         [ObservableProperty]
         private string _clientName = string.Empty;
@@ -97,6 +106,9 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showPrintLabelButton;
 
+        // Public property for CanLeaveScreen (used by OnBackButtonPressed)
+        public bool CanLeaveScreen => _canLeaveScreen;
+
 
         public async Task InitializeAsync(int batchId)
         {
@@ -120,8 +132,16 @@ namespace LaceupMigration.ViewModels
         public async Task OnAppearingAsync()
         {
             if (!_initialized)
+            {
+                _canLeaveScreen = true; // Initialize on first appearance
                 return;
+            }
 
+            // Xamarin OnResume: refreshes adapter and calls UpdateStates()
+            // Reset canLeaveScreen when returning to screen (unless operation is in progress)
+            // Note: If we're returning from FinalizeBatchActivity, the operation should be complete
+            _canLeaveScreen = true;
+            
             await RefreshAsync();
         }
 
@@ -308,21 +328,67 @@ namespace LaceupMigration.ViewModels
 
         private void UpdateButtonStates()
         {
+            if (_batch == null)
+                return;
+
             var selectedOrders = Orders.Where(x => x.IsSelected).Select(x => x.Order).ToList();
             var activeOrders = Orders.Where(x => !x.Order.Voided && !x.Order.Finished).Select(x => x.Order).ToList();
-
-            CanPick = activeOrders.Count > 0 && !Config.HidePrintBatch;
-            CanDex = Config.DexAvailable && activeOrders.Count > 0;
-            CanFinalize = selectedOrders.Count > 0 && selectedOrders.All(x => !x.Voided && !x.Finished && !x.Reshipped);
-            CanVoid = selectedOrders.Count > 0;
-            CanReship = Config.UseReship && selectedOrders.Count > 0 && 
-                       selectedOrders.Any(x => RouteEx.Routes.Any(r => r.Order != null && r.Order.OrderId == x.OrderId && !r.Order.Finished));
-            CanPrintLabel = ShowPrintLabelButton && activeOrders.Count > 0;
-            CanPrint = activeOrders.Count > 0 && !Config.HidePrintBatch;
-            
-            // Clock Out should be enabled only if all orders are finalized or voided
             var allOrders = Orders.Select(x => x.Order).ToList();
-            CanClockOut = allOrders.Count > 0 && allOrders.All(x => x.Voided || x.Finished);
+
+            // Xamarin UpdateStates logic (lines 2278-2354)
+            // Check if batch is clocked out
+            bool isClockedOut = _batch.ClockedOut != DateTime.MinValue && (DateTime.Now.Year - _batch.ClockedOut.Year < 2);
+
+            if (isClockedOut)
+            {
+                // When clocked out, disable all buttons except print
+                CanPick = false;
+                CanDex = false;
+                CanFinalize = false;
+                CanVoid = false;
+                CanReship = false;
+                CanPrintLabel = false;
+                CanClockOut = false; // Disable clock out button after clocking out
+                // Print should still be enabled if there are orders
+                CanPrint = allOrders.Count > 0 && !Config.HidePrintBatch;
+            }
+            else
+            {
+                // Normal button states
+                CanPick = activeOrders.Count > 0 && !Config.HidePrintBatch;
+                CanDex = Config.DexAvailable && activeOrders.Count > 0;
+                CanFinalize = selectedOrders.Count > 0 && selectedOrders.All(x => !x.Voided && !x.Finished && !x.Reshipped);
+                CanVoid = selectedOrders.Count > 0;
+                CanReship = Config.UseReship && selectedOrders.Count > 0 && 
+                           selectedOrders.Any(x => RouteEx.Routes.Any(r => r.Order != null && r.Order.OrderId == x.OrderId && !r.Order.Finished));
+                CanPrintLabel = ShowPrintLabelButton && activeOrders.Count > 0;
+                CanPrint = activeOrders.Count > 0 && !Config.HidePrintBatch;
+
+                // Clock Out logic:
+                // Disabled if there are no orders
+                // Enabled when all orders are finalized or voided
+                if (allOrders.Count == 0)
+                {
+                    CanClockOut = false; // Disabled when no orders
+                }
+                else if (allOrders.All(x => x.Voided || x.Finished))
+                {
+                    CanClockOut = true; // Enabled when all orders are finalized/voided
+                }
+                else
+                {
+                    CanClockOut = false; // Disabled if there are active orders
+                }
+
+                // Special case: NoService order (line 2347-2353)
+                if (allOrders.Count == 1 && allOrders[0].OrderType == OrderType.NoService)
+                {
+                    CanFinalize = false;
+                    CanPick = false;
+                    CanPrintLabel = false;
+                    CanClockOut = true;
+                }
+            }
         }
 
         public BatchPageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService)
@@ -407,15 +473,20 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task FinalizeAsync()
         {
+            // Xamarin BatchActivity: CannotGetoutNow() is called at the start of FinalizeButton_Click
+            _canLeaveScreen = false;
+
             var selectedOrders = GetSelectedActiveOrders();
             if (selectedOrders.Count == 0)
             {
+                _canLeaveScreen = true; // Reset if validation fails
                 await _dialogService.ShowAlertAsync("Please select valid orders to finalize.", "Alert");
                 return;
             }
 
             if (selectedOrders.Any(x => x.Reshipped || x.Voided || x.Finished))
             {
+                _canLeaveScreen = true; // Reset if validation fails
                 await _dialogService.ShowAlertAsync("Cannot finalize orders that are already finalized, voided, or reshipped.", "Alert");
                 return;
             }
@@ -428,16 +499,30 @@ namespace LaceupMigration.ViewModels
 
             if (result)
             {
-                await FinalizeOrdersAsync(selectedOrders);
+                // Xamarin: Navigate to FinalizeBatchActivity instead of directly finalizing
+                // Build ordersId string (comma-separated)
+                var ordersIdString = string.Join(",", selectedOrders.Select(x => x.OrderId));
+                await Shell.Current.GoToAsync($"finalizebatch?ordersId={ordersIdString}&printed=0");
+                
+                // Reset canLeaveScreen after navigation (operation will complete in FinalizeBatchPage)
+                // Note: canLeaveScreen will be reset when returning from FinalizeBatchPage in OnAppearingAsync
+            }
+            else
+            {
+                _canLeaveScreen = true; // Reset if user cancels
             }
         }
 
         [RelayCommand]
         private async Task VoidAsync()
         {
+            // Xamarin BatchActivity: CannotGetoutNow() is called at the start of VoidButton_Click
+            _canLeaveScreen = false;
+
             var selectedOrders = GetSelectedOrders();
             if (selectedOrders.Count == 0)
             {
+                _canLeaveScreen = true; // Reset if validation fails
                 await _dialogService.ShowAlertAsync("Please select orders to void.", "Alert");
                 return;
             }
@@ -451,6 +536,10 @@ namespace LaceupMigration.ViewModels
             if (result)
             {
                 await VoidOrdersAsync(selectedOrders);
+            }
+            else
+            {
+                _canLeaveScreen = true; // Reset if user cancels
             }
         }
 
@@ -485,7 +574,10 @@ namespace LaceupMigration.ViewModels
             var orders = _batch.Orders().ToList();
             if (orders.Count == 0)
             {
+                var batchId = _batch.Id; // Save batchId before deletion
                 _batch.Delete();
+                // [ACTIVITY STATE]: Remove state when clocking out with no orders
+                Helpers.NavigationHelper.RemoveNavigationState($"batch?batchId={batchId}");
                 await Shell.Current.GoToAsync("..");
                 return;
             }
@@ -525,7 +617,49 @@ namespace LaceupMigration.ViewModels
 
                 BackgroundDataSync.SyncFinalizedOrders();
 
+                // [ACTIVITY STATE]: Remove state when clocking out
+                Helpers.NavigationHelper.RemoveNavigationState($"batch?batchId={_batch.Id}");
+                
+                // Xamarin: ClockOut exits the screen (calls Finish())
+                // Reset canLeaveScreen before exiting
+                _canLeaveScreen = true;
+                
                 await Shell.Current.GoToAsync("..");
+            }
+        }
+
+        public async Task ShowCannotLeaveDialog()
+        {
+            // Xamarin OnKeyDown: Shows alert if orders are not finalized/voided or batch not clocked out
+            var allOrders = Orders.Select(x => x.Order).ToList();
+            
+            if (allOrders.Count == 0)
+            {
+                // Empty batch - should be able to leave
+                return;
+            }
+            
+            if (!allOrders.All(x => x.Voided || x.Finished))
+            {
+                await _dialogService.ShowAlertAsync("All orders must be finalized or voided before leaving.", "Alert", "OK");
+                return;
+            }
+            
+            if (_batch != null && _batch.ClockedOut == DateTime.MinValue)
+            {
+                await _dialogService.ShowAlertAsync("You must clock out before leaving.", "Alert", "OK");
+                return;
+            }
+            
+            // ButlerCustomization check: all voided orders must be printed
+            if (Config.ButlerCustomization && _batch != null)
+            {
+                var voided = allOrders.Where(x => x.Voided).ToList();
+                if (voided.Count > 0 && !voided.All(x => x.PrintedCopies > 0))
+                {
+                    await _dialogService.ShowAlertAsync("All voided transactions must be printed before continuing.", "Warning", "OK");
+                    return;
+                }
             }
         }
 
@@ -560,6 +694,8 @@ namespace LaceupMigration.ViewModels
             return Orders.Where(x => x.IsSelected).Select(x => x.Order).ToList();
         }
 
+        // This method is no longer used - finalization now happens in FinalizeBatchPage
+        // Keeping it for backward compatibility if needed
         private async Task FinalizeOrdersAsync(List<Order> orders)
         {
             try
@@ -576,12 +712,19 @@ namespace LaceupMigration.ViewModels
                     order.Save();
                 }
 
+                // Xamarin: adapter.NotifyDataSetChanged() and UpdateStates() are called after finalizing
+                // Refresh UI to show finalized status in list
                 LoadBatchData();
+                
+                // Reset canLeaveScreen after operation completes
+                _canLeaveScreen = true;
+                
                 await _dialogService.ShowAlertAsync("Orders finalized successfully.", "Success");
             }
             catch (Exception ex)
             {
                 Logger.CreateLog(ex);
+                _canLeaveScreen = true; // Reset on error
                 await _dialogService.ShowAlertAsync("Error finalizing orders.", "Error");
             }
         }
@@ -625,12 +768,19 @@ namespace LaceupMigration.ViewModels
                     order.Save();
                 }
 
+                // Xamarin: adapter.NotifyDataSetChanged() and UpdateStates() are called after voiding
+                // Refresh UI to show voided status in list
                 LoadBatchData();
+                
+                // Reset canLeaveScreen after operation completes
+                _canLeaveScreen = true;
+                
                 await _dialogService.ShowAlertAsync("Orders voided successfully.", "Success");
             }
             catch (Exception ex)
             {
                 Logger.CreateLog(ex);
+                _canLeaveScreen = true; // Reset on error
                 await _dialogService.ShowAlertAsync("Error voiding orders.", "Error");
             }
         }

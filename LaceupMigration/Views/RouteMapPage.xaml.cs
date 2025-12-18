@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class RouteMapPage : ContentPage
+    public partial class RouteMapPage 
     {
         private readonly RouteMapPageViewModel _viewModel;
 

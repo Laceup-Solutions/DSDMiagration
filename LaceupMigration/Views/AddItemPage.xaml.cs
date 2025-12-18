@@ -4,7 +4,7 @@ using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.Views
 {
-    public partial class AddItemPage : ContentPage, IQueryAttributable
+    public partial class AddItemPage : IQueryAttributable
     {
         private readonly AddItemPageViewModel _viewModel;
 

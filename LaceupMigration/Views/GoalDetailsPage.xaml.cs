@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace LaceupMigration.Views
 {
-    public partial class GoalDetailsPage : ContentPage, IQueryAttributable
+    public partial class GoalDetailsPage : IQueryAttributable
     {
         private readonly GoalDetailsPageViewModel _viewModel;
 

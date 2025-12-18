@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class SetParLevelPage : ContentPage
+    public partial class SetParLevelPage 
     {
         private readonly SetParLevelPageViewModel _viewModel;
 

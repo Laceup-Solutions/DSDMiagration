@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class CycleCountPage : ContentPage
+    public partial class CycleCountPage 
     {
         private readonly CycleCountPageViewModel _viewModel;
 

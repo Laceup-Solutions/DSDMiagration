@@ -22,6 +22,8 @@ namespace LaceupMigration.ViewModels
         private int _lastDetailCount = 0;
         private int? _lastDetailId = null;
         private string _sortBy = "Product Name";
+        private int? _pendingOrderId = null;
+        private bool _pendingAsPresale = false;
 
         public ObservableCollection<PreviouslyOrderedProductViewModel> PreviouslyOrderedProducts { get; } = new();
 
@@ -103,8 +105,11 @@ namespace LaceupMigration.ViewModels
                     asPresale = presale == 1;
             }
 
+            // Store query parameters for retry in OnAppearingAsync if initialization fails
             if (orderId.HasValue)
             {
+                _pendingOrderId = orderId;
+                _pendingAsPresale = asPresale;
                 MainThread.BeginInvokeOnMainThread(async () => await InitializeAsync(orderId.Value, asPresale));
             }
         }
@@ -132,6 +137,16 @@ namespace LaceupMigration.ViewModels
 
         public async Task OnAppearingAsync()
         {
+            // If not initialized but we have pending orderId, try to initialize again
+            // This handles the case where the app was restored from state but orders weren't loaded yet
+            if (!_initialized && _pendingOrderId.HasValue)
+            {
+                await InitializeAsync(_pendingOrderId.Value, _pendingAsPresale);
+                // If still not initialized after retry, return early
+                if (!_initialized)
+                    return;
+            }
+
             if (!_initialized)
                 return;
 
@@ -167,7 +182,19 @@ namespace LaceupMigration.ViewModels
         {
             if (_order == null) return;
 
-            CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
+            // Xamarin PreviouslyOrderedTemplateActivity logic:
+            // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
+            bool isReadOnly = !_order.AsPresale && (_order.Finished || _order.Voided);
+            
+            if (isReadOnly)
+            {
+                CanEdit = false;
+            }
+            else
+            {
+                CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
+            }
+            
             ShowSendButton = _order.AsPresale;
 
             LoadOrderData();
@@ -267,6 +294,17 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
+            // Clean up any existing details with qty=0 (should never exist)
+            var detailsToDelete = _order.Details.Where(d => d.Qty == 0).ToList();
+            foreach (var detail in detailsToDelete)
+            {
+                _order.DeleteDetail(detail);
+            }
+            if (detailsToDelete.Count > 0)
+            {
+                _order.Save();
+            }
+
             // Then, sync with current order (Details) - matches SyncLinesWithOrder() in Xamarin
             // This ensures ALL order items are shown, even if not in history
             // Order items take precedence over history items
@@ -319,10 +357,6 @@ namespace LaceupMigration.ViewModels
                 else
                 {
                     // Product NOT in history
-                    // If qty == 0, skip it (don't show items with no history and no quantity)
-                    if (orderDetail.Qty == 0)
-                        continue;
-                    
                     // Create new view model from order detail
                     // This matches: line = orderDetail.CreateLineBasedOnOrderDetail(); in Xamarin
                     // CRITICAL: This ensures items in order but not in history are still shown
@@ -330,42 +364,28 @@ namespace LaceupMigration.ViewModels
                     productDict[key] = viewModel;
                 }
                 
-                // Handle qty == 0 for items with history
-                if (orderDetail.Qty == 0 && hasHistory)
+                // ALWAYS update the line with order detail values (matches Xamarin lines 532-543)
+                // This ensures the qty, price, and all other properties are set from the order detail
+                // IMPORTANT: This must happen for BOTH history items and new items
+                // Note: Details with qty=0 are cleaned up at the start of this method, so we won't see them here
+                viewModel.ExistingDetail = orderDetail;
+                viewModel.Quantity = (double)orderDetail.Qty; // Convert float to double, use ACTUAL order qty
+                
+                // Update all properties from order detail
+                viewModel.UpdateFromOrderDetail(orderDetail);
+                
+                // Update color and type based on order detail
+                if (orderDetail.IsCredit)
                 {
-                    // Product has history but qty is 0 - clear the order detail reference
-                    // This will show the item with "+" button (qty = 0)
-                    viewModel.ExistingDetail = null;
-                    viewModel.Quantity = 0;
-                    viewModel.ProductNameColor = Colors.Black;
-                    viewModel.TypeText = string.Empty;
-                    viewModel.ShowTypeText = false;
-                    viewModel.UpdateTotal();
+                    viewModel.ProductNameColor = Colors.Orange; // Orange for credit items
+                    viewModel.TypeText = orderDetail.Damaged ? "Dump" : "Return";
+                    viewModel.ShowTypeText = true;
                 }
                 else
                 {
-                    // ALWAYS update the line with order detail values (matches Xamarin lines 532-543)
-                    // This ensures the qty, price, and all other properties are set from the order detail
-                    // IMPORTANT: This must happen for BOTH history items and new items
-                    viewModel.ExistingDetail = orderDetail;
-                    viewModel.Quantity = (double)orderDetail.Qty; // Convert float to double, use ACTUAL order qty
-                    
-                    // Update all properties from order detail
-                    viewModel.UpdateFromOrderDetail(orderDetail);
-                    
-                    // Update color and type based on order detail
-                    if (orderDetail.IsCredit)
-                    {
-                        viewModel.ProductNameColor = Colors.Orange; // Orange for credit items
-                        viewModel.TypeText = orderDetail.Damaged ? "Dump" : "Return";
-                        viewModel.ShowTypeText = true;
-                    }
-                    else
-                    {
-                        viewModel.ProductNameColor = Colors.Black;
-                        viewModel.TypeText = string.Empty;
-                        viewModel.ShowTypeText = false;
-                    }
+                    viewModel.ProductNameColor = Colors.Black;
+                    viewModel.TypeText = string.Empty;
+                    viewModel.ShowTypeText = false;
                 }
             }
 
@@ -374,6 +394,8 @@ namespace LaceupMigration.ViewModels
             // This is correct - they should still be shown
             foreach (var viewModel in productDict.Values)
             {
+                // Set IsEnabled based on CanEdit (disable if order is read-only)
+                viewModel.IsEnabled = CanEdit;
                 PreviouslyOrderedProducts.Add(viewModel);
             }
 
@@ -701,7 +723,9 @@ namespace LaceupMigration.ViewModels
             if (_order.Voided)
                 return true;
 
-            // Check if order is empty
+            // Check if order is empty - matches Xamarin PreviouslyOrderedTemplateActivity logic
+            // Empty means: no details, or only default item
+            // Note: Details with qty=0 are always deleted, so we don't need to check for them
             bool isEmpty = _order.Details.Count == 0 || 
                 (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
 
@@ -723,6 +747,8 @@ namespace LaceupMigration.ViewModels
                     }
                 }
 
+                // Delete empty order if it hasn't been printed and is not a delivery
+                // This matches Xamarin PreviouslyOrderedTemplateActivity.FinalizeOrder logic
                 if (string.IsNullOrEmpty(_order.PrintedOrderId) && !_order.IsDelivery)
                 {
                     Logger.CreateLog($"Order with id={_order.OrderId} DELETED (no details)");
@@ -731,6 +757,7 @@ namespace LaceupMigration.ViewModels
                 }
                 else
                 {
+                    // If order has been printed or is a delivery, ask to void instead
                     var result = await _dialogService.ShowConfirmAsync(
                         "You have to set all quantities to zero. Do you want to void this order?",
                         "Alert",
@@ -826,12 +853,26 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private List<MenuOption> BuildMenuOptions()
+        public List<MenuOption> BuildMenuOptions()
         {
             var options = new List<MenuOption>();
 
             if (_order == null)
                 return options;
+
+            // Xamarin PreviouslyOrderedTemplateActivity logic:
+            // If !AsPresale && (Finished || Voided), only show Print option
+            bool isReadOnly = !_order.AsPresale && (_order.Finished || _order.Voided);
+            
+            if (isReadOnly)
+            {
+                // Only allow Print when read-only
+                options.Add(new MenuOption("Print", async () =>
+                {
+                    await PrintAsync();
+                }));
+                return options;
+            }
 
             var finalized = _order.Finished;
             var voided = _order.Voided;
@@ -883,10 +924,10 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-                options.Add(new MenuOption("Print", async () =>
-                {
-                    await PrintAsync();
-                }));
+            options.Add(new MenuOption("Print", async () =>
+            {
+                await PrintAsync();
+            }));
 
             if (!(_order.Client.SplitInvoices.Count > 0))
             {
@@ -905,11 +946,14 @@ namespace LaceupMigration.ViewModels
             var canNavigate = await FinalizeOrderAsync();
             if (canNavigate)
             {
+                // [ACTIVITY STATE]: Remove state when navigating away programmatically
+                // This handles cases where navigation happens via ViewModel (not just back button)
+                Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
+                
                 await Shell.Current.GoToAsync("..");
             }
         }
 
-        private record MenuOption(string Title, Func<Task> Action);
     }
 
     public partial class PreviouslyOrderedProductViewModel : ObservableObject
@@ -962,6 +1006,9 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private bool _showTypeText = false;
+
+        [ObservableProperty]
+        private bool _isEnabled = true;
 
         public PreviouslyOrderedProductViewModel(PreviouslyOrderedTemplatePageViewModel parent)
         {
@@ -1050,26 +1097,14 @@ namespace LaceupMigration.ViewModels
 
             var existingDetail = order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && !x.IsCredit);
 
-            // Handle qty == 0
+            // Handle qty == 0 - always delete the detail, never keep details with qty=0
             if (qty == 0)
             {
                 if (existingDetail != null)
                 {
-                    // Check if product has history
-                    bool hasHistory = item.OrderedItem != null;
-                    
-                    if (hasHistory)
-                    {
-                        // Product has history - set qty to 0 but keep the detail (will be removed from display)
-                        existingDetail.Qty = 0;
-                        order.Save();
-                    }
-                    else
-                    {
-                        // Product has NO history - delete the detail completely
-                        order.DeleteDetail(existingDetail);
-                        order.Save();
-                    }
+                    // Always delete the detail when qty is set to 0
+                    order.DeleteDetail(existingDetail);
+                    order.Save();
                 }
                 
                 // Refresh the parent view
@@ -1213,26 +1248,14 @@ namespace LaceupMigration.ViewModels
 
             var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && x.IsCredit == true);
 
-            // Handle qty == 0
+            // Handle qty == 0 - always delete the detail, never keep details with qty=0
             if (qty == 0)
             {
                 if (existingDetail != null)
                 {
-                    // Check if product has history
-                    bool hasHistory = item.OrderedItem != null;
-                    
-                    if (hasHistory)
-                    {
-                        // Product has history - set qty to 0 but keep the detail (will be removed from display)
-                        existingDetail.Qty = 0;
-                        _order.Save();
-                    }
-                    else
-                    {
-                        // Product has NO history - delete the detail completely
-                        _order.DeleteDetail(existingDetail);
-                        _order.Save();
-                    }
+                    // Always delete the detail when qty is set to 0
+                    _order.DeleteDetail(existingDetail);
+                    _order.Save();
                 }
                 
                 // Refresh the parent view

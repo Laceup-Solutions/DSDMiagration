@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class LogViewerPage : ContentPage
+    public partial class LogViewerPage 
     {
         public LogViewerPage(LogViewerPageViewModel viewModel)
         {

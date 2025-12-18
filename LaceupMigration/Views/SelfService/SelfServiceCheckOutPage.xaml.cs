@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels.SelfService;
 
 namespace LaceupMigration.Views.SelfService
 {
-    public partial class SelfServiceCheckOutPage : ContentPage
+    public partial class SelfServiceCheckOutPage 
     {
         public SelfServiceCheckOutPage(SelfServiceCheckOutPageViewModel viewModel)
         {

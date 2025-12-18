@@ -344,9 +344,6 @@ namespace LaceupMigration.ViewModels
         }
     }
 
-    public record MenuOption(string Title, Func<Task> Action);
-
-
     public class InvoiceDetailItemViewModel
     {
         public string ProductName { get; set; } = string.Empty;

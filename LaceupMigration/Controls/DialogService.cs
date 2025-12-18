@@ -65,12 +65,224 @@ public class DialogService : IDialogService
 
     public async Task<string> ShowPromptAsync(string title, string message, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", int maxLength = -1, string initialValue = "", Keyboard keyboard = null)
     {
+        // If it's a numeric keyboard (quantity input), use custom dialog that selects all text
+        if (keyboard == Keyboard.Numeric && !string.IsNullOrEmpty(initialValue))
+        {
+            return await ShowQuantityPromptAsync(title, message, acceptText, cancelText, initialValue);
+        }
+
         var page = GetCurrentPage();
         if (page != null)
         {
             return await page.DisplayPromptAsync(title, message, acceptText, cancelText, placeholder, maxLength, initialValue: initialValue, keyboard: keyboard);
         }
         return null;
+    }
+
+    /// <summary>
+    /// Custom quantity prompt dialog that automatically selects all text when opened.
+    /// This makes it easier to edit quantity values.
+    /// </summary>
+    private async Task<string> ShowQuantityPromptAsync(string title, string message, string acceptText, string cancelText, string initialValue)
+    {
+        var page = GetCurrentPage();
+        if (page == null)
+            return null;
+
+        var tcs = new TaskCompletionSource<string>();
+
+        // Create Entry with numeric keyboard
+        var qtyEntry = new Entry
+        {
+            Text = initialValue,
+            Keyboard = Keyboard.Numeric,
+            FontSize = 16,
+            BackgroundColor = Colors.White,
+            HorizontalOptions = LayoutOptions.FillAndExpand
+        };
+
+        // Create dialog content
+        var content = new VerticalStackLayout
+        {
+            Spacing = 15,
+            Padding = new Thickness(20),
+            BackgroundColor = Colors.White,
+            Children =
+            {
+                new Label
+                {
+                    Text = message,
+                    FontSize = 14,
+                    TextColor = Colors.Black
+                },
+                qtyEntry
+            }
+        };
+
+        // Create buttons
+        var cancelButton = new Button
+        {
+            Text = cancelText,
+            BackgroundColor = Colors.Gray,
+            TextColor = Colors.White,
+            FontSize = 16,
+            Margin = new Thickness(0),
+            CornerRadius = 0
+        };
+
+        var okButton = new Button
+        {
+            Text = acceptText,
+            BackgroundColor = Color.FromArgb("#017CBA"),
+            TextColor = Colors.White,
+            FontSize = 16,
+            Margin = new Thickness(0),
+            CornerRadius = 0
+        };
+
+        var buttonRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = GridLength.Star }
+            },
+            ColumnSpacing = 0,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0),
+            BackgroundColor = Colors.White
+        };
+
+        Grid.SetColumn(cancelButton, 0);
+        Grid.SetColumn(okButton, 1);
+        buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(okButton);
+
+        // Main container
+        var mainContainer = new VerticalStackLayout
+        {
+            Spacing = 0,
+            BackgroundColor = Colors.White,
+            Children =
+            {
+                new Label
+                {
+                    Text = title,
+                    FontSize = 18,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Colors.Black,
+                    Padding = new Thickness(20, 20, 20, 15),
+                    BackgroundColor = Colors.White
+                },
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") },
+                content,
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") },
+                buttonRow
+            }
+        };
+
+        var dialogBorder = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 0,
+            Padding = 0,
+            Margin = new Thickness(20),
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(8) },
+            Content = mainContainer
+        };
+
+        var overlayGrid = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"),
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            },
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        Grid.SetRow(dialogBorder, 1);
+        Grid.SetColumn(dialogBorder, 1);
+        overlayGrid.Children.Add(dialogBorder);
+
+        var dialog = new ContentPage
+        {
+            BackgroundColor = Colors.Transparent,
+            Content = overlayGrid
+        };
+
+        async Task SafePopModalAsync()
+        {
+            try
+            {
+                var currentPage = GetCurrentPage();
+                if (currentPage != null && currentPage.Navigation != null)
+                {
+                    if (currentPage == dialog && currentPage.Navigation.ModalStack.Count > 0)
+                    {
+                        await currentPage.Navigation.PopModalAsync();
+                    }
+                    else if (page != null && page.Navigation != null && page.Navigation.ModalStack.Count > 0)
+                    {
+                        await page.Navigation.PopModalAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error popping modal: {ex.Message}");
+            }
+        }
+
+        okButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult(qtyEntry.Text);
+        };
+
+        cancelButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult(null);
+        };
+
+        // Handle Entry focus and text selection
+        qtyEntry.Focused += (s, e) =>
+        {
+            // Select all text when entry gets focus
+            if (!string.IsNullOrEmpty(qtyEntry.Text))
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    qtyEntry.CursorPosition = 0;
+                    qtyEntry.SelectionLength = qtyEntry.Text.Length;
+                });
+            }
+        };
+
+        // Show dialog
+        await page.Navigation.PushModalAsync(dialog);
+
+        // Focus entry and select all text after a short delay to ensure dialog is fully rendered
+        await Task.Delay(100);
+        qtyEntry.Focus();
+        if (!string.IsNullOrEmpty(qtyEntry.Text))
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                qtyEntry.CursorPosition = 0;
+                qtyEntry.SelectionLength = qtyEntry.Text.Length;
+            });
+        }
+
+        return await tcs.Task;
     }
 
     public async Task<bool> ShowConfirmAsync(string message, string title = "Confirm", string acceptText = "Yes", string cancelText = "No")

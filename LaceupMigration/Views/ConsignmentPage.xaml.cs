@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class ConsignmentPage : ContentPage, IQueryAttributable
+    public partial class ConsignmentPage : IQueryAttributable
     {
         private readonly ConsignmentPageViewModel _viewModel;
 

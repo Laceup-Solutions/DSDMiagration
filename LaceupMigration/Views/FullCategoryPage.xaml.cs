@@ -6,7 +6,7 @@ using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.Views
 {
-    public partial class FullCategoryPage : ContentPage, IQueryAttributable
+    public partial class FullCategoryPage : IQueryAttributable
     {
         private readonly FullCategoryPageViewModel _viewModel;
 

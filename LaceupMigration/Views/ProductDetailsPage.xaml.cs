@@ -3,7 +3,7 @@ using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.Views
 {
-    public partial class ProductDetailsPage : ContentPage, IQueryAttributable
+    public partial class ProductDetailsPage : IQueryAttributable
     {
         private readonly ProductDetailsPageViewModel _viewModel;
 

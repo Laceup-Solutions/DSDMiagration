@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class SuperOrderTemplatePage : ContentPage, IQueryAttributable
+    public partial class SuperOrderTemplatePage : IQueryAttributable
     {
         private readonly SuperOrderTemplatePageViewModel _viewModel;
 

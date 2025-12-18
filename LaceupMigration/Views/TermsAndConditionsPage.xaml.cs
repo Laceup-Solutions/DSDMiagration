@@ -3,7 +3,7 @@ using Microsoft.Maui.ApplicationModel;
 
 namespace LaceupMigration
 {
-	public partial class TermsAndConditionsPage : ContentPage
+	public partial class TermsAndConditionsPage
 	{
 		private readonly TermsAndConditionsPageViewModel _viewModel;
 

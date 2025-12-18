@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class SAPOrderReportPage : ContentPage
+    public partial class SAPOrderReportPage 
     {
         private readonly SAPOrderReportPageViewModel _viewModel;
 

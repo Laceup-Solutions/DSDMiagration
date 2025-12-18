@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class SetupPrinterPage : ContentPage
+    public partial class SetupPrinterPage 
     {
         private readonly SetupPrinterPageViewModel _viewModel;
 

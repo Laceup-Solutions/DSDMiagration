@@ -2,16 +2,20 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Reflection;
 using LaceupMigration.Services;
+using System.IO;
 
 namespace LaceupMigration.ViewModels
 {
 	public partial class SplashPageViewModel : ObservableObject
 	{
 		private readonly ILaceupAppService _appService;
+		private readonly IActivityStateRestorationService _restorationService;
+		private static bool _hasRestored = false; // Flag to prevent multiple restorations
 
-		public SplashPageViewModel(ILaceupAppService appService)
+		public SplashPageViewModel(ILaceupAppService appService, IActivityStateRestorationService restorationService)
 		{
 			_appService = appService;
+			_restorationService = restorationService;
 		}
 
 		// [MIGRATION]: Sign Out fix - immediately redirect to login when signed out
@@ -98,6 +102,73 @@ namespace LaceupMigration.ViewModels
 
 			if (Config.SignedIn && !isTimeOut)
 			{
+				// [ACTIVITY STATE RESTORATION]: Try to restore navigation from ActivityState
+				// Only restore once per app session (on first launch after force quit)
+				if (!_hasRestored)
+				{
+					var restorationStack = _restorationService.GetRestorationStack();
+					if (restorationStack != null && restorationStack.Count > 0)
+					{
+						// Validate the deepest route (last in stack)
+						var deepestRoute = restorationStack.LastOrDefault();
+						if (!string.IsNullOrEmpty(deepestRoute))
+						{
+							var isValid = await _restorationService.ValidateRestorationRoute(deepestRoute);
+							if (isValid)
+							{
+								System.Diagnostics.Debug.WriteLine($"[SplashPage] ActivityState restoration: Restoring navigation stack with {restorationStack.Count} pages. Deepest route: {deepestRoute}");
+								
+								_hasRestored = true; // Mark as restored to prevent multiple restorations
+								
+								// Navigate through the full stack to ensure intermediate pages get their parameters
+								if (restorationStack.Count == 1)
+								{
+									// Single page - navigate directly
+									await GoToAsyncOrMainAsync(deepestRoute);
+								}
+								else
+								{
+									// Multiple pages - navigate through each to build the stack properly
+									// This ensures intermediate pages (like ClientDetails) get their parameters
+									for (int i = 0; i < restorationStack.Count; i++)
+									{
+										var route = restorationStack[i];
+										if (i == 0)
+										{
+											// First page - use absolute navigation to clear stack
+											if (route.StartsWith("///"))
+											{
+												await Shell.Current.GoToAsync(route);
+											}
+											else
+											{
+												await Shell.Current.GoToAsync($"///MainPage/{route}");
+											}
+										}
+										else
+										{
+											// Subsequent pages - navigate relative to build the stack
+											await Shell.Current.GoToAsync(route);
+											// Small delay to ensure page loads and ApplyQueryAttributes is called
+											await Task.Delay(200);
+										}
+									}
+								}
+								
+								DataAccess.WaitBeforeStart = 1;
+								Config.SaveAppStatus();
+								return;
+							}
+							else
+							{
+								// Restoration route is invalid, clear it and continue with normal flow
+								System.Diagnostics.Debug.WriteLine("[SplashPage] ActivityState restoration: Invalid route, clearing state and using normal flow");
+								ActivityState.RemoveAll();
+							}
+						}
+					}
+				}
+
 				if (Config.ButlerCustomization)
 				{
 					if (!Config.ButlerSignedIn)

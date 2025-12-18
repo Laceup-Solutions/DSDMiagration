@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class SalesmenCommissionReportPage : ContentPage
+    public partial class SalesmenCommissionReportPage 
     {
         private readonly SalesmenCommissionReportPageViewModel _viewModel;
 

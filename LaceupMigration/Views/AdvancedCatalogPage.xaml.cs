@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class AdvancedCatalogPage : ContentPage, IQueryAttributable
+    public partial class AdvancedCatalogPage : IQueryAttributable
     {
         private readonly AdvancedCatalogPageViewModel _viewModel;
         private bool _isNavigatingBack = false;
@@ -54,6 +54,22 @@ namespace LaceupMigration.Views
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
             _viewModel.ApplyQueryAttributes(query);
+            
+            // [ACTIVITY STATE]: Save navigation state with query parameters
+            // Build route with query parameters for state saving
+            var route = "advancedcatalog";
+            if (query != null && query.Count > 0)
+            {
+                var queryParams = query
+                    .Where(kvp => kvp.Value != null)
+                    .Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value.ToString())}")
+                    .ToArray();
+                if (queryParams.Length > 0)
+                {
+                    route += "?" + string.Join("&", queryParams);
+                }
+            }
+            Helpers.NavigationHelper.SaveNavigationState(route);
         }
 
         protected override async void OnAppearing()

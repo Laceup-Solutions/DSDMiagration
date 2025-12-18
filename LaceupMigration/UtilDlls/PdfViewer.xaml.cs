@@ -14,7 +14,7 @@ using Foundation;
 
 namespace LaceupMigration.UtilDlls
 {
-    public partial class PdfViewer : ContentPage, IQueryAttributable
+    public partial class PdfViewer : IQueryAttributable
     {
         private string _pdfPath = string.Empty;
         private int? _orderId;

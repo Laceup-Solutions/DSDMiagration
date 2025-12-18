@@ -4,7 +4,7 @@ using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.Views
 {
-    public partial class InventorySummaryPage : ContentPage
+    public partial class InventorySummaryPage 
     {
         private readonly InventorySummaryPageViewModel _viewModel;
 
