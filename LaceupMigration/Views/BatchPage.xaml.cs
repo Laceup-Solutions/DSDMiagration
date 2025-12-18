@@ -14,6 +14,9 @@ namespace LaceupMigration.Views
             _viewModel = viewModel;
             BindingContext = _viewModel;
 
+            // Use custom menu (ViewModel-based) - this prevents LaceupContentPage from removing the menu item
+            UseCustomMenu = true;
+
             // Wire up menu toolbar item
             var menuItem = ToolbarItems.FirstOrDefault();
             if (menuItem != null)
