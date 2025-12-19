@@ -55,8 +55,30 @@ namespace LaceupMigration.ViewModels
             _transferAction = action == "transferOn" ? LaceupMigration.TransferAction.On : LaceupMigration.TransferAction.Off;
             Title = _transferAction == LaceupMigration.TransferAction.On ? "Transfer On" : "Transfer Off";
             _tempFile = Path.Combine(Config.DataPath, _transferAction.ToString() + "_temp_LoadOrderPath.xml");
+            
+            // [ACTIVITY STATE]: Check if restoring from state and use saved temp file path
+            // Match Xamarin TransferActivity: loads temp file path from ActivityState.State
+            var state = LaceupMigration.ActivityState.GetState("TransferOnOffActivity");
+            if (state != null && state.State != null && state.State.ContainsKey("tempFilePath"))
+            {
+                var savedTempFilePath = state.State["tempFilePath"];
+                if (!string.IsNullOrEmpty(savedTempFilePath) && File.Exists(savedTempFilePath))
+                {
+                    // Use the saved temp file path from ActivityState
+                    _tempFile = savedTempFilePath;
+                }
+            }
+            
             UpdateSortButtonText();
             await LoadInventoryAsync();
+        }
+
+        /// <summary>
+        /// Gets the current temp file path. Used for saving to ActivityState.
+        /// </summary>
+        public string GetTempFilePath()
+        {
+            return _tempFile;
         }
 
         private async Task LoadInventoryAsync()
@@ -700,6 +722,10 @@ namespace LaceupMigration.ViewModels
         public void SaveList()
         {
             // Match Xamarin SaveList logic
+            // Don't save if temp file path is not initialized
+            if (string.IsNullOrEmpty(_tempFile))
+                return;
+                
             lock (FileOperationsLocker.lockFilesObject)
             {
                 try

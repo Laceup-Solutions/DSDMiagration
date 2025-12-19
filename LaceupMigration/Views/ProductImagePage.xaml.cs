@@ -1,5 +1,6 @@
 using LaceupMigration.ViewModels;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace LaceupMigration.Views
 {
@@ -23,6 +24,29 @@ namespace LaceupMigration.Views
                     Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(productId));
                 }
             }
+            
+            // [ACTIVITY STATE]: Save navigation state with query parameters
+            // Build route with query parameters for state saving
+            var route = "productimage";
+            if (query != null && query.Count > 0)
+            {
+                var queryParams = query
+                    .Where(kvp => kvp.Value != null)
+                    .Select(kvp => $"{System.Uri.EscapeDataString(kvp.Key)}={System.Uri.EscapeDataString(kvp.Value.ToString())}")
+                    .ToArray();
+                if (queryParams.Length > 0)
+                {
+                    route += "?" + string.Join("&", queryParams);
+                }
+            }
+            Helpers.NavigationHelper.SaveNavigationState(route);
+        }
+
+        protected override bool OnBackButtonPressed()
+        {
+            // [ACTIVITY STATE]: Remove state when navigating away via back button
+            Helpers.NavigationHelper.RemoveNavigationState("productimage");
+            return false; // Allow navigation
         }
     }
 }

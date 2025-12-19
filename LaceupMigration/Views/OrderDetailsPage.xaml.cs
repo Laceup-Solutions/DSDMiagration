@@ -41,12 +41,35 @@ namespace LaceupMigration.Views
             {
                 Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(orderId, asPresale));
             }
+            
+            // [ACTIVITY STATE]: Save navigation state with query parameters
+            // Build route with query parameters for state saving
+            var route = "orderdetails";
+            if (query != null && query.Count > 0)
+            {
+                var queryParams = query
+                    .Where(kvp => kvp.Value != null)
+                    .Select(kvp => $"{System.Uri.EscapeDataString(kvp.Key)}={System.Uri.EscapeDataString(kvp.Value.ToString())}")
+                    .ToArray();
+                if (queryParams.Length > 0)
+                {
+                    route += "?" + string.Join("&", queryParams);
+                }
+            }
+            Helpers.NavigationHelper.SaveNavigationState(route);
         }
 
         protected override async void OnAppearing()
         {
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
+        }
+
+        protected override bool OnBackButtonPressed()
+        {
+            // [ACTIVITY STATE]: Remove state when navigating away via back button
+            Helpers.NavigationHelper.RemoveNavigationState("orderdetails");
+            return false; // Allow navigation
         }
     }
 }

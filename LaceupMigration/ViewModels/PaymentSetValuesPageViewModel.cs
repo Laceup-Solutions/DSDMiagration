@@ -225,6 +225,21 @@ namespace LaceupMigration.ViewModels
 
             ShowCreditAmount = Config.ShowInvoicesCreditsInPayments;
 
+            // [ACTIVITY STATE]: Check if restoring from state and load saved payment components
+            // Match Xamarin PaymentSetValuesActivity: loads temp file path from ActivityState.State
+            var state = LaceupMigration.ActivityState.GetState("PaymentSetValuesActivity");
+            if (state != null && state.State != null && state.State.ContainsKey("tempFilePath"))
+            {
+                var savedTempFilePath = state.State["tempFilePath"];
+                if (!string.IsNullOrEmpty(savedTempFilePath) && File.Exists(savedTempFilePath))
+                {
+                    // Use the saved temp file path from ActivityState
+                    _tempFile = savedTempFilePath;
+                    // Load state from temp file
+                    LoadState();
+                }
+            }
+
             if (PaymentComponents.Count == 0 && _amount > 0 && _paymentId == 0)
             {
                 PaymentComponents.Add(new PaymentComponentViewModel(new PaymentComponent { Amount = _amount }, this));
@@ -604,6 +619,7 @@ namespace LaceupMigration.ViewModels
 
             PaymentComponents.Add(new PaymentComponentViewModel(new PaymentComponent { Amount = qty }, this));
             RefreshLabels();
+            SaveState(); // Save state after adding payment
         }
 
         public async Task EditPayment(PaymentComponentViewModel component)
@@ -641,6 +657,7 @@ namespace LaceupMigration.ViewModels
             component.Comments = comments ?? string.Empty;
 
             RefreshLabels();
+            SaveState(); // Save state after editing payment
         }
 
         [RelayCommand]
@@ -654,6 +671,7 @@ namespace LaceupMigration.ViewModels
             {
                 PaymentComponents.Remove(component);
                 RefreshLabels();
+                SaveState(); // Save state after deleting payment
             }
         }
 
@@ -944,6 +962,177 @@ namespace LaceupMigration.ViewModels
         public void OnComponentAmountChanged()
         {
             RefreshLabels();
+            SaveState(); // Save state when component amounts change
+        }
+
+        /// <summary>
+        /// Saves the current payment state to a temp file.
+        /// Match Xamarin PaymentSetValuesActivity: saves payment components to temp file.
+        /// </summary>
+        public void SaveState()
+        {
+            if (string.IsNullOrEmpty(_tempFile))
+                return;
+
+            lock (FileOperationsLocker.lockFilesObject)
+            {
+                try
+                {
+                    if (File.Exists(_tempFile))
+                        File.Delete(_tempFile);
+
+                    using (StreamWriter writer = new StreamWriter(_tempFile, false))
+                    {
+                        // Write header: paymentId, clientId, invoicesId, ordersId, totalDiscount
+                        var headerLine = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                            "{1}{0}{2}{0}{3}{0}{4}{0}{5}",
+                            (char)20,
+                            _paymentId,
+                            _client?.ClientId ?? 0,
+                            _invoicesId ?? string.Empty,
+                            _ordersId ?? string.Empty,
+                            _totalDiscount);
+                        writer.WriteLine(headerLine);
+
+                        // Write each payment component: Ref, Comments, Amount, PaymentMethod, BankName, PostedDate, ExtraFields
+                        foreach (var component in PaymentComponents)
+                        {
+                            // Save PostedDate to ExtraFields if not MinValue
+                            string extraFields = component.Component.ExtraFields ?? string.Empty;
+                            if (component.PostedDate != DateTime.MinValue)
+                            {
+                                extraFields = DataAccess.SyncSingleUDF("PostedDate", component.PostedDate.Ticks.ToString(), extraFields);
+                            }
+
+                            string checkNumber = component.Ref ?? string.Empty;
+                            checkNumber = checkNumber.Replace((char)13, (char)32).Replace((char)10, (char)32);
+                            string comment = component.Comments ?? string.Empty;
+                            comment = comment.Replace((char)13, (char)32).Replace((char)10, (char)32);
+                            // Get BankName from Component (it reads from ExtraFields)
+                            string bankName = component.Component.BankName ?? string.Empty;
+
+                            var componentLine = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                                "{1}{0}{2}{0}{3}{0}{4}{0}{5}{0}{6}{0}{7}",
+                                (char)20,
+                                checkNumber,
+                                comment,
+                                component.Amount,
+                                (int)component.PaymentMethod,
+                                bankName,
+                                component.PostedDate != DateTime.MinValue ? component.PostedDate.Ticks.ToString() : "0",
+                                extraFields);
+                            writer.WriteLine(componentLine);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Loads the payment state from a temp file.
+        /// Match Xamarin PaymentSetValuesActivity: loads payment components from temp file.
+        /// </summary>
+        private void LoadState()
+        {
+            if (string.IsNullOrEmpty(_tempFile) || !File.Exists(_tempFile))
+                return;
+
+            try
+            {
+                using (StreamReader reader = new StreamReader(_tempFile))
+                {
+                    // Read header: paymentId, clientId, invoicesId, ordersId, totalDiscount
+                    string line = reader.ReadLine();
+                    if (string.IsNullOrEmpty(line))
+                        return;
+
+                    string[] parts = line.Split(new char[] { (char)20 });
+                    if (parts.Length >= 1)
+                    {
+                        if (int.TryParse(parts[0], out var paymentId))
+                            _paymentId = paymentId;
+                    }
+                    if (parts.Length >= 2)
+                    {
+                        if (int.TryParse(parts[1], out var clientId))
+                        {
+                            _client = Client.Clients.FirstOrDefault(x => x.ClientId == clientId);
+                        }
+                    }
+                    if (parts.Length >= 3)
+                        _invoicesId = parts[2] ?? string.Empty;
+                    if (parts.Length >= 4)
+                        _ordersId = parts[3] ?? string.Empty;
+                    if (parts.Length >= 5)
+                    {
+                        if (double.TryParse(parts[4], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var discount))
+                            _totalDiscount = discount;
+                    }
+
+                    // Load payment components
+                    PaymentComponents.Clear();
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        parts = line.Split(new char[] { (char)20 });
+                        if (parts.Length < 4)
+                            continue;
+
+                        var component = new PaymentComponent();
+                        component.Ref = parts[0] ?? string.Empty;
+                        component.Comments = parts[1] ?? string.Empty;
+                        
+                        if (double.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var amount))
+                            component.Amount = amount;
+                        
+                        if (int.TryParse(parts[3], out var methodInt))
+                            component.PaymentMethod = (InvoicePaymentMethod)methodInt;
+
+                        if (parts.Length > 4)
+                        {
+                            // BankName is stored in ExtraFields
+                            var bankName = parts[4] ?? string.Empty;
+                            if (!string.IsNullOrEmpty(bankName))
+                                component.ExtraFields = DataAccess.SyncSingleUDF("BankName", bankName, component.ExtraFields ?? string.Empty);
+                        }
+
+                        if (parts.Length > 5)
+                        {
+                            if (long.TryParse(parts[5], out var ticks) && ticks > 0)
+                                component.PostedDate = new DateTime(ticks);
+                        }
+
+                        if (parts.Length > 6)
+                        {
+                            component.ExtraFields = parts[6] ?? string.Empty;
+                            // Also check ExtraFields for PostedDate if not already set
+                            if (component.PostedDate == DateTime.MinValue)
+                            {
+                                var postedDate = DataAccess.GetSingleUDF("PostedDate", component.ExtraFields);
+                                if (!string.IsNullOrEmpty(postedDate) && long.TryParse(postedDate, out var postedTicks))
+                                    component.PostedDate = new DateTime(postedTicks);
+                            }
+                        }
+
+                        PaymentComponents.Add(new PaymentComponentViewModel(component, this));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
+        /// <summary>
+        /// Gets the current temp file path. Used for saving to ActivityState.
+        /// </summary>
+        public string GetTempFilePath()
+        {
+            return _tempFile;
         }
     }
 
