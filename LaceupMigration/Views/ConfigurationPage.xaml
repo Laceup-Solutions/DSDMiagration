@@ -49,7 +49,7 @@
                            FontAttributes="Bold"
                            WidthRequest="35"
                            HeightRequest="35"
-                           CornerRadius="20"
+                           CornerRadius="35"
                            Padding="0"
                            Grid.Column="2" />
                 </Grid>
