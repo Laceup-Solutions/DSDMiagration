@@ -8,7 +8,7 @@
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="MENU" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
     </ContentPage.ToolbarItems>
-    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+    <Grid Padding="0,10,0,0" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
         <HorizontalStackLayout Grid.Row="0" Spacing="8" Margin="16,0">
             <Button Text="{Binding FilterButtonText}" 
                     Command="{Binding ToggleFilterCommand}"
