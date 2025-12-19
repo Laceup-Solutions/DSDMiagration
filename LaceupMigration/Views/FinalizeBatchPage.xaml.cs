@@ -20,12 +20,18 @@ namespace LaceupMigration.Views
             if (query == null)
                 return;
 
+            int clientId = 0;
             string ordersId = string.Empty;
             bool printed = false;
 
             if (query.TryGetValue("ordersId", out var ordersIdValue) && ordersIdValue != null)
             {
                 ordersId = ordersIdValue.ToString() ?? string.Empty;
+            }
+            
+            if (query.TryGetValue("clientId", out var clientIdValue) && clientIdValue != null)
+            {
+                int.TryParse(clientIdValue.ToString(), out clientId);
             }
 
             if (query.TryGetValue("printed", out var printedValue) && printedValue != null)
@@ -38,7 +44,7 @@ namespace LaceupMigration.Views
 
             if (!string.IsNullOrEmpty(ordersId))
             {
-                Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(ordersId, printed));
+                Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(ordersId, clientId, printed));
             }
             
             // [ACTIVITY STATE]: Save navigation state with query parameters

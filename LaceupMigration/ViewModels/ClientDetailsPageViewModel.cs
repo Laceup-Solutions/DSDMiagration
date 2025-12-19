@@ -27,6 +27,8 @@ namespace LaceupMigration.ViewModels
         private bool _hasMoreInvoices;
         private int _currentInvoiceIndex;
         private bool _initialized;
+        
+        private readonly IPdfProvider _pdfProvider;
 
         public ObservableCollection<ClientDetailItemViewModel> ClientDetails { get; } = new();
         public ObservableCollection<ClientOrderViewModel> Orders { get; } = new();
@@ -1534,7 +1536,17 @@ namespace LaceupMigration.ViewModels
 
         private async Task SendStatementByEmailAsync()
         {
-            await _dialogService.ShowAlertAsync("Send statement by email is not yet implemented in the MAUI version.", "Info");
+            try
+            {
+                
+               // await PdfHelper.SendStatementByEmail(_client);
+                
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error: {ex.Message}", "Error", "OK");
+            }
+            ;
         }
 
         private async Task ShareStatementAsync()

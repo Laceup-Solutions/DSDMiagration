@@ -358,8 +358,73 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SetupPrinter()
         {
-            // TODO: Navigate to printer setup
-            await _dialogService.ShowAlertAsync("Printer setup functionality to be implemented.", "Info", "OK");
+            
+            PrinterProvider.PrinterAddress = string.Empty;
+            if (Config.PrinterAvailable)
+            {
+                var printers = PrinterProvider.AvailablePrinters();
+                switch (printers.Count)
+                {
+                    case 0:
+                        await _dialogService.ShowAlertAsync("No printers found.", "Info", "OK");
+                        break;
+                    case 1:
+                        PrinterProvider.PrinterAddress = printers[0].Address;
+                        ConfigurePrinter();
+                        break;
+                    default:
+                        SelectPrinter(printers, true, ConfigurePrinter);
+                        break;
+                }
+            }
+
+        }
+        
+        async Task ConfigurePrinter()
+        {
+            await _dialogService.ShowLoadingAsync("Configuring printer...");
+            try
+            {
+                var zebra = PrinterProvider.CurrentPrinter();
+
+                var success = await Task.Run(() => zebra.ConfigurePrinter());
+                
+                await _dialogService.HideLoadingAsync();
+                    
+                if (!success)
+                {
+                   await _dialogService.ShowAlertAsync("Error setting up printer", "Info", "OK");
+                }
+                else
+                  await _dialogService.ShowAlertAsync("Printer Configured", "OK");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                await _dialogService.ShowAlertAsync($"Error: {ex.Message}", "Info", "OK");
+            }
+
+        }
+        
+        async Task SelectPrinter(IList<PrinterDescription> printers, bool preOrder, Func<Task>  doit)
+        {
+            var printerNames = printers.Select(x => x.Name).ToArray();
+    
+            var selectedOption = await _dialogService.ShowActionSheetAsync(
+                "Select Printer",
+                null,
+                "Cancel",
+                printerNames);
+    
+            if (selectedOption != "Cancel" && selectedOption != null)
+            {
+                var selectedPrinter = printers.FirstOrDefault(p => p.Name == selectedOption);
+                if (selectedPrinter != null)
+                {
+                    PrinterProvider.PrinterAddress = selectedPrinter.Address;
+                    await doit();
+                }
+            }
         }
 
         [RelayCommand]
