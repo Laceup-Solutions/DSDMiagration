@@ -502,7 +502,8 @@ namespace LaceupMigration.ViewModels
                 // Xamarin: Navigate to FinalizeBatchActivity instead of directly finalizing
                 // Build ordersId string (comma-separated)
                 var ordersIdString = string.Join(",", selectedOrders.Select(x => x.OrderId));
-                await Shell.Current.GoToAsync($"finalizebatch?ordersId={ordersIdString}&printed=0");
+                var clientId = _batch?.Client?.ClientId ?? 0;
+                await Shell.Current.GoToAsync($"finalizebatch?ordersId={ordersIdString}&clientId={clientId}&printed=0");
                 
                 // Reset canLeaveScreen after navigation (operation will complete in FinalizeBatchPage)
                 // Note: canLeaveScreen will be reset when returning from FinalizeBatchPage in OnAppearingAsync
@@ -993,6 +994,21 @@ namespace LaceupMigration.ViewModels
             var isLocked = _batch.Status == BatchStatus.Locked;
 
             var useFullTemplate = Config.UseFullTemplateForClient(_batch.Client);
+            
+            // Sales Invoice/Order
+            options.Add(new MenuOption(useFullTemplate ? "Create Invoice" : "Sales Invoice", async () =>
+            {
+                if (isLocked)
+                {
+                    await _dialogService.ShowAlertAsync("Batch is locked. Cannot create new orders.", "Alert");
+                    return;
+                }
+
+                var order = new Order(_batch.Client) { OrderType = OrderType.Order };
+                order.BatchId = _batch.Id;
+                order.Save();
+                await NavigateToOrderAsync(order);
+            }));
 
             if (Config.AllowCreditOrders && !useFullTemplate)
             {
@@ -1005,6 +1021,24 @@ namespace LaceupMigration.ViewModels
                     }
 
                     var order = new Order(_batch.Client) { OrderType = OrderType.Credit };
+                    order.BatchId = _batch.Id;
+                    order.Save();
+                    await NavigateToOrderAsync(order);
+                }));
+            }
+            
+            // Return Invoice
+            if (Config.UseReturnInvoice && !useFullTemplate)
+            {
+                options.Add(new MenuOption("Return Invoice", async () =>
+                {
+                    if (isLocked)
+                    {
+                        await _dialogService.ShowAlertAsync("Batch is locked. Cannot create new orders.", "Alert");
+                        return;
+                    }
+
+                    var order = new Order(_batch.Client) { OrderType = OrderType.Return };
                     order.BatchId = _batch.Id;
                     order.Save();
                     await NavigateToOrderAsync(order);
@@ -1038,40 +1072,7 @@ namespace LaceupMigration.ViewModels
                     }
                 }));
             }
-
-            // Sales Invoice/Order
-            options.Add(new MenuOption(useFullTemplate ? "Create Invoice" : "Sales Invoice", async () =>
-            {
-                if (isLocked)
-                {
-                    await _dialogService.ShowAlertAsync("Batch is locked. Cannot create new orders.", "Alert");
-                    return;
-                }
-
-                var order = new Order(_batch.Client) { OrderType = OrderType.Order };
-                order.BatchId = _batch.Id;
-                order.Save();
-                await NavigateToOrderAsync(order);
-            }));
-
-            // Return Invoice
-            if (Config.UseReturnInvoice && !useFullTemplate)
-            {
-                options.Add(new MenuOption("Return Invoice", async () =>
-                {
-                    if (isLocked)
-                    {
-                        await _dialogService.ShowAlertAsync("Batch is locked. Cannot create new orders.", "Alert");
-                        return;
-                    }
-
-                    var order = new Order(_batch.Client) { OrderType = OrderType.Return };
-                    order.BatchId = _batch.Id;
-                    order.Save();
-                    await NavigateToOrderAsync(order);
-                }));
-            }
-
+            
             // Work Order
             if (Config.AllowWorkOrder)
             {

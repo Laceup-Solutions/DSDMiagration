@@ -16,6 +16,7 @@ namespace LaceupMigration.ViewModels
         private readonly ILaceupAppService _appService;
         private string _ordersId = string.Empty;
         private List<Order> _orders = new();
+        private Client? _client;
         private Batch? _batch;
         private double _balance = 0;
         private bool _printed = false;
@@ -58,11 +59,13 @@ namespace LaceupMigration.ViewModels
             _appService = appService;
         }
 
-        public async Task InitializeAsync(string ordersId, bool printed = false)
+        public async Task InitializeAsync(string ordersId, int clientId, bool printed = false)
         {
             _ordersId = ordersId;
             _printed = printed;
 
+            _client = Client.Clients.FirstOrDefault(x => x.ClientId == clientId);
+            
             // Parse order IDs
             var orderIds = new List<int>();
             foreach (var idAsString in ordersId.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
@@ -208,7 +211,7 @@ namespace LaceupMigration.ViewModels
 
                 // Save state that we're coming from finalize
                 // Navigate to payment page
-                await Shell.Current.GoToAsync($"paymentsetvalues?ordersId={_ordersId}&fromFinalize=true");
+                await Shell.Current.GoToAsync($"paymentsetvalues?ordersId={_ordersId}&clientId={_client.ClientId}&fromFinalize=true");
                 
                 // After returning, update button states
                 UpdateButtonStates();
