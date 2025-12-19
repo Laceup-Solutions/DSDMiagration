@@ -1,4 +1,6 @@
 using LaceupMigration.ViewModels;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace LaceupMigration.Views
 {
@@ -38,10 +40,39 @@ namespace LaceupMigration.Views
                 uniqueId = uniqueIdValue?.ToString();
 
             Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(ordersIds, changed, inventoryAccepted, canLeave, uniqueId));
+            
+            // [ACTIVITY STATE]: Save navigation state with query parameters
+            // Build route with query parameters for state saving
+            var route = "acceptloadeditdelivery";
+            if (query != null && query.Count > 0)
+            {
+                var queryParams = query
+                    .Where(kvp => kvp.Value != null)
+                    .Select(kvp => $"{System.Uri.EscapeDataString(kvp.Key)}={System.Uri.EscapeDataString(kvp.Value.ToString())}")
+                    .ToArray();
+                if (queryParams.Length > 0)
+                {
+                    route += "?" + string.Join("&", queryParams);
+                }
+            }
+            Helpers.NavigationHelper.SaveNavigationState(route);
         }
 
         protected override bool OnBackButtonPressed()
         {
+            // [ACTIVITY STATE]: Remove state when navigating away via back button
+            // Build route from current state or use saved route
+            var currentRoute = Shell.Current.CurrentState?.Location?.OriginalString ?? "";
+            if (currentRoute.Contains("acceptloadeditdelivery"))
+            {
+                Helpers.NavigationHelper.RemoveNavigationState(currentRoute);
+            }
+            else
+            {
+                // Fallback: try to remove by route name (will remove any acceptloadeditdelivery state)
+                Helpers.NavigationHelper.RemoveNavigationState("acceptloadeditdelivery");
+            }
+            
             // Match Xamarin OnKeyDown logic - navigation handled in ViewModel
             return base.OnBackButtonPressed();
         }

@@ -1,5 +1,7 @@
 using LaceupMigration.ViewModels;
 using Microsoft.Maui.Controls;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace LaceupMigration.Views
 {
@@ -32,6 +34,29 @@ namespace LaceupMigration.Views
             }
 
             _viewModel.Initialize(productId, clientId);
+            
+            // [ACTIVITY STATE]: Save navigation state with query parameters
+            // Build route with query parameters for state saving
+            var route = "productdetails";
+            if (query != null && query.Count > 0)
+            {
+                var queryParams = query
+                    .Where(kvp => kvp.Value != null)
+                    .Select(kvp => $"{System.Uri.EscapeDataString(kvp.Key)}={System.Uri.EscapeDataString(kvp.Value.ToString())}")
+                    .ToArray();
+                if (queryParams.Length > 0)
+                {
+                    route += "?" + string.Join("&", queryParams);
+                }
+            }
+            Helpers.NavigationHelper.SaveNavigationState(route);
+        }
+
+        protected override bool OnBackButtonPressed()
+        {
+            // [ACTIVITY STATE]: Remove state when navigating away via back button
+            Helpers.NavigationHelper.RemoveNavigationState("productdetails");
+            return false; // Allow navigation
         }
 
         private async void ProductImage_Tapped(object sender, EventArgs e)
