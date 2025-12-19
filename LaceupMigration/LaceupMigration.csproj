@@ -16,8 +16,8 @@
 		<ApplicationId>com.laceupsolutions.laceupmigration</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.05</ApplicationDisplayVersion>
-		<ApplicationVersion>105</ApplicationVersion>
+		<ApplicationDisplayVersion>1.07</ApplicationDisplayVersion>
+		<ApplicationVersion>107</ApplicationVersion>
 		<WindowsPackageType>None</WindowsPackageType>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>

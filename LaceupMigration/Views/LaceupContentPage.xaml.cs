@@ -252,18 +252,18 @@ namespace LaceupMigration.Views
                     await _advancedOptionsService.ShowAdvancedOptionsAsync();
                 }));
             }
-
-            // Configuration - always available
-            options.Add(new MenuOption("Configuration", async () =>
-            {
-                await Shell.Current.GoToAsync("configuration");
-            }));
-
-            // About Laceup Solutions - always available
-            options.Add(new MenuOption("About Laceup Solutions", async () =>
-            {
-                await ShowAboutAsync();
-            }));
+            //
+            // // Configuration - always available
+            // options.Add(new MenuOption("Configuration", async () =>
+            // {
+            //     await Shell.Current.GoToAsync("configuration");
+            // }));
+            //
+            // // About Laceup Solutions - always available
+            // options.Add(new MenuOption("About Laceup Solutions", async () =>
+            // {
+            //     await ShowAboutAsync();
+            // }));
 
             return options;
         }

@@ -10,6 +10,10 @@ using AndroidView = Android.Views.View;
 using AndroidScrollView = Android.Widget.ScrollView;
 using AndroidLinearLayout = Android.Widget.LinearLayout;
 using AndroidTextView = Android.Widget.TextView;
+using AndroidWidget = Android.Widget;
+using AndroidGraphics = Android.Graphics;
+using AndroidGraphicsDrawables = Android.Graphics.Drawables;
+using AndroidContentRes = Android.Content.Res;
 
 namespace LaceupMigration.Platforms.Android
 {
@@ -34,14 +38,48 @@ namespace LaceupMigration.Platforms.Android
                     // Create AlertDialog builder
                     var builder = new AlertDialog.Builder(activity);
                     
-                    // Create main container with header and list
+                    // Set width to 320dp (match XAML WidthRequest="320")
+                    var widthDp = 320f * activity.Resources.DisplayMetrics.Density;
+                    
+                    // Create a FrameLayout wrapper to center the dialog content horizontally
+                    var wrapperLayout = new global::Android.Widget.FrameLayout(activity);
+                    wrapperLayout.SetBackgroundColor(AndroidGraphics.Color.Transparent);
+                    var wrapperParams = new global::Android.Widget.FrameLayout.LayoutParams(
+                        global::Android.Views.ViewGroup.LayoutParams.MatchParent,
+                        global::Android.Views.ViewGroup.LayoutParams.WrapContent
+                    );
+                    wrapperParams.Gravity = global::Android.Views.GravityFlags.Center;
+                    wrapperLayout.LayoutParameters = wrapperParams;
+                    
+                    // Create main container with rounded corners and iOS-style background
                     var mainContainer = new AndroidLinearLayout(activity)
                     {
                         Orientation = global::Android.Widget.Orientation.Vertical
                     };
-                    mainContainer.SetBackgroundColor(global::Android.Graphics.Color.White);
+
+                    // Set background color to #F2F2F7 (iOS-style gray)
+                    var backgroundColor = AndroidGraphics.Color.ParseColor("#F2F2F7");
+                    mainContainer.SetBackgroundColor(backgroundColor);
                     
-                    // Create header section with title
+                    // Create rounded corners drawable (14dp corner radius)
+                    var cornerRadius = 14f * activity.Resources.DisplayMetrics.Density;
+                    var backgroundDrawable = new AndroidGraphicsDrawables.GradientDrawable();
+                    backgroundDrawable.SetColor(backgroundColor);
+                    backgroundDrawable.SetCornerRadius(cornerRadius);
+                    mainContainer.Background = backgroundDrawable;
+                    
+                    // Set width to 320dp and center it in the wrapper
+                    var mainLayoutParams = new global::Android.Widget.FrameLayout.LayoutParams(
+                        (int)widthDp,
+                        global::Android.Views.ViewGroup.LayoutParams.WrapContent
+                    );
+                    mainLayoutParams.Gravity = global::Android.Views.GravityFlags.Center;
+                    mainContainer.LayoutParameters = mainLayoutParams;
+                    
+                    // Add main container to wrapper
+                    wrapperLayout.AddView(mainContainer);
+                    
+                    // Create header section with title (match XAML design)
                     if (!string.IsNullOrEmpty(title))
                     {
                         var headerContainer = new AndroidLinearLayout(activity)
@@ -50,25 +88,40 @@ namespace LaceupMigration.Platforms.Android
                         };
                         headerContainer.SetPadding(
                             (int)(20 * activity.Resources.DisplayMetrics.Density), // 20dp left/right
-                            (int)(16 * activity.Resources.DisplayMetrics.Density), // 16dp top
+                            (int)(20 * activity.Resources.DisplayMetrics.Density), // 20dp top
                             (int)(20 * activity.Resources.DisplayMetrics.Density),
-                            (int)(12 * activity.Resources.DisplayMetrics.Density) // 12dp bottom
+                            (int)(16 * activity.Resources.DisplayMetrics.Density) // 16dp bottom
                         );
-                        headerContainer.SetBackgroundColor(global::Android.Graphics.Color.White);
+                        headerContainer.SetBackgroundColor(AndroidGraphics.Color.Transparent);
                         
-                        // Title text view - gray, smaller, centered horizontally
+                        // Title text view - 18sp, DimGray, centered
                         var titleView = new AndroidTextView(activity)
                         {
                             Text = title,
-                            TextSize = 14f, // Smaller text
-                            Typeface = global::Android.Graphics.Typeface.Default,
+                            TextSize = 18f, // 18sp
+                            Typeface = AndroidGraphics.Typeface.Default,
                             Gravity = global::Android.Views.GravityFlags.CenterHorizontal | global::Android.Views.GravityFlags.CenterVertical
                         };
-                        titleView.SetTextColor(global::Android.Graphics.Color.Rgb(128, 128, 128)); // Gray color
+                        // DimGray color (#696969 or RGB(105, 105, 105))
+                        titleView.SetTextColor(AndroidGraphics.Color.Rgb(105, 105, 105));
                         titleView.SetPadding(0, 0, 0, 0);
                         
                         headerContainer.AddView(titleView);
                         mainContainer.AddView(headerContainer);
+                        
+                        // Header separator - 0.5dp height, #C6C6C8 color
+                        var headerSeparatorHeight = Math.Max(1, (int)(0.5f * activity.Resources.DisplayMetrics.Density)); // At least 1 pixel
+                        var headerSeparator = new AndroidView(activity)
+                        {
+                            LayoutParameters = new AndroidLinearLayout.LayoutParams(
+                                global::Android.Views.ViewGroup.LayoutParams.MatchParent,
+                                headerSeparatorHeight
+                            )
+                        };
+                        headerSeparator.SetBackgroundColor(AndroidGraphics.Color.ParseColor("#C6C6C8"));
+                        headerSeparator.SetMinimumHeight(headerSeparatorHeight);
+                        headerSeparator.SetPadding(0, 0, 0, 0);
+                        mainContainer.AddView(headerSeparator);
                     }
 
                     // Create custom layout for the list items
@@ -77,86 +130,90 @@ namespace LaceupMigration.Platforms.Android
                         Orientation = global::Android.Widget.Orientation.Vertical
                     };
                     layout.SetPadding(0, 0, 0, 0);
+                    layout.SetBackgroundColor(AndroidGraphics.Color.Transparent);
 
                     // Ensure cancel text has a default value
                     var finalCancelText = string.IsNullOrEmpty(cancelText) ? "Cancel" : cancelText;
 
-                    // Create combined array with all buttons plus cancel button as last item
-                    var allButtons = new string[buttons.Length + 1];
-                    Array.Copy(buttons, allButtons, buttons.Length);
-                    allButtons[buttons.Length] = finalCancelText;
+                    // Handle null or empty buttons array
+                    if (buttons == null)
+                    {
+                        buttons = new string[0];
+                    }
 
                     // Store button texts and clickable items for click handlers
-                    var buttonTexts = new string[allButtons.Length];
-                    Array.Copy(allButtons, buttonTexts, allButtons.Length);
-                    var clickableItems = new AndroidLinearLayout[allButtons.Length];
+                    var buttonTexts = new string[buttons.Length];
+                    Array.Copy(buttons, buttonTexts, buttons.Length);
+                    var clickableItems = new AndroidLinearLayout[buttons.Length];
 
-                    // Create list of items with separators and reduced margins
-                    for (int i = 0; i < allButtons.Length; i++)
+                    // Create list of items with separators (match XAML design)
+                    for (int i = 0; i < buttons.Length; i++)
                     {
-                        var button = allButtons[i];
+                        var button = buttons[i];
                         
-                        // Add separator line before item (except for first item) - full width, no padding
+                        // Add separator line before item (except for first item) - 0.5dp height, #C6C6C8 color
                         if (i > 0)
                         {
+                            var separatorHeight = Math.Max(1, (int)(0.5f * activity.Resources.DisplayMetrics.Density)); // At least 1 pixel
                             var separator = new AndroidView(activity)
                             {
                                 LayoutParameters = new AndroidLinearLayout.LayoutParams(
                                     global::Android.Views.ViewGroup.LayoutParams.MatchParent,
-                                    (int)(1 * activity.Resources.DisplayMetrics.Density) // 1dp height
+                                    separatorHeight
                                 )
                             };
-                            separator.SetBackgroundColor(global::Android.Graphics.Color.Rgb(224, 224, 224)); // Light gray separator
-                            separator.SetPadding(0, 0, 0, 0); // No padding - full width
+                            separator.SetBackgroundColor(AndroidGraphics.Color.ParseColor("#C6C6C8"));
+                            separator.SetPadding(0, 0, 0, 0);
+                            separator.SetMinimumHeight(separatorHeight);
                             layout.AddView(separator);
                         }
                         
-                        // Create item container with modern padding and vertical centering
+                        // Create item container - 50dp height, 10dp padding (match XAML)
                         var itemContainer = new AndroidLinearLayout(activity)
                         {
-                            Orientation = global::Android.Widget.Orientation.Vertical,
+                            Orientation = global::Android.Widget.Orientation.Horizontal
                         };
                         
                         itemContainer.SetGravity(GravityFlags.CenterVertical);
-                        
                         itemContainer.SetPadding(
-                            (int)(20 * activity.Resources.DisplayMetrics.Density), // 20dp left/right
-                            (int)(16 * activity.Resources.DisplayMetrics.Density), // 16dp top/bottom
-                            (int)(20 * activity.Resources.DisplayMetrics.Density),
-                            (int)(16 * activity.Resources.DisplayMetrics.Density)
+                            (int)(10 * activity.Resources.DisplayMetrics.Density), // 10dp all sides
+                            (int)(10 * activity.Resources.DisplayMetrics.Density),
+                            (int)(10 * activity.Resources.DisplayMetrics.Density),
+                            (int)(10 * activity.Resources.DisplayMetrics.Density)
                         );
                         
-                        // Set minimum height for better vertical centering
+                        // Set height to 50dp (match XAML HeightRequest="50")
                         var containerLayoutParams = new AndroidLinearLayout.LayoutParams(
                             global::Android.Views.ViewGroup.LayoutParams.MatchParent,
-                            global::Android.Views.ViewGroup.LayoutParams.WrapContent
+                            (int)(50 * activity.Resources.DisplayMetrics.Density)
                         );
-                        containerLayoutParams.Gravity = global::Android.Views.GravityFlags.CenterVertical;
                         itemContainer.LayoutParameters = containerLayoutParams;
 
-                        // Create text view for the item with modern styling - vertically centered
+                        // Create text view for the item - 17sp, #007AFF blue (match XAML)
+                        // Center text horizontally and vertically
                         var textView = new AndroidTextView(activity)
                         {
                             Text = button,
-                            TextSize = 16f,
-                            Gravity = global::Android.Views.GravityFlags.Start | global::Android.Views.GravityFlags.CenterVertical
+                            TextSize = 17f, // 17sp
+                            Gravity = global::Android.Views.GravityFlags.Center // Center both horizontally and vertically
                         };
                         
-                        textView.SetTextColor(global::Android.Graphics.Color.Rgb(33, 33, 33)); // Dark gray text
+                        // #007AFF blue color (iOS system blue)
+                        textView.SetTextColor(AndroidGraphics.Color.ParseColor("#007AFF"));
                         textView.SetPadding(0, 0, 0, 0);
-                        textView.SetTypeface(global::Android.Graphics.Typeface.Default, global::Android.Graphics.TypefaceStyle.Normal);
+                        textView.SetTypeface(AndroidGraphics.Typeface.Default, AndroidGraphics.TypefaceStyle.Normal);
                         
-                        // Set minimum height to ensure vertical centering works properly
-                        var layoutParams = new AndroidLinearLayout.LayoutParams(
+                        // Use MatchParent width to allow centering within the full width
+                        var textLayoutParams = new AndroidLinearLayout.LayoutParams(
                             global::Android.Views.ViewGroup.LayoutParams.MatchParent,
                             global::Android.Views.ViewGroup.LayoutParams.WrapContent
                         );
-                        layoutParams.Gravity = global::Android.Views.GravityFlags.CenterVertical;
-                        textView.LayoutParameters = layoutParams;
+                        textLayoutParams.Gravity = global::Android.Views.GravityFlags.Center;
+                        textView.LayoutParameters = textLayoutParams;
 
                         itemContainer.AddView(textView);
 
-                        // Create clickable item with vertical centering
+                        // Create clickable item
                         var clickableItem = new AndroidLinearLayout(activity)
                         {
                             Orientation = global::Android.Widget.Orientation.Vertical,
@@ -166,19 +223,17 @@ namespace LaceupMigration.Platforms.Android
                         
                         clickableItem.SetGravity(GravityFlags.CenterVertical);
 
-                        // Use custom drawable with Gray100 (#E1E1E1) instead of default orange
-                        // Create ripple drawable with Gray100 for selection highlight
-                        var gray100Color = global::Android.Graphics.Color.ParseColor("#E1E1E1");
-                        var colorStateList = global::Android.Content.Res.ColorStateList.ValueOf(gray100Color);
-                        var contentDrawable = new global::Android.Graphics.Drawables.ColorDrawable(global::Android.Graphics.Color.Transparent);
-                        var rippleDrawable = new global::Android.Graphics.Drawables.RippleDrawable(colorStateList, contentDrawable, null);
+                        // Create ripple drawable for selection highlight
+                        var rippleColor = AndroidGraphics.Color.ParseColor("#E1E1E1");
+                        var colorStateList = AndroidContentRes.ColorStateList.ValueOf(rippleColor);
+                        var contentDrawable = new AndroidGraphicsDrawables.ColorDrawable(AndroidGraphics.Color.Transparent);
+                        var rippleDrawable = new AndroidGraphicsDrawables.RippleDrawable(colorStateList, contentDrawable, null);
                         clickableItem.Background = rippleDrawable;
                         
                         var clickableLayoutParams = new AndroidLinearLayout.LayoutParams(
                             global::Android.Views.ViewGroup.LayoutParams.MatchParent,
                             global::Android.Views.ViewGroup.LayoutParams.WrapContent
                         );
-                        clickableLayoutParams.Gravity = global::Android.Views.GravityFlags.CenterVertical;
                         clickableItem.LayoutParameters = clickableLayoutParams;
                         
                         clickableItem.AddView(itemContainer);
@@ -192,16 +247,85 @@ namespace LaceupMigration.Platforms.Android
                     // Add list to main container
                     mainContainer.AddView(layout);
                     
+                    // Add separator before buttons section - ensure it's visible
+                    var buttonSeparatorHeight = Math.Max(1, (int)(0.5f * activity.Resources.DisplayMetrics.Density)); // At least 1 pixel
+                    var buttonSeparator = new AndroidView(activity)
+                    {
+                        LayoutParameters = new AndroidLinearLayout.LayoutParams(
+                            global::Android.Views.ViewGroup.LayoutParams.MatchParent,
+                            buttonSeparatorHeight
+                        )
+                    };
+                    buttonSeparator.SetBackgroundColor(AndroidGraphics.Color.ParseColor("#C6C6C8"));
+                    buttonSeparator.SetMinimumHeight(buttonSeparatorHeight);
+                    buttonSeparator.SetPadding(0, 0, 0, 0);
+                    mainContainer.AddView(buttonSeparator);
+                    
+                    // Create buttons section - Cancel only
+                    var buttonsContainer = new AndroidLinearLayout(activity)
+                    {
+                        Orientation = global::Android.Widget.Orientation.Horizontal
+                    };
+                    buttonsContainer.SetBackgroundColor(AndroidGraphics.Color.Transparent);
+                    
+                    var buttonsLayoutParams = new AndroidLinearLayout.LayoutParams(
+                        global::Android.Views.ViewGroup.LayoutParams.MatchParent,
+                        (int)(44 * activity.Resources.DisplayMetrics.Density) // 44dp height
+                    );
+                    buttonsContainer.LayoutParameters = buttonsLayoutParams;
+                    
+                    // Cancel button - full width
+                    var cancelButton = new AndroidTextView(activity)
+                    {
+                        Text = finalCancelText,
+                        TextSize = 17f, // 17sp
+                        Gravity = global::Android.Views.GravityFlags.Center,
+                        Clickable = true,
+                        Focusable = true
+                    };
+                    cancelButton.SetTextColor(AndroidGraphics.Color.ParseColor("#007AFF")); // Blue
+                    cancelButton.SetTypeface(AndroidGraphics.Typeface.Default, AndroidGraphics.TypefaceStyle.Normal); // Normal (not bold)
+                    
+                    var cancelLayoutParams = new AndroidLinearLayout.LayoutParams(
+                        global::Android.Views.ViewGroup.LayoutParams.MatchParent,
+                        global::Android.Views.ViewGroup.LayoutParams.MatchParent
+                    );
+                    cancelButton.LayoutParameters = cancelLayoutParams;
+                    
+                    // Create ripple for cancel button
+                    var cancelRippleDrawable = new AndroidGraphicsDrawables.RippleDrawable(
+                        AndroidContentRes.ColorStateList.ValueOf(AndroidGraphics.Color.ParseColor("#E1E1E1")),
+                        new AndroidGraphicsDrawables.ColorDrawable(AndroidGraphics.Color.Transparent),
+                        null);
+                    cancelButton.Background = cancelRippleDrawable;
+                    
+                    buttonsContainer.AddView(cancelButton);
+                    mainContainer.AddView(buttonsContainer);
+                    
                     // Create scroll view if needed (for many items)
                     AndroidScrollView scrollView = null;
-                    if (allButtons.Length > 6)
+                    if (buttons.Length > 6)
                     {
                         scrollView = new AndroidScrollView(activity);
+                        scrollView.SetBackgroundColor(AndroidGraphics.Color.Transparent);
+                        // Remove mainContainer from wrapper and add to scrollview
+                        wrapperLayout.RemoveView(mainContainer);
                         scrollView.AddView(mainContainer);
+                        // Add scrollview to wrapper
+                        var scrollParams = new global::Android.Widget.FrameLayout.LayoutParams(
+                            global::Android.Views.ViewGroup.LayoutParams.MatchParent,
+                            global::Android.Views.ViewGroup.LayoutParams.WrapContent
+                        );
+                        scrollParams.Gravity = global::Android.Views.GravityFlags.Center;
+                        scrollView.LayoutParameters = scrollParams;
+                        wrapperLayout.AddView(scrollView);
                     }
 
-                    // Set the custom view
-                    builder.SetView(scrollView ?? (AndroidView)mainContainer);
+                    // Set the custom view - use wrapperLayout which centers the content
+                    builder.SetView(wrapperLayout);
+                    
+                    // Remove default dialog background and padding to match XAML design
+                    builder.SetCancelable(true);
 
                     // Create dialog
                     var dialog = builder.Create();
@@ -213,10 +337,38 @@ namespace LaceupMigration.Platforms.Android
                             tcs.SetResult(finalCancelText);
                         }
                     }));
+                    
+                    // Remove default dialog padding and background to match XAML design
+                    // Center the dialog on screen
+                    var window = dialog.Window;
+                    if (window != null)
+                    {
+                        window.SetBackgroundDrawable(new AndroidGraphicsDrawables.ColorDrawable(AndroidGraphics.Color.Transparent));
+                        
+                        // Set window attributes to center the dialog
+                        var attributes = window.Attributes;
+                        if (attributes != null)
+                        {
+                            // Use MatchParent width so the wrapper can center the content
+                            attributes.Width = global::Android.Views.ViewGroup.LayoutParams.MatchParent;
+                            attributes.Height = global::Android.Views.ViewGroup.LayoutParams.WrapContent;
+                            attributes.Gravity = global::Android.Views.GravityFlags.Center; // Center on screen
+                            attributes.HorizontalMargin = 0f;
+                            attributes.VerticalMargin = 0f;
+                            window.Attributes = attributes;
+                        }
+                        
+                        // Set layout to match parent width so wrapper can center content
+                        window.SetLayout(
+                            global::Android.Views.ViewGroup.LayoutParams.MatchParent,
+                            global::Android.Views.ViewGroup.LayoutParams.WrapContent
+                        );
+                        
+                        // Ensure the dialog is displayed centered
+                        window.SetGravity(global::Android.Views.GravityFlags.Center);
+                    }
 
-                    // Attach click handlers to items (after dialog is created)
-                    // Use the stored clickableItems array instead of iterating layout children
-                    // because separators are now separate views in the layout
+                    // Attach click handlers to list items
                     for (int j = 0; j < clickableItems.Length; j++)
                     {
                         var clickableItem = clickableItems[j];
@@ -230,6 +382,13 @@ namespace LaceupMigration.Platforms.Android
                             };
                         }
                     }
+                    
+                    // Attach click handler to Cancel button
+                    cancelButton.Click += (s, e) =>
+                    {
+                        dialog.Dismiss();
+                        tcs.SetResult(finalCancelText);
+                    };
 
                     // Show dialog
                     dialog.Show();
