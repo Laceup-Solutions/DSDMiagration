@@ -380,7 +380,7 @@ namespace LaceupMigration.ViewModels
             await _advancedOptionsService.ShowAdvancedOptionsAsync();
         }
 
-        private async Task PrintProductLabelAsync()
+        public async Task PrintProductLabelAsync()
         {
             if (_product == null)
                 return;
