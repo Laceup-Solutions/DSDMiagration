@@ -66,6 +66,18 @@ namespace LaceupMigration.Views
                 await Shell.Current.GoToAsync($"productimage?productId={_viewModel.Product.ProductId}");
             }
         }
+        
+        protected override List<MenuOption> GetPageSpecificMenuOptions()
+        {
+            return new List<MenuOption>
+            {
+                new MenuOption("Print Label", async () => 
+                {
+                    // Call the ViewModel method
+                    await _viewModel.PrintProductLabelAsync();
+                })
+            };
+        }
     }
 }
 
