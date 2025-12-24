@@ -974,12 +974,132 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task ShowMenuAsync()
         {
-            await ShowAdvancedOptionsAsync();
+            var options = new[] { "Advanced Options" };
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options);
+            
+            switch (choice)
+            {
+                case "Advanced Options":
+                    await ShowAdvancedOptionsAsync();
+                    break;
+            }
+        }
+
+        private async Task SendByEmailAsync()
+        {
+            try
+            {
+                // Get category list for filter dialog (matches Xamarin FullCategoryActivity SendByEmail)
+                var allCategories = Category.Categories.ToList();
+                var categoryList = new List<CategoryItem>();
+
+                // Get parent categories
+                foreach (var category in allCategories.Where(x => x.ParentCategoryId == 0))
+                {
+                    var item = new CategoryItem { Category = category };
+                    
+                    // Add subcategories
+                    foreach (var subcat in allCategories.Where(x => x.ParentCategoryId == category.CategoryId))
+                    {
+                        item.Subcategories.Add(subcat);
+                    }
+
+                    categoryList.Add(item);
+                }
+
+                // Filter by site if Config.SalesmanCanChangeSite is enabled (matches Xamarin's FillCategoryList)
+                if (Config.SalesmanCanChangeSite)
+                {
+                    if (ProductAllowedSite.List.Count > 0 && Config.SalesmanSelectedSite > 0)
+                    {
+                        var allowedProducts = ProductAllowedSite.List.Where(x => x.SiteId == Config.SalesmanSelectedSite).Select(x => x.ProductId).ToList();
+                        var allow_categories = Product.Products.Where(x => allowedProducts.Contains(x.ProductId)).Select(x => x.CategoryId).Distinct().ToList();
+
+                        categoryList = categoryList.Where(x => allow_categories.Contains(x.Category.CategoryId)).ToList();
+                    }
+                }
+
+                // Show filter dialog (matches Xamarin FullCategoryActivity SendByEmail)
+                var categoriesForDialog = categoryList.Select(x => x.Category).ToList();
+                var filterResult = await _dialogService.ShowCatalogFilterDialogAsync(categoriesForDialog);
+
+                if (filterResult == null)
+                {
+                    // User cancelled
+                    return;
+                }
+
+                var (selectedCategoryIds, selectAll, showPrice, showUPC, showUoM) = filterResult.Value;
+
+                await _dialogService.ShowLoadingAsync("Generating PDF...");
+
+                // Get all products (matches Xamarin: Product.Products.OrderBy(x => x.Name).Where(p => p.Name.Trim() != "" && p.CategoryId != 0).ToList())
+                List<Product> elements = Product.Products.OrderBy(x => x.Name).Where(p => p.Name.Trim() != "" && p.CategoryId != 0).ToList();
+
+                // Filter products by selected categories (matches Xamarin logic)
+                var childs = Category.Categories.Where(x => selectedCategoryIds.Contains(x.ParentCategoryId)).Select(x => x.CategoryId).Distinct().ToList();
+                var filteredProducts = selectAll ? elements : elements.Where(p => selectedCategoryIds.Contains(p.CategoryId) || childs.Contains(p.CategoryId)).ToList();
+
+                if (filteredProducts.Count == 0)
+                {
+                    await _dialogService.HideLoadingAsync();
+                    await _dialogService.ShowAlertAsync("No products found to include in catalog.", "Info");
+                    return;
+                }
+
+                // Collect category IDs from filtered products (matches Xamarin FullCategoryActivity SendByEmail)
+                List<int> categoriesids = new List<int>();
+                foreach (var p in filteredProducts)
+                {
+                    if (!categoriesids.Contains(p.CategoryId))
+                        categoriesids.Add(p.CategoryId);
+                }
+
+                string pdfFile = null;
+
+                // Try to get PDF from server first, then fall back to local generation (matches Xamarin logic)
+                int priceLevel = _order?.Client != null ? _order.Client.PriceLevel : 0;
+
+                // First try to get PDF from server (matches Xamarin: DataAccess.GetCatalogPdf)
+                if (DataAccess.GetCatalogPdf(priceLevel, showPrice, showUPC, showUoM, categoriesids))
+                {
+                    pdfFile = Config.CatalogPDFPath;
+                }
+                else
+                {
+                    // Fall back to local generation (matches Xamarin: pdfHelper.GeneratePdfCatalog)
+                    var pdfHelper = new PdfHelper();
+                    pdfFile = pdfHelper.GeneratePdfCatalog(null, filteredProducts, _order?.Client);
+                }
+
+                await _dialogService.HideLoadingAsync();
+
+                if (string.IsNullOrEmpty(pdfFile) || !System.IO.File.Exists(pdfFile))
+                {
+                    await _dialogService.ShowAlertAsync("Error generating PDF catalog.", "Alert", "OK");
+                    return;
+                }
+
+                // Navigate to PDF viewer with the PDF path (matches other email sending implementations)
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred sending email.", "Alert", "OK");
+            }
         }
 
         private async Task ShowAdvancedOptionsAsync()
         {
             await _advancedOptionsService.ShowAdvancedOptionsAsync();
+        }
+
+        private class CategoryItem
+        {
+            public Category Category { get; set; } = null!;
+            public System.Collections.Generic.List<Category> Subcategories { get; } = new();
         }
 
         [RelayCommand]

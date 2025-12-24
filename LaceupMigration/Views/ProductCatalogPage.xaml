@@ -8,9 +8,9 @@
              Shell.NavBarIsVisible="True"
              Shell.TabBarIsVisible="False"
              Title="Products">
-    <!-- <ContentPage.ToolbarItems> -->
-    <!--     <ToolbarItem Text="Menu" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" /> -->
-    <!-- </ContentPage.ToolbarItems> -->
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
+    </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,*">
             <!-- Search Bar with Barcode Icon -->
@@ -39,7 +39,7 @@
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:CatalogItemViewModel">
                         <Grid Style="{StaticResource CollectionViewItemStyle}">
-                            <Frame Padding="12" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                            <Frame Padding="12" Margin="8,2" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
                                 <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="4">
                                 <!-- Product Image (if available) -->
                                 <Image Source="dotnet_bot.png"

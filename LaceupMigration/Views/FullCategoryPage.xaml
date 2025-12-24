@@ -9,7 +9,7 @@
              Shell.TabBarIsVisible="False"
              Title="{Binding Title}">
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
+        <ToolbarItem Text="Menu" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,Auto,*" Padding="5">

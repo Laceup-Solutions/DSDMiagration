@@ -762,6 +762,15 @@ public class DialogService : IDialogService
             return null;
 
         var tcs = new TaskCompletionSource<(List<int> selectedCategoryIds, bool selectAll, bool showPrice, bool showUPC, bool showUoM)?>();
+        
+        var categoriesLabel = new Label
+        {
+            Text = "Categories:",
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Colors.Black,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
 
         // Create checkboxes for categories
         var categoryCheckboxes = new List<(CheckBox checkbox, Label label, int categoryId)>();
@@ -835,13 +844,15 @@ public class DialogService : IDialogService
         // Category selection layout
         var categoryLayout = new VerticalStackLayout
         {
-            Spacing = 8,
-            Padding = new Thickness(20, 10, 20, 10)
+            Spacing = 0,
+            Padding = new Thickness(20, 0, 20, 0)
         };
-
+        
+        categoryLayout.Children.Add(categoriesLabel);
+        
         var allCategoriesRow = new HorizontalStackLayout
         {
-            Spacing = 8
+            Spacing = 2
         };
         allCategoriesRow.Children.Add(allCategoriesCheckbox);
         allCategoriesRow.Children.Add(allCategoriesLabel);
@@ -861,8 +872,8 @@ public class DialogService : IDialogService
         // Filters layout (Show In PDF options)
         var filtersLayout = new VerticalStackLayout
         {
-            Spacing = 8,
-            Padding = new Thickness(20, 10, 20, 10),
+            Spacing = 0,
+            Padding = new Thickness(20, 0, 20, 0),
             IsVisible = filtersVisible
         };
 
@@ -925,32 +936,43 @@ public class DialogService : IDialogService
                     new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0, 10) },
                     filtersLayout
                 }
-            },
-            MaximumHeightRequest = 500
-        };
-
-        // Main container
-        var mainContainer = new VerticalStackLayout
-        {
-            Spacing = 0,
-            BackgroundColor = Colors.White,
-            Padding = new Thickness(0),
-            Margin = new Thickness(0),
-            Children =
-            {
-                new Label
-                {
-                    Text = "Filter",
-                    FontSize = 18,
-                    FontAttributes = FontAttributes.Bold,
-                    TextColor = Colors.Black,
-                    Padding = new Thickness(20, 20, 20, 15),
-                    BackgroundColor = Colors.White
-                },
-                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") },
-                scrollContent
             }
         };
+
+        // Main container - Use Grid to ensure buttons are always visible
+        var mainContainer = new Grid
+        {
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new RowDefinition { Height = GridLength.Auto }, // Header
+                new RowDefinition { Height = GridLength.Auto }, // Separator
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }, // Scrollable content
+                new RowDefinition { Height = GridLength.Auto }, // Separator
+                new RowDefinition { Height = GridLength.Auto }  // Buttons
+            },
+            BackgroundColor = Colors.White,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0)
+        };
+
+        var headerLabel = new Label
+        {
+            Text = "Filter",
+            FontSize = 18,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Colors.Black,
+            Padding = new Thickness(20, 20, 20, 15),
+            BackgroundColor = Colors.White
+        };
+        Grid.SetRow(headerLabel, 0);
+        mainContainer.Children.Add(headerLabel);
+
+        var headerSeparator = new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") };
+        Grid.SetRow(headerSeparator, 1);
+        mainContainer.Children.Add(headerSeparator);
+
+        Grid.SetRow(scrollContent, 2);
+        mainContainer.Children.Add(scrollContent);
 
         // Buttons
         var cancelButton = new Button
@@ -991,7 +1013,11 @@ public class DialogService : IDialogService
         buttonRow.Children.Add(cancelButton);
         buttonRow.Children.Add(okButton);
 
-        mainContainer.Children.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") });
+        var buttonSeparator = new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") };
+        Grid.SetRow(buttonSeparator, 3);
+        mainContainer.Children.Add(buttonSeparator);
+
+        Grid.SetRow(buttonRow, 4);
         mainContainer.Children.Add(buttonRow);
 
         var dialogBorder = new Border
@@ -1001,6 +1027,7 @@ public class DialogService : IDialogService
             Padding = new Thickness(0),
             Margin = new Thickness(20),
             WidthRequest = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density * 0.85,
+            MaximumHeightRequest = DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density * 0.9,
             StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(8) },
             Content = mainContainer
         };
