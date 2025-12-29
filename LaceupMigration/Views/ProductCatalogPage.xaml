@@ -15,7 +15,7 @@
         <Grid RowDefinitions="Auto,*">
             <!-- Search Bar with Barcode Icon -->
             <Frame Grid.Row="0" Margin="8,4" Padding="0" HasShadow="False" BorderColor="{StaticResource Gray300}" BackgroundColor="{StaticResource White}">
-                <Grid ColumnDefinitions="*,Auto" Padding="8,0">
+                <Grid ColumnDefinitions="*,Auto" Padding="0,0,5,0">
                     <SearchBar Grid.Column="0"
                                Text="{Binding SearchQuery}"
                                Placeholder="Search products..."

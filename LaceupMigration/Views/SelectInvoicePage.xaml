@@ -62,7 +62,7 @@
                         StrokeShape="RoundRectangle 8"
                         Padding="12"
                         BackgroundColor="{StaticResource White}">
-                    <VerticalStackLayout Spacing="8">
+                    <VerticalStackLayout Spacing="2">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                             <Label Grid.Column="0"
                                    Text="Open Balance:"

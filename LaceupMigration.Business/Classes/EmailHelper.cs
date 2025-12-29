@@ -115,7 +115,7 @@ namespace LaceupMigration
 
         }
 
-        static IPdfProvider GetPdfProvider()
+        public static IPdfProvider GetPdfProvider()
         {
             try
             {

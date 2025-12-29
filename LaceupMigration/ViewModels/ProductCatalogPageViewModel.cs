@@ -80,7 +80,23 @@ namespace LaceupMigration.ViewModels
 
             if (query.TryGetValue("productSearch", out var searchValue) && searchValue != null)
             {
-                _productSearch = searchValue.ToString();
+                var searchString = searchValue.ToString();
+                // MAUI Shell may not automatically decode URL-encoded query parameters
+                // Decode if it contains encoded characters (e.g., %20 for space)
+                try
+                {
+                    if (searchString.Contains("%"))
+                    {
+                        searchString = Uri.UnescapeDataString(searchString);
+                    }
+                }
+                catch
+                {
+                    // If decoding fails, use the original string
+                }
+                _productSearch = searchString.Trim();
+                // Set SearchQuery so it appears correctly in the SearchBar
+                SearchQuery = _productSearch;
             }
 
             if (query.TryGetValue("comingFromSearch", out var fromSearchValue) && fromSearchValue != null)
@@ -166,7 +182,7 @@ namespace LaceupMigration.ViewModels
 
             if (!string.IsNullOrEmpty(_productSearch) && _comingFromSearch)
             {
-                var searchLower = _productSearch.ToLowerInvariant();
+                var searchLower = _productSearch.Trim().ToLowerInvariant();
                 productsForOrder = productsForOrder.Where(x =>
                     x.Name.ToLowerInvariant().IndexOf(searchLower) != -1 ||
                     x.Upc.ToLowerInvariant().Contains(searchLower) ||
@@ -331,7 +347,7 @@ namespace LaceupMigration.ViewModels
 
             if (!string.IsNullOrEmpty(_searchCriteria))
             {
-                var searchUpper = _searchCriteria.ToUpperInvariant();
+                var searchUpper = _searchCriteria.Trim().ToUpperInvariant();
                 list = list.Where(x =>
                     x.Product.Name.ToUpperInvariant().Contains(searchUpper) ||
                     x.Product.Upc.ToUpperInvariant().Contains(searchUpper) ||
@@ -349,7 +365,7 @@ namespace LaceupMigration.ViewModels
 
         partial void OnSearchQueryChanged(string value)
         {
-            _searchCriteria = value;
+            _searchCriteria = value?.Trim() ?? string.Empty;
             Filter();
         }
 
@@ -360,8 +376,9 @@ namespace LaceupMigration.ViewModels
             if (string.IsNullOrWhiteSpace(searchTerm))
                 return;
 
-            _searchCriteria = searchTerm.ToUpperInvariant();
-            SearchQuery = searchTerm;
+            var trimmedSearch = searchTerm.Trim();
+            _searchCriteria = trimmedSearch.ToUpperInvariant();
+            SearchQuery = trimmedSearch;
             Filter();
         }
 
@@ -980,7 +997,7 @@ namespace LaceupMigration.ViewModels
             switch (choice)
             {
                 case "Advanced Options":
-                    await ShowAdvancedOptionsAsync();
+            await ShowAdvancedOptionsAsync();
                     break;
             }
         }

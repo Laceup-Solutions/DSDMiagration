@@ -200,56 +200,83 @@ namespace LaceupMigration.ViewModels
 
             var invoicesToIterate = Invoice.OpenInvoices.Where(x => x.ClientId == _client.ClientId).ToList();
 
-            foreach (var invoice in invoicesToIterate)
+            if (Config.ShowInvoicesCreditsInPayments)
             {
-                var openAmount = invoice.Balance;
+                // Xamarin logic when ShowInvoicesCreditsInPayments is TRUE (lines 71-178)
+                var creditInPayment = new Dictionary<int, List<double>>();
 
-                // Subtract payments
-                foreach (var payment in InvoicePayment.List)
+                for (int i = 0; i < invoicesToIterate.Count; i++)
                 {
-                    if (!string.IsNullOrEmpty(payment.InvoicesId))
-                    {
-                        var pIdAsString = invoice.InvoiceId.ToString();
-                        if (Config.SavePaymentsByInvoiceNumber)
-                            pIdAsString = invoice.InvoiceNumber;
+                    // Order invoices by Balance (matches Xamarin line 77)
+                    var listOfInvoices = invoicesToIterate.OrderBy(x => x.Balance).ToList();
+                    var invoice = listOfInvoices[i];
 
-                        foreach (var idAsString in payment.InvoicesId.Split(','))
+                    var openAmount = invoice.Balance;
+
+                    // Process payments with credit tracking
+                    foreach (var payment in InvoicePayment.List)
+                    {
+                        if (!string.IsNullOrEmpty(payment.InvoicesId))
                         {
-                            if (pIdAsString == idAsString)
+                            var pIdAsString = invoice.InvoiceId.ToString();
+                            if (Config.SavePaymentsByInvoiceNumber)
+                                pIdAsString = invoice.InvoiceNumber;
+
+                            foreach (var idAsString in payment.InvoicesId.Split(','))
                             {
-                                if (payment.TotalPaid >= openAmount)
+                                if (pIdAsString == idAsString)
                                 {
-                                    openAmount = 0;
-                                    break;
-                                }
-                                else
-                                {
-                                    openAmount -= payment.TotalPaid;
+                                    // Xamarin logic: if openAmount < 0, track in creditInPayment and exclude (lines 91-100)
+                                    if (openAmount < 0)
+                                    {
+                                        if (!creditInPayment.ContainsKey(payment.Id))
+                                            creditInPayment.Add(payment.Id, new List<double>() { Math.Abs(openAmount) });
+                                        else
+                                            creditInPayment[payment.Id].Add(Math.Abs(openAmount));
+
+                                        openAmount = double.MinValue; // Mark as excluded (Xamarin sets t = null)
+                                        break;
+                                    }
+
+                                    if (payment.TotalPaid >= openAmount)
+                                    {
+                                        openAmount = double.MinValue; // Mark as excluded (Xamarin sets t = null)
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        // Xamarin logic: subtract payment and creditMoney (lines 109-113)
+                                        double creditMoney = 0;
+                                        if (creditInPayment.ContainsKey(payment.Id))
+                                            creditMoney = creditInPayment[payment.Id].Sum(x => x);
+
+                                        openAmount -= payment.TotalPaid + creditMoney;
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                // Check temporal payments
-                foreach (var tempPayment in TemporalInvoicePayment.List)
-                {
-                    if (tempPayment.invoiceId == invoice.InvoiceId)
+                    // Check temporal payments
+                    foreach (var tempPayment in TemporalInvoicePayment.List)
                     {
-                        if (tempPayment.amountPaid == 0)
+                        if (tempPayment.invoiceId == invoice.InvoiceId)
                         {
-                            openAmount = 0;
-                            break;
-                        }
-                        else
-                        {
-                            openAmount = tempPayment.amountPaid;
+                            if (tempPayment.amountPaid == 0)
+                            {
+                                openAmount = double.MinValue; // Mark as excluded (Xamarin sets t = null)
+                                break;
+                            }
+                            else
+                            {
+                                openAmount = tempPayment.amountPaid;
+                            }
                         }
                     }
-                }
 
-                if (openAmount > 0 || (Config.ShowInvoicesCreditsInPayments && openAmount < 0))
-                {
+                    // Only add if not excluded and meets criteria (Xamarin lines 137-141)
+                    if (openAmount != double.MinValue && (openAmount > 0 || openAmount < 0))
+                    {
                     // Determine title based on Xamarin logic: if openAmount < 0, it's "Credit Invoice #", otherwise check InvoiceType
                     // Xamarin: if (line.Open < 0) -> "Credit Invoice #" + InvoiceNumber, else -> "Invoice # " + InvoiceNumber
                     string title;
@@ -305,12 +332,27 @@ namespace LaceupMigration.ViewModels
                     // Check if past due
                     bool isPastDue = invoice.DueDate < DateTime.Today;
 
+                    // Format date text to show both Date and Due Date (matches Xamarin layout: horizontal LinearLayout with both TextViews)
+                    string dateText = $"Date:{invoice.Date.ToShortDateString()} Due Date:{invoice.DueDate.ToShortDateString()}";
+                    
+                    // Format amount text - Xamarin shows line.Open.ToCustomString() directly (line 733), which preserves negative sign
+                    // For credits (negative), format with parentheses to match image: "Open:($2.99)"
+                    string amountText;
+                    if (openAmount < 0)
+                    {
+                        amountText = $"Open:({Math.Abs(openAmount).ToCustomString()})";
+                    }
+                    else
+                    {
+                        amountText = $"Open:{openAmount.ToCustomString()}";
+                    }
+
                     _masterList.Add(new SelectInvoiceItemViewModel
                     {
                         Invoice = invoice,
                         Title = title,
-                        DateText = $"Due: {invoice.DueDate.ToShortDateString()}",
-                        AmountText = $"Open: {Math.Abs(openAmount).ToCustomString()}",
+                        DateText = dateText,
+                        AmountText = amountText,
                         OpenAmount = openAmount, // Keep sign for credits
                         ShowAmount = !Config.HidePriceInTransaction,
                         DiscountAmount = discount,
@@ -320,6 +362,183 @@ namespace LaceupMigration.ViewModels
                         GoalPaymentText = goalText,
                         IsPastDue = isPastDue
                     });
+                    }
+                }
+            }
+            else
+            {
+                // Xamarin logic when ShowInvoicesCreditsInPayments is FALSE (lines 179-274)
+                foreach (var invoice in invoicesToIterate)
+                {
+                    if (invoice.ClientId != _client.ClientId)
+                        continue;
+
+                    var openAmount = invoice.Balance;
+
+                    // Subtract payments
+                    foreach (var payment in InvoicePayment.List)
+                    {
+                        if (!string.IsNullOrEmpty(payment.InvoicesId))
+                        {
+                            var pIdAsString = invoice.InvoiceId.ToString();
+                            if (Config.SavePaymentsByInvoiceNumber)
+                                pIdAsString = invoice.InvoiceNumber;
+
+                            foreach (var idAsString in payment.InvoicesId.Split(','))
+                            {
+                                if (pIdAsString == idAsString)
+                                {
+                                    if (payment.TotalPaid >= openAmount)
+                                    {
+                                        openAmount = double.MinValue; // Mark as excluded (Xamarin sets t = null)
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        openAmount -= payment.TotalPaid;
+
+                                        // Xamarin line 208-209: special logic
+                                        if (Config.ShowInvoicesCreditsInPayments)
+                                            openAmount = 0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Check temporal payments
+                    foreach (var tempPayment in TemporalInvoicePayment.List)
+                    {
+                        if (tempPayment.invoiceId == invoice.InvoiceId)
+                        {
+                            if (tempPayment.amountPaid == 0)
+                            {
+                                openAmount = double.MinValue; // Mark as excluded (Xamarin sets t = null)
+                                break;
+                            }
+                            else
+                            {
+                                openAmount = tempPayment.amountPaid;
+                            }
+                        }
+                    }
+
+                    // Only add if not excluded and openAmount > 0 (Xamarin line 231)
+                    if (openAmount != double.MinValue && openAmount > 0)
+                    {
+                        // Determine title based on Xamarin logic
+                        string title;
+                        if (openAmount < 0)
+                        {
+                            title = $"Credit Invoice #{invoice.InvoiceNumber}";
+                        }
+                        else
+                        {
+                            title = invoice.InvoiceType switch
+                            {
+                                1 => $"Credit: {invoice.InvoiceNumber}",
+                                2 => $"Quote: {invoice.InvoiceNumber}",
+                                3 => $"Sales Order: {invoice.InvoiceNumber}",
+                                _ => $"Invoice #{invoice.InvoiceNumber}"
+                            };
+                        }
+
+                        // Calculate discount
+                        double discount = 0;
+                        bool hasDiscount = false;
+                        if (_term != null && Config.UsePaymentDiscount && openAmount > 0)
+                        {
+                            var daysRemainingForDiscount = Math.Abs((invoice.Date - DateTime.Now.Date).TotalDays);
+                            if (_term.StandardDiscountDays >= daysRemainingForDiscount && _term.DiscountPercentage > 0)
+                            {
+                                discount = openAmount * (_term.DiscountPercentage / 100);
+                                hasDiscount = true;
+                            }
+                        }
+
+                        // Check for goal payment
+                        bool hasGoal = false;
+                        string goalText = string.Empty;
+                        if (Config.ViewGoals && GoalDetailDTO.List.Any(x => 
+                            x.Goal != null && 
+                            x.Goal.Criteria == GoalCriteria.Payment && 
+                            x.ExternalInvoice == invoice && 
+                            x.ClientId == invoice.ClientId && 
+                            x.Goal.PendingDays > 0))
+                        {
+                            var detail = GoalDetailDTO.List.FirstOrDefault(x => 
+                                x.ExternalInvoice == invoice && 
+                                x.ClientId == invoice.ClientId);
+                            if (detail != null)
+                            {
+                                hasGoal = true;
+                                goalText = $"Payment Goal: {detail.QuantityOrAmountValue.ToCustomString()}";
+                            }
+                        }
+
+                        // Check if past due
+                        bool isPastDue = invoice.DueDate < DateTime.Today;
+
+                        // Format date text to show both Date and Due Date (matches Xamarin layout)
+                        string dateText = $"Date:{invoice.Date.ToShortDateString()} Due Date:{invoice.DueDate.ToShortDateString()}";
+                        
+                        // Format amount text - for credits (negative), format with parentheses
+                        string amountText;
+                        if (openAmount < 0)
+                        {
+                            amountText = $"Open:({Math.Abs(openAmount).ToCustomString()})";
+                        }
+                        else
+                        {
+                            amountText = $"Open:{openAmount.ToCustomString()}";
+                        }
+
+                        _masterList.Add(new SelectInvoiceItemViewModel
+                        {
+                            Invoice = invoice,
+                            Title = title,
+                            DateText = dateText,
+                            AmountText = amountText,
+                            OpenAmount = openAmount,
+                            ShowAmount = !Config.HidePriceInTransaction,
+                            DiscountAmount = discount,
+                            ShowDiscount = hasDiscount,
+                            DiscountText = hasDiscount ? $"Apply for {_term!.DiscountPercentage}% Total: {discount.ToCustomString()}" : string.Empty,
+                            ShowGoalPayment = hasGoal,
+                            GoalPaymentText = goalText,
+                            IsPastDue = isPastDue
+                        });
+                    }
+
+                    // Xamarin line 234: also add if ShowInvoicesCreditsInPayments and openAmount < 0
+                    if (Config.ShowInvoicesCreditsInPayments && openAmount != double.MinValue && openAmount < 0)
+                    {
+                        // Same logic as above but for negative amounts
+                        string title = $"Credit Invoice #{invoice.InvoiceNumber}";
+                        bool isPastDue = invoice.DueDate < DateTime.Today;
+                        
+                        // Format date text to show both Date and Due Date (matches Xamarin layout)
+                        string dateText = $"Date:{invoice.Date.ToShortDateString()} Due Date:{invoice.DueDate.ToShortDateString()}";
+                        
+                        // Format amount text with parentheses for credits
+                        string amountText = $"Open:({Math.Abs(openAmount).ToCustomString()})";
+
+                        _masterList.Add(new SelectInvoiceItemViewModel
+                        {
+                            Invoice = invoice,
+                            Title = title,
+                            DateText = dateText,
+                            AmountText = amountText,
+                            OpenAmount = openAmount,
+                            ShowAmount = !Config.HidePriceInTransaction,
+                            DiscountAmount = 0,
+                            ShowDiscount = false,
+                            DiscountText = string.Empty,
+                            ShowGoalPayment = false,
+                            GoalPaymentText = string.Empty,
+                            IsPastDue = isPastDue
+                        });
+                    }
                 }
             }
 
@@ -347,13 +566,16 @@ namespace LaceupMigration.ViewModels
                 if (openAmount > 0)
                 {
                     bool isPastDue = order.DueDate < DateTime.Today;
+                    
+                    // Format date text to show both Date and Due Date (matches Xamarin: lines 679-680)
+                    string dateText = $"Date:{order.Date.ToShortDateString()} Due Date:{order.DueDate.ToShortDateString()}";
 
                     _masterList.Add(new SelectInvoiceItemViewModel
                     {
                         Order = order,
                         Title = $"Order: {order.PrintedOrderId ?? order.OrderId.ToString()}",
-                        DateText = $"Date: {order.Date.ToShortDateString()}",
-                        AmountText = $"Open: {openAmount.ToCustomString()}",
+                        DateText = dateText,
+                        AmountText = $"Open:{openAmount.ToCustomString()}",
                         OpenAmount = openAmount,
                         ShowAmount = !Config.HidePriceInTransaction,
                         IsPastDue = isPastDue
