@@ -70,6 +70,11 @@ namespace LaceupMigration.ViewModels
             string? productSearch = null, bool comingFromSearch = false, bool asCreditItem = false, 
             bool asReturnItem = false, int? productId = null, bool consignmentCounting = false, string? comingFrom = null)
         {
+            
+            if (!string.IsNullOrEmpty(productSearch))
+                productSearch = Uri.UnescapeDataString(productSearch);
+            
+            
             _orderId = orderId;
             _categoryId = categoryId;
             _productSearch = productSearch;
@@ -284,7 +289,8 @@ namespace LaceupMigration.ViewModels
             if (!string.IsNullOrWhiteSpace(SearchQuery))
             {
                 // Match Xamarin line 222: x.Category.Name.ToLowerInvariant().Contains(templateCriteria.ToLowerInvariant())
-                categoryList = categoryList.Where(x => x.Category.Name.ToLowerInvariant().Contains(SearchQuery.ToLowerInvariant())).ToList();
+                var searchTerm = SearchQuery.Trim().ToLowerInvariant();
+                categoryList = categoryList.Where(x => x.Category.Name.ToLowerInvariant().Contains(searchTerm)).ToList();
             }
 
             // Update UI (matches Xamarin: categoryList is already ordered in FillCategoryList line 181)
@@ -313,7 +319,7 @@ namespace LaceupMigration.ViewModels
                 Categories.Add(viewModel);
             }
 
-            ShowNoCategories = Categories.Count == 0;
+            ShowNoCategories = ShowCategories && Categories.Count == 0;
         }
 
         partial void OnSearchQueryChanged(string value)
@@ -370,7 +376,7 @@ namespace LaceupMigration.ViewModels
 
         public async Task HandleProductSearchSubmitAsync()
         {
-            var templateCriteria = SearchQuery.ToLower();
+            var templateCriteria = SearchQuery.Trim().ToLower();
 
             if (!SearchByProduct || string.IsNullOrWhiteSpace(templateCriteria)) 
                 return;
@@ -658,7 +664,7 @@ namespace LaceupMigration.ViewModels
             {
                 // Apply search filter if provided (matches Xamarin lines 79-86)
                 // Match Xamarin: only filter by Name, and only if searchIntent is provided
-                var searchTerm = !string.IsNullOrWhiteSpace(SearchQuery) ? SearchQuery : _productSearch;
+                var searchTerm = !string.IsNullOrWhiteSpace(SearchQuery) ? SearchQuery.Trim() : (_productSearch?.Trim() ?? string.Empty);
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     var searchLower = searchTerm.ToLowerInvariant();
@@ -802,7 +808,7 @@ namespace LaceupMigration.ViewModels
                 });
             }
 
-            ShowNoCategories = Products.Count == 0;
+            ShowNoCategories = ShowProducts && Products.Count == 0;
         }
 
         [RelayCommand]

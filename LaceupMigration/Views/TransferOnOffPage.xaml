@@ -2,6 +2,7 @@
 <local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              x:Class="LaceupMigration.Views.TransferOnOffPage"
              Shell.TabBarIsVisible="False"
              Title="{Binding Title}">
@@ -35,11 +36,25 @@
             </Label.GestureRecognizers>
         </Label>
 
-        <SearchBar Grid.Row="2"
-                   Text="{Binding SearchQuery}"
-                   Placeholder="Search products..."
-                   Margin="16,0"
-                   IsEnabled="{Binding ReadOnly, Converter={StaticResource InvertedBoolConverter}}" />
+        <Frame Grid.Row="2" Margin="16,0" Padding="0" HasShadow="False" BorderColor="{StaticResource Gray300}" BackgroundColor="{StaticResource White}">
+            <Grid ColumnDefinitions="*,Auto" Padding="0,0,5,0">
+                <SearchBar Grid.Column="0"
+                           Text="{Binding SearchQuery}"
+                           Placeholder="Search products..."
+                           BackgroundColor="Transparent"
+                           Margin="0"
+                           IsEnabled="{Binding ReadOnly, Converter={StaticResource InvertedBoolConverter}}" />
+                <ImageButton Grid.Column="1"
+                             Source="{mi:MaterialOutlined Icon=QrCodeScanner, IconColor=Black}"
+                             WidthRequest="30"
+                             HeightRequest="30"
+                             BackgroundColor="Transparent"
+                             Command="{Binding ScanCommand}"
+                             VerticalOptions="Center"
+                             HorizontalOptions="Center"
+                             IsEnabled="{Binding ReadOnly, Converter={StaticResource InvertedBoolConverter}}" />
+            </Grid>
+        </Frame>
 
         <CollectionView Grid.Row="3"
                         ItemsSource="{Binding TransferLines}"

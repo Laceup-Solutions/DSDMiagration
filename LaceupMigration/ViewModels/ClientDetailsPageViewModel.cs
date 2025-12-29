@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
 using LaceupMigration.Services;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices.Sensors;
 using Microsoft.Maui.Graphics;
 using System;
 using System.Collections.Generic;
@@ -27,8 +28,6 @@ namespace LaceupMigration.ViewModels
         private bool _hasMoreInvoices;
         private int _currentInvoiceIndex;
         private bool _initialized;
-        
-        private readonly IPdfProvider _pdfProvider;
 
         public ObservableCollection<ClientDetailItemViewModel> ClientDetails { get; } = new();
         public ObservableCollection<ClientOrderViewModel> Orders { get; } = new();
@@ -155,12 +154,16 @@ namespace LaceupMigration.ViewModels
 
             if (!string.IsNullOrWhiteSpace(_client.ShipToAddress))
             {
-                ClientDetails.Add(new ClientDetailItemViewModel($"Address: {_client.ShipToAddress.Replace("|", " ")}"));
+                // Mark as address item so it can be clicked to open in map
+                var addressItem = new ClientDetailItemViewModel($"Address: {_client.ShipToAddress.Replace("|", " ")}", isAddress: true);
+                ClientDetails.Add(addressItem);
             }
 
             if (!string.IsNullOrWhiteSpace(_client.ContactPhone))
             {
-                ClientDetails.Add(new ClientDetailItemViewModel($"Phone: {_client.ContactPhone}"));
+                // Mark as phone item so it can be clicked to dial
+                var phoneItem = new ClientDetailItemViewModel($"Phone: {_client.ContactPhone}", isPhone: true);
+                ClientDetails.Add(phoneItem);
             }
 
             if (!Config.HidePriceInTransaction && !Config.HideInvoicesAndBalance)
@@ -177,7 +180,9 @@ namespace LaceupMigration.ViewModels
             var notes = !string.IsNullOrWhiteSpace(_client.Notes) ? _client.Notes : _client.Comment;
             if (!string.IsNullOrWhiteSpace(notes))
             {
-                ClientDetails.Add(new ClientDetailItemViewModel($"Notes: {notes}"));
+                // Mark as notes item so it can be clicked to edit
+                var notesItem = new ClientDetailItemViewModel($"Notes: {notes}", isNotes: true);
+                ClientDetails.Add(notesItem);
             }
 
             var newestInvoice = _client.Invoices?.OrderByDescending(x => x.Date).FirstOrDefault();
@@ -1536,27 +1541,150 @@ namespace LaceupMigration.ViewModels
 
         private async Task SendStatementByEmailAsync()
         {
+            if (_client == null)
+                return;
+
             try
             {
+                await _dialogService.ShowLoadingAsync("Generating PDF...");
                 
-               // await PdfHelper.SendStatementByEmail(_client);
+                // Get PDF provider and generate statement PDF - match Xamarin SendStatementByEmail
+                var pdfProvider = PdfHelper.GetPdfProvider();
+                string pdfPath = pdfProvider.GetStatementReportPdf(_client);
                 
+                await _dialogService.HideLoadingAsync();
+                
+                if (string.IsNullOrEmpty(pdfPath))
+                {
+                    await _dialogService.ShowAlertAsync("Error generating statement PDF.", "Error", "OK");
+                    return;
+                }
+
+                // Get client email address from ExtraProperties - match Xamarin SendEmailWithAttachment
+                // Email is optional - pre-fill if available, but user can enter manually
+                var toAddresses = new List<string>();
+                
+                // Get email from ExtraProperties
+                string clientEmail = null;
+                if (_client.ExtraProperties != null)
+                {
+                    var emailExtra = _client.ExtraProperties.FirstOrDefault(x => x.Item1.ToUpperInvariant() == "EMAIL");
+                    if (emailExtra != null && !string.IsNullOrEmpty(emailExtra.Item2))
+                        clientEmail = emailExtra.Item2;
+                }
+                
+                // Also try getting from ExtraPropertiesAsString using DataAccess
+                if (string.IsNullOrEmpty(clientEmail) && !string.IsNullOrEmpty(_client.ExtraPropertiesAsString))
+                {
+                    clientEmail = DataAccess.GetSingleUDF("email", _client.ExtraPropertiesAsString);
+                }
+                
+                if (!string.IsNullOrEmpty(clientEmail))
+                    toAddresses.Add(clientEmail.ToLowerInvariant());
+
+                // Build subject and body - match Xamarin SendEmailWithAttachment logic
+                string subject = null;
+                string body = null;
+                
+                // If Config.SoutoBottomEmailText is set, use custom subject and HTML body
+                // Match Xamarin: sets subject "Souto Foods Statement" and HTML body
+                if (!string.IsNullOrEmpty(Config.SoutoBottomEmailText))
+                {
+                    subject = "Souto Foods Statement";
+                    body = $"<html><body>{Config.SoutoBottomEmailText}</body></html>";
+                }
+                // Otherwise, no subject/body set - user enters manually (matches Xamarin comment:
+                // "No se establece el receptor y el asunto para que el usuario los ingrese manualmente")
+                // SendOrderByEmail will use defaults if null, but user can still modify
+                
+                // Send email with PDF attachment - match Xamarin SendEmailWithAttachment
+                // Opens email client - user can modify recipients/subject/body if needed
+                // Email addresses are optional (pre-filled if available)
+                Config.helper?.SendOrderByEmail(pdfPath, subject, body, toAddresses);
+                
+                // Don't show success message - just opens email client (matches Xamarin behavior)
             }
             catch (Exception ex)
             {
+                await _dialogService.HideLoadingAsync();
+                Logger.CreateLog(ex);
                 await _dialogService.ShowAlertAsync($"Error: {ex.Message}", "Error", "OK");
             }
-            ;
         }
 
         private async Task ShareStatementAsync()
         {
-            await _dialogService.ShowAlertAsync("Share statement is not yet implemented in the MAUI version.", "Info");
+            if (_client == null)
+                return;
+
+            try
+            {
+                await _dialogService.ShowLoadingAsync("Generating PDF...");
+                
+                // Get PDF provider and generate statement PDF - match Xamarin ShareStatement
+                var pdfProvider = PdfHelper.GetPdfProvider();
+                string pdfPath = pdfProvider.GetStatementReportPdf(_client);
+                
+                await _dialogService.HideLoadingAsync();
+                
+                if (string.IsNullOrEmpty(pdfPath))
+                {
+                    await _dialogService.ShowAlertAsync("Error generating statement PDF.", "Error", "OK");
+                    return;
+                }
+
+                // Share PDF - match Xamarin ShareStatement and MAUI PdfViewer SharePdfAsync
+                await Share.RequestAsync(new ShareFileRequest
+                {
+                    Title = "Share Statement",
+                    File = new ShareFile(pdfPath)
+                });
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync($"Error sharing statement: {ex.Message}", "Error", "OK");
+            }
         }
 
         private async Task PrintStatementAsync()
         {
-            await _dialogService.ShowAlertAsync("Print statement is not yet implemented in the MAUI version.", "Info");
+            if (_client == null)
+                return;
+
+            try
+            {
+                // Match Xamarin PrintStatement - use PrinterProvider.PrintDocument with print function
+                PrinterProvider.PrintDocument((int number) =>
+                {
+                    if (number < 1)
+                        return "Please enter a valid number of copies.";
+
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    
+                    // Print statement for each copy - match Xamarin PrintStatement
+                    bool allGood = true;
+                    for (int i = 0; i < number; i++)
+                    {
+                        if (!printer.PrintClientStatement(_client))
+                        {
+                            allGood = false;
+                            break;
+                        }
+                    }
+
+                    if (!allGood)
+                        return "Error printing statement.";
+                    
+                    return string.Empty;
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync($"Error printing statement: {ex.Message}", "Error", "OK");
+            }
         }
 
         private async Task SetLocationToClientAsync()
@@ -1600,6 +1728,90 @@ namespace LaceupMigration.ViewModels
         private async Task LaunchSurveyAsync()
         {
             await _dialogService.ShowAlertAsync("Survey is not yet implemented in the MAUI version.", "Info");
+        }
+
+        [RelayCommand]
+        private async Task OpenAddressInMapAsync(ClientDetailItemViewModel item)
+        {
+            if (_client == null || item == null || !item.IsAddress)
+                return;
+
+            try
+            {
+                // Match Xamarin ClientDetailClicked logic (position 2 = address)
+                // Clean address string - match Xamarin processing
+                var addr = _client.ShipToAddress.Replace("|", " ").Replace(_client.ClientName, "");
+                addr = addr.Replace('#', ' ').Trim();
+
+                Location? location = null;
+
+                // If client has coordinates, use them (matches Xamarin)
+                if (_client.Latitude != 0 && _client.Longitude != 0)
+                {
+                    location = new Location(_client.Latitude, _client.Longitude);
+                }
+                else
+                {
+                    // Geocode address to get coordinates (matches LocationProvider.GetClientLocation pattern)
+                    try
+                    {
+                        var locations = await Geocoding.GetLocationsAsync(addr);
+                        location = locations?.FirstOrDefault();
+                    }
+                    catch (Exception geocodeEx)
+                    {
+                        Logger.CreateLog($"Error geocoding address: {geocodeEx.Message}");
+                    }
+                }
+
+                if (location != null)
+                {
+                    await Map.OpenAsync(location);
+                }
+                else
+                {
+                    await _dialogService.ShowAlertAsync("Could not find location for this address.", "Info");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error opening map. Please check if a map application is installed.", "Error");
+            }
+        }
+
+        [RelayCommand]
+        private async Task OpenPhoneDialerAsync(ClientDetailItemViewModel item)
+        {
+            if (_client == null || item == null || !item.IsPhone || string.IsNullOrWhiteSpace(_client.ContactPhone))
+                return;
+
+            try
+            {
+                // Match Xamarin ClientDetailClicked logic (position 3 = phone)
+                // Remove dashes from phone number and create tel: URI
+                var phoneNumber = _client.ContactPhone.Replace("-", string.Empty);
+                var phoneUri = new Uri($"tel:{phoneNumber}");
+                
+                // Open dialer - matches Xamarin Intent.ActionDial
+                await Launcher.OpenAsync(phoneUri);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error dialing phone number. Please check if your device can make calls.", "Error");
+            }
+        }
+
+        [RelayCommand]
+        private async Task EditNotesAsync(ClientDetailItemViewModel item)
+        {
+            if (_client == null || item == null || !item.IsNotes)
+                return;
+
+            // Match Xamarin notes click behavior - opens edit dialog
+            // This reuses the existing CreateNoteAsync logic
+            await CreateNoteAsync();
         }
 
         public async Task HandleOrderSelectedAsync(ClientOrderViewModel? orderViewModel)
@@ -1792,12 +2004,18 @@ namespace LaceupMigration.ViewModels
 
     public class ClientDetailItemViewModel
     {
-        public ClientDetailItemViewModel(string text)
+        public ClientDetailItemViewModel(string text, bool isAddress = false, bool isPhone = false, bool isNotes = false)
         {
             Text = text;
+            IsAddress = isAddress;
+            IsPhone = isPhone;
+            IsNotes = isNotes;
         }
 
         public string Text { get; }
+        public bool IsAddress { get; }
+        public bool IsPhone { get; }
+        public bool IsNotes { get; }
     }
 
     public class ClientOrderViewModel

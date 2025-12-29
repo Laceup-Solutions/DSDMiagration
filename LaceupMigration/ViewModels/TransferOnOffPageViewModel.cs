@@ -10,6 +10,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using LaceupMigration.Business.Interfaces;
 
 namespace LaceupMigration.ViewModels
 {
@@ -18,6 +19,8 @@ namespace LaceupMigration.ViewModels
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
         private readonly AdvancedOptionsService _advancedOptionsService;
+        
+        private readonly ICameraBarcodeScannerService _cameraBarcodeScanner;
 
         private LaceupMigration.TransferAction _transferAction;
         private bool _changed;
@@ -43,11 +46,12 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _searchQuery = string.Empty;
         [ObservableProperty] private string _sortButtonText = "Sort By: Product Name";
 
-        public TransferOnOffPageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService)
+        public TransferOnOffPageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService, ICameraBarcodeScannerService cameraBarcodeScanner)
         {
             _dialogService = dialogService;
             _appService = appService;
             _advancedOptionsService = advancedOptionsService;
+            _cameraBarcodeScanner = cameraBarcodeScanner;
         }
 
         public async Task InitializeAsync(string action)
@@ -177,6 +181,147 @@ namespace LaceupMigration.ViewModels
             else
                 TotalText = string.Empty;
         }
+
+        #region ScanWithCamera
+
+        [RelayCommand]
+        private async Task ScanAsync()
+        {
+            if (ReadOnly)
+                return;
+
+            try
+            {
+                var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
+                if (string.IsNullOrEmpty(scanResult))
+                    return;
+
+                // Find product by barcode (check UPC, SKU, Code) - match Xamarin FindScannedProduct logic
+                var product = Product.Products.FirstOrDefault(p =>
+                    (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
+
+                await ScannerDoTheThingAsync(product);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog($"Error scanning: {ex.Message}");
+                await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error", "OK");
+            }
+        }
+
+        private async Task ScannerDoTheThingAsync(Product product)
+        {
+            // Match Xamarin ScannerDoTheThing logic (lines 1108-1137)
+            if (product != null)
+            {
+                // First check if product is in the currently visible list (TransferLines)
+                var lineViewModel = TransferLines.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
+                
+                if (lineViewModel == null)
+                {
+                    // Product not in visible list, check if it's in the full product list
+                    var line = _allProductList.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
+                    if (line != null)
+                    {
+                        // Product exists but is not visible in current filter - show warning
+                        await _dialogService.ShowAlertAsync(
+                            $"Warning",
+                            $"{product.Name} is not visible in the current list.",
+                            "OK");
+                        return;
+                    }
+                }
+
+                if (lineViewModel != null)
+                {
+                    // Product found in visible list - increment/decrement quantity
+                    // Match Xamarin logic (lines 1125-1128): Transfer On adds 1, Transfer Off subtracts 1
+                    // In Xamarin: line.Real = line.Real + 1 (for On) or line.Real = line.Real - 1 (for Off)
+                    // In MAUI, we work with Details collection, so we need to add/subtract from the total
+                    float qtyChange = _transferAction == LaceupMigration.TransferAction.On ? 1 : -1;
+                    
+                    // Check if a detail already exists for this product (use first detail as default)
+                    var existingDetail = lineViewModel.TransferLine.Details.FirstOrDefault();
+                    
+                    if (existingDetail != null)
+                    {
+                        // Add to existing quantity - match Xamarin: line.Real = line.Real + 1 or -1
+                        existingDetail.Qty += qtyChange;
+                        
+                        // Update the ViewModel
+                        var detailViewModel = lineViewModel.Details.FirstOrDefault(x => x.TransferLineDet == existingDetail);
+                        if (detailViewModel != null)
+                        {
+                            detailViewModel.Qty = existingDetail.Qty;
+                        }
+                        
+                        // If qty becomes 0, remove the detail (match Xamarin behavior where Real can be 0)
+                        if (existingDetail.Qty == 0)
+                        {
+                            lineViewModel.TransferLine.Details.Remove(existingDetail);
+                            if (detailViewModel != null)
+                                lineViewModel.Details.Remove(detailViewModel);
+                            
+                            // If no details remain and filter is "Changed", remove from visible list
+                            if (!_currentlyDisplayingAll && lineViewModel.TransferLine.Details.Count == 0)
+                            {
+                                FilterProducts();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Create new detail with qty 1 or -1 (match Xamarin: initial Real = 0, then becomes 1 or -1)
+                        var detail = new TransferLineDet
+                        {
+                            Product = product,
+                            Qty = qtyChange,
+                            UoM = lineViewModel.Uom,
+                            Lot = "",
+                            LotExp = DateTime.MinValue,
+                            Weight = 0,
+                            Id = _lastDetailId++
+                        };
+
+                        lineViewModel.TransferLine.Details.Add(detail);
+                        
+                        // Also add to ViewModel's Details collection for UI update
+                        var detailViewModel = new TransferLineDetViewModel(detail, lineViewModel, this);
+                        lineViewModel.Details.Add(detailViewModel);
+                        
+                        // If filter is "Changed" and this is the first detail, ensure item is visible
+                        if (!_currentlyDisplayingAll && lineViewModel.TransferLine.Details.Count == 1)
+                        {
+                            // Item should already be visible since we found it in TransferLines
+                            // But if it wasn't visible before, we need to refresh
+                            var existingInList = TransferLines.FirstOrDefault(x => x.TransferLine == lineViewModel.TransferLine);
+                            if (existingInList == null)
+                            {
+                                TransferLines.Add(lineViewModel);
+                            }
+                        }
+                    }
+                    
+                    Changed = true;
+                    SaveList();
+                    UpdateTotal();
+                    
+                    // Match Xamarin SetViewToCurrentProduct - scroll to item (handled by CollectionView automatically)
+                }
+                else
+                {
+                    // Product not found in inventory - show warning
+                    await _dialogService.ShowAlertAsync(
+                        "Warning",
+                        $"{product.Name} is not part of the inventory.",
+                        "OK");
+                }
+            }
+        }
+
+        #endregion
 
         [RelayCommand]
         private async Task Save()

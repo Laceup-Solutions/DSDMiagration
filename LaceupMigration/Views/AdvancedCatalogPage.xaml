@@ -167,7 +167,7 @@
             <!-- Search and Sort -->
             <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Padding="16,8">
                 <Frame Grid.Column="0" Padding="0" HasShadow="False" BorderColor="{StaticResource Gray300}" BackgroundColor="{StaticResource White}">
-                    <Grid ColumnDefinitions="*,Auto" Padding="8,0">
+                    <Grid ColumnDefinitions="*,Auto" Padding="0,0,5,0">
                         <SearchBar Grid.Column="0"
                                    Text="{Binding SearchQuery}"
                                    Placeholder="Search products..."

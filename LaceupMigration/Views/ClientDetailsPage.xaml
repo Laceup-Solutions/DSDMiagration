@@ -44,7 +44,16 @@
                     <DataTemplate x:DataType="vm:ClientDetailItemViewModel">
                         <Label Text="{Binding Text}"
                                TextColor="{StaticResource Gray900}"
-                               Margin="0,4" />
+                               Margin="0,4">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenAddressInMapCommand}"
+                                                      CommandParameter="{Binding}" />
+                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenPhoneDialerCommand}"
+                                                      CommandParameter="{Binding}" />
+                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditNotesCommand}"
+                                                      CommandParameter="{Binding}" />
+                            </Label.GestureRecognizers>
+                        </Label>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
