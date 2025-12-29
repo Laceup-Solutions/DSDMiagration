@@ -38,25 +38,26 @@
             </Grid>
         </Border>
 
-        <HorizontalStackLayout Grid.Row="1"
-                               Spacing="6"
-                               HorizontalOptions="Start"
-                               IsVisible="{Binding ShowButtonsLayout}">
-            <Picker ItemsSource="{Binding DateRangeOptions}"
-                    SelectedItem="{Binding SelectedDateRange}"
-                    WidthRequest="120"
-                    FontSize="13" />
+        <Grid 
+              ColumnDefinitions="auto,auto,auto,auto"
+              ColumnSpacing="5"
+              HeightRequest="40"
+              Grid.Row="1"
+              HorizontalOptions="Start"
+              IsVisible="{Binding ShowButtonsLayout}">
+           
+            <Button Grid.Column="0" Command="{Binding SelectDateRangeCommand}" ImageSource="{mi:MaterialOutlined Icon=ArrowDropDown, IconColor=White}" Text="{Binding SelectedDateRange}"/>
             <Button Text="Payment"
-                    Style="{StaticResource SmallButton}"
+                    Grid.Column="1"
                     Command="{Binding PaymentCommand}"
                     IsVisible="{Binding ShowPaymentButton}" />
             <Button Text="Print"
-                    Style="{StaticResource SmallButton}"
+                    Grid.Column="2"
                     Command="{Binding PrintCommand}" />
             <Button Text="Send"
-                    Style="{StaticResource SmallButton}"
+                    Grid.Column="3"
                     Command="{Binding SendCommand}" />
-        </HorizontalStackLayout>
+        </Grid>
 
         <Grid Grid.Row="2"
               ColumnDefinitions="*,Auto"

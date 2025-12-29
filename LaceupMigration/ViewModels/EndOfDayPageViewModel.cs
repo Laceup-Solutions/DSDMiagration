@@ -1045,6 +1045,7 @@ namespace LaceupMigration.ViewModels
 
         private async Task SendReportsByEmailAsync()
         {
+            string pdfFile = null;
             try
             {
                 await _dialogService.ShowLoadingAsync("Generating reports...");
@@ -1057,33 +1058,92 @@ namespace LaceupMigration.ViewModels
 
                 CompanyInfo.SelectedCompany = CompanyInfo.Companies[0];
 
-                // Use BaseReportPageViewModel's SendByEmailInternal pattern
-                // For EndOfDay, we need to generate a combined report PDF
-                // For now, navigate to a report page that can handle email sending
-                // Or generate the report PDF directly
-                
-                // Check if FinalReportOfDayPage exists, otherwise generate report directly
-                var reportCommand = "EndOfDayReport"; // This would be the command to get the report
-                
-                // For now, use the same logic as PrintAllReports but generate PDF
-                // The actual implementation would need to generate a PDF from all the reports
-                // This is a simplified version - in production, you'd generate a combined PDF
-                
+                // Generate the end-of-day report PDF using the PDF provider
+                // This matches the Xamarin EndOfDayActivity implementation
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        // Get the PDF provider instance (same pattern as EmailHelper)
+                        IPdfProvider pdfGenerator = GetPdfProvider();
+                        
+                        // Generate the PDF report
+                        pdfFile = pdfGenerator.GetReportPdf();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog(ex);
+                        throw;
+                    }
+                });
+
                 await _dialogService.HideLoadingAsync();
-                
-                // Navigate to FinalReportOfDayPage if available, or show message
-                await _dialogService.ShowAlertAsync("End of day report email functionality requires FinalReportOfDayPage implementation.", "Info", "OK");
-                
-                // TODO: Implement actual PDF generation and email sending
-                // This would involve:
-                // 1. Generate PDF from all end-of-day reports
-                // 2. Use Config.helper?.SendReportByEmail(pdfFile) to send
+
+                // Check if PDF was generated successfully
+                if (string.IsNullOrEmpty(pdfFile) || !File.Exists(pdfFile))
+                {
+                    await _dialogService.ShowAlertAsync("Error generating report PDF.", "Alert", "OK");
+                    return;
+                }
+
+                // Send the PDF by email using the helper
+                if (Config.helper != null)
+                {
+                    try
+                    {
+                        Config.helper.SendReportByEmail(pdfFile);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog(ex);
+                        await _dialogService.ShowAlertAsync("Error occurred sending reports by email: " + ex.Message, "Alert", "OK");
+                    }
+                }
+                else
+                {
+                    await _dialogService.ShowAlertAsync("Email helper not available.", "Alert", "OK");
+                }
             }
             catch (Exception ex)
             {
                 await _dialogService.HideLoadingAsync();
                 Logger.CreateLog(ex);
-                await _dialogService.ShowAlertAsync("Error occurred sending reports by email.", "Alert", "OK");
+                await _dialogService.ShowAlertAsync("Error occurred sending reports by email: " + ex.Message, "Alert", "OK");
+            }
+        }
+
+        /// <summary>
+        /// Gets the PDF provider instance (matches EmailHelper.GetPdfProvider pattern)
+        /// </summary>
+        private static IPdfProvider GetPdfProvider()
+        {
+            try
+            {
+                IPdfProvider provider;
+
+                // Instantiate selected Pdf Provider
+                Type t = Type.GetType(Config.PdfProvider);
+                if (t == null)
+                {
+                    Logger.CreateLog("could not instantiate pdf provider " + Config.PdfProvider + " using DefaultPdfProvider instead");
+                    provider = new DefaultPdfProvider();
+                }
+                else
+                {
+                    provider = Activator.CreateInstance(t) as IPdfProvider;
+                    if (provider == null)
+                    {
+                        Logger.CreateLog("could not instantiate pdf provider " + Config.PdfProvider + " using DefaultPdfProvider instead");
+                        provider = new DefaultPdfProvider();
+                    }
+                }
+
+                return provider;
+            }
+            catch (Exception ee)
+            {
+                Logger.CreateLog(ee);
+                return new DefaultPdfProvider();
             }
         }
     }

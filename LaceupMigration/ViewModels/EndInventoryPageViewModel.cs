@@ -432,11 +432,17 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
+        private async Task AddQuantity(EndInventoryItemViewModel item)
+        {
+            await ShowAddQtyDialog(item);
+        }
+
+        [RelayCommand]
         private async Task Save()
         {
             var confirmed = await _dialogService.ShowConfirmationAsync(
-                "Submit Cycle Count",
-                "Are you sure you want to submit the cycle count?",
+                "Alert",
+                "Are you sure you are done counting your inventory? Any uncounted items will be sent as quantity 0.",
                 "Yes",
                 "No");
 
@@ -673,6 +679,192 @@ namespace LaceupMigration.ViewModels
             }
         }
         
+        public async Task ShowAddQtyDialog(EndInventoryItemViewModel item)
+        {
+            // Similar to TransferOnOffPageViewModel.ShowAddQtyDialog
+            // Find the product - if item has a line, use that product; otherwise find by ProductId
+            Product product = null;
+            if (item.Line != null)
+            {
+                product = item.Line.Product;
+            }
+            else
+            {
+                product = Product.Products.FirstOrDefault(x => x.ProductId == item.ProductId);
+            }
+
+            if (product == null)
+            {
+                await _dialogService.ShowAlertAsync("Product not found", "Error", "OK");
+                return;
+            }
+
+            // Get default UoM
+            UnitOfMeasure defaultUoM = item.UoM ?? product.UnitOfMeasures.FirstOrDefault(x => x.IsBase);
+
+            // Show dialog with Qty and UoM selection
+            var result = await _dialogService.ShowTransferQtyDialogAsync(
+                product.Name,
+                product,
+                "1",
+                defaultUoM);
+
+            if (result.qty == null) return; // User cancelled
+
+            if (string.IsNullOrEmpty(result.qty) || !float.TryParse(result.qty, out var qty))
+                return;
+
+            // Use absolute value
+            qty = Math.Abs(qty);
+
+            // Use the selected UoM from the dialog
+            UnitOfMeasure selectedUoM = result.selectedUoM ?? defaultUoM;
+
+            // Find or create the line in _lines (the source of truth)
+            CCTemplateLine templateLine = null;
+            if (item.Line != null)
+            {
+                templateLine = _lines.FirstOrDefault(x => x.Product.ProductId == item.Line.Product.ProductId);
+            }
+            else
+            {
+                templateLine = _lines.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
+            }
+
+            string lot = "";
+            DateTime lotExp = DateTime.MinValue;
+            double weight = 0;
+
+            // If line exists, check if it's grouped or single
+            if (templateLine != null)
+            {
+                if (templateLine is CCGroupedTemplateLine)
+                {
+                    // Check if detail with same UoM and Lot already exists
+                    var groupedLine = templateLine as CCGroupedTemplateLine;
+                    var existingDetail = groupedLine.Details.FirstOrDefault(x => 
+                        x.UoM == selectedUoM && x.Lot == lot);
+
+                    if (existingDetail != null)
+                    {
+                        // Update existing detail
+                        existingDetail.Qty = qty;
+                        existingDetail.Lot = lot;
+                        existingDetail.Weight = weight;
+                    }
+                    else
+                    {
+                        // Add new detail to grouped line
+                        var newDetail = new CycleCountItem
+                        {
+                            Product = product,
+                            Qty = qty,
+                            UoM = selectedUoM,
+                            Lot = lot,
+                            Expiration = lotExp,
+                            Weight = weight
+                        };
+                        groupedLine.Details.Add(newDetail);
+                    }
+                }
+                else if (templateLine is CCSingleTemplateLine)
+                {
+                    // Convert single line to grouped line if needed, or update existing
+                    var singleLine = templateLine as CCSingleTemplateLine;
+                    
+                    // If UoM matches, update existing detail
+                    if (singleLine.Detail.UoM == selectedUoM && singleLine.Detail.Lot == lot)
+                    {
+                        singleLine.Detail.Qty = qty;
+                        singleLine.Detail.Lot = lot;
+                        singleLine.Detail.Weight = weight;
+                    }
+                    else
+                    {
+                        // Convert to grouped line and add new detail
+                        var groupedLine = new CCGroupedTemplateLine
+                        {
+                            Product = product,
+                            UoM = product.UnitOfMeasures.FirstOrDefault(x => x.IsBase)
+                        };
+                        
+                        // Add existing detail
+                        groupedLine.Details.Add(singleLine.Detail);
+                        
+                        // Add new detail
+                        var newDetail = new CycleCountItem
+                        {
+                            Product = product,
+                            Qty = qty,
+                            UoM = selectedUoM,
+                            Lot = lot,
+                            Expiration = lotExp,
+                            Weight = weight
+                        };
+                        groupedLine.Details.Add(newDetail);
+                        
+                        // Replace single line with grouped line
+                        var index = _lines.IndexOf(templateLine);
+                        _lines[index] = groupedLine;
+                    }
+                }
+            }
+            else
+            {
+                // Create new line - determine if it should be grouped or single
+                if (product.UseLot || product.UnitOfMeasures.Count > 1)
+                {
+                    // Create grouped line
+                    var groupedLine = new CCGroupedTemplateLine
+                    {
+                        Product = product,
+                        UoM = product.UnitOfMeasures.FirstOrDefault(x => x.IsBase)
+                    };
+                    
+                    var newDetail = new CycleCountItem
+                    {
+                        Product = product,
+                        Qty = qty,
+                        UoM = selectedUoM,
+                        Lot = lot,
+                        Expiration = lotExp,
+                        Weight = weight
+                    };
+                    groupedLine.Details.Add(newDetail);
+                    _lines.Add(groupedLine);
+                }
+                else
+                {
+                    // Create single line
+                    var newDetail = new CycleCountItem
+                    {
+                        Product = product,
+                        Qty = qty,
+                        UoM = selectedUoM,
+                        Lot = lot,
+                        Expiration = lotExp,
+                        Weight = weight
+                    };
+                    var singleLine = new CCSingleTemplateLine
+                    {
+                        Product = product,
+                        Detail = newDetail,
+                        UoM = selectedUoM
+                    };
+                    _lines.Add(singleLine);
+                }
+            }
+
+            SaveState();
+
+            // Refresh the display
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                UpdateInventoryList();
+                Filter();
+            });
+        }
+
         public async Task ShowEditQuantityDialog(EndInventoryItemViewModel item)
         {
             // Match Xamarin EndInventoryActivity: show dialog to edit quantity and UoM
@@ -681,69 +873,138 @@ namespace LaceupMigration.ViewModels
             
             var product = item.Line.Product;
             var initialQty = item.EndingQuantity.ToString();
+            var initialUoM = item.UoM ?? item.Line.UoM;
             
-            // Get quantity input
-            var qtyText = await _dialogService.ShowPromptAsync(
+            // Use ShowTransferQtyDialogAsync for consistent UI with transfer screen
+            var result = await _dialogService.ShowTransferQtyDialogAsync(
                 product.Name,
-                "Enter ending quantity",
-                "OK",
-                "Cancel",
+                product,
                 initialQty,
-                -1,
-                initialQty,
-                Keyboard.Numeric);
-            
-            if (string.IsNullOrEmpty(qtyText) || !float.TryParse(qtyText, out var qty))
+                initialUoM,
+                "Save");
+
+            if (result.qty == null)
+                return; // User cancelled
+
+            if (string.IsNullOrEmpty(result.qty) || !float.TryParse(result.qty, out var qty))
                 return;
-            
+
             // Use absolute value
             qty = Math.Abs(qty);
+
+            // Use the selected UoM from the dialog
+            UnitOfMeasure selectedUoM = result.selectedUoM ?? initialUoM;
             
-            // Select UoM if product has UoM family and config allows it
-            UnitOfMeasure selectedUoM = item.UoM ?? product.UnitOfMeasures.FirstOrDefault(x => x.IsBase);
+            // CRITICAL: Always work with the underlying _lines data structure
+            var templateLine = _lines.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
             
-            // Check if product has multiple UoMs and config allows changing UoM
-            // Use CanChangeUoM for EndInventory (similar to general inventory operations)
-            if (product.UnitOfMeasures != null && product.UnitOfMeasures.Count > 1 && Config.CanChangeUoM)
+            if (templateLine == null)
             {
-                var uomList = product.UnitOfMeasures.ToList();
-                if (uomList.Count > 0)
+                await _dialogService.ShowAlertAsync("Line not found in inventory list", "Error", "OK");
+                return;
+            }
+
+            // Find the detail in the underlying structure
+            CycleCountItem underlyingDetail = null;
+            
+            if (templateLine is CCGroupedTemplateLine)
+            {
+                var groupedLine = templateLine as CCGroupedTemplateLine;
+                // Try to find by matching UoM and Lot
+                underlyingDetail = groupedLine.Details.FirstOrDefault(x => 
+                    x.UoM == item.Detail.UoM && 
+                    x.Lot == item.Detail.Lot &&
+                    Math.Abs(x.Qty - item.Detail.Qty) < 0.001f);
+                
+                // If not found, try just by UoM
+                if (underlyingDetail == null)
                 {
-                    var uomNames = uomList.Select(x => x.Name).ToArray();
-                    var response = await _dialogService.ShowActionSheetAsync(
-                        "Select Unit of Measure",
-                        "Cancel",
-                        "",
-                        uomNames);
+                    underlyingDetail = groupedLine.Details.FirstOrDefault(x => x.UoM == item.Detail.UoM);
+                }
+            }
+            else if (templateLine is CCSingleTemplateLine)
+            {
+                var singleLine = templateLine as CCSingleTemplateLine;
+                underlyingDetail = singleLine.Detail;
+            }
+
+            if (qty == 0)
+            {
+                // Remove detail if qty is 0
+                if (underlyingDetail != null && templateLine is CCGroupedTemplateLine)
+                {
+                    var groupedLine = templateLine as CCGroupedTemplateLine;
+                    groupedLine.Details.Remove(underlyingDetail);
                     
-                    if (!string.IsNullOrEmpty(response) && response != "Cancel")
+                    // If no details left, remove the line
+                    if (groupedLine.Details.Count == 0)
                     {
-                        var selectedIndex = uomNames.ToList().IndexOf(response);
-                        if (selectedIndex >= 0 && selectedIndex < uomList.Count)
+                        _lines.Remove(templateLine);
+                    }
+                }
+                else if (underlyingDetail != null && templateLine is CCSingleTemplateLine)
+                {
+                    // For single line, just set qty to 0 (don't remove the line)
+                    underlyingDetail.Qty = 0;
+                }
+            }
+            else
+            {
+                // Check if UoM changed
+                bool uomChanged = selectedUoM != item.Detail.UoM;
+                
+                if (underlyingDetail != null)
+                {
+                    if (uomChanged && templateLine is CCGroupedTemplateLine)
+                    {
+                        // Check if detail with new UoM already exists
+                        var groupedLine = templateLine as CCGroupedTemplateLine;
+                        var existingDetailWithNewUom = groupedLine.Details.FirstOrDefault(x => 
+                            x.UoM == selectedUoM && x != underlyingDetail);
+                        
+                        if (existingDetailWithNewUom != null)
                         {
-                            selectedUoM = uomList[selectedIndex];
+                            // Merge: update existing detail with new UoM and remove the old one
+                            existingDetailWithNewUom.Qty = qty;
+                            existingDetailWithNewUom.Lot = item.Detail.Lot;
+                            existingDetailWithNewUom.Expiration = item.Detail.Expiration;
+                            existingDetailWithNewUom.Weight = item.Detail.Weight;
+                            groupedLine.Details.Remove(underlyingDetail);
+                        }
+                        else
+                        {
+                            // Just update the UoM
+                            underlyingDetail.Qty = qty;
+                            underlyingDetail.UoM = selectedUoM;
+                            underlyingDetail.Lot = item.Detail.Lot;
+                            underlyingDetail.Expiration = item.Detail.Expiration;
+                            underlyingDetail.Weight = item.Detail.Weight;
+                        }
+                    }
+                    else
+                    {
+                        // Update the detail (UoM didn't change)
+                        underlyingDetail.Qty = qty;
+                        underlyingDetail.Lot = item.Detail.Lot;
+                        underlyingDetail.Expiration = item.Detail.Expiration;
+                        underlyingDetail.Weight = item.Detail.Weight;
+                        
+                        if (uomChanged)
+                        {
+                            underlyingDetail.UoM = selectedUoM;
                         }
                     }
                 }
             }
             
-            // Update the detail with new quantity and UoM
-            item.Detail.Qty = qty;
-            item.Detail.UoM = selectedUoM;
-            item.UoM = selectedUoM;
-            item.EndingQuantity = qty;
-            
-            // Update line UoM if it's a single line
-            if (item.Line is CCSingleTemplateLine)
-            {
-                item.Line.UoM = selectedUoM;
-            }
-            
             SaveState();
             
             // Refresh the display
-            UpdateInventoryList();
-            Filter();
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                UpdateInventoryList();
+                Filter();
+            });
         }
 
         private class InventoryItem

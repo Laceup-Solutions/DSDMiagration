@@ -44,18 +44,7 @@ namespace LaceupMigration.Views
             _viewModel.FilterInventory(e.NewTextValue);
         }
 
-        private void OnQuantityChanged(object sender, TextChangedEventArgs e)
-        {
-            if (sender is Entry entry && entry.BindingContext is EndInventoryItemViewModel itemViewModel)
-            {
-                if (float.TryParse(e.NewTextValue, out var qty))
-                {
-                    _viewModel.UpdateQuantity(itemViewModel, qty);
-                }
-            }
-        }
-        
-        private async void OnEditQuantityClicked(object sender, EventArgs e)
+        private async void OnQuantityButtonClicked(object sender, EventArgs e)
         {
             if (sender is Button button && button.BindingContext is EndInventoryItemViewModel itemViewModel)
             {
