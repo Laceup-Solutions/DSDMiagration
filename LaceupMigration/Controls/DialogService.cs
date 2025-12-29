@@ -485,9 +485,10 @@ public class DialogService : IDialogService
         var cancelButton = new Button
         {
             Text = "Cancel",
-            BackgroundColor = Colors.Gray,
-            TextColor = Colors.White,
+            BackgroundColor = Colors.Transparent,
+            TextColor = Color.FromArgb("#017CBA"), // Primary blue color
             FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
             Margin = new Thickness(0),
             CornerRadius = 0
         };
@@ -495,11 +496,20 @@ public class DialogService : IDialogService
         var addButton = new Button
         {
             Text = "Add",
-            BackgroundColor = Color.FromArgb("#017CBA"), // Match Laceup blue
-            TextColor = Colors.White,
+            BackgroundColor = Colors.Transparent,
+            TextColor = Color.FromArgb("#017CBA"), // Primary blue color
             FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
             Margin = new Thickness(0),
             CornerRadius = 0
+        };
+
+        // Create separator line between buttons
+        var buttonSeparator = new BoxView
+        {
+            WidthRequest = 1,
+            BackgroundColor = Color.FromArgb("#E0E0E0"),
+            VerticalOptions = LayoutOptions.Fill
         };
 
         var buttonRow = new Grid
@@ -507,17 +517,20 @@ public class DialogService : IDialogService
             ColumnDefinitions = new ColumnDefinitionCollection
             {
                 new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = 1 },
                 new ColumnDefinition { Width = GridLength.Star }
             },
-            ColumnSpacing = 2,
+            ColumnSpacing = 0,
             Padding = new Thickness(0),
-            Margin = new Thickness(0),
+            Margin = new Thickness(0, 0, 0, 0), // No margin right, left, or bottom
             BackgroundColor = Colors.White
         };
 
         Grid.SetColumn(cancelButton, 0);
-        Grid.SetColumn(addButton, 1);
+        Grid.SetColumn(buttonSeparator, 1);
+        Grid.SetColumn(addButton, 2);
         buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(buttonSeparator);
         buttonRow.Children.Add(addButton);
 
         // Main content - simple vertical stack
@@ -532,8 +545,6 @@ public class DialogService : IDialogService
             content.Children.Add(uomRow);
 
         content.Children.Add(commentsRow);
-        content.Children.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") });
-        content.Children.Add(buttonRow);
 
         // Create a popup-style dialog (centered overlay, not full page)
         var scrollContent = new ScrollView
@@ -562,7 +573,10 @@ public class DialogService : IDialogService
                     BackgroundColor = Colors.White
                 },
                 new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") },
-                scrollContent
+                scrollContent,
+                // Gray line on top of buttons with no margin or padding - outside scrollContent to avoid padding
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0) },
+                buttonRow
             }
         };
 
@@ -653,6 +667,301 @@ public class DialogService : IDialogService
         await page.Navigation.PushModalAsync(dialog);
         
         // Focus qty entry and select all text (matching Xamarin: SetSelectAllOnFocus)
+        qtyEntry.Focus();
+        if (!string.IsNullOrEmpty(qtyEntry.Text))
+        {
+            qtyEntry.CursorPosition = 0;
+            qtyEntry.SelectionLength = qtyEntry.Text.Length;
+        }
+
+        return await tcs.Task;
+    }
+
+    public async Task<(string qty, UnitOfMeasure selectedUoM)> ShowTransferQtyDialogAsync(string productName, Product product, string initialQty = "1", UnitOfMeasure initialUoM = null, string buttonText = "Add")
+    {
+        var page = GetCurrentPage();
+        if (page == null)
+            return (null, null);
+
+        var tcs = new TaskCompletionSource<(string qty, UnitOfMeasure selectedUoM)>();
+
+        // Quantity input
+        var qtyEntry = new Entry
+        {
+            Text = initialQty,
+            Keyboard = Keyboard.Numeric,
+            FontSize = 16,
+            BackgroundColor = Colors.White
+        };
+
+        // Unit of Measure selector (if product has UoMFamily and Config allows it)
+        Picker uomPicker = null;
+        UnitOfMeasure selectedUoM = initialUoM;
+        
+        if (product != null && !string.IsNullOrEmpty(product.UoMFamily) && Config.CanChangeUoMInTransfer)
+        {
+            var familyItems = UnitOfMeasure.List.Where(x => x.FamilyId == product.UoMFamily).ToList();
+            if (familyItems.Count > 0)
+            {
+                uomPicker = new Picker
+                {
+                    FontSize = 16,
+                    BackgroundColor = Colors.White,
+                    ItemsSource = familyItems,
+                    ItemDisplayBinding = new Binding("Name")
+                };
+
+                if (initialUoM != null)
+                {
+                    var index = familyItems.FindIndex(x => x.Id == initialUoM.Id);
+                    if (index >= 0)
+                        uomPicker.SelectedIndex = index;
+                }
+                else
+                {
+                    var defaultIndex = familyItems.FindIndex(x => x.IsDefault);
+                    if (defaultIndex >= 0)
+                        uomPicker.SelectedIndex = defaultIndex;
+                }
+
+                uomPicker.SelectedIndexChanged += (s, e) =>
+                {
+                    if (uomPicker.SelectedIndex >= 0 && uomPicker.SelectedIndex < familyItems.Count)
+                        selectedUoM = familyItems[uomPicker.SelectedIndex];
+                };
+
+                if (uomPicker.SelectedIndex >= 0)
+                    selectedUoM = familyItems[uomPicker.SelectedIndex];
+            }
+        }
+
+        // Qty row
+        var qtyRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            },
+            Padding = new Thickness(20, 15, 20, 10)
+        };
+
+        var qtyLabel = new Label
+        {
+            Text = "Qty:",
+            FontSize = 14,
+            TextColor = Colors.Black,
+            VerticalOptions = LayoutOptions.Center
+        };
+        Grid.SetColumn(qtyLabel, 0);
+        Grid.SetColumn(qtyEntry, 1);
+        qtyRow.Children.Add(qtyLabel);
+        qtyRow.Children.Add(qtyEntry);
+
+        // UoM row (if applicable)
+        Grid uomRow = null;
+        if (uomPicker != null)
+        {
+            uomRow = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitionCollection
+                {
+                    new ColumnDefinition { Width = GridLength.Auto },
+                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+                },
+                Padding = new Thickness(20, 5, 20, 5)
+            };
+
+            var uomLabel = new Label
+            {
+                Text = "UoM:",
+                FontSize = 14,
+                TextColor = Colors.Black,
+                VerticalOptions = LayoutOptions.Center
+            };
+            Grid.SetColumn(uomLabel, 0);
+            Grid.SetColumn(uomPicker, 1);
+            uomRow.Children.Add(uomLabel);
+            uomRow.Children.Add(uomPicker);
+        }
+
+        // Create buttons row (Cancel on left, Add/Save on right)
+        var cancelButton = new Button
+        {
+            Text = "Cancel",
+            BackgroundColor = Colors.Transparent,
+            TextColor = Color.FromArgb("#017CBA"), // Primary blue color
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            Margin = new Thickness(0),
+            CornerRadius = 0
+        };
+
+        var addButton = new Button
+        {
+            Text = buttonText,
+            BackgroundColor = Colors.Transparent,
+            TextColor = Color.FromArgb("#017CBA"), // Primary blue color
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            Margin = new Thickness(0),
+            CornerRadius = 0
+        };
+
+        // Create separator line between buttons
+        var buttonSeparator = new BoxView
+        {
+            WidthRequest = 1,
+            BackgroundColor = Color.FromArgb("#E0E0E0"),
+            VerticalOptions = LayoutOptions.Fill
+        };
+
+        var buttonRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = 1 },
+                new ColumnDefinition { Width = GridLength.Star }
+            },
+            ColumnSpacing = 0,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, 0, 0), // No margin right, left, or bottom
+            BackgroundColor = Colors.White
+        };
+
+        Grid.SetColumn(cancelButton, 0);
+        Grid.SetColumn(buttonSeparator, 1);
+        Grid.SetColumn(addButton, 2);
+        buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(buttonSeparator);
+        buttonRow.Children.Add(addButton);
+
+        // Main content - vertical stack
+        var content = new VerticalStackLayout
+        {
+            Spacing = 0,
+            BackgroundColor = Colors.White,
+            Children = { qtyRow }
+        };
+
+        if (uomRow != null)
+            content.Children.Add(uomRow);
+
+        // Create a popup-style dialog (centered overlay, not full page)
+        var scrollContent = new ScrollView
+        {
+            Content = content,
+            MaximumWidthRequest = 300,
+            MaximumHeightRequest = 500
+        };
+
+        // Main container with header and content
+        var mainContainer = new VerticalStackLayout
+        {
+            Spacing = 0,
+            BackgroundColor = Colors.White,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0,0,0,0),
+            Children =
+            {
+                new Label
+                {
+                    Text = productName,
+                    FontSize = 18,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Color.FromArgb("#017CBA"), // Blue text matching image
+                    Padding = new Thickness(20, 20, 20, 15),
+                    BackgroundColor = Colors.White
+                },
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") },
+                scrollContent,
+                // Gray line on top of buttons with no margin or padding - outside scrollContent to avoid padding
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0) },
+                buttonRow
+            }
+        };
+
+        var dialogBorder = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 0,
+            Padding = 0,
+            Margin = new Thickness(20),
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(8) },
+            Content = mainContainer
+        };
+
+        // Create a grid with semi-transparent background and centered content
+        var overlayGrid = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"), // Semi-transparent black overlay
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            },
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        // Place dialog border in center of overlay
+        Grid.SetRow(dialogBorder, 1);
+        Grid.SetColumn(dialogBorder, 1);
+        overlayGrid.Children.Add(dialogBorder);
+
+        // Create modal page (full screen but styled as popup)
+        var dialog = new ContentPage
+        {
+            BackgroundColor = Colors.Transparent,
+            Content = overlayGrid
+        };
+
+        // Helper method to safely pop the modal
+        async Task SafePopModalAsync()
+        {
+            try
+            {
+                var currentPage = GetCurrentPage();
+                if (currentPage != null)
+                {
+                    if (currentPage == dialog && currentPage.Navigation.ModalStack.Count > 0)
+                    {
+                        await currentPage.Navigation.PopModalAsync();
+                    }
+                    else if (page != null && page.Navigation.ModalStack.Count > 0)
+                    {
+                        await page.Navigation.PopModalAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error popping modal: {ex.Message}");
+            }
+        }
+
+        addButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult((qtyEntry.Text, selectedUoM));
+        };
+
+        cancelButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult((null, null));
+        };
+
+        // Show as modal
+        await page.Navigation.PushModalAsync(dialog);
+        
+        // Focus qty entry and select all text
         qtyEntry.Focus();
         if (!string.IsNullOrEmpty(qtyEntry.Text))
         {
@@ -956,9 +1265,10 @@ public class DialogService : IDialogService
         var cancelButton = new Button
         {
             Text = "Cancel",
-            BackgroundColor = Color.FromArgb("#E0E0E0"), // Light gray - different from disabled/grayed out background
-            TextColor = Colors.Black,
+            BackgroundColor = Colors.Transparent,
+            TextColor = Color.FromArgb("#017CBA"), // Primary blue color
             FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
             Margin = new Thickness(0),
             CornerRadius = 0
         };
@@ -966,11 +1276,20 @@ public class DialogService : IDialogService
         var okButton = new Button
         {
             Text = "OK",
-            BackgroundColor = Color.FromArgb("#017CBA"),
-            TextColor = Colors.White,
+            BackgroundColor = Colors.Transparent,
+            TextColor = Color.FromArgb("#017CBA"), // Primary blue color
             FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
             Margin = new Thickness(0),
             CornerRadius = 0
+        };
+
+        // Create separator line between buttons
+        var buttonSeparator = new BoxView
+        {
+            WidthRequest = 1,
+            BackgroundColor = Color.FromArgb("#E0E0E0"),
+            VerticalOptions = LayoutOptions.Fill
         };
 
         var buttonRow = new Grid
@@ -978,20 +1297,24 @@ public class DialogService : IDialogService
             ColumnDefinitions = new ColumnDefinitionCollection
             {
                 new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = 1 },
                 new ColumnDefinition { Width = GridLength.Star }
             },
             ColumnSpacing = 0,
             Padding = new Thickness(0),
-            Margin = new Thickness(0),
+            Margin = new Thickness(0, 0, 0, 0), // No margin right, left, or bottom
             BackgroundColor = Colors.White
         };
 
         Grid.SetColumn(cancelButton, 0);
-        Grid.SetColumn(okButton, 1);
+        Grid.SetColumn(buttonSeparator, 1);
+        Grid.SetColumn(okButton, 2);
         buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(buttonSeparator);
         buttonRow.Children.Add(okButton);
 
-        mainContainer.Children.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") });
+        // Gray line on top of buttons with no margin or padding
+        mainContainer.Children.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0) });
         mainContainer.Children.Add(buttonRow);
 
         var dialogBorder = new Border

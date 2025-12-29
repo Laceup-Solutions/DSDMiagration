@@ -1,5 +1,6 @@
 using LaceupMigration.ViewModels;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Microsoft.Maui.Controls;
 
@@ -38,6 +39,17 @@ namespace LaceupMigration.Views
         /// </summary>
         private void GoBack()
         {
+            // If transfer was saved (ReadOnly = true), ensure temp file is deleted
+            // This prevents ExistPendingTransfer from being true after saving and going back
+            if (_viewModel.ReadOnly && !string.IsNullOrEmpty(_viewModel.GetTempFilePath()))
+            {
+                var tempFile = _viewModel.GetTempFilePath();
+                if (System.IO.File.Exists(tempFile))
+                {
+                    System.IO.File.Delete(tempFile);
+                }
+            }
+            
             // [ACTIVITY STATE]: Remove state when navigating away via back button
             Helpers.NavigationHelper.RemoveNavigationState("transferonoff");
             
@@ -81,8 +93,8 @@ namespace LaceupMigration.Views
             
             // [ACTIVITY STATE]: Save temp file periodically to preserve progress
             // Match Xamarin TransferActivity: saves state on OnResume/OnPause
-            // Only save if ViewModel has been initialized (temp file path is set)
-            if (!string.IsNullOrEmpty(_viewModel.GetTempFilePath()))
+            // Only save if ViewModel has been initialized (temp file path is set) and transfer hasn't been saved yet
+            if (!string.IsNullOrEmpty(_viewModel.GetTempFilePath()) && !_viewModel.ReadOnly)
             {
                 _viewModel.SaveList();
                 
@@ -97,8 +109,9 @@ namespace LaceupMigration.Views
             
             // [ACTIVITY STATE]: Save temp file when leaving page to preserve progress
             // Match Xamarin TransferActivity: saves state on OnPause
-            // Only save if ViewModel has been initialized (temp file path is set)
-            if (!string.IsNullOrEmpty(_viewModel.GetTempFilePath()))
+            // Only save if ViewModel has been initialized (temp file path is set) and transfer hasn't been saved yet
+            // If transfer was saved (ReadOnly = true), the temp file should have been deleted and shouldn't be recreated
+            if (!string.IsNullOrEmpty(_viewModel.GetTempFilePath()) && !_viewModel.ReadOnly)
             {
                 _viewModel.SaveList();
                 
