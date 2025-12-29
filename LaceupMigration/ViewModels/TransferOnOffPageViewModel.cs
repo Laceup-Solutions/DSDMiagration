@@ -382,107 +382,87 @@ namespace LaceupMigration.ViewModels
         public async Task ShowAddQtyDialog(TransferLineViewModel lineViewModel)
         {
             // Match Xamarin ShowQtyDialog logic - single dialog with Qty and UoM together
-            var result = await _dialogService.ShowTransferQtyDialogAsync(
-                lineViewModel.Product.Name,
-                lineViewModel.Product,
-                "1",
-                lineViewModel.Uom);
+            var result = await _dialogService.ShowTransferQtyDialogAsync(lineViewModel.Product.Name,
+                lineViewModel.Product, "1", lineViewModel.Uom);
 
-            if (result.qty == null)
-                return; // User cancelled
+            if (result.qty == null) return; // User cancelled
 
-            if (string.IsNullOrEmpty(result.qty) || !float.TryParse(result.qty, out var qty))
-                return;
+            if (string.IsNullOrEmpty(result.qty) || !float.TryParse(result.qty, out var qty)) return;
 
             // Match Xamarin: use absolute value
             qty = Math.Abs(qty);
-            
+
             // Use the selected UoM from the dialog
             UnitOfMeasure unit = result.selectedUoM ?? lineViewModel.Uom; // Default to line's UoM if none selected
-            
+
             string lot = ""; // TODO: Add lot selection when implementing full dialog
             DateTime lotExp = DateTime.MinValue; // TODO: Add lot expiration when implementing full dialog
 
-                // Calculate baseQty (converted to base UoM) - match Xamarin line 1718-1719
-                double baseQty = qty;
-                if (unit != null)
-                    baseQty = qty * unit.Conversion;
+            // Calculate baseQty (converted to base UoM) - match Xamarin line 1718-1719
+            double baseQty = qty;
+            if (unit != null) baseQty = qty * unit.Conversion;
 
-                // Match Xamarin validation logic for Transfer Off (line 1721-1728)
-                if (_transferAction == LaceupMigration.TransferAction.Off)
+            // Match Xamarin validation logic for Transfer Off (line 1721-1728)
+            if (_transferAction == LaceupMigration.TransferAction.Off)
+            {
+                if (baseQty > lineViewModel.Product.CurrentInventory - lineViewModel.TransferLine.QtyTransferred &&
+                    !Config.CanGoBelow0)
                 {
-                    if (baseQty > lineViewModel.Product.CurrentInventory - lineViewModel.TransferLine.QtyTransferred && !Config.CanGoBelow0)
-                    {
-                        await _dialogService.ShowAlertAsync(
-                            $"You cannot go below 0, you have only {lineViewModel.Product.CurrentInventory} to transfer off.",
-                            "Alert",
-                            "OK");
-                        return;
-                    }
+                    await _dialogService.ShowAlertAsync(
+                        $"You cannot go below 0, you have only {lineViewModel.Product.CurrentInventory} to transfer off.",
+                        "Alert", "OK");
+                    return;
                 }
+            }
 
-                // Match Xamarin logic (line 1730-1752): Check if detail with same Lot and UoM already exists
-                var existingDetail = lineViewModel.TransferLine.Details.FirstOrDefault(x => 
-                    x.Lot == lot && 
-                    (x.UoM != null ? x.UoM.Id : 0) == (unit != null ? unit.Id : 0));
+            // CRITICAL: Always work with the underlying _allProductList data structure
+            // Find the TransferLine in _allProductList (the source of truth)
+            var transferLine = _allProductList.FirstOrDefault(x => x.Product.ProductId == lineViewModel.Product.ProductId);
+            
+            if (transferLine == null)
+            {
+                // This shouldn't happen, but handle it gracefully
+                await _dialogService.ShowAlertAsync("Product not found in inventory list", "Error", "OK");
+                return;
+            }
 
-                if (existingDetail != null)
-                {
-                    // Add to existing quantity - match Xamarin line 1732
-                    existingDetail.Qty += qty;
-                    
-                    // Update the corresponding ViewModel
-                    var existingDetailViewModel = lineViewModel.Details.FirstOrDefault(x => x.TransferLineDet == existingDetail);
-                    if (existingDetailViewModel != null)
-                    {
-                        existingDetailViewModel.Qty = existingDetail.Qty;
-                    }
-                }
-                else
-                {
-                    // Create new detail - match Xamarin line 1735-1744
-                    var detail = new TransferLineDet
-                    {
-                        Product = lineViewModel.Product,
-                        Qty = qty,
-                        UoM = unit,
-                        Lot = lot,
-                        LotExp = lotExp,
-                        Weight = lineViewModel.TransferLine.Weight,
-                        Id = _lastDetailId++
-                    };
+            // Check if detail with same UoM already exists in the underlying TransferLine
+            var existingDetail = transferLine.Details.FirstOrDefault(x => x.UoM == unit);
 
-                    lineViewModel.TransferLine.Details.Add(detail);
-                    
-                    // Also add to ViewModel's Details collection for UI update
-                    var detailViewModel = new TransferLineDetViewModel(detail, lineViewModel, this);
-                    lineViewModel.Details.Add(detailViewModel);
-                }
-                
-                Changed = true; // Use property setter to trigger notifications
-                SaveList();
-                
-                // ObservableCollection automatically notifies UI when items are added
-                // Don't call FilterProducts() here as it would clear and recreate ViewModels, losing the just-added detail
-                // The detail is already added to both the underlying TransferLine.Details and the ViewModel's Details collection
-                // Only refresh if the item's visibility might have changed (e.g., first detail added when filter is "Changed")
-                MainThread.BeginInvokeOnMainThread(() =>
+            if (existingDetail != null)
+            {
+                // Update existing detail in underlying model
+                existingDetail.Qty = qty;
+                existingDetail.Lot = lot;
+                existingDetail.LotExp = lotExp;
+                existingDetail.Weight = transferLine.Weight;
+            }
+            else
+            {
+                // Create new detail in underlying model
+                var newDetail = new TransferLineDet
                 {
-                    bool needsRefresh = !_currentlyDisplayingAll && lineViewModel.TransferLine.Details.Count == 1;
-                    if (needsRefresh)
-                    {
-                        // When filter is "Changed" and this is the first detail, we need to show the item
-                        // But instead of calling FilterProducts (which clears everything), just add the line if it's not visible
-                        var existingLine = TransferLines.FirstOrDefault(x => x.TransferLine == lineViewModel.TransferLine);
-                        if (existingLine == null)
-                        {
-                            // Line is not in the filtered list, add it
-                            TransferLines.Add(lineViewModel);
-                        }
-                    }
-                });
+                    Product = lineViewModel.Product,
+                    Qty = qty,
+                    UoM = unit,
+                    Lot = lot,
+                    LotExp = lotExp,
+                    Weight = transferLine.Weight,
+                    Id = _lastDetailId++
+                };
                 
+                transferLine.Details.Add(newDetail);
+            }
+
+            Changed = true;
+            SaveList();
+
+            // Refresh the ViewModels from the updated _allProductList
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                FilterProducts();
                 UpdateTotal();
+            });
         }
 
         public async Task ShowEditQtyDialog(TransferLineDetViewModel detailViewModel, TransferLineViewModel lineViewModel)
@@ -503,16 +483,42 @@ namespace LaceupMigration.ViewModels
                 // Match Xamarin line 1896: use absolute value
                 qty = Math.Abs(qty);
 
+                // CRITICAL: Always work with the underlying _allProductList data structure
+                // Find the TransferLine in _allProductList (the source of truth)
+                var transferLine = _allProductList.FirstOrDefault(x => x.Product.ProductId == lineViewModel.Product.ProductId);
+                
+                if (transferLine == null)
+                {
+                    // This shouldn't happen, but handle it gracefully
+                    await _dialogService.ShowAlertAsync("Product not found in inventory list", "Error", "OK");
+                    return;
+                }
+
+                // Find the detail in the underlying TransferLine.Details
+                var underlyingDetail = transferLine.Details.FirstOrDefault(x => x.Id == detailViewModel.Id);
+                
+                if (underlyingDetail == null)
+                {
+                    // Try to find by matching properties if Id doesn't match
+                    underlyingDetail = transferLine.Details.FirstOrDefault(x => 
+                        x.UoM == detailViewModel.Uom && 
+                        Math.Abs(x.Qty - detailViewModel.Qty) < 0.001f);
+                }
+
                 if (qty == 0)
                 {
                     // Match Xamarin line 1904-1907: remove detail if qty is 0
-                    lineViewModel.TransferLine.Details.Remove(detailViewModel.TransferLineDet);
-                    lineViewModel.Details.Remove(detailViewModel);
+                    if (underlyingDetail != null)
+                    {
+                        transferLine.Details.Remove(underlyingDetail);
+                    }
+                    // Also remove from ViewModel (will be refreshed by FilterProducts)
                 }
                 else
                 {
                     // Use the selected UoM from the dialog
                     UnitOfMeasure selectedUoM = result.selectedUoM ?? detailViewModel.Uom;
+                    bool uomChanged = selectedUoM != detailViewModel.Uom;
                     
                     // Match Xamarin validation logic for Transfer Off EXACTLY (line 1950-1957)
                     if (_transferAction == LaceupMigration.TransferAction.Off)
@@ -532,7 +538,7 @@ namespace LaceupMigration.ViewModels
                         // Match Xamarin line 1952 EXACTLY - use the exact same formula and types
                         // Formula: baseQty > CurrentInventory - QtyTransferred - oldBaseQty
                         float currentInventory = lineViewModel.Product.CurrentInventory;
-                        float qtyTransferred = lineViewModel.TransferLine.QtyTransferred;
+                        float qtyTransferred = transferLine.QtyTransferred;
                         
                         if (baseQty > currentInventory - qtyTransferred - oldBaseQty && !Config.CanGoBelow0)
                         {
@@ -544,26 +550,65 @@ namespace LaceupMigration.ViewModels
                         }
                     }
 
-                    // Match Xamarin line 1959-1962: update the detail properties
-                    detailViewModel.Qty = qty;
-                    detailViewModel.TransferLineDet.Qty = qty;
-                    // Update UoM from dialog selection
-                    detailViewModel.Uom = selectedUoM;
-                    detailViewModel.TransferLineDet.UoM = selectedUoM;
+                    // Handle UoM change: if UoM changed and a detail with new UoM already exists, merge them
+                    if (uomChanged && underlyingDetail != null)
+                    {
+                        var existingDetailWithNewUom = transferLine.Details.FirstOrDefault(x => 
+                            x.UoM == selectedUoM && x.Id != underlyingDetail.Id);
+                        
+                        if (existingDetailWithNewUom != null)
+                        {
+                            // Merge: update existing detail with new UoM and remove the old one
+                            existingDetailWithNewUom.Qty = qty;
+                            existingDetailWithNewUom.Lot = detailViewModel.Lot;
+                            existingDetailWithNewUom.LotExp = detailViewModel.LotExp;
+                            existingDetailWithNewUom.Weight = detailViewModel.Weight;
+                            transferLine.Details.Remove(underlyingDetail);
+                        }
+                        else
+                        {
+                            // Just update the UoM
+                            underlyingDetail.Qty = qty;
+                            underlyingDetail.UoM = selectedUoM;
+                            underlyingDetail.Lot = detailViewModel.Lot;
+                            underlyingDetail.LotExp = detailViewModel.LotExp;
+                            underlyingDetail.Weight = detailViewModel.Weight;
+                        }
+                    }
+                    else if (underlyingDetail != null)
+                    {
+                        // Update the underlying detail model (UoM didn't change)
+                        underlyingDetail.Qty = qty;
+                        underlyingDetail.Lot = detailViewModel.Lot;
+                        underlyingDetail.LotExp = detailViewModel.LotExp;
+                        underlyingDetail.Weight = detailViewModel.Weight;
+                    }
+                    else
+                    {
+                        // If detail not found, create a new one (shouldn't happen, but handle it)
+                        var newDetail = new TransferLineDet
+                        {
+                            Product = lineViewModel.Product,
+                            Qty = qty,
+                            UoM = selectedUoM,
+                            Lot = detailViewModel.Lot,
+                            LotExp = detailViewModel.LotExp,
+                            Weight = detailViewModel.Weight,
+                            Id = detailViewModel.Id > 0 ? detailViewModel.Id : _lastDetailId++
+                        };
+                        transferLine.Details.Add(newDetail);
+                    }
                 }
 
-                Changed = true; // Use property setter to trigger notifications
+                Changed = true;
                 SaveList();
                 
-                // Don't notify CurrentInventoryText change - it should only update after save
-                // Only refresh if the item's visibility might have changed (e.g., last detail removed when filter is "Changed")
-                bool needsRefresh = !_currentlyDisplayingAll && lineViewModel.TransferLine.Details.Count == 0;
-                if (needsRefresh)
+                // Always refresh to ensure UI is in sync with underlying data
+                MainThread.BeginInvokeOnMainThread(() =>
                 {
                     FilterProducts();
-                }
-                
-                UpdateTotal();
+                    UpdateTotal();
+                });
             }
         }
 
