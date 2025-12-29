@@ -15,9 +15,9 @@
             <Button Text="{Binding FilterButtonText}"
                     Command="{Binding ToggleFilterCommand}"
                     HorizontalOptions="FillAndExpand" />
-            <Button Text="Print"
-                    Command="{Binding PrintCommand}"
-                    HorizontalOptions="FillAndExpand" />
+            <!-- <Button Text="Print" -->
+            <!--         Command="{Binding PrintCommand}" -->
+            <!--         HorizontalOptions="FillAndExpand" /> -->
         </HorizontalStackLayout>
 
         <SearchBar Grid.Row="1"
@@ -60,17 +60,14 @@
                                 </HorizontalStackLayout>
                             </VerticalStackLayout>
                             <VerticalStackLayout Grid.Column="1" Spacing="4">
-                                <Entry Text="{Binding EndingQuantity, StringFormat='{0:F2}'}"
-                                       WidthRequest="100"
-                                       Keyboard="Numeric"
-                                       TextChanged="OnQuantityChanged"
-                                       Placeholder="End Qty" />
-                                <Button Text="Edit"
-                                        Clicked="OnEditQuantityClicked"
+                                <Button Text="{Binding EndingQuantity, StringFormat='End: {0:F2}'}"
+                                        Clicked="OnQuantityButtonClicked"
                                         WidthRequest="100"
-                                        FontSize="12"
-                                        Padding="8,4"
-                                        IsVisible="{Binding ShowUom}" />
+                                        FontSize="14"
+                                        Padding="8,8"
+                                        BackgroundColor="{StaticResource Gray300}"
+                                        TextColor="Black"
+                                        HorizontalOptions="End" />
                             </VerticalStackLayout>
                         </Grid>
                     </Frame>

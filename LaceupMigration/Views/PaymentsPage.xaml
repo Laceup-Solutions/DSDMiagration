@@ -137,34 +137,34 @@
         <ScrollView Grid.Row="1"
                     Orientation="Horizontal"
                     IsVisible="{Binding ShowButtonsLayout}">
-            <HorizontalStackLayout Spacing="6"
+            <Grid ColumnSpacing="5" HeightRequest="40" ColumnDefinitions="auto,auto,auto,auto,auto,auto"
                                   HorizontalOptions="Start">
                 <Button Text="Collect Payment"
-                        Style="{StaticResource SmallButton}"
                         Command="{Binding PaymentCommand}"
+                        Grid.Column="0"
                         WidthRequest="120" />
                 <Button Text="Print"
-                        Style="{StaticResource SmallButton}"
+                        Grid.Column="1"
                         Command="{Binding PrintCommand}" />
                 <Button Text="Send"
-                        Style="{StaticResource SmallButton}"
                         Command="{Binding SendCommand}"
+                        Grid.Column="2"
                         IsVisible="{Binding ShowSendButton}" />
                 <Button Text="Deposit"
-                        Style="{StaticResource SmallButton}"
                         Command="{Binding DepositCommand}"
+                        Grid.Column="3"
                         IsVisible="{Binding ShowDepositButton}"
                         FontSize="13" />
                 <Button Text="View Summary"
-                        Style="{StaticResource SmallButton}"
                         Command="{Binding SummaryCommand}"
                         IsVisible="{Binding ShowSummaryButton}"
+                        Grid.Column="4"
                         FontSize="13" />
                 <Button Text="{Binding DeleteButtonText}"
-                        Style="{StaticResource DeleteButton}"
                         Command="{Binding DeleteCommand}"
+                        Grid.Column="5"
                         IsVisible="{Binding ShowDeleteButton}" />
-            </HorizontalStackLayout>
+            </Grid>
         </ScrollView>
 
         <Grid Grid.Row="2"

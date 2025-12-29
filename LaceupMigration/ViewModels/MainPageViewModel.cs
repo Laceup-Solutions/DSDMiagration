@@ -903,7 +903,7 @@ namespace LaceupMigration.ViewModels
 
 		private async Task MenuHandlerReportsAsync()
 		{
-			var result = await _dialogService.ShowConfirmationAsync("End of day dialog message.", "Warning", "Yes", "No");
+			var result = await _dialogService.ShowConfirmationAsync("Warning", "Are you sure you want to End of Day? If you continue, the system will assume that you want to close the day and you will not be able to exit this screen until the process is finished. Press YES to continue or NO to go back to the main screen.", "Yes", "No");
 			if (result)
 			{
 				// Check if all orders are finished

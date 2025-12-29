@@ -124,23 +124,20 @@
         <ScrollView Grid.Row="1"
                     Orientation="Horizontal"
                     IsVisible="{Binding ShowButtonsLayout}">
-            <HorizontalStackLayout Spacing="6"
-                                  HorizontalOptions="Start">
-                <Picker ItemsSource="{Binding TransactionTypeOptions}"
-                        SelectedItem="{Binding SelectedTransactionType}"
-                        WidthRequest="150"
-                        FontSize="13" />
+            <Grid  HeightRequest="40" ColumnSpacing="5" ColumnDefinitions="auto,auto,auto,auto"
+                   HorizontalOptions="Start">
+                <Button Grid.Column="0" Command="{Binding SelectTransactionTypeCommand}" ImageSource="{mi:MaterialOutlined Icon=ArrowDropDown, IconColor=White}" Text="{Binding SelectedTransactionType}"/>
                 <Button Text="Print"
-                        Style="{StaticResource SmallButton}"
+                        Grid.Column="1"
                         Command="{Binding PrintCommand}" />
                 <Button Text="DEX"
-                        Style="{StaticResource SmallButton}"
+                        Grid.Column="2"
                         Command="{Binding DexCommand}"
                         IsVisible="{Binding ShowDexButton}" />
                 <Button Text="Send"
-                        Style="{StaticResource SmallButton}"
+                        Grid.Column="3"
                         Command="{Binding SendCommand}" />
-            </HorizontalStackLayout>
+            </Grid>
         </ScrollView>
 
         <Grid Grid.Row="2"
