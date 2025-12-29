@@ -46,7 +46,7 @@ namespace LaceupMigration.Platforms.Android
                     wrapperLayout.SetBackgroundColor(AndroidGraphics.Color.Transparent);
                     var wrapperParams = new global::Android.Widget.FrameLayout.LayoutParams(
                         global::Android.Views.ViewGroup.LayoutParams.MatchParent,
-                        global::Android.Views.ViewGroup.LayoutParams.WrapContent
+                        global::Android.Views.ViewGroup.LayoutParams.MatchParent
                     );
                     wrapperParams.Gravity = global::Android.Views.GravityFlags.Center;
                     wrapperLayout.LayoutParameters = wrapperParams;
@@ -308,13 +308,31 @@ namespace LaceupMigration.Platforms.Android
                     {
                         scrollView = new AndroidScrollView(activity);
                         scrollView.SetBackgroundColor(AndroidGraphics.Color.Transparent);
+                        scrollView.FillViewport = false; // Don't fill viewport to allow proper centering
+                        
+                        // Calculate max height based on screen size (leave some padding for margins)
+                        var displayMetrics = activity.Resources.DisplayMetrics;
+                        var screenHeight = displayMetrics.HeightPixels;
+                        var maxHeight = (int)(screenHeight * 0.75f); // Use 75% of screen height max
+                        
                         // Remove mainContainer from wrapper and add to scrollview
                         wrapperLayout.RemoveView(mainContainer);
+                        
+                        // Update mainContainer layout params for ScrollView (ScrollView extends FrameLayout)
+                        // Width should match ScrollView width, height wraps content
+                        var mainContainerScrollParams = new global::Android.Widget.FrameLayout.LayoutParams(
+                            (int)widthDp, // Fixed width to match design
+                            global::Android.Views.ViewGroup.LayoutParams.WrapContent // Height wraps content
+                        );
+                        mainContainer.LayoutParameters = mainContainerScrollParams;
+                        
                         scrollView.AddView(mainContainer);
-                        // Add scrollview to wrapper
+                        
+                        // Add scrollview to wrapper with constrained height to ensure centering
+                        // When content is large, use maxHeight instead of WrapContent
                         var scrollParams = new global::Android.Widget.FrameLayout.LayoutParams(
-                            global::Android.Views.ViewGroup.LayoutParams.MatchParent,
-                            global::Android.Views.ViewGroup.LayoutParams.WrapContent
+                            (int)widthDp, // Match the main container width
+                            maxHeight // Use fixed max height to ensure proper centering
                         );
                         scrollParams.Gravity = global::Android.Views.GravityFlags.Center;
                         scrollView.LayoutParameters = scrollParams;
@@ -351,7 +369,7 @@ namespace LaceupMigration.Platforms.Android
                         {
                             // Use MatchParent width so the wrapper can center the content
                             attributes.Width = global::Android.Views.ViewGroup.LayoutParams.MatchParent;
-                            attributes.Height = global::Android.Views.ViewGroup.LayoutParams.WrapContent;
+                            attributes.Height = global::Android.Views.ViewGroup.LayoutParams.MatchParent;
                             attributes.Gravity = global::Android.Views.GravityFlags.Center; // Center on screen
                             attributes.HorizontalMargin = 0f;
                             attributes.VerticalMargin = 0f;
@@ -361,7 +379,7 @@ namespace LaceupMigration.Platforms.Android
                         // Set layout to match parent width so wrapper can center content
                         window.SetLayout(
                             global::Android.Views.ViewGroup.LayoutParams.MatchParent,
-                            global::Android.Views.ViewGroup.LayoutParams.WrapContent
+                            global::Android.Views.ViewGroup.LayoutParams.MatchParent
                         );
                         
                         // Ensure the dialog is displayed centered
