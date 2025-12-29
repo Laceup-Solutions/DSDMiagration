@@ -250,13 +250,24 @@ namespace LaceupMigration.ViewModels
 
                 if (openAmount > 0 || (Config.ShowInvoicesCreditsInPayments && openAmount < 0))
                 {
-                    var title = invoice.InvoiceType switch
+                    // Determine title based on Xamarin logic: if openAmount < 0, it's "Credit Invoice #", otherwise check InvoiceType
+                    // Xamarin: if (line.Open < 0) -> "Credit Invoice #" + InvoiceNumber, else -> "Invoice # " + InvoiceNumber
+                    string title;
+                    if (openAmount < 0)
                     {
-                        1 => $"Credit: {invoice.InvoiceNumber}",
-                        2 => $"Quote: {invoice.InvoiceNumber}",
-                        3 => $"Sales Order: {invoice.InvoiceNumber}",
-                        _ => $"Invoice: {invoice.InvoiceNumber}"
-                    };
+                        title = $"Credit Invoice #{invoice.InvoiceNumber}";
+                    }
+                    else
+                    {
+                        // For non-negative amounts, check InvoiceType for other types
+                        title = invoice.InvoiceType switch
+                        {
+                            1 => $"Credit: {invoice.InvoiceNumber}",
+                            2 => $"Quote: {invoice.InvoiceNumber}",
+                            3 => $"Sales Order: {invoice.InvoiceNumber}",
+                            _ => $"Invoice #{invoice.InvoiceNumber}"
+                        };
+                    }
 
                     // Calculate discount
                     double discount = 0;

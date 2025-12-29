@@ -16,12 +16,8 @@ namespace LaceupMigration.Views
             _viewModel = viewModel;
             BindingContext = _viewModel;
 
-            // Wire up menu toolbar item
-            var menuItem = ToolbarItems.FirstOrDefault();
-            if (menuItem != null)
-            {
-                menuItem.Command = _viewModel.ShowMenuCommand;
-            }
+            // Prevent LaceupContentPage from adding its own menu - we use the ViewModel's menu instead
+            UseCustomMenu = true;
 
             // Wire up CollectionView selection handlers (only for products, categories use TapGestureRecognizer)
             var productsView = this.FindByName<CollectionView>("ProductsCollectionView");

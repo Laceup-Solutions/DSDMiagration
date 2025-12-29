@@ -13,6 +13,8 @@ namespace LaceupMigration.Views
             InitializeComponent();
             _viewModel = viewModel;
             BindingContext = _viewModel;
+            // Prevent LaceupContentPage from adding its own menu - we use the ViewModel's menu instead
+            UseCustomMenu = true;
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
