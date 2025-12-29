@@ -360,6 +360,7 @@ namespace LaceupMigration.ViewModels
                         ProductName = line.Product.Name ?? "Unknown",
                         CurrentQuantity = line.Product.CurrentInventory,
                         EndingQuantity = detail.Qty,
+                        UoM = detail.UoM ?? line.UoM,
                         Line = line,
                         Detail = detail
                     });
@@ -377,6 +378,7 @@ namespace LaceupMigration.ViewModels
                             EndingQuantity = detail.Qty,
                             Lot = detail.Lot,
                             Weight = detail.Weight,
+                            UoM = detail.UoM ?? line.UoM,
                             Line = line,
                             Detail = detail
                         });
@@ -421,6 +423,12 @@ namespace LaceupMigration.ViewModels
         private void ToggleFilter()
         {
             ShowingAll = !ShowingAll;
+        }
+        
+        [RelayCommand]
+        private async Task EditQuantity(EndInventoryItemViewModel item)
+        {
+            await ShowEditQuantityDialog(item);
         }
 
         [RelayCommand]
@@ -518,22 +526,40 @@ namespace LaceupMigration.ViewModels
                 }
                 else if (!Config.PrasekCustomization)
                 {
-                    // save the values
+                    // save the values with UoM conversion
                     foreach (var item in _lines)
                     {
                         if (item is CCSingleTemplateLine)
                         {
                             var i = item as CCSingleTemplateLine;
-                            item.Product.SetCurrentInventory(i.Detail.Qty, i.Detail.Lot, i.Detail.Expiration, i.Detail.Weight);
+                            var qty = i.Detail.Qty;
+                            // Convert to base UoM if detail has non-base UoM
+                            if (i.Detail.UoM != null && !i.Detail.UoM.IsBase)
+                                qty *= i.Detail.UoM.Conversion;
+                            item.Product.SetCurrentInventory(qty, i.Detail.Lot, i.Detail.Expiration, i.Detail.Weight);
                         }
                         else
                         {
                             var i = item as CCGroupedTemplateLine;
                             if (item.Product.UseLot)
+                            {
                                 foreach (var det in i.Details)
-                                    item.Product.SetCurrentInventory(det.Qty, det.Lot, det.Expiration, det.Weight);
+                                {
+                                    var qty = det.Qty;
+                                    // Convert to base UoM if detail has non-base UoM
+                                    if (det.UoM != null && !det.UoM.IsBase)
+                                        qty *= det.UoM.Conversion;
+                                    item.Product.SetCurrentInventory(qty, det.Lot, det.Expiration, det.Weight);
+                                }
+                            }
                             else
-                                item.Product.SetCurrentInventory(i.Qty, "", DateTime.MinValue, i.Weight);
+                            {
+                                var qty = i.Qty;
+                                // For grouped lines, use the line's UoM if available
+                                if (item.UoM != null && !item.UoM.IsBase)
+                                    qty *= item.UoM.Conversion;
+                                item.Product.SetCurrentInventory(qty, "", DateTime.MinValue, i.Weight);
+                            }
                         }
                     }
                 }
@@ -646,6 +672,79 @@ namespace LaceupMigration.ViewModels
                 SaveState();
             }
         }
+        
+        public async Task ShowEditQuantityDialog(EndInventoryItemViewModel item)
+        {
+            // Match Xamarin EndInventoryActivity: show dialog to edit quantity and UoM
+            if (item.Detail == null || item.Line == null)
+                return;
+            
+            var product = item.Line.Product;
+            var initialQty = item.EndingQuantity.ToString();
+            
+            // Get quantity input
+            var qtyText = await _dialogService.ShowPromptAsync(
+                product.Name,
+                "Enter ending quantity",
+                "OK",
+                "Cancel",
+                initialQty,
+                -1,
+                initialQty,
+                Keyboard.Numeric);
+            
+            if (string.IsNullOrEmpty(qtyText) || !float.TryParse(qtyText, out var qty))
+                return;
+            
+            // Use absolute value
+            qty = Math.Abs(qty);
+            
+            // Select UoM if product has UoM family and config allows it
+            UnitOfMeasure selectedUoM = item.UoM ?? product.UnitOfMeasures.FirstOrDefault(x => x.IsBase);
+            
+            // Check if product has multiple UoMs and config allows changing UoM
+            // Use CanChangeUoM for EndInventory (similar to general inventory operations)
+            if (product.UnitOfMeasures != null && product.UnitOfMeasures.Count > 1 && Config.CanChangeUoM)
+            {
+                var uomList = product.UnitOfMeasures.ToList();
+                if (uomList.Count > 0)
+                {
+                    var uomNames = uomList.Select(x => x.Name).ToArray();
+                    var response = await _dialogService.ShowActionSheetAsync(
+                        "Select Unit of Measure",
+                        "Cancel",
+                        "",
+                        uomNames);
+                    
+                    if (!string.IsNullOrEmpty(response) && response != "Cancel")
+                    {
+                        var selectedIndex = uomNames.ToList().IndexOf(response);
+                        if (selectedIndex >= 0 && selectedIndex < uomList.Count)
+                        {
+                            selectedUoM = uomList[selectedIndex];
+                        }
+                    }
+                }
+            }
+            
+            // Update the detail with new quantity and UoM
+            item.Detail.Qty = qty;
+            item.Detail.UoM = selectedUoM;
+            item.UoM = selectedUoM;
+            item.EndingQuantity = qty;
+            
+            // Update line UoM if it's a single line
+            if (item.Line is CCSingleTemplateLine)
+            {
+                item.Line.UoM = selectedUoM;
+            }
+            
+            SaveState();
+            
+            // Refresh the display
+            UpdateInventoryList();
+            Filter();
+        }
 
         private class InventoryItem
         {
@@ -666,9 +765,41 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private float _endingQuantity;
         [ObservableProperty] private string _lot = string.Empty;
         [ObservableProperty] private double _weight;
+        private UnitOfMeasure _uom;
         
         // Reference to the underlying line and detail for updates
         public CCTemplateLine Line { get; set; }
         public CycleCountItem Detail { get; set; }
+        
+        public UnitOfMeasure UoM
+        {
+            get => _uom ?? Detail?.UoM;
+            set
+            {
+                if (_uom != value)
+                {
+                    _uom = value;
+                    if (Detail != null)
+                        Detail.UoM = value;
+                    if (Line != null)
+                        Line.UoM = value;
+                    OnPropertyChanged(nameof(UoM));
+                    OnPropertyChanged(nameof(UomText));
+                    OnPropertyChanged(nameof(ShowUom));
+                }
+            }
+        }
+        
+        public string UomText
+        {
+            get
+            {
+                if (UoM != null)
+                    return $"UoM: {UoM.Name}";
+                return string.Empty;
+            }
+        }
+        
+        public bool ShowUom => UoM != null;
     }
 }

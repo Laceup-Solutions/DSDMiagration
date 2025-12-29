@@ -53,14 +53,25 @@
                                            FontSize="12"
                                            TextColor="#666666"
                                            IsVisible="{Binding Weight, Converter={StaticResource IsNotZeroConverter}}" />
+                                    <Label Text="{Binding UomText}"
+                                           FontSize="12"
+                                           TextColor="#666666"
+                                           IsVisible="{Binding ShowUom}" />
                                 </HorizontalStackLayout>
                             </VerticalStackLayout>
-                            <Entry Grid.Column="1"
-                                   Text="{Binding EndingQuantity, StringFormat='{0:F2}'}"
-                                   WidthRequest="100"
-                                   Keyboard="Numeric"
-                                   TextChanged="OnQuantityChanged"
-                                   Placeholder="End Qty" />
+                            <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                <Entry Text="{Binding EndingQuantity, StringFormat='{0:F2}'}"
+                                       WidthRequest="100"
+                                       Keyboard="Numeric"
+                                       TextChanged="OnQuantityChanged"
+                                       Placeholder="End Qty" />
+                                <Button Text="Edit"
+                                        Clicked="OnEditQuantityClicked"
+                                        WidthRequest="100"
+                                        FontSize="12"
+                                        Padding="8,4"
+                                        IsVisible="{Binding ShowUom}" />
+                            </VerticalStackLayout>
                         </Grid>
                     </Frame>
                 </DataTemplate>

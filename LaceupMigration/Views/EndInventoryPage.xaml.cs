@@ -54,6 +54,14 @@ namespace LaceupMigration.Views
                 }
             }
         }
+        
+        private async void OnEditQuantityClicked(object sender, EventArgs e)
+        {
+            if (sender is Button button && button.BindingContext is EndInventoryItemViewModel itemViewModel)
+            {
+                await _viewModel.ShowEditQuantityDialog(itemViewModel);
+            }
+        }
     }
 }
 

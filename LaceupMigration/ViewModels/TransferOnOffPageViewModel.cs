@@ -381,42 +381,24 @@ namespace LaceupMigration.ViewModels
 
         public async Task ShowAddQtyDialog(TransferLineViewModel lineViewModel)
         {
-            // Match Xamarin ShowQtyDialog logic
-            // Get quantity input
-            var qtyText = await _dialogService.ShowPromptAsync(
+            // Match Xamarin ShowQtyDialog logic - single dialog with Qty and UoM together
+            var result = await _dialogService.ShowTransferQtyDialogAsync(
                 lineViewModel.Product.Name,
-                "Enter quantity",
-                "Add",
-                "Cancel",
+                lineViewModel.Product,
                 "1",
-                -1,
-                "1",
-                Keyboard.Numeric);
+                lineViewModel.Uom);
 
-            if (string.IsNullOrEmpty(qtyText) || !float.TryParse(qtyText, out var qty))
+            if (result.qty == null)
+                return; // User cancelled
+
+            if (string.IsNullOrEmpty(result.qty) || !float.TryParse(result.qty, out var qty))
                 return;
 
             // Match Xamarin: use absolute value
             qty = Math.Abs(qty);
             
-            // Select UoM if product has UoM family and config allows it
-            UnitOfMeasure unit = lineViewModel.Uom; // Default to line's UoM
-            
-            if (!string.IsNullOrEmpty(lineViewModel.Product.UoMFamily) && Config.CanChangeUoMInTransfer)
-            {
-                var familyItems = UnitOfMeasure.List.Where(x => x.FamilyId == lineViewModel.Product.UoMFamily).ToList();
-                if (familyItems.Count > 0)
-                {
-                    var uomNames = familyItems.Select(x => x.Name).ToArray();
-                    var response = await _dialogService.ShowActionSheetAsync("Select Unit of Measure","Cancel", "", uomNames);
-
-                    var selectedIndex = uomNames.ToList().IndexOf(response);
-                    if (selectedIndex >= 0 && selectedIndex < familyItems.Count)
-                    {
-                        unit = familyItems[selectedIndex];
-                    }
-                }
-            }
+            // Use the selected UoM from the dialog
+            UnitOfMeasure unit = result.selectedUoM ?? lineViewModel.Uom; // Default to line's UoM if none selected
             
             string lot = ""; // TODO: Add lot selection when implementing full dialog
             DateTime lotExp = DateTime.MinValue; // TODO: Add lot expiration when implementing full dialog
@@ -480,32 +462,43 @@ namespace LaceupMigration.ViewModels
                 Changed = true; // Use property setter to trigger notifications
                 SaveList();
                 
-                // Don't notify CurrentInventoryText change - it should only update after save
-                // Only notify StartingInventoryText if needed (it shows the starting inventory)
+                // ObservableCollection automatically notifies UI when items are added
+                // Don't call FilterProducts() here as it would clear and recreate ViewModels, losing the just-added detail
+                // The detail is already added to both the underlying TransferLine.Details and the ViewModel's Details collection
                 // Only refresh if the item's visibility might have changed (e.g., first detail added when filter is "Changed")
-                bool needsRefresh = !_currentlyDisplayingAll && lineViewModel.TransferLine.Details.Count == 1;
-                if (needsRefresh)
+                MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    FilterProducts();
-                }
+                    bool needsRefresh = !_currentlyDisplayingAll && lineViewModel.TransferLine.Details.Count == 1;
+                    if (needsRefresh)
+                    {
+                        // When filter is "Changed" and this is the first detail, we need to show the item
+                        // But instead of calling FilterProducts (which clears everything), just add the line if it's not visible
+                        var existingLine = TransferLines.FirstOrDefault(x => x.TransferLine == lineViewModel.TransferLine);
+                        if (existingLine == null)
+                        {
+                            // Line is not in the filtered list, add it
+                            TransferLines.Add(lineViewModel);
+                        }
+                    }
+                });
                 
                 UpdateTotal();
         }
 
         public async Task ShowEditQtyDialog(TransferLineDetViewModel detailViewModel, TransferLineViewModel lineViewModel)
         {
-            // Match Xamarin ShowEditQtyDialog logic
-            var qtyText = await _dialogService.ShowPromptAsync(
+            // Match Xamarin ShowEditQtyDialog logic - single dialog with Qty and UoM together
+            var result = await _dialogService.ShowTransferQtyDialogAsync(
                 detailViewModel.Product.Name,
-                "Enter quantity (0 to delete)",
-                "Save",
-                "Cancel",
+                lineViewModel.Product,
                 detailViewModel.Qty.ToString(),
-                -1,
-                detailViewModel.Qty.ToString(),
-                Keyboard.Numeric);
+                detailViewModel.Uom,
+                "Save");
 
-            if (qtyText != null && float.TryParse(qtyText, out var qty))
+            if (result.qty == null)
+                return; // User cancelled
+
+            if (result.qty != null && float.TryParse(result.qty, out var qty))
             {
                 // Match Xamarin line 1896: use absolute value
                 qty = Math.Abs(qty);
@@ -518,6 +511,9 @@ namespace LaceupMigration.ViewModels
                 }
                 else
                 {
+                    // Use the selected UoM from the dialog
+                    UnitOfMeasure selectedUoM = result.selectedUoM ?? detailViewModel.Uom;
+                    
                     // Match Xamarin validation logic for Transfer Off EXACTLY (line 1950-1957)
                     if (_transferAction == LaceupMigration.TransferAction.Off)
                     {
@@ -529,10 +525,9 @@ namespace LaceupMigration.ViewModels
 
                         // Match Xamarin line 1915-1948 exactly
                         float baseQty = qty;
-                        // TODO: Use selected UoM from spinner when implementing full dialog
-                        // For now, use the detail's current UoM
-                        if (detailViewModel.Uom != null)
-                            baseQty = qty * (float)detailViewModel.Uom.Conversion;
+                        // Use selected UoM from dialog
+                        if (selectedUoM != null)
+                            baseQty = qty * (float)selectedUoM.Conversion;
 
                         // Match Xamarin line 1952 EXACTLY - use the exact same formula and types
                         // Formula: baseQty > CurrentInventory - QtyTransferred - oldBaseQty
@@ -551,9 +546,10 @@ namespace LaceupMigration.ViewModels
 
                     // Match Xamarin line 1959-1962: update the detail properties
                     detailViewModel.Qty = qty;
-                    // Also update the underlying TransferLineDet
                     detailViewModel.TransferLineDet.Qty = qty;
-                    // TODO: Update UoM, Lot, and LotExp when implementing full dialog with spinner
+                    // Update UoM from dialog selection
+                    detailViewModel.Uom = selectedUoM;
+                    detailViewModel.TransferLineDet.UoM = selectedUoM;
                 }
 
                 Changed = true; // Use property setter to trigger notifications

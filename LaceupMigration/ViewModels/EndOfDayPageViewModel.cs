@@ -224,7 +224,34 @@ namespace LaceupMigration.ViewModels
                 return;
             }
             
-            await Shell.Current.GoToAsync("endinventory");
+            if (!_routeReturns)
+            {
+                if (Config.RouteReturnIsMandatory)
+                {
+                    await _dialogService.ShowAlertAsync("You must complete the Route Returns first.", "Alert", "OK");
+                    return;
+                }
+
+                if (Config.EmptyTruckAtEndOfDay)
+                    AutoCalculateRouteReturn();
+            }
+            
+            if (!string.IsNullOrEmpty(Config.AutoEndInventoryPassword))
+            {
+                var result = await _dialogService.ShowPromptAsync("Enter Password", "", "Ok", "Cancel", "", -1, "", Keyboard.Default);
+
+                if (result != null)
+                {
+                    if (string.Compare(result, Config.AutoEndInventoryPassword, StringComparison.CurrentCultureIgnoreCase) == 0)
+                        await Shell.Current.GoToAsync("endinventory");
+                    else
+                        await _dialogService.ShowAlertAsync("Invalid Password", "Alert", "OK");
+                }
+            }
+            else
+            {
+                await Shell.Current.GoToAsync("endinventory");
+            }
         }
 
         [RelayCommand]
