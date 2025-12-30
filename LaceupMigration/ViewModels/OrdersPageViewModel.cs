@@ -142,20 +142,32 @@ namespace LaceupMigration.ViewModels
 			}
 		}
 
-		[RelayCommand]
-		private async Task SearchMenu()
+	[RelayCommand]
+	private async Task SearchMenu()
+	{
+		var options = new[] { "Client Name", "Invoice Number" };
+		var choice = await _dialogService.ShowActionSheetAsync("Search By", "", "Cancel", options);
+
+		if (choice == "Client Name")
+			_searchBy = SearchBy.ClientName;
+		else if (choice == "Invoice Number")
+			_searchBy = SearchBy.InvoiceNum;
+
+		if (!string.IsNullOrEmpty(_searchCriteria))
+			Filter();
+	}
+
+	[RelayCommand]
+	private async Task SelectTransactionType()
+	{
+		var options = TransactionTypeOptions.ToArray();
+		var choice = await _dialogService.ShowActionSheetAsync("Select Transaction Type", "", "Cancel", options);
+
+		if (!string.IsNullOrEmpty(choice) && choice != "Cancel" && TransactionTypeOptions.Contains(choice))
 		{
-			var options = new[] { "Client Name", "Invoice Number" };
-			var choice = await _dialogService.ShowActionSheetAsync("Search By", "", "Cancel", options);
-
-			if (choice == "Client Name")
-				_searchBy = SearchBy.ClientName;
-			else if (choice == "Invoice Number")
-				_searchBy = SearchBy.InvoiceNum;
-
-			if (!string.IsNullOrEmpty(_searchCriteria))
-				Filter();
+			SelectedTransactionType = choice;
 		}
+	}
 
 		[RelayCommand]
 		private void SelectAll()
