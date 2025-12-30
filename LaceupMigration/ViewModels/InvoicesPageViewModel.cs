@@ -122,20 +122,32 @@ namespace LaceupMigration.ViewModels
 			}
 		}
 
-		[RelayCommand]
-		private async Task SearchMenu()
-		{
-			var options = new[] { "Client Name", "Invoice Number" };
-			var choice = await _dialogService.ShowActionSheetAsync("Search By", "", "Cancel", options);
-			
-			if (choice == "Client Name")
-				_searchBy = SearchBy.ClientName;
-			else if (choice == "Invoice Number")
-				_searchBy = SearchBy.InvoiceNum;
+	[RelayCommand]
+	private async Task SearchMenu()
+	{
+		var options = new[] { "Client Name", "Invoice Number" };
+		var choice = await _dialogService.ShowActionSheetAsync("Search By", "", "Cancel", options);
+		
+		if (choice == "Client Name")
+			_searchBy = SearchBy.ClientName;
+		else if (choice == "Invoice Number")
+			_searchBy = SearchBy.InvoiceNum;
 
-			if (!string.IsNullOrEmpty(_searchCriteria))
-				Filter();
+		if (!string.IsNullOrEmpty(_searchCriteria))
+			Filter();
+	}
+
+	[RelayCommand]
+	private async Task SelectDateRange()
+	{
+		var options = DateRangeOptions.ToArray();
+		var choice = await _dialogService.ShowActionSheetAsync("Select Date Range", "", "Cancel", options);
+
+		if (!string.IsNullOrEmpty(choice) && choice != "Cancel" && DateRangeOptions.Contains(choice))
+		{
+			SelectedDateRange = choice;
 		}
+	}
 
 		[RelayCommand]
 		private void SelectAll()
