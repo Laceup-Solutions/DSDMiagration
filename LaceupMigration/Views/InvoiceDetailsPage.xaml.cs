@@ -14,6 +14,9 @@ namespace LaceupMigration.Views
             _viewModel = viewModel;
             BindingContext = _viewModel;
 
+            // Prevent base class from adding its own menu
+            UseCustomMenu = true;
+
             // Wire up menu toolbar item
             var menuItem = ToolbarItems.FirstOrDefault();
             if (menuItem != null)

@@ -32,7 +32,7 @@
                     <Button Grid.Column="2"
                             Text="Send By Email" 
                             Command="{Binding SendByEmailCommand}" 
-                            IsEnabled="{Binding CanSavePayment}"
+                            IsEnabled="{Binding CanSendByEmail}"
                             Style="{StaticResource PrimaryButton}"
                             Padding="8,0"
                             FontSize="14" />
@@ -134,10 +134,12 @@
                                     SelectionMode="None">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="vm:PaymentComponentViewModel">
-                                <Frame Padding="10" 
+                                <Frame Padding="10"
+                                       IsVisible="{Binding IsVisible}" 
                                        Margin="0,2,0,10" 
                                        HasShadow="False" 
-                                       BackgroundColor="{StaticResource White}">
+                                       BackgroundColor="{StaticResource White}"
+                                       x:Name="PaymentComponentFrame">
                                     <VerticalStackLayout Spacing="10">
                                         <!-- Divider with "-Select Payment Method-" text (matching Xamarin) -->
                                         <Grid ColumnDefinitions="*,Auto,*" Margin="5,15,5,0">
@@ -165,7 +167,8 @@
                                                    VerticalOptions="Center" />
                                             <Button Grid.Column="1"
                                                     Text="{Binding PaymentMethodText}" 
-                                                    Clicked="EditPayment_Clicked"
+                                                    Command="{Binding SelectPaymentMethodCommand}"
+                                                    IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertedBoolConverter}}"
                                                     BackgroundColor="#F5F5F5"
                                                     TextColor="Gray"
                                                     FontSize="14"
@@ -178,47 +181,76 @@
                                             <!-- Amount -->
                                             <VerticalStackLayout Grid.Column="0" Spacing="2">
                                                 <Label Text="Amount:" FontSize="14" />
-                                                <Button Text="{Binding AmountText}" 
-                                                        Clicked="EditPayment_Clicked"
+                                                <Border StrokeThickness="0"
                                                         BackgroundColor="#F5F5F5"
-                                                        TextColor="Gray"
-                                                        FontSize="14"
-                                                        HeightRequest="40"
-                                                        CornerRadius="5" />
+                                                        Padding="10,0"
+                                                        HeightRequest="40">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="5" />
+                                                    </Border.StrokeShape>
+                                                    <Entry Text="{Binding AmountText, Mode=TwoWay}" 
+                                                           IsReadOnly="{Binding IsReadOnly}"
+                                                           Keyboard="Numeric"
+                                                           BackgroundColor="Transparent"
+                                                           TextColor="Gray"
+                                                           FontSize="14"
+                                                           Placeholder="0.00"
+                                                           Unfocused="AmountEntry_Unfocused" />
+                                                </Border>
                                             </VerticalStackLayout>
 
                                             <!-- Comments -->
                                             <VerticalStackLayout Grid.Column="1" Spacing="2">
                                                 <Label Text="Comments:" FontSize="14" />
-                                                <Button Text="{Binding Comments}" 
-                                                        Clicked="EditPayment_Clicked"
+                                                <Border StrokeThickness="0"
                                                         BackgroundColor="#F5F5F5"
-                                                        TextColor="Gray"
-                                                        FontSize="14"
-                                                        HeightRequest="40"
-                                                        CornerRadius="5"
-                                                        HorizontalOptions="Fill" />
+                                                        Padding="10,0"
+                                                        HeightRequest="40">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="5" />
+                                                    </Border.StrokeShape>
+                                                    <Entry Text="{Binding Comments, Mode=TwoWay}" 
+                                                           IsReadOnly="{Binding IsReadOnly}"
+                                                           BackgroundColor="Transparent"
+                                                           TextColor="Gray"
+                                                           FontSize="14"
+                                                           Placeholder="Enter comments"
+                                                           HorizontalOptions="Fill" />
+                                                </Border>
                                             </VerticalStackLayout>
 
                                             <!-- Add Image -->
                                             <VerticalStackLayout Grid.Column="2" Spacing="2">
                                                 <Label Text="Add Image:" FontSize="14" />
-                                                <Frame BackgroundColor="#F5F5F5"
-                                                       BorderColor="LightGray"
-                                                       CornerRadius="5"
-                                                       Padding="5"
-                                                       HeightRequest="35"
-                                                       WidthRequest="60">
-                                                    <Frame.GestureRecognizers>
+                                                <Border StrokeThickness="1"
+                                                        Stroke="LightGray"
+                                                        BackgroundColor="#F5F5F5"
+                                                        Padding="0"
+                                                        HeightRequest="35"
+                                                        WidthRequest="60">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="5" />
+                                                    </Border.StrokeShape>
+                                                    <Border.GestureRecognizers>
                                                         <TapGestureRecognizer Tapped="OnImageTapped" />
-                                                    </Frame.GestureRecognizers>
-                                                    <Image Source="{mi:MaterialOutlined Icon=AddPhotoAlternate, IconColor=Gray}"
-                                                           Aspect="AspectFit"
-                                                           HeightRequest="24"
-                                                           WidthRequest="24"
-                                                           HorizontalOptions="Center"
-                                                           VerticalOptions="Center" />
-                                                </Frame>
+                                                    </Border.GestureRecognizers>
+                                                    <Grid>
+                                                        <Image Source="{Binding ImagePath}"
+                                                               IsVisible="{Binding HasImage}"
+                                                               Aspect="AspectFill"
+                                                               HeightRequest="25"
+                                                               WidthRequest="50"
+                                                               HorizontalOptions="Center"
+                                                               VerticalOptions="Center" />
+                                                        <Image Source="{mi:MaterialOutlined Icon=AddPhotoAlternate, IconColor=Gray}"
+                                                               IsVisible="{Binding HasImage, Converter={StaticResource InvertedBoolConverter}}"
+                                                               Aspect="AspectFit"
+                                                               HeightRequest="24"
+                                                               WidthRequest="24"
+                                                               HorizontalOptions="Center"
+                                                               VerticalOptions="Center" />
+                                                    </Grid>
+                                                </Border>
                                             </VerticalStackLayout>
                                         </Grid>
 
@@ -231,6 +263,7 @@
                                                 <Label Text="Ref Number:" FontSize="14" />
                                                 <Button Text="{Binding Ref}" 
                                                         Clicked="EditPayment_Clicked"
+                                                        IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertedBoolConverter}}"
                                                         BackgroundColor="#F5F5F5"
                                                         TextColor="Gray"
                                                         FontSize="14"
@@ -243,6 +276,7 @@
                                                 <Label Text="Posted Date:" FontSize="14" />
                                                 <Button Text="{Binding PostedDate, StringFormat='{0:d}'}" 
                                                         Clicked="EditPayment_Clicked"
+                                                        IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertedBoolConverter}}"
                                                         BackgroundColor="#F5F5F5"
                                                         TextColor="Gray"
                                                         FontSize="14"
@@ -262,6 +296,7 @@
                                             <Button Grid.Column="1"
                                                     Text="{Binding BankName}" 
                                                     Clicked="EditPayment_Clicked"
+                                                    IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertedBoolConverter}}"
                                                     BackgroundColor="#F5F5F5"
                                                     TextColor="Gray"
                                                     FontSize="14"

@@ -212,19 +212,31 @@ namespace LaceupMigration.ViewModels
             // Receive Payment / View Payment
             if (Config.PaymentAvailable && !Config.HidePriceInTransaction)
             {
-                var existPayment = InvoicePayment.List.Any(x => 
+                var existPayment = InvoicePayment.List.FirstOrDefault(x => 
                     x != null && 
                     string.IsNullOrEmpty(x.OrderId) && 
                     (x.Invoices().FirstOrDefault(y => y.InvoiceId == _invoice.InvoiceId) != null));
 
-                var title = existPayment ? "View Payment" : "Receive Payment";
+                var title = existPayment != null ? "View Payment" : "Receive Payment";
                 var enabled = _invoice.Balance > 0;
 
                 if (enabled)
                 {
                     options.Add(new MenuOption(title, async () =>
                     {
-                        await Shell.Current.GoToAsync($"selectinvoice?clientId={_invoice.ClientId}&fromClientDetails=false");
+                        if (existPayment != null)
+                        {
+                            // View existing payment
+                            await Shell.Current.GoToAsync($"paymentsetvalues?paymentId={existPayment.Id}&detailViewPayments=1");
+                        }
+                        else
+                        {
+                            // Receive new payment - go directly to payment page with invoice pre-selected
+                            var invoiceIdParam = Config.SavePaymentsByInvoiceNumber 
+                                ? _invoice.InvoiceNumber 
+                                : _invoice.InvoiceId.ToString();
+                            await Shell.Current.GoToAsync($"paymentsetvalues?clientId={_invoice.ClientId}&invoiceIds={invoiceIdParam}");
+                        }
                     }));
                 }
             }

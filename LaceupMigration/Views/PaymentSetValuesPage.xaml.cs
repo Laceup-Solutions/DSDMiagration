@@ -1,8 +1,10 @@
 using LaceupMigration.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.ApplicationModel;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace LaceupMigration.Views
 {
@@ -115,7 +117,7 @@ namespace LaceupMigration.Views
                 component = frame.BindingContext as PaymentComponentViewModel;
             }
             
-            if (component != null)
+            if (component != null && !component.IsReadOnly)
             {
                 await _viewModel.EditPayment(component);
             }
@@ -123,17 +125,113 @@ namespace LaceupMigration.Views
 
         private async void OnImageTapped(object sender, EventArgs e)
         {
+            PaymentComponentViewModel? component = null;
+            
+            // Get the BindingContext from the Border or its parent
             if (sender is TapGestureRecognizer recognizer)
             {
-                var frame = recognizer.Parent as Frame;
-                if (frame != null)
+                // The recognizer's parent should be the Border
+                if (recognizer.Parent is Border border)
                 {
-                    var component = frame.BindingContext as PaymentComponentViewModel;
-                    if (component != null)
+                    component = border.BindingContext as PaymentComponentViewModel;
+                }
+                else
+                {
+                    // Walk up the visual tree to find the Border or Frame with PaymentComponentViewModel
+                    var parent = recognizer.Parent;
+                    while (parent != null)
                     {
-                        await _viewModel.EditPayment(component);
+                        if (parent is Border borderParent)
+                        {
+                            component = borderParent.BindingContext as PaymentComponentViewModel;
+                            break;
+                        }
+                        if (parent is Frame frameParent)
+                        {
+                            component = frameParent.BindingContext as PaymentComponentViewModel;
+                            break;
+                        }
+                        if (parent is Element element)
+                        {
+                            parent = element.Parent;
+                        }
+                        else
+                        {
+                            break;
+                        }
                     }
                 }
+            }
+            else if (sender is Border border)
+            {
+                component = border.BindingContext as PaymentComponentViewModel;
+            }
+            else if (sender is Element element)
+            {
+                // Walk up the visual tree to find an element with PaymentComponentViewModel as BindingContext
+                var current = element;
+                while (current != null)
+                {
+                    if (current.BindingContext is PaymentComponentViewModel vm)
+                    {
+                        component = vm;
+                        break;
+                    }
+                    current = current.Parent;
+                }
+            }
+            
+            if (component != null)
+            {
+                if (!component.IsReadOnly)
+                {
+                    await _viewModel.TakePhotoForComponentAsync(component);
+                }
+                else if (component.HasImage)
+                {
+                    // If read-only but has image, show the image
+                    await _viewModel.ViewImageAsync(component);
+                }
+            }
+        }
+
+        private void AmountEntry_Unfocused(object sender, FocusEventArgs e)
+        {
+            if (sender is Entry entry && entry.BindingContext is PaymentComponentViewModel component)
+            {
+                // Use a small delay to ensure Android's text processing is complete
+                // This prevents the EmojiCompat error
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Task.Delay(50); // Small delay to let Android finish processing
+                    
+                    // Parse and validate the amount when field loses focus
+                    if (double.TryParse(entry.Text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out var amount))
+                    {
+                        // Update AmountText which will trigger OnAmountTextChanged and update Amount
+                        // Format to 2 decimal places
+                        var formattedAmount = amount.ToString("F2");
+                        if (component.AmountText != formattedAmount)
+                        {
+                            component.AmountText = formattedAmount;
+                        }
+                        // SaveState is called in OnComponentAmountChanged
+                    }
+                    else if (string.IsNullOrWhiteSpace(entry.Text))
+                    {
+                        // If empty, set to 0 - this will trigger hiding of the component
+                        component.AmountText = "0.00";
+                    }
+                    else
+                    {
+                        // Reset to current amount if parsing fails
+                        var currentFormatted = component.Amount.ToString("F2");
+                        if (component.AmountText != currentFormatted)
+                        {
+                            component.AmountText = currentFormatted;
+                        }
+                    }
+                });
             }
         }
     }

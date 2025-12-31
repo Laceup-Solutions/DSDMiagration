@@ -9,7 +9,7 @@
              Shell.TabBarIsVisible="False"
              Title="Invoice Details">
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
+        <ToolbarItem Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <ScrollView>
