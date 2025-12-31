@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 
@@ -18,7 +19,7 @@ namespace LaceupMigration.ViewModels
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
         private Client? _client;
-        private InvoicePayment? _invoicePayment;
+        public InvoicePayment? _invoicePayment;
         private List<Invoice> _invoices = new();
         private List<Order> _orders = new();
         private double _amount = 0;
@@ -35,6 +36,8 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private ObservableCollection<PaymentComponentViewModel> _paymentComponents = new();
+        
+        public readonly List<PaymentComponentViewModel> _componentsToRemove = new();
 
         [ObservableProperty]
         private string _clientName = string.Empty;
@@ -83,6 +86,9 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private bool _canDeletePayment = true;
+
+        [ObservableProperty]
+        private bool _canSendByEmail = true;
 
         [ObservableProperty]
         private bool _isCreditAccount;
@@ -193,12 +199,7 @@ namespace LaceupMigration.ViewModels
                     PaymentComponents.Add(new PaymentComponentViewModel(component, this));
                 }
 
-                if (_invoicePayment.Printed)
-                {
-                    CanAddPayment = false;
-                    CanSavePayment = false;
-                    CanDeletePayment = false;
-                }
+                // Button states will be set by UpdateButtonStates() below
             }
             else if (!string.IsNullOrEmpty(_invoicesId) || !string.IsNullOrEmpty(_ordersId))
             {
@@ -245,10 +246,25 @@ namespace LaceupMigration.ViewModels
                 PaymentComponents.Add(new PaymentComponentViewModel(new PaymentComponent { Amount = _amount }, this));
             }
 
-            // Set CanDeletePayment based on whether there's a payment to delete
-            CanDeletePayment = _paymentId > 0 && (_invoicePayment == null || !_invoicePayment.Printed);
+            // Set button states based on payment status
+            UpdateButtonStates();
+            
+            // Update read-only state for all payment components
+            UpdatePaymentComponentsReadOnlyState();
 
             RefreshLabels();
+        }
+        
+        private void UpdatePaymentComponentsReadOnlyState()
+        {
+            // Set IsReadOnly to true if payment is printed, false otherwise
+            var isReadOnly = _invoicePayment != null && _invoicePayment.Printed;
+            foreach (var component in PaymentComponents)
+            {
+                component.IsReadOnly = isReadOnly;
+                // Payment components should ALWAYS be visible, never hidden
+                component.IsVisible = true;
+            }
         }
 
         private void LoadExistingPaymentData()
@@ -572,7 +588,7 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private void RefreshLabels()
+        public void RefreshLabels()
         {
             var currentPaymentAmount = PaymentComponents.Sum(x => x.Amount);
             var open = _amount - currentPaymentAmount;
@@ -597,8 +613,76 @@ namespace LaceupMigration.ViewModels
             // 2. There's no open amount left to collect (unless it's a credit account)
             // 3. There are empty payment components that need to be filled first
             var hasEmptyComponents = PaymentComponents.Any(x => x.Amount == 0);
-            CanAddPayment = !hasEmptyComponents && 
-                           (_creditAccount || ((_invoicePayment == null || !_invoicePayment.Printed) && open > 0));
+            if (_invoicePayment != null && _invoicePayment.Printed)
+            {
+                CanAddPayment = false; // Can't add if printed
+            }
+            else
+            {
+                CanAddPayment = !hasEmptyComponents && 
+                               (_creditAccount || ((_invoicePayment == null || !_invoicePayment.Printed) && open > 0));
+            }
+            
+            // Update other button states (Save, Delete, Print)
+            UpdateButtonStates();
+        }
+
+        private void UpdateButtonStates()
+        {
+            // If opening an existing payment (paymentId > 0), Print and Send By Email should always be enabled
+            if (_paymentId > 0)
+            {
+                CanPrintPayment = true;
+                CanSendByEmail = true;
+            }
+            
+            // If payment is printed, disable editing buttons (matches Xamarin behavior)
+            // Reload payment from list if needed to ensure we have the latest state
+            if (_invoicePayment != null && _invoicePayment.Id > 0)
+            {
+                // Reload payment from list to ensure we have the latest Printed status
+                var reloadedPayment = InvoicePayment.List.FirstOrDefault(x => x.Id == _invoicePayment.Id);
+                if (reloadedPayment != null)
+                {
+                    _invoicePayment = reloadedPayment; // Update reference to reloaded payment
+                }
+            }
+            
+            if (_invoicePayment != null && _invoicePayment.Printed)
+            {
+                CanSavePayment = false;
+                CanDeletePayment = false;
+                // Print and Send By Email buttons remain enabled (can re-print/re-send)
+                CanPrintPayment = true;
+                CanSendByEmail = true;
+            }
+            else
+            {
+                // If payment exists but not printed, can save and delete
+                if (_invoicePayment != null)
+                {
+                    CanSavePayment = true;
+                    CanDeletePayment = true;
+                    CanPrintPayment = true; // Can print after saving
+                    CanSendByEmail = true; // Can send by email
+                }
+                else
+                {
+                    // No payment saved yet, but check if there are payment components with amounts
+                    var hasPaymentAmounts = PaymentComponents.Any(x => x.Amount > 0);
+                    var hasPaymentComponents = PaymentComponents.Count > 0;
+                    
+                    CanSavePayment = true;
+                    // Delete button is enabled when there are payment components (user can clear them) or when there's a saved payment
+                    // This allows users to clear unsaved payment components they've entered
+                    CanDeletePayment = hasPaymentComponents;
+                    
+                    // Enable Print and Send By Email if there are payment amounts (will prompt to save if needed)
+                    // This matches Xamarin behavior - Print is enabled when there's a payment amount to print
+                    CanPrintPayment = hasPaymentAmounts || _paymentId > 0;
+                    CanSendByEmail = true; // Can send by email (will save first if needed)
+                }
+            }
         }
 
         [RelayCommand]
@@ -620,6 +704,26 @@ namespace LaceupMigration.ViewModels
             PaymentComponents.Add(new PaymentComponentViewModel(new PaymentComponent { Amount = qty }, this));
             RefreshLabels();
             SaveState(); // Save state after adding payment
+        }
+
+        public async Task SelectPaymentMethodForComponentAsync(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            var paymentMethods = Enum.GetNames(typeof(InvoicePaymentMethod))
+                .Select(x => x.Replace("_", " "))
+                .ToArray();
+
+            var methodChoice = await _dialogService.ShowActionSheetAsync("Select Payment Method", "", "Cancel", paymentMethods);
+            if (string.IsNullOrEmpty(methodChoice) || methodChoice == "Cancel")
+                return;
+
+            var method = Enum.Parse<InvoicePaymentMethod>(methodChoice.Replace(" ", "_"));
+            component.PaymentMethod = method;
+
+            RefreshLabels();
+            SaveState(); // Save state after changing payment method
         }
 
         public async Task EditPayment(PaymentComponentViewModel component)
@@ -676,6 +780,108 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
+        public async Task TakePhotoForComponentAsync(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+            
+            // If read-only but has image, show the image
+            if (component.IsReadOnly && component.HasImage)
+            {
+                await ViewImageAsync(component);
+                return;
+            }
+            
+            // If read-only without image, do nothing
+            if (component.IsReadOnly)
+                return;
+
+            try
+            {
+                // Show action sheet: Take Photo or Choose from Gallery
+                var options = new[] { "Take Photo", "Choose from Gallery" };
+                var choice = await _dialogService.ShowActionSheetAsync("Add Image", "Cancel", null, options);
+                
+                if (string.IsNullOrEmpty(choice) || choice == "Cancel")
+                    return;
+
+                FileResult? photo = null;
+
+                if (choice == "Take Photo")
+                {
+                    if (!MediaPicker.IsCaptureSupported)
+                    {
+                        await _dialogService.ShowAlertAsync("Camera is not available on this device.", "Error", "OK");
+                        return;
+                    }
+                    photo = await MediaPicker.CapturePhotoAsync();
+                }
+                else if (choice == "Choose from Gallery")
+                {
+                    photo = await MediaPicker.PickPhotoAsync();
+                }
+
+                if (photo == null)
+                    return;
+
+                // Save photo to PaymentImagesPath
+                var imageId = Guid.NewGuid().ToString("N");
+                var filePath = Path.Combine(Config.PaymentImagesPath, $"{imageId}.png");
+
+                // Ensure directory exists
+                var directory = Path.GetDirectoryName(filePath);
+                if (!Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                // Delete old image if exists
+                if (component.HasImage && !string.IsNullOrEmpty(component.ImagePath) && File.Exists(component.ImagePath))
+                {
+                    try
+                    {
+                        File.Delete(component.ImagePath);
+                    }
+                    catch { /* Ignore deletion errors */ }
+                }
+
+                using (var sourceStream = await photo.OpenReadAsync())
+                using (var fileStream = File.Create(filePath))
+                {
+                    await sourceStream.CopyToAsync(fileStream);
+                }
+
+                // Store image path in component's ExtraFields
+                component.Component.ExtraFields = DataAccess.SyncSingleUDF("Image", filePath, component.Component.ExtraFields ?? string.Empty);
+                component.ImagePath = filePath;
+                component.HasImage = true;
+
+                RefreshLabels();
+                SaveState(); // Save state after adding image
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog($"Error taking/selecting photo: {ex.Message}");
+                await _dialogService.ShowAlertAsync("Error taking/selecting photo.", "Error", "OK");
+            }
+        }
+
+        public async Task ViewImageAsync(PaymentComponentViewModel component)
+        {
+            if (component == null || !component.HasImage || string.IsNullOrEmpty(component.ImagePath))
+                return;
+
+            if (!File.Exists(component.ImagePath))
+            {
+                await _dialogService.ShowAlertAsync("Image file not found.", "Error", "OK");
+                return;
+            }
+
+            // Show image in a simple alert (or navigate to image viewer page if available)
+            await _dialogService.ShowAlertAsync($"Image: {Path.GetFileName(component.ImagePath)}", "Image", "OK");
+        }
+
+        [RelayCommand]
         private async Task SavePayment()
         {
             await SavePaymentInternal();
@@ -688,11 +894,12 @@ namespace LaceupMigration.ViewModels
             {
                 foreach (var component in PaymentComponents)
                 {
-                    if (string.IsNullOrEmpty(component.BankName) && 
-                        (component.PaymentMethod == InvoicePaymentMethod.Check || 
+                    if (string.IsNullOrEmpty(component.BankName) &&
+                        (component.PaymentMethod == InvoicePaymentMethod.Check ||
                          component.PaymentMethod == InvoicePaymentMethod.Credit_Card))
                     {
-                        await _dialogService.ShowAlertAsync("You must select a Bank to be able to save this payment.", "Alert", "OK");
+                        await _dialogService.ShowAlertAsync("You must select a Bank to be able to save this payment.",
+                            "Alert", "OK");
                         return false;
                     }
                 }
@@ -700,10 +907,12 @@ namespace LaceupMigration.ViewModels
 
             if (Config.MustEnterPostedDate)
             {
-                var checkPayments = PaymentComponents.Where(x => x.PaymentMethod == InvoicePaymentMethod.Check).ToList();
+                var checkPayments = PaymentComponents.Where(x => x.PaymentMethod == InvoicePaymentMethod.Check)
+                    .ToList();
                 if (checkPayments.Any(x => x.PostedDate == DateTime.MinValue))
                 {
-                    await _dialogService.ShowAlertAsync("You must enter a Posted Date for Check Payments.", "Alert", "OK");
+                    await _dialogService.ShowAlertAsync("You must enter a Posted Date for Check Payments.", "Alert",
+                        "OK");
                     return false;
                 }
             }
@@ -735,21 +944,35 @@ namespace LaceupMigration.ViewModels
 
             _invoicePayment.DiscountApplied = _totalDiscount;
             _invoicePayment.Components.Clear();
-            _invoicePayment.Components.AddRange(PaymentComponents.Where(x => x.Amount > 0).Select(x => x.Component));
+
+            // FIXED: Always save all components from PaymentComponents
+            // The UI-level removal (OnAmountChanged) already handles removing zero-amount components
+            // when appropriate (i.e., when payment is not printed)
+            _invoicePayment.Components.AddRange(PaymentComponents.Select(x => x.Component));
+
+            // Clean up zero-amount components from the UI collection after saving
+            // This only removes from PaymentComponents if payment is NOT printed
+            RemoveZeroAmountComponents();
 
             // Add location to payments
             foreach (var component in _invoicePayment.Components)
             {
-                component.ExtraFields = DataAccess.SyncSingleUDF("location", 
-                    $"{DataAccess.LastLatitude},{DataAccess.LastLongitude}", 
+                component.ExtraFields = DataAccess.SyncSingleUDF("location",
+                    $"{DataAccess.LastLatitude},{DataAccess.LastLongitude}",
                     component.ExtraFields);
             }
 
             _invoicePayment.Save();
 
+            // Update _paymentId after saving so the payment can be found later
+            if (_paymentId == 0 && _invoicePayment.Id > 0)
+            {
+                _paymentId = _invoicePayment.Id;
+            }
+
             if (_invoicePayment.Components.All(x => x.Amount == 0))
             {
-                var confirmed = await _dialogService.ShowConfirmationAsync("Empty Payment", 
+                var confirmed = await _dialogService.ShowConfirmationAsync("Empty Payment",
                     "This payment has no amount. Do you want to delete it?", "Yes", "No");
                 if (confirmed)
                 {
@@ -757,11 +980,163 @@ namespace LaceupMigration.ViewModels
                         _invoicePayment.Void();
                     else
                         _invoicePayment.Delete();
+
+                    // If payment was deleted, reset state
+                    _invoicePayment = null;
+                    _paymentId = 0;
                 }
+            }
+
+            // Update button states after saving (if payment is printed, disable editing buttons)
+            if (_invoicePayment != null && _invoicePayment.Printed)
+            {
+                CanAddPayment = false;
+                CanSavePayment = false;
+                CanDeletePayment = false;
+                // Print and Send By Email remain enabled
+                CanPrintPayment = true;
+                CanSendByEmail = true;
+
+                // Update read-only state for all payment components (disable editing)
+                UpdatePaymentComponentsReadOnlyState();
+            }
+            else
+            {
+                // If not printed, refresh labels to update CanAddPayment based on open amount
+                // This will also update button states including CanDeletePayment
+                RefreshLabels();
             }
 
             return true;
         }
+
+        // private async Task<bool> SavePaymentInternal()
+        // {
+        //     if (Config.PaymentBankIsMandatory)
+        //     {
+        //         foreach (var component in PaymentComponents)
+        //         {
+        //             if (string.IsNullOrEmpty(component.BankName) && 
+        //                 (component.PaymentMethod == InvoicePaymentMethod.Check || 
+        //                  component.PaymentMethod == InvoicePaymentMethod.Credit_Card))
+        //             {
+        //                 await _dialogService.ShowAlertAsync("You must select a Bank to be able to save this payment.", "Alert", "OK");
+        //                 return false;
+        //             }
+        //         }
+        //     }
+        //
+        //     if (Config.MustEnterPostedDate)
+        //     {
+        //         var checkPayments = PaymentComponents.Where(x => x.PaymentMethod == InvoicePaymentMethod.Check).ToList();
+        //         if (checkPayments.Any(x => x.PostedDate == DateTime.MinValue))
+        //         {
+        //             await _dialogService.ShowAlertAsync("You must enter a Posted Date for Check Payments.", "Alert", "OK");
+        //             return false;
+        //         }
+        //     }
+        //
+        //     var currentPaymentAmount = PaymentComponents.Sum(x => x.Amount);
+        //     var open = _amount - currentPaymentAmount;
+        //
+        //     if (_invoicePayment == null)
+        //     {
+        //         _invoicePayment = new InvoicePayment(_client!);
+        //         _invoicePayment.InvoicesId = _invoicesId;
+        //
+        //         if (!string.IsNullOrEmpty(_ordersId))
+        //         {
+        //             _invoicePayment.OrderId = string.Empty;
+        //             foreach (var idAsString in _ordersId.Split(','))
+        //             {
+        //                 var id = Convert.ToInt32(idAsString);
+        //                 var order = Order.Orders.FirstOrDefault(x => x.OrderId == id);
+        //                 if (order != null)
+        //                 {
+        //                     if (!string.IsNullOrEmpty(_invoicePayment.OrderId))
+        //                         _invoicePayment.OrderId += ",";
+        //                     _invoicePayment.OrderId += order.UniqueId;
+        //                 }
+        //             }
+        //         }
+        //     }
+        //
+        //     _invoicePayment.DiscountApplied = _totalDiscount;
+        //     _invoicePayment.Components.Clear();
+        //     
+        //     // Filter out components with zero amount when saving
+        //     // Exception: For printed payments, include all components (even with 0 amount) to preserve state
+        //     var isPaymentPrinted = _invoicePayment.Printed;
+        //     if (isPaymentPrinted)
+        //     {
+        //         // For printed payments, include all components to preserve the exact state
+        //         _invoicePayment.Components.AddRange(PaymentComponents.Select(x => x.Component));
+        //     }
+        //     else
+        //     {
+        //         // For non-printed payments, only include components with amount > 0
+        //         _invoicePayment.Components.AddRange(PaymentComponents.Where(x => x.Amount > 0).Select(x => x.Component));
+        //     }
+        //     
+        //     // Clean up zero-amount components from the collection after saving
+        //     // This will only remove them if payment is NOT printed
+        //     RemoveZeroAmountComponents();
+        //
+        //     // Add location to payments
+        //     foreach (var component in _invoicePayment.Components)
+        //     {
+        //         component.ExtraFields = DataAccess.SyncSingleUDF("location", 
+        //             $"{DataAccess.LastLatitude},{DataAccess.LastLongitude}", 
+        //             component.ExtraFields);
+        //     }
+        //
+        //     _invoicePayment.Save();
+        //     
+        //     // Update _paymentId after saving so the payment can be found later
+        //     if (_paymentId == 0 && _invoicePayment.Id > 0)
+        //     {
+        //         _paymentId = _invoicePayment.Id;
+        //     }
+        //
+        //     if (_invoicePayment.Components.All(x => x.Amount == 0))
+        //     {
+        //         var confirmed = await _dialogService.ShowConfirmationAsync("Empty Payment", 
+        //             "This payment has no amount. Do you want to delete it?", "Yes", "No");
+        //         if (confirmed)
+        //         {
+        //             if (Config.VoidPayments)
+        //                 _invoicePayment.Void();
+        //             else
+        //                 _invoicePayment.Delete();
+        //             
+        //             // If payment was deleted, reset state
+        //             _invoicePayment = null;
+        //             _paymentId = 0;
+        //         }
+        //     }
+        //
+        //     // Update button states after saving (if payment is printed, disable editing buttons)
+        //     if (_invoicePayment != null && _invoicePayment.Printed)
+        //     {
+        //         CanAddPayment = false;
+        //         CanSavePayment = false;
+        //         CanDeletePayment = false;
+        //         // Print and Send By Email remain enabled
+        //         CanPrintPayment = true;
+        //         CanSendByEmail = true;
+        //         
+        //         // Update read-only state for all payment components (disable editing)
+        //         UpdatePaymentComponentsReadOnlyState();
+        //     }
+        //     else
+        //     {
+        //         // If not printed, refresh labels to update CanAddPayment based on open amount
+        //         // This will also update button states including CanDeletePayment
+        //         RefreshLabels();
+        //     }
+        //
+        //     return true;
+        // }
 
         [RelayCommand]
         private async Task SaveAndClose()
@@ -792,6 +1167,13 @@ namespace LaceupMigration.ViewModels
                     CanAddPayment = false;
                     CanSavePayment = false;
                     CanDeletePayment = false;
+                    // Print and Send By Email remain enabled
+                    CanPrintPayment = true;
+                    CanSendByEmail = true;
+                    
+                    // Update read-only state for all payment components (disable editing)
+                    UpdatePaymentComponentsReadOnlyState();
+                    
                     RefreshLabels();
 
                     // Proceed to send email after saving
@@ -876,45 +1258,101 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task DeleteEntirePayment()
         {
-            if (_invoicePayment == null)
+            // If there's a saved payment, delete it
+            if (_invoicePayment != null)
+            {
+                var confirmed = await _dialogService.ShowConfirmationAsync("Delete Payment", 
+                    "Are you sure you want to delete this payment?", "Yes", "No");
+                if (confirmed)
+                {
+                    if (Config.VoidPayments)
+                        _invoicePayment.Void();
+                    else
+                        _invoicePayment.Delete();
+
+                    await FinishProcessAsync();
+                }
+            }
+            // If no saved payment but there are payment components, clear them
+            else if (PaymentComponents.Count > 0)
+            {
+                var confirmed = await _dialogService.ShowConfirmationAsync("Clear Payment", 
+                    "Are you sure you want to clear all payment components?", "Yes", "No");
+                if (confirmed)
+                {
+                    PaymentComponents.Clear();
+                    RefreshLabels();
+                    SaveState(); // Save state after clearing
+                }
+            }
+            else
             {
                 await _dialogService.ShowAlertAsync("No payment to delete.", "Alert", "OK");
-                return;
-            }
-
-            var confirmed = await _dialogService.ShowConfirmationAsync("Delete Payment", 
-                "Are you sure you want to delete this payment?", "Yes", "No");
-            if (confirmed)
-            {
-                if (Config.VoidPayments)
-                    _invoicePayment.Void();
-                else
-                    _invoicePayment.Delete();
-
-                await FinishProcessAsync();
             }
         }
 
         [RelayCommand]
         private async Task PrintPayment()
         {
+            // Check if payment needs to be saved first
             if (_invoicePayment == null || !_invoicePayment.Printed)
             {
                 var confirmed = await _dialogService.ShowConfirmationAsync("Print Before Finalize", 
                     "You must save the payment before printing. Save now?", "Yes", "No");
                 if (confirmed)
                 {
-                    await SavePayment();
+                    // Use SavePaymentInternal instead of SavePayment to avoid navigating away
+                    // This matches the pattern used in SendByEmail
+                    if (!await SavePaymentInternal())
+                        return; // Save failed, don't proceed with printing
+                    
+                    // Verify payment was saved and is still valid
+                    if (_invoicePayment == null)
+                        return;
                 }
                 else
-                    return;
+                {
+                    return; // User cancelled, don't proceed
+                }
             }
+
+            // Verify payment is still valid before proceeding
+            if (_invoicePayment == null)
+                return;
+
+            // Handle company selection (matches Xamarin behavior)
+            if (CompanyInfo.Companies.Count > 1)
+            {
+                var companyNames = CompanyInfo.Companies.Select(x => x.CompanyName).ToArray();
+                var selectedIndex = await _dialogService.ShowSelectionAsync("Select Company", companyNames);
+                if (selectedIndex >= 0 && selectedIndex < CompanyInfo.Companies.Count)
+                {
+                    CompanyInfo.SelectedCompany = CompanyInfo.Companies[selectedIndex];
+                }
+                else
+                {
+                    // User cancelled company selection
+                    return;
+                }
+            }
+            else if (CompanyInfo.Companies.Count > 0)
+            {
+                // Only one company, use it automatically
+                CompanyInfo.SelectedCompany = CompanyInfo.Companies[0];
+            }
+
+            // Final verification before showing print dialog
+            if (_invoicePayment == null)
+                return;
 
             try
             {
                 PrinterProvider.PrintDocument((int copies) =>
                 {
-                    CompanyInfo.SelectedCompany = CompanyInfo.Companies[0];
+                    // Verify payment is still valid inside the print callback
+                    if (_invoicePayment == null)
+                        return "Payment no longer available";
+
                     IPrinter printer = PrinterProvider.CurrentPrinter();
                     bool allWent = true;
 
@@ -929,6 +1367,53 @@ namespace LaceupMigration.ViewModels
                     
                     _invoicePayment!.Printed = true;
                     _invoicePayment.Save();
+                    
+                    // Update button states after printing (matches Xamarin behavior)
+                    // Must update on main thread to ensure UI updates correctly
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        // Reload payment data to ensure we have the latest invoice/order amounts
+                        // This is needed to correctly calculate the Open label after printing
+                        // Note: LoadExistingPaymentData() doesn't clear PaymentComponents, it only updates _amount
+                        LoadExistingPaymentData();
+                        
+                        // Reload payment components from saved payment to ensure we have the latest state
+                        // This ensures components stay visible after printing (matching Xamarin behavior)
+                        // Components are reloaded so they reflect the saved state and remain visible
+                        PaymentComponents.Clear();
+                        foreach (var component in _invoicePayment!.Components)
+                        {
+                            var componentViewModel = new PaymentComponentViewModel(component, this);
+                            // Payment components should ALWAYS be visible
+                            componentViewModel.IsVisible = true;
+                            // Set read-only if payment is printed
+                            if (_invoicePayment.Printed)
+                            {
+                                componentViewModel.IsReadOnly = true;
+                            }
+                            PaymentComponents.Add(componentViewModel);
+                        }
+                        
+                        // Explicitly disable editing buttons after printing
+                        CanAddPayment = false;
+                        CanSavePayment = false;
+                        CanDeletePayment = false;
+                        // Print and Send By Email buttons remain enabled for re-printing/re-sending
+                        CanPrintPayment = true;
+                        CanSendByEmail = true;
+                        
+                        // Update read-only state for all payment components (disable editing)
+                        // This ensures components are visible but disabled (matching Xamarin behavior)
+                        // This is called again as a safeguard to ensure all components are properly set
+                        UpdatePaymentComponentsReadOnlyState();
+                        
+                        // Refresh labels to update amounts (including Open label), then update button states
+                        RefreshLabels();
+                        // Explicitly call UpdateButtonStates again to ensure delete button is disabled
+                        // This ensures the state is correct even if RefreshLabels has any side effects
+                        UpdateButtonStates();
+                    });
+                    
                     return string.Empty;
                 });
             }
@@ -963,6 +1448,35 @@ namespace LaceupMigration.ViewModels
         {
             RefreshLabels();
             SaveState(); // Save state when component amounts change
+        }
+
+        public void RemoveZeroAmountComponents()
+        {
+            // Remove components with zero amount, but ONLY if payment is NOT printed
+            // For printed payments, keep all components visible (even with 0 amount)
+            var isPaymentPrinted = _invoicePayment != null && _invoicePayment.Printed;
+            
+            if (isPaymentPrinted)
+            {
+                // Don't remove components if payment is printed - they should stay visible
+                return;
+            }
+            
+            // Only remove zero-amount components if payment is not printed
+            var componentsToRemove = PaymentComponents
+                .Where(x => Math.Abs(x.Amount) < 0.001)
+                .ToList();
+
+            foreach (var component in componentsToRemove)
+            {
+                PaymentComponents.Remove(component);
+            }
+
+            if (componentsToRemove.Count > 0)
+            {
+                RefreshLabels();
+                SaveState();
+            }
         }
 
         /// <summary>
@@ -1139,6 +1653,8 @@ namespace LaceupMigration.ViewModels
     public partial class PaymentComponentViewModel : ObservableObject
     {
         private readonly PaymentSetValuesPageViewModel _parent;
+        private bool _isUpdatingFromAmountText = false;
+        private bool _isProcessingTextChange = false;
         
         [ObservableProperty]
         private PaymentComponent _component;
@@ -1176,16 +1692,56 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showBank;
 
+        [ObservableProperty]
+        private bool _isVisible = true;
+
+        [ObservableProperty]
+        private bool _isReadOnly = false;
+
+        [ObservableProperty]
+        private string _imagePath = string.Empty;
+
+        [ObservableProperty]
+        private bool _hasImage = false;
+
         public PaymentComponentViewModel(PaymentComponent component, PaymentSetValuesPageViewModel parent)
         {
             _component = component;
             _parent = parent;
+            
+            // Check if payment is printed FIRST, before setting Amount (which triggers OnAmountChanged)
+            // This ensures IsVisible is set correctly for printed payments
+            var isPaymentPrinted = _parent._invoicePayment != null && _parent._invoicePayment.Printed;
+            
             PaymentMethod = component.PaymentMethod;
+            // Set Amount - this will trigger OnAmountChanged, but we've already checked if printed
             Amount = component.Amount;
             Ref = component.Ref ?? string.Empty;
             Comments = component.Comments ?? string.Empty;
             BankName = component.BankName ?? string.Empty;
             PostedDate = component.PostedDate;
+            
+            // Set initial visibility and read-only state
+            // Payment components should ALWAYS be visible, never hidden
+            IsVisible = true;
+            
+            if (isPaymentPrinted)
+            {
+                // For printed payments, set read-only immediately
+                IsReadOnly = true;
+            }
+            
+            // Load image path from ExtraFields
+            if (!string.IsNullOrEmpty(component.ExtraFields))
+            {
+                var imagePath = DataAccess.GetSingleUDF("Image", component.ExtraFields);
+                if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+                {
+                    ImagePath = imagePath;
+                    HasImage = true;
+                }
+            }
+            
             UpdateProperties();
         }
 
@@ -1198,8 +1754,84 @@ namespace LaceupMigration.ViewModels
         partial void OnAmountChanged(double value)
         {
             _component.Amount = value;
-            AmountText = value.ToCustomString();
+            // Only update AmountText if not updating from AmountText to avoid circular updates
+            // Also format to 2 decimal places
+            if (!_isUpdatingFromAmountText)
+            {
+                var formattedValue = value.ToString("F2");
+                // Only update if different to avoid triggering text change during typing
+                if (AmountText != formattedValue)
+                {
+                    AmountText = formattedValue;
+                }
+            }
+            
+            // Check if payment is printed
+            var isPaymentPrinted = _parent._invoicePayment != null && _parent._invoicePayment.Printed;
+            
+            // If amount is 0 and payment is NOT printed: remove the component
+            // If amount is 0 and payment IS printed: keep it visible but disabled
+            if (Math.Abs(value) < 0.001 && !isPaymentPrinted)
+            {
+                // Only remove if component is already in the collection (not during initialization)
+                // Use MainThread to avoid UI update issues
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    // Double-check that component is still in collection and payment is still not printed
+                    // (payment might have been printed between the check and the removal)
+                    if (_parent.PaymentComponents.Contains(this) && 
+                        (_parent._invoicePayment == null || !_parent._invoicePayment.Printed))
+                    {
+                        _parent.PaymentComponents.Remove(this);
+                        _parent.RefreshLabels();
+                        _parent.SaveState();
+                    }
+                });
+                return; // Exit early since component will be removed
+            }
+            
+            // For printed payments or non-zero amounts: keep component visible
+            IsVisible = true;
+            
             _parent.OnComponentAmountChanged();
+        }
+
+        partial void OnAmountTextChanged(string value)
+        {
+            // Don't process if we're updating from Amount to avoid circular updates
+            if (_isUpdatingFromAmountText || _isProcessingTextChange)
+                return;
+
+            try
+            {
+                _isProcessingTextChange = true;
+
+                // Handle empty or whitespace - defer to unfocus handler to avoid EmojiCompat errors
+                // Don't process empty text during typing - let user finish editing
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    // Don't update during typing - will be handled on unfocus
+                    return;
+                }
+
+                // Parse the formatted string back to double
+                // Only process if the text is a valid number to avoid errors during typing
+                if (double.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out var amount))
+                {
+                    // Only update if different to avoid infinite loop
+                    if (Math.Abs(Amount - amount) > 0.001)
+                    {
+                        _isUpdatingFromAmountText = true;
+                        Amount = amount; // This will trigger OnAmountChanged
+                        _isUpdatingFromAmountText = false;
+                    }
+                }
+                // If parsing fails, don't update - let the user continue typing
+            }
+            finally
+            {
+                _isProcessingTextChange = false;
+            }
         }
 
         partial void OnRefChanged(string value)
@@ -1228,10 +1860,16 @@ namespace LaceupMigration.ViewModels
         private void UpdateProperties()
         {
             PaymentMethodText = PaymentMethod.ToString().Replace("_", " ");
-            AmountText = Amount.ToCustomString();
+            AmountText = Amount.ToString("F2");
             ShowRef = PaymentMethod != InvoicePaymentMethod.Cash;
             ShowPostedDate = PaymentMethod == InvoicePaymentMethod.Check;
             ShowBank = PaymentMethod == InvoicePaymentMethod.Check || PaymentMethod == InvoicePaymentMethod.Credit_Card;
+        }
+
+        [RelayCommand]
+        private async Task SelectPaymentMethodAsync()
+        {
+            await _parent.SelectPaymentMethodForComponentAsync(this);
         }
     }
 }
