@@ -125,65 +125,16 @@ namespace LaceupMigration.UtilDlls
 
         private async Task ShowAdvancedOptionsAsync()
         {
-            var options = new List<string>
+            // Use unified AdvancedOptionsService instead of duplicating logic
+            var advancedOptionsService = Handler?.MauiContext?.Services.GetService<Services.AdvancedOptionsService>();
+            if (advancedOptionsService != null)
             {
-                "Update settings",
-                "Send log file",
-                "Export data",
-                "Remote control",
-                "Setup printer"
-            };
-
-            if (Config.GoToMain)
-            {
-                options.Add("Go to main activity");
+                await advancedOptionsService.ShowAdvancedOptionsAsync();
             }
-
-            var choice = await DialogHelper._dialogService.ShowActionSheetAsync("Advanced Options", "Cancel", null, options.ToArray());
-            if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
-                return;
-
-            var appService = Handler?.MauiContext?.Services.GetService<Services.ILaceupAppService>();
-            
-            switch (choice)
+            else
             {
-                case "Update settings":
-                    if (appService != null)
-                    {
-                        await appService.UpdateSalesmanSettingsAsync();
-                        await DisplayAlert("Info", "Settings updated.", "OK");
-                    }
-                    break;
-                case "Send log file":
-                    if (appService != null)
-                    {
-                        await appService.SendLogAsync();
-                        await DisplayAlert("Info", "Log sent.", "OK");
-                    }
-                    break;
-                case "Export data":
-                    if (appService != null)
-                    {
-                        await appService.ExportDataAsync();
-                        await DisplayAlert("Info", "Data exported.", "OK");
-                    }
-                    break;
-                case "Remote control":
-                    if (appService != null)
-                    {
-                        await appService.RemoteControlAsync();
-                    }
-                    break;
-                case "Setup printer":
-                    // Navigate to printer setup page
-                    await Shell.Current.GoToAsync("setupprinter");
-                    break;
-                case "Go to main activity":
-                    if (appService != null)
-                    {
-                        await appService.GoBackToMainAsync();
-                    }
-                    break;
+                // Fallback if service is not available
+                await DisplayAlert("Error", "Advanced options service is not available.", "OK");
             }
         }
 

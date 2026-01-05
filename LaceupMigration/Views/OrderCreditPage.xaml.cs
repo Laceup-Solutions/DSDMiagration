@@ -67,7 +67,7 @@ namespace LaceupMigration.Views
         }
 
         /// <summary>
-        /// Override GoBack to clear navigation state when navigating away.
+        /// Override GoBack to handle order finalization before navigating away.
         /// This is called by both the physical back button and navigation bar back button.
         /// </summary>
         protected override void GoBack()
@@ -75,8 +75,9 @@ namespace LaceupMigration.Views
             // [ACTIVITY STATE]: Remove state when navigating away via back button
             Helpers.NavigationHelper.RemoveNavigationState("ordercredit");
             
-            // Navigate back
-            base.GoBack();
+            // Call ViewModel's DoneAsync which handles finalization logic
+            // This is async, but GoBack() is synchronous, so we fire and forget
+            _ = _viewModel.DoneAsync();
         }
     }
 }

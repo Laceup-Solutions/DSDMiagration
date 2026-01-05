@@ -39,7 +39,7 @@ namespace LaceupMigration.ViewModels
 
             if (_order == null)
             {
-                await _dialogService.ShowAlertAsync("Order not found.", "Error", "OK");
+                // await _dialogService.ShowAlertAsync("Order not found.", "Error", "OK");
                 await Shell.Current.GoToAsync("..");
                 return;
             }

@@ -5,10 +5,9 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class AdvancedCatalogPage : IQueryAttributable
+    public partial class AdvancedCatalogPage : LaceupContentPage, IQueryAttributable
     {
         private readonly AdvancedCatalogPageViewModel _viewModel;
-        private bool _isNavigatingBack = false;
 
         public AdvancedCatalogPage(AdvancedCatalogPageViewModel viewModel)
         {
@@ -18,9 +17,13 @@ namespace LaceupMigration.Views
             
             // Subscribe to property changes to update Grid columns
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
-            
-            // Subscribe to Shell navigation events
-            Shell.Current.Navigating += OnShellNavigating;
+        }
+
+        // Override to integrate ViewModel menu with base menu
+        protected override List<MenuOption> GetPageSpecificMenuOptions()
+        {
+            // Get menu options from ViewModel - BuildMenuOptions returns List<MenuOption>
+            return _viewModel.BuildMenuOptions();
         }
 
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -76,6 +79,8 @@ namespace LaceupMigration.Views
         {
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
+
+            UpdateMenuToolbarItem();
             UpdateButtonGridColumns();
         }
 
@@ -87,46 +92,36 @@ namespace LaceupMigration.Views
             {
                 _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
             }
-            // Unsubscribe from Shell navigation events
-            Shell.Current.Navigating -= OnShellNavigating;
+        }
+
+        /// <summary>
+        /// Override GoBack to handle order finalization before navigating away.
+        /// This is called by both the physical back button and navigation bar back button.
+        /// </summary>
+        protected override void GoBack()
+        {
+            // [ACTIVITY STATE]: Remove state when navigating away via back button
+            var currentRoute = Shell.Current.CurrentState?.Location?.OriginalString ?? "";
+            if (currentRoute.Contains("advancedcatalog"))
+            {
+                Helpers.NavigationHelper.RemoveNavigationState(currentRoute);
+            }
+            else
+            {
+                // Fallback: try to remove by route name
+                Helpers.NavigationHelper.RemoveNavigationState("advancedcatalog");
+            }
+            
+            // Call ViewModel's GoBackAsync which handles finalization logic
+            // This is async, but GoBack() is synchronous, so we fire and forget
+            _ = _viewModel.GoBackAsync();
         }
 
         protected override bool OnBackButtonPressed()
         {
-            // Handle physical back button - call GoBackAsync which will finalize the order
-            _viewModel.GoBackCommand.ExecuteAsync(null);
+            // Handle physical back button - call GoBack which will finalize the order
+            GoBack();
             return true; // Prevent default back navigation
-        }
-
-
-        private async void OnShellNavigating(object? sender, ShellNavigatingEventArgs e)
-        {
-            // Don't intercept modal navigation (modals use Navigation.PushModalAsync, not Shell navigation)
-            // Check if there's a modal on the stack - if so, don't interfere
-            var currentPage = Shell.Current.CurrentPage;
-            if (currentPage != null && currentPage.Navigation != null && currentPage.Navigation.ModalStack.Count > 0)
-                return;
-
-            // Only intercept if we're navigating away from this page and it's a back navigation
-            if (_isNavigatingBack || e.Target.Location.OriginalString.Contains("advancedcatalog"))
-                return;
-
-            // Check if we're navigating back (going to parent)
-            var currentRoute = Shell.Current.CurrentState?.Location?.OriginalString ?? "";
-            if (e.Target.Location.OriginalString == ".." || 
-                (!e.Target.Location.OriginalString.Contains("advancedcatalog") && 
-                 !string.IsNullOrEmpty(currentRoute) && currentRoute.Contains("advancedcatalog")))
-            {
-                _isNavigatingBack = true;
-                
-                // Cancel the navigation
-                e.Cancel();
-                
-                // Call finalization logic
-                await _viewModel.GoBackAsync();
-                
-                _isNavigatingBack = false;
-            }
         }
 
     }
