@@ -8,9 +8,6 @@
              Shell.NavBarIsVisible="True"
              Shell.TabBarIsVisible="False"
              Title="{Binding OrderTypeText}">
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="MENU" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
-    </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,Auto,Auto,*">
             <!-- Item Type Buttons (Sales, Dumps, Returns) - Segmented Control Style -->
@@ -103,7 +100,7 @@
                     
                     <!-- Expanded Content -->
                     <Grid Grid.Row="1" Grid.ColumnSpan="3" 
-                          RowDefinitions="Auto,Auto"
+                          RowDefinitions="Auto,Auto,Auto"
                           ColumnDefinitions="*,*,*" 
                           ColumnSpacing="8" 
                           RowSpacing="4"
@@ -117,8 +114,15 @@
                                IsVisible="{Binding ShowCompany}"
                                Margin="0,0,0,4" />
                         
+                        <!-- Terms -->
+                        <Label Grid.Row="1" Grid.ColumnSpan="3"
+                               Text="{Binding TermsText}"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               Margin="0,0,0,4" />
+                        
                         <!-- Order Metrics (Left Column) -->
-                        <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="2">
+                        <VerticalStackLayout Grid.Row="2" Grid.Column="0" Spacing="2">
                             <Label Text="{Binding LinesText}"
                                    FontSize="12"
                                    TextColor="{StaticResource Gray900}" />
@@ -128,7 +132,7 @@
                         </VerticalStackLayout>
                         
                         <!-- Order Financials (Middle Column) -->
-                        <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="2">
+                        <VerticalStackLayout Grid.Row="2" Grid.Column="1" Spacing="2">
                             <Label Text="{Binding OrderAmountText}"
                                    FontSize="12"
                                    TextColor="{StaticResource Gray900}"
@@ -145,7 +149,7 @@
                         </VerticalStackLayout>
                         
                         <!-- Order Financials (Right Column) -->
-                        <VerticalStackLayout Grid.Row="1" Grid.Column="2" Spacing="2">
+                        <VerticalStackLayout Grid.Row="2" Grid.Column="2" Spacing="2">
                             <Label Text="{Binding TaxText}"
                                    FontSize="12"
                                    TextColor="{StaticResource Gray900}"

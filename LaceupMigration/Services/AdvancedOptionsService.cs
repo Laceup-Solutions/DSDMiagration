@@ -48,22 +48,63 @@ namespace LaceupMigration.Services
 			switch (choice)
 			{
 				case "Update settings":
-					await _appService.UpdateSalesmanSettingsAsync();
-					await _dialogService.ShowAlertAsync("Settings updated.", "Info", "OK");
+					try
+					{
+						await _dialogService.ShowLoadingAsync("Updating settings...");
+						await _appService.UpdateSalesmanSettingsAsync();
+						await _dialogService.HideLoadingAsync();
+						await _dialogService.ShowAlertAsync("Settings updated.", "Info", "OK");
+					}
+					catch (Exception ex)
+					{
+						await _dialogService.HideLoadingAsync();
+						Logger.CreateLog(ex);
+						await _dialogService.ShowAlertAsync("Error updating settings.", "Error", "OK");
+					}
 					break;
 
 				case "Send log file":
-					await _appService.SendLogAsync();
-					await _dialogService.ShowAlertAsync("Log sent.", "Info", "OK");
+					try
+					{
+						await _dialogService.ShowLoadingAsync("Sending log file...");
+						await _appService.SendLogAsync();
+						await _dialogService.HideLoadingAsync();
+						await _dialogService.ShowAlertAsync("Log sent.", "Info", "OK");
+					}
+					catch (Exception ex)
+					{
+						await _dialogService.HideLoadingAsync();
+						Logger.CreateLog(ex);
+						await _dialogService.ShowAlertAsync("Error sending log file.", "Error", "OK");
+					}
 					break;
 
 				case "Export data":
-					await _appService.ExportDataAsync();
-					await _dialogService.ShowAlertAsync("Data exported.", "Info", "OK");
+					try
+					{
+						await _dialogService.ShowLoadingAsync("Exporting data...");
+						await _appService.ExportDataAsync();
+						await _dialogService.HideLoadingAsync();
+						await _dialogService.ShowAlertAsync("Data exported.", "Info", "OK");
+					}
+					catch (Exception ex)
+					{
+						await _dialogService.HideLoadingAsync();
+						Logger.CreateLog(ex);
+						await _dialogService.ShowAlertAsync("Error exporting data.", "Error", "OK");
+					}
 					break;
 
 				case "Remote control":
-					await _appService.RemoteControlAsync();
+					try
+					{
+						await _appService.RemoteControlAsync();
+					}
+					catch (Exception ex)
+					{
+						Logger.CreateLog(ex);
+						await _dialogService.ShowAlertAsync("Error launching remote control.", "Error", "OK");
+					}
 					break;
 
 				case "Setup printer":
@@ -72,7 +113,15 @@ namespace LaceupMigration.Services
 					break;
 
 				case "Go to main activity":
-					await _appService.GoBackToMainAsync();
+					try
+					{
+						await _appService.GoBackToMainAsync();
+					}
+					catch (Exception ex)
+					{
+						Logger.CreateLog(ex);
+						await _dialogService.ShowAlertAsync("Error navigating to main.", "Error", "OK");
+					}
 					break;
 			}
 		}

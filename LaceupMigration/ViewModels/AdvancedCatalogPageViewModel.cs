@@ -202,7 +202,7 @@ namespace LaceupMigration.ViewModels
             _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId.Value);
             if (_order == null)
             {
-                await _dialogService.ShowAlertAsync("Order not found.", "Error");
+                // await _dialogService.ShowAlertAsync("Order not found.", "Error");
                 return;
             }
 
@@ -2314,6 +2314,15 @@ namespace LaceupMigration.ViewModels
                 await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Order sent successfully.", "Success");
 
+                // [ACTIVITY STATE]: Remove state before navigating away after sending
+                var route = "advancedcatalog";
+                if (_order != null)
+                {
+                    route += $"?orderId={_order.OrderId}";
+                }
+                
+                Helpers.NavigationHelper.RemoveNavigationState(route);
+
                 await Shell.Current.GoToAsync("..");
             }
             catch (Exception ex)
@@ -2541,7 +2550,7 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private List<MenuOption> BuildMenuOptions()
+        public List<MenuOption> BuildMenuOptions()
         {
             var options = new List<MenuOption>();
 
@@ -2698,7 +2707,8 @@ namespace LaceupMigration.ViewModels
                 }
             }));
 
-            options.Add(new MenuOption("Advanced Options", ShowAdvancedOptionsAsync));
+            // Note: "Advanced Options" is already added by LaceupContentPage.GetCommonMenuOptions()
+            // Don't add it here to avoid duplication
 
             return options;
         }
@@ -2711,19 +2721,94 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         public async Task GoBackAsync()
         {
-            var canNavigate = await FinalizeOrderAsync();
-            if (canNavigate)
+            if (_order == null)
             {
-                // [ACTIVITY STATE]: Remove state when properly exiting
-                // Build route with orderId if available
-                var route = "advancedcatalog";
-                if (_order != null)
-                {
-                    route += $"?orderId={_order.OrderId}";
-                }
-                Helpers.NavigationHelper.RemoveNavigationState(route);
-                
                 await Shell.Current.GoToAsync("..");
+                return;
+            }
+
+            // Check if order is empty - if so, handle it and return (matching Xamarin logic)
+            bool isEmpty = _order.Details.Count == 0 || 
+                (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
+
+            if (isEmpty)
+            {
+                // Handle empty order - this will either delete it or show void dialog
+                var canNavigate = await FinalizeOrderAsync();
+                if (canNavigate)
+                {
+                    // [ACTIVITY STATE]: Remove state when properly exiting
+                    var route = "advancedcatalog";
+                    if (_order != null)
+                    {
+                        route += $"?orderId={_order.OrderId}";
+                    }
+                    Helpers.NavigationHelper.RemoveNavigationState(route);
+                    
+                    await Shell.Current.GoToAsync("..");
+                }
+                return; // Don't show the 3-option dialog for empty orders
+            }
+
+            // Check if order is presale and show dialog with 3 options (only for non-empty orders)
+            if (_order.AsPresale)
+            {
+                // Show action options dialog (matching Xamarin PreviouslyOrderedTemplateActivity logic)
+                var options = new[]
+                {
+                    "Send Order",
+                    "Save Order To Send Later",
+                    "Stay In The Order"
+                };
+
+                var choice = await _dialogService.ShowActionSheetAsync("Action Options", "Cancel", null, options);
+                
+                if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
+                    return; // User cancelled, stay in order
+
+                switch (choice)
+                {
+                    case "Send Order":
+                        // Call SendOrderAsync which handles validation and sending
+                        await SendOrderAsync();
+                        break;
+                    case "Save Order To Send Later":
+                        // Continue after alert - finalize order and navigate
+                        var canNavigate = await FinalizeOrderAsync();
+                        if (canNavigate)
+                        {
+                            // [ACTIVITY STATE]: Remove state when properly exiting
+                            var route = "advancedcatalog";
+                            if (_order != null)
+                            {
+                                route += $"?orderId={_order.OrderId}";
+                            }
+                            Helpers.NavigationHelper.RemoveNavigationState(route);
+                            
+                            await Shell.Current.GoToAsync("..");
+                        }
+                        break;
+                    case "Stay In The Order":
+                        // Do nothing, stay in the order
+                        return;
+                }
+            }
+            else
+            {
+                // Non-presale order - use normal finalization logic
+                var canNavigate = await FinalizeOrderAsync();
+                if (canNavigate)
+                {
+                    // [ACTIVITY STATE]: Remove state when properly exiting
+                    var route = "advancedcatalog";
+                    if (_order != null)
+                    {
+                        route += $"?orderId={_order.OrderId}";
+                    }
+                    Helpers.NavigationHelper.RemoveNavigationState(route);
+                    
+                    await Shell.Current.GoToAsync("..");
+                }
             }
         }
 
@@ -2777,8 +2862,6 @@ namespace LaceupMigration.ViewModels
             Descending = 6,
             OrderOfEntry = 7
         }
-
-        private record MenuOption(string Title, Func<Task> Action);
     }
 
     public partial class AdvancedCatalogItemViewModel : ObservableObject
@@ -2833,7 +2916,7 @@ namespace LaceupMigration.ViewModels
         }
         
         public Order? Order { get; set; }
-
+        
         private AdvancedCatalogDetailViewModel? _primaryDetail;
 
         public AdvancedCatalogDetailViewModel? PrimaryDetail
