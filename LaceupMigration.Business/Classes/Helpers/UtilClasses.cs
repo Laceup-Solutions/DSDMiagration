@@ -239,37 +239,6 @@ namespace LaceupMigration
             StreamToZip.Close();
         }
 
-        public static void UnzipFile(string sourceFile, string targetFile)
-        {
-
-            ZipInputStream s = new ZipInputStream(File.OpenRead(sourceFile));
-
-            //ZipEntry theEntry;
-            while ((s.GetNextEntry()) != null)
-            {
-
-                FileStream streamWriter = File.Create(targetFile);
-
-                int size = 2048;
-                byte[] data = new byte[2048];
-                while (true)
-                {
-                    size = s.Read(data, 0, data.Length);
-                    if (size > 0)
-                    {
-                        streamWriter.Write(data, 0, size);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-
-                streamWriter.Close();
-            }
-            s.Close();
-        }
-
         public static void UnzipComplexFile(string sourceFile, string targetFolder)
         {
 
@@ -303,6 +272,78 @@ namespace LaceupMigration
                 }
             }
         }
+
+        public static void ZipFile(string fileToZip, string targetFile)
+        {
+            if (!File.Exists(fileToZip))
+            {
+                Exception e = new System.IO.FileNotFoundException("The specified file " + fileToZip + " could not be found. Zipping aborderd");
+                throw e;
+            }
+
+            string dstFolder = Path.Combine(Config.DataPath, Path.GetFileNameWithoutExtension(fileToZip));
+
+            Directory.CreateDirectory(dstFolder);
+            string dstFile = Path.Combine(dstFolder, Path.GetFileName(fileToZip));
+
+            File.Copy(fileToZip, dstFile);
+
+            var fastZip = new FastZip();
+            fastZip.CreateZip(targetFile, dstFolder, true, null);
+
+            Directory.Delete(dstFolder, true);
+        }
+
+        public static void UnzipFile(string sourceFile, string targetFile)
+        {
+            lock (FileOperationsLocker.lockFilesObject)
+            {
+                try
+                {
+                    //FileOperationsLocker.InUse = true;
+
+                    using (var fileStream = File.OpenRead(sourceFile))
+                    {
+                        using (ZipInputStream s = new ZipInputStream(fileStream))
+                        {
+                            //Logger.CreateLog ("got first stream");
+                            //ZipEntry theEntry;
+                            while ((s.GetNextEntry()) != null)
+                            {
+
+                                using (FileStream streamWriter = File.Create(targetFile))
+                                {
+
+                                    int size = 10240;
+                                    byte[] data = new byte[10240];
+                                    while (true)
+                                    {
+                                        size = s.Read(data, 0, data.Length);
+                                        if (size > 0)
+                                        {
+                                            streamWriter.Write(data, 0, size);
+                                        }
+                                        else
+                                        {
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                }
+                finally
+                {
+                    //FileOperationsLocker.InUse = false;
+                }
+            }
+        }
+
     }
 
     public class DataListItem

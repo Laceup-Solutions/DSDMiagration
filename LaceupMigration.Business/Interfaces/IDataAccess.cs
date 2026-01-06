@@ -39,8 +39,8 @@ namespace LaceupMigration
 
         #region Data Loading
 
-        void LoadGoalProgress();
-        void LoadGoalProgressDetail();
+        void GetGoalProgress();
+        void GetGoalProgressDetail();
 
         #endregion
 
@@ -66,14 +66,6 @@ namespace LaceupMigration
 
         #endregion
 
-        #region UDF Operations
-
-        string GetSingleUDF(string udfName, string current);
-        string SyncSingleUDF(string udfName, string udfValue, string current);
-        string SyncSingleUDF(string udfName, string udfValue, string current, List<KeyValuePairWritable<string, string>> currentList = null, bool concat = true);
-
-        #endregion
-
         #region Validation and Checks
 
         bool CheckIfShipdateIsValid(List<DateTime> shipDates, ref List<DateTime> lockedDates);
@@ -93,11 +85,6 @@ namespace LaceupMigration
 
         #endregion
 
-        #region Utility Methods
-
-        void ZipFile(string fileToZip, string targetFile);
-
-        #endregion
     }
 }
 

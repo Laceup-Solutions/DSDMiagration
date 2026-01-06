@@ -958,6 +958,7 @@ namespace LaceupMigration
         public static bool AcceptInventoryReadOnly { get; set; }
         public static double LastLongitude { get; set; }
         public static double LastLatitude { get; set; }
+        public static bool LoadingData { get; set; }
 
         #endregion
 

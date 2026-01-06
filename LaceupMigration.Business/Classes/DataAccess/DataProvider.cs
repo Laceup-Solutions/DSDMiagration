@@ -10,7 +10,7 @@ namespace LaceupMigration
     {
         static IDataAccess dataAccessInstance = null;
 
-        public static void Instance()
+        public static void Initialize()
         {
             if (dataAccessInstance == null)
             {
