@@ -55,7 +55,7 @@ namespace LaceupMigration.ViewModels
 		private void RefreshMenuVisibility()
 		{
 			ShowNotificationIcon = Config.DidCloseAlert;
-			ShowAcceptLoadMenuItem = DataAccess.ReceivedData && (Config.SyncLoadOnDemand || Config.NewSyncLoadOnDemand) && !Config.OnlyPresale;
+			ShowAcceptLoadMenuItem = Config.ReceivedData && (Config.SyncLoadOnDemand || Config.NewSyncLoadOnDemand) && !Config.OnlyPresale;
 		}
 
 		#region Menu Commands
@@ -106,7 +106,7 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task Reports()
 		{
-			if (!DataAccess.ReceivedData)
+			if (!Config.ReceivedData)
 			{
 				await _dialogService.ShowAlertAsync("Must sync data.", "Warning", "OK");
 				return;
@@ -214,7 +214,7 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task Inventory()
 		{
-			if (!DataAccess.CanUseApplication() || !DataAccess.ReceivedData)
+			if (!DataAccess.CanUseApplication() || !Config.ReceivedData)
 			{
 				await _dialogService.ShowAlertAsync("Must sync data before continuing.", "Warning", "OK");
 				return;
@@ -602,7 +602,7 @@ namespace LaceupMigration.ViewModels
 
 			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1733-1738
 			// Check for NewSyncLoadOnDemand and RouteOrdersCount
-			if (!errorDownloadingData && Config.NewSyncLoadOnDemand && DataAccess.RouteOrdersCount > 0)
+			if (!errorDownloadingData && Config.NewSyncLoadOnDemand && Config.RouteOrdersCount > 0)
 			{
 				// Match Xamarin GoToAcceptLoad(DateTime.Now, true) - download load orders before navigating
 				// When fromDownloadData=true, it skips DownloadProducts/DownloadClients but still calls GetPendingLoadOrders
@@ -645,7 +645,7 @@ namespace LaceupMigration.ViewModels
 
 			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1740-1769
 			// Check for pending load to accept after sync
-			if (!errorDownloadingData && Config.TrackInventory && updateInventory && DataAccess.PendingLoadToAccept)
+			if (!errorDownloadingData && Config.TrackInventory && updateInventory && Config.PendingLoadToAccept)
 			{
 			if (Config.AutoAcceptLoad)
 			{
@@ -673,7 +673,7 @@ namespace LaceupMigration.ViewModels
 					}
 				}
 
-				DataAccess.PendingLoadToAccept = false;
+				Config.PendingLoadToAccept = false;
 				Config.SaveAppStatus();
 				DataAccess.SaveInventory();
 			}
@@ -687,7 +687,7 @@ namespace LaceupMigration.ViewModels
 
 			// Check for deliveries after sync and navigate to accept load if AutoAcceptLoad is OFF
 			// Only check if PendingLoadToAccept flag was set during DownloadData (prevents checking every sync)
-			if (!errorDownloadingData && !Config.AutoAcceptLoad && DataAccess.PendingLoadToAccept)
+			if (!errorDownloadingData && !Config.AutoAcceptLoad && Config.PendingLoadToAccept)
 			{
 				await _dialogService.ShowLoadingAsync("Checking for deliveries...");
 				string loadOrdersResponseMessage = null;
