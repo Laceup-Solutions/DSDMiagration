@@ -285,7 +285,8 @@ namespace LaceupMigration
                 try
                 {
                     // load the signature of this order
-                    DataAccess.UnzipFile(signatureFile, tempFile);
+                    ZipMethods.UnzipFile(signatureFile, tempFile);
+
                     using (StreamReader reader = new StreamReader(tempFile))
                     {
                         string line;

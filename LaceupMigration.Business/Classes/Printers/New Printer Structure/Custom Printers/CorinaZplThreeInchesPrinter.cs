@@ -282,13 +282,13 @@ namespace LaceupMigration
                         int qtyDigits = 0;
                         if (order.AsPresale)
                         {
-                            var pre = DataAccess.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "PresaleFormatQtyDigits");
+                            var pre = UDFHelper.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "PresaleFormatQtyDigits");
                             if (pre != null)
                                 qtyDigits = Convert.ToInt32(pre.Value);
                         }
                         else
                         {
-                            var pre = DataAccess.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "DSDFormatQtyDigits");
+                            var pre = UDFHelper.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "DSDFormatQtyDigits");
                             if (pre != null)
                                 qtyDigits = Convert.ToInt32(pre.Value);
                         }
@@ -503,7 +503,7 @@ namespace LaceupMigration
             lines.Add(string.Format(CultureInfo.InvariantCulture, linesTemplates[CorinaText], startY, s + s1));
             startY += font18Separation;
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             if (payments != null && payments.Count > 0)
             {
                 var result = GetPaymentLines(payments);
@@ -570,7 +570,7 @@ namespace LaceupMigration
             return "L" + s;
         }
 
-        string GetPaymentLines(IList<DataAccess.PaymentSplit> payments)
+        string GetPaymentLines(IList<PaymentSplit> payments)
         {
             if (payments.Count == 1)
             {
@@ -629,7 +629,7 @@ namespace LaceupMigration
             lines.Add(string.Format(CultureInfo.InvariantCulture, linesTemplates[CorinaText], startY, s));
             startY += font36Separation;
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             if (payments != null && payments.Count > 0)
             {
                 var result = GetPaymentLines(payments);

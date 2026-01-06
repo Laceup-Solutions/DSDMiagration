@@ -53,7 +53,7 @@ namespace LaceupMigration
 
                 while ((currentline = reader.ReadLine()) != null)
                 {
-                    string[] currentrow = currentline.Split(DataAccess.DataLineSplitter);
+                    string[] currentrow = currentline.Split((char)20);
                     var item = new InventorySiteInventory();
                     item.Id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
                     item.SiteId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);

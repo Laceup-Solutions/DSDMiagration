@@ -439,7 +439,7 @@ namespace LaceupMigration
             return lines;
         }
 
-        protected override IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool asPreOrder, Order order, Client client, string printedId, List<DataAccess.PaymentSplit> payments, bool paidInFull)
+        protected override IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool asPreOrder, Order order, Client client, string printedId, List<PaymentSplit> payments, bool paidInFull)
         {
             var invoiceIndex = 0;
             var accIndex = 0;
@@ -547,7 +547,7 @@ namespace LaceupMigration
                 startY += font18Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {
@@ -819,7 +819,7 @@ namespace LaceupMigration
             double paid = 0;
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
 

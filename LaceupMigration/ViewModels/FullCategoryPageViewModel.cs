@@ -972,7 +972,7 @@ namespace LaceupMigration.ViewModels
                 int priceLevel = _client != null ? _client.PriceLevel : 0;
 
                 // First try to get PDF from server (matches Xamarin: DataAccess.GetCatalogPdf)
-                if (DataAccess.GetCatalogPdf(priceLevel, showPrice, showUPC, showUoM, categoriesids))
+                if (DataProvider.GetCatalogPdf(priceLevel, showPrice, showUPC, showUoM, categoriesids))
                 {
                     pdfFile = Config.CatalogPDFPath;
                 }

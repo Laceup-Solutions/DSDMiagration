@@ -780,7 +780,7 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            DataAccess.SaveInventory();
+            ProductInventory.Save();
             Logger.CreateLog("Inventory saved");
         }
 
@@ -1130,9 +1130,9 @@ namespace LaceupMigration.ViewModels
                     SaveInFinalFile();
 
                     if (_transferAction == TransferAction.On)
-                        DataAccess.SendTransfer(Config.TransferOnFile);
+                        DataProvider.SendTransfer(Config.TransferOnFile);
                     else
-                        DataAccess.SendTransfer(Config.TransferOffFile);
+                        DataProvider.SendTransfer(Config.TransferOffFile);
 
                     ApplyTransfer();
                 }

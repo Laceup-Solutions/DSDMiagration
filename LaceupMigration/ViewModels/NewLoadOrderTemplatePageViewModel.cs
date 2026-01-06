@@ -83,7 +83,7 @@ namespace LaceupMigration.ViewModels
             var sa = Salesman.List.FirstOrDefault(x => x.Id == Config.SalesmanId);
             if (sa != null)
             {
-                var s = DataAccess.GetSingleUDF("LoadOrderSitesList", sa.ExtraProperties);
+                var s = UDFHelper.GetSingleUDF("LoadOrderSitesList", sa.ExtraProperties);
                 if (!string.IsNullOrEmpty(s))
                 {
                     var parts = s.Split(',');
@@ -238,7 +238,7 @@ namespace LaceupMigration.ViewModels
             // Term
             if (!string.IsNullOrEmpty(_loadOrder.ExtraFields))
             {
-                var term = DataAccess.GetSingleUDF("cashTerm", _loadOrder.ExtraFields);
+                var term = UDFHelper.GetSingleUDF("cashTerm", _loadOrder.ExtraFields);
                 if (!string.IsNullOrEmpty(term) && term == "1")
                     TermText = "Term: CIA";
                 else if (!string.IsNullOrEmpty(term))
@@ -276,7 +276,7 @@ namespace LaceupMigration.ViewModels
                 hasTerm = false;
                 if (!string.IsNullOrEmpty(_loadOrder.ExtraFields))
                 {
-                    var term = DataAccess.GetSingleUDF("cashTerm", _loadOrder.ExtraFields);
+                    var term = UDFHelper.GetSingleUDF("cashTerm", _loadOrder.ExtraFields);
                     if (!string.IsNullOrEmpty(term))
                         hasTerm = true;
                 }
@@ -311,14 +311,14 @@ namespace LaceupMigration.ViewModels
             var result = await _dialogService.ShowActionSheetAsync("Select Terms", "Cancel", null, new[] { "CIA", "Regular Order" });
             if (result == "CIA")
             {
-                _loadOrder.ExtraFields = DataAccess.SyncSingleUDF("cashTerm", "1", _loadOrder.ExtraFields);
+                _loadOrder.ExtraFields = UDFHelper.SyncSingleUDF("cashTerm", "1", _loadOrder.ExtraFields);
                 _loadOrder.Save();
                 UpdateSummaryText();
                 await Shell.Current.GoToAsync("..");
             }
             else if (result == "Regular Order")
             {
-                _loadOrder.ExtraFields = DataAccess.SyncSingleUDF("cashTerm", "0", _loadOrder.ExtraFields);
+                _loadOrder.ExtraFields = UDFHelper.SyncSingleUDF("cashTerm", "0", _loadOrder.ExtraFields);
                 _loadOrder.Save();
                 UpdateSummaryText();
                 await Shell.Current.GoToAsync("..");
@@ -545,9 +545,9 @@ namespace LaceupMigration.ViewModels
 
                 // Update inventory based on site
                 if (_loadOrder.SiteId > 0)
-                    DataAccess.UpdateInventoryBySite(_loadOrder.SiteId);
+                    DataProvider.UpdateInventoryBySite(_loadOrder.SiteId);
                 else
-                    DataAccess.UpdateInventory();
+                    DataProvider.UpdateInventory();
 
                 RefreshOrderDetails();
             }

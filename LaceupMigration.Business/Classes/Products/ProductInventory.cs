@@ -4,13 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-
-
-
-
-
-
-
 namespace LaceupMigration
 {
     public class ProductInventory 

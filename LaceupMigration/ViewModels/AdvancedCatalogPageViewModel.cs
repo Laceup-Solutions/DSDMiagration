@@ -1785,7 +1785,7 @@ namespace LaceupMigration.ViewModels
             // Mark as price changed
             if (Math.Round(newPrice, Config.Round) != Math.Round(detail.Detail.ExpectedPrice, Config.Round))
             {
-                detail.Detail.ExtraFields = DataAccess.SyncSingleUDF("pricechanged", "yes", detail.Detail.ExtraFields);
+                detail.Detail.ExtraFields = UDFHelper.SyncSingleUDF("pricechanged", "yes", detail.Detail.ExtraFields);
             }
 
             _order.Save();
@@ -1857,7 +1857,7 @@ namespace LaceupMigration.ViewModels
                     if (Math.Round(newPrice, Config.Round) != Math.Round(detail.Detail.ExpectedPrice, Config.Round))
                     {
                         detail.Detail.ExtraFields =
-                            DataAccess.SyncSingleUDF("pricechanged", "yes", detail.Detail.ExtraFields);
+                            UDFHelper.SyncSingleUDF("pricechanged", "yes", detail.Detail.ExtraFields);
                     }
                 }
 
@@ -2309,7 +2309,7 @@ namespace LaceupMigration.ViewModels
                     return;
                 }
 
-                DataAccess.SendTheOrders(new Batch[] { batch });
+                DataProvider.SendTheOrders(new Batch[] { batch });
 
                 await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Order sent successfully.", "Success");

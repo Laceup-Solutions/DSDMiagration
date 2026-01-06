@@ -40,7 +40,7 @@ namespace LaceupMigration
 
         public static ClientDepartment CreateDepartment(string s)
         {
-            var parts = s.Split(DataAccess.DataLineSplitter);
+            var parts = s.Split((char)20);
 
             var dep = new ClientDepartment()
             {

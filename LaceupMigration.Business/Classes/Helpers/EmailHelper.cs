@@ -171,7 +171,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.GetSalesmanList();
+                        DataProvider.GetSalesmanList();
                     }
                     catch
                     {
@@ -200,7 +200,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.GetSalesmanList();
+                        DataProvider.GetSalesmanList();
                     }
                     catch
                     {
@@ -231,7 +231,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.GetSalesmanList();
+                        DataProvider.GetSalesmanList();
                     }
                     catch
                     {
@@ -262,7 +262,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.GetSalesmanList();
+                        DataProvider.GetSalesmanList();
                     }
                     catch
                     {
@@ -307,7 +307,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.GetSalesmanList();
+                        DataProvider.GetSalesmanList();
                     }
                     catch
                     {
@@ -356,7 +356,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.GetSalesmanList();
+                        DataProvider.GetSalesmanList();
                     }
                     catch
                     {
@@ -393,7 +393,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.GetSalesmanList();
+                        DataProvider.GetSalesmanList();
                     }
                     catch
                     {
@@ -475,7 +475,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.GetSalesmanList();
+                        DataProvider.GetSalesmanList();
                     }
                     catch
                     {
@@ -883,7 +883,7 @@ namespace LaceupMigration
 
             if (!string.IsNullOrEmpty(company.ExtraFields))
             {
-                var extra = DataAccess.GetSingleUDF("TIN", company.ExtraFields);
+                var extra = UDFHelper.GetSingleUDF("TIN", company.ExtraFields);
                 if (!string.IsNullOrEmpty(extra))
                 {
                     AddTextLine(doc, "TIN:" + extra, GetNormalFont());
@@ -974,7 +974,7 @@ namespace LaceupMigration
 
             if (!string.IsNullOrEmpty(company.ExtraFields))
             {
-                var extra = DataAccess.GetSingleUDF("TIN", company.ExtraFields);
+                var extra = UDFHelper.GetSingleUDF("TIN", company.ExtraFields);
                 if (!string.IsNullOrEmpty(extra))
                 {
                     AddTextLine(doc, "TIN:" + extra, GetNormalFont());
@@ -1268,7 +1268,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.GetSalesmanList();
+                        DataProvider.GetSalesmanList();
                     }
                     catch
                     {

@@ -111,7 +111,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             if (payments != null && payments.Count > 0)
             {
                 var paidInFull = payments != null && payments.Sum(x => x.Amount) == order.OrderTotalCost();
@@ -173,7 +173,7 @@ namespace LaceupMigration
             var payment = InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId));
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
             s = "TOTAL PAYMENT:";
@@ -493,7 +493,7 @@ namespace LaceupMigration
                 if (!detail.ConsignmentCounted)
                     continue;
 
-                var rotation = DataAccess.GetSingleUDF("rotatedQty", detail.ExtraFields);
+                var rotation = UDFHelper.GetSingleUDF("rotatedQty", detail.ExtraFields);
 
                 if (string.IsNullOrEmpty(rotation))
                     continue;
@@ -590,7 +590,7 @@ namespace LaceupMigration
                         continue;
                 }
 
-                var adjQty = DataAccess.GetSingleUDF("adjustedQty", detail.ExtraFields);
+                var adjQty = UDFHelper.GetSingleUDF("adjustedQty", detail.ExtraFields);
 
                 if (string.IsNullOrEmpty(adjQty))
                     continue;
@@ -744,7 +744,7 @@ namespace LaceupMigration
                 if (!detail.ConsignmentCounted || (!Config.AddCoreBalance && detail.Qty.Equals(0)))
                     continue;
 
-                var core = DataAccess.GetSingleUDF("coreQty", detail.ExtraFields);
+                var core = UDFHelper.GetSingleUDF("coreQty", detail.ExtraFields);
                 var coreId = detail.Product.NonVisibleExtraFields.FirstOrDefault(x => x.Item1 == "core");
 
                 if (string.IsNullOrEmpty(core) || coreId == null)
@@ -849,7 +849,7 @@ namespace LaceupMigration
                 if (!detail.ConsignmentCounted)
                     continue;
 
-                var adjQty = DataAccess.GetSingleUDF("adjustedQty", detail.ExtraFields);
+                var adjQty = UDFHelper.GetSingleUDF("adjustedQty", detail.ExtraFields);
 
                 if (string.IsNullOrEmpty(adjQty))
                     continue;
@@ -953,7 +953,7 @@ namespace LaceupMigration
                 if (!detail.ConsignmentCounted || detail.Qty.Equals(0))
                     continue;
 
-                var core = DataAccess.GetSingleUDF("coreQty", detail.ExtraFields);
+                var core = UDFHelper.GetSingleUDF("coreQty", detail.ExtraFields);
                 var coreId = detail.Product.NonVisibleExtraFields.FirstOrDefault(x => x.Item1 == "core");
 
                 if (string.IsNullOrEmpty(core) || coreId == null)
@@ -1130,9 +1130,9 @@ namespace LaceupMigration
                 if (!detail.ConsignmentCounted)
                     continue;
 
-                string rotatedQty = DataAccess.GetSingleUDF("rotatedQty", detail.ExtraFields);
-                string adjusted = DataAccess.GetSingleUDF("adjustedQty", detail.ExtraFields);
-                string coreQty = DataAccess.GetSingleUDF("coreQty", detail.ExtraFields);
+                string rotatedQty = UDFHelper.GetSingleUDF("rotatedQty", detail.ExtraFields);
+                string adjusted = UDFHelper.GetSingleUDF("adjustedQty", detail.ExtraFields);
+                string coreQty = UDFHelper.GetSingleUDF("coreQty", detail.ExtraFields);
 
                 if (!string.IsNullOrEmpty(rotatedQty))
                     rotatedTotal += Convert.ToInt32(rotatedQty, CultureInfo.InvariantCulture);
@@ -1459,9 +1459,9 @@ namespace LaceupMigration
                                 }
 
 
-                                string rotatedQty = DataAccess.GetSingleUDF("rotatedQty", od.ExtraFields);
-                                string adjustedQty = DataAccess.GetSingleUDF("adjustedQty", od.ExtraFields);
-                                string coreQty = DataAccess.GetSingleUDF("coreQty", od.ExtraFields);
+                                string rotatedQty = UDFHelper.GetSingleUDF("rotatedQty", od.ExtraFields);
+                                string adjustedQty = UDFHelper.GetSingleUDF("adjustedQty", od.ExtraFields);
+                                string coreQty = UDFHelper.GetSingleUDF("coreQty", od.ExtraFields);
 
                                 //si es un consignment veo si lo related de las baterias se agregaron a map y pongo el valor en ese item
 

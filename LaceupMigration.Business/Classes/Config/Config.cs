@@ -9741,7 +9741,7 @@ namespace LaceupMigration
         {
             if (!string.IsNullOrEmpty(order.Client.NonvisibleExtraPropertiesAsString))
             {
-                var value = DataAccess.GetSingleUDF("productscanchangeprice",
+                var value = UDFHelper.GetSingleUDF("productscanchangeprice",
                     order.Client.NonvisibleExtraPropertiesAsString);
 
                 if (!string.IsNullOrEmpty(value))
@@ -9834,7 +9834,7 @@ namespace LaceupMigration
 
         public static bool UseFullTemplateForClient(Client client)
         {
-            var useFullTemplate = DataAccess.GetSingleUDF("fullTemplate", client.NonvisibleExtraPropertiesAsString);
+            var useFullTemplate = UDFHelper.GetSingleUDF("fullTemplate", client.NonvisibleExtraPropertiesAsString);
             if (!string.IsNullOrEmpty(useFullTemplate) && useFullTemplate == "0") return false;
             return Config.UseFullTemplate;
         }

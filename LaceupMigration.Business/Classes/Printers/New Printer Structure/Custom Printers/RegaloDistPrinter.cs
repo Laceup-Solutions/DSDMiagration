@@ -175,7 +175,7 @@ namespace LaceupMigration
             var payment = InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId));
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
             var discount = order.CalculateDiscount();

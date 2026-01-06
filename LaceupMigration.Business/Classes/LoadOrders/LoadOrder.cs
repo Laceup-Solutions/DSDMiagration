@@ -160,7 +160,7 @@ namespace LaceupMigration
                 {
                     if (!string.IsNullOrEmpty(load.ExtraFields))
                     {
-                        var term = DataAccess.GetSingleUDF("cashTerm", load.ExtraFields);
+                        var term = UDFHelper.GetSingleUDF("cashTerm", load.ExtraFields);
                         if (!string.IsNullOrEmpty(term))
                             Term = "cashTerm=" + term;
                     }

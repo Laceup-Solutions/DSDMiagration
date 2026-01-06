@@ -64,7 +64,7 @@ namespace LaceupMigration
                         ProcessDeliveryFile(Config.DeliveryFile, false, false);
 
                 if (Config.SyncLoadOnDemand || Config.NewSyncLoadOnDemand)
-                    DataAccess.LoadNewDeliveryClients();
+                    LoadNewDeliveryClients();
 
                 try
                 {
@@ -77,13 +77,13 @@ namespace LaceupMigration
 
                 ClientDepartment.LoadFromFile();
 
-                DataAccess.LoadBatches();
+                LoadBatches();
 
-                DataAccess.LoadOrders();
+                LoadOrders();
 
                 PrintedOrderZPL.LoadZPL();
 
-                DataAccess.LoadPayments();
+                InvoicePayment.LoadPayments();
 
                 Client.LoadNotes();
 
@@ -93,20 +93,20 @@ namespace LaceupMigration
 
                 ParLevel.LoadList();
 
-                DataAccess.LoadFutureRoutes();
+                LoadFutureRoutes();
 
                 if (File.Exists(Config.RouteExFile))
                     RouteEx.Load();
 
-                DataAccess.LoadReasons();
+                LoadReasons();
 
                 ClientDailyParLevel.LoadCreatedParLevels(true);
 
-                DataAccess.LoadParLevelHistory();
+                LoadParLevelHistory();
 
-                DataAccess.LoadOrderHistory();
+                LoadOrderHistory();
 
-                DataAccess.LoadProjectionValues();
+                LoadProjectionValues();
 
                 SalesmanSession.LoadSessions();
 
@@ -165,7 +165,7 @@ namespace LaceupMigration
                     VehicleInformation.Load();
 
                 if (Config.CheckCommunicatorVersion("46.2.0.0"))
-                    DataAccess.AsignLogosToCompanies();
+                    AsignLogosToCompanies();
 
                 if (Config.CheckCommunicatorVersion("46.2.0.0"))
                     LoadProductLabelDecoder();
@@ -202,6 +202,413 @@ namespace LaceupMigration
         }
 
         #region Initialize
+
+        void AsignLogosToCompanies()
+        {
+            foreach (var company in CompanyInfo.Companies)
+            {
+                DirectoryInfo dir = new DirectoryInfo(Config.CompanyLogosPath);
+                foreach (var file in dir.GetFiles())
+                {
+                    File.Copy(file.FullName, Path.Combine(Config.CompanyLogosSavePath, file.Name + ".jpg"), true);
+
+                    if (file.Name == company.CompanyId.ToString())
+                    {
+                        try
+                        {
+                            var destinationPath = Path.Combine(Config.CompanyLogosSavePath, file.Name + ".jpg");
+
+                            using (var reader = new FileStream(destinationPath, FileMode.Open, FileAccess.Read))
+                            {
+                                const int MAX_W = 300;
+                                const int MAX_H = 300;
+
+                                var dOpt = new DecoderOptions
+                                {
+                                    TargetSize = new SixLabors.ImageSharp.Size(MAX_W, MAX_H),
+                                    SkipMetadata = true,
+                                    Sampler = KnownResamplers.NearestNeighbor
+                                };
+
+                                using var fs = File.OpenRead(destinationPath);
+                                using var img = SixLabors.ImageSharp.Image.Load<L8>(dOpt, fs);
+
+                                int paddedW = (img.Width + 31) & ~31;
+                                int paddedH = (img.Height + 31) & ~31;
+
+                                img.Configuration.PreferContiguousImageBuffers = true;
+                                if (!img.DangerousTryGetSinglePixelMemory(out Memory<L8> mem))
+                                    throw new InvalidOperationException("Pixel memory not contiguous");
+
+                                int bytesPerRow = paddedW / 8;
+                                byte[] raw = new byte[paddedH * bytesPerRow];
+
+                                Span<L8> src = mem.Span;
+                                for (int y = 0; y < img.Height; y++)
+                                {
+                                    int srcRow = y * img.Width;
+                                    int dstIdx = y * bytesPerRow;
+
+                                    byte acc = 0;
+                                    int bit = 7;
+                                    for (int x = 0; x < img.Width; x++)
+                                    {
+                                        if (src[srcRow + x].PackedValue < 128)
+                                            acc |= (byte)(1 << bit);
+
+                                        if (--bit < 0)
+                                        {
+                                            raw[dstIdx++] = acc;
+                                            acc = 0;
+                                            bit = 7;
+                                        }
+                                    }
+
+                                    if (bit != 7) raw[dstIdx] = acc;
+                                }
+
+                                company.CompanyLogo = BitConverter.ToString(raw).Replace("-", "");
+                                company.CompanyLogoWidth = bytesPerRow;
+                                company.CompanyLogoHeight = paddedH;
+                                company.CompanyLogoSize = raw.Length;
+                                company.CompanyLogoPath = Path.Combine(Config.CompanyLogosSavePath, file.Name + ".jpg");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+
+                        }
+
+
+                    }
+                }
+            }
+        }
+
+        void LoadProjectionValues()
+        {
+            Projection.List.Clear();
+
+            if (!File.Exists(Config.ProjectionFile))
+                return;
+
+            using (StreamReader reader = new StreamReader(Config.ProjectionFile))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    var parts = line.Split(DataLineSplitter);
+
+                    CreateProjectionValue(parts);
+                }
+            }
+        }
+
+        void CreateProjectionValue(string[] currentRow)
+        {
+            try
+            {
+                var line = new Projection();
+
+                line.ClientId = Convert.ToInt32(currentRow[1], CultureInfo.InvariantCulture);
+                line.ProductId = Convert.ToInt32(currentRow[2], CultureInfo.InvariantCulture);
+                line.Sunday = Convert.ToDouble(currentRow[3], CultureInfo.InvariantCulture);
+                line.Monday = Convert.ToDouble(currentRow[4], CultureInfo.InvariantCulture);
+                line.Tuesday = Convert.ToDouble(currentRow[5], CultureInfo.InvariantCulture);
+                line.Wednesday = Convert.ToDouble(currentRow[6], CultureInfo.InvariantCulture);
+                line.Thursday = Convert.ToDouble(currentRow[7], CultureInfo.InvariantCulture);
+                line.Friday = Convert.ToDouble(currentRow[8], CultureInfo.InvariantCulture);
+                line.Saturday = Convert.ToDouble(currentRow[9], CultureInfo.InvariantCulture);
+
+                Projection.List.Add(line);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
+        void LoadOrderHistory()
+        {
+            if (!File.Exists(Config.OrderHistoryFile))
+                return;
+
+            OrderHistory.History.Clear();
+
+            using (StreamReader reader = new StreamReader(Config.OrderHistoryFile))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    var parts = line.Split(DataLineSplitter);
+
+                    CreateOrderHistory(parts);
+                }
+            }
+        }
+
+        void CreateOrderHistory(string[] currentRow)
+        {
+            try
+            {
+                var line = new OrderHistory();
+                line.ClientId = Convert.ToInt32(currentRow[1], CultureInfo.InvariantCulture);
+                line.ProductId = Convert.ToInt32(currentRow[2], CultureInfo.InvariantCulture);
+                line.When = new DateTime(Convert.ToInt64(currentRow[4], CultureInfo.InvariantCulture));
+
+                line.Old_Qty = Convert.ToSingle(currentRow[6], CultureInfo.InvariantCulture);
+                var uomId = Convert.ToInt32(currentRow[7], CultureInfo.InvariantCulture);
+                line.Old_UoM = UnitOfMeasure.List.FirstOrDefault(x => x.Id == uomId);
+                line.Old_Price = Convert.ToDouble(currentRow[8], CultureInfo.InvariantCulture);
+
+                line.Dumps_Qty = Convert.ToSingle(currentRow[10], CultureInfo.InvariantCulture);
+                uomId = Convert.ToInt32(currentRow[11], CultureInfo.InvariantCulture);
+                line.Dumps_UoM = UnitOfMeasure.List.FirstOrDefault(x => x.Id == uomId);
+                line.Dumps_Price = Convert.ToDouble(currentRow[12], CultureInfo.InvariantCulture);
+
+                line.Returns_Qty = Convert.ToSingle(currentRow[13], CultureInfo.InvariantCulture);
+                uomId = Convert.ToInt32(currentRow[14], CultureInfo.InvariantCulture);
+                line.Returns_UoM = UnitOfMeasure.List.FirstOrDefault(x => x.Id == uomId);
+                line.Returns_Price = Convert.ToDouble(currentRow[15], CultureInfo.InvariantCulture);
+
+                line.Count_Qty = Convert.ToSingle(currentRow[16], CultureInfo.InvariantCulture);
+                uomId = Convert.ToInt32(currentRow[17], CultureInfo.InvariantCulture);
+                line.Count_UoM = UnitOfMeasure.List.FirstOrDefault(x => x.Id == uomId);
+
+                line.Sold_Qty = Convert.ToSingle(currentRow[18], CultureInfo.InvariantCulture);
+                uomId = Convert.ToInt32(currentRow[19], CultureInfo.InvariantCulture);
+                line.Sold_UoM = UnitOfMeasure.List.FirstOrDefault(x => x.Id == uomId);
+
+                line.Invoice_Qty = Convert.ToSingle(currentRow[20], CultureInfo.InvariantCulture);
+                uomId = Convert.ToInt32(currentRow[21], CultureInfo.InvariantCulture);
+                line.Invoice_UoM = UnitOfMeasure.List.FirstOrDefault(x => x.Id == uomId);
+                line.Invoice_Price = Convert.ToDouble(currentRow[22], CultureInfo.InvariantCulture);
+
+                OrderHistory.History.Add(line);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
+        void LoadParLevelHistory()
+        {
+            try
+            {
+                ParLevelHistory.Histories.Clear();
+
+                if (File.Exists(Config.ParLevelHistoryFile))
+                {
+                    using (StreamReader reader = new StreamReader(Config.ParLevelHistoryFile))
+                    {
+                        string line;
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            var parts = line.Split(DataLineSplitter);
+                            CreateClientDailyParLevelHistory(parts);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
+        void CreateClientDailyParLevelHistory(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+            var clientId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+            var productId = Convert.ToInt32(currentrow[2], CultureInfo.InvariantCulture);
+            var dayOfWeek = Convert.ToInt32(currentrow[3], CultureInfo.InvariantCulture);
+            var oldQty = Convert.ToSingle(currentrow[4], CultureInfo.InvariantCulture);
+            var newQty = Convert.ToSingle(currentrow[5], CultureInfo.InvariantCulture);
+            var when = Convert.ToDateTime(currentrow[6], CultureInfo.InvariantCulture);
+            float counted = 0;
+            float sold = 0;
+            float credit = 0;
+            string department = string.Empty;
+
+            if (currentrow.Length > 7)
+                counted = Convert.ToSingle(currentrow[7], CultureInfo.InvariantCulture);
+
+            if (currentrow.Length > 8)
+                sold = Convert.ToSingle(currentrow[8], CultureInfo.InvariantCulture);
+
+            if (currentrow.Length > 9)
+                credit = Convert.ToSingle(currentrow[9], CultureInfo.InvariantCulture);
+
+            if (currentrow.Length > 10)
+                department = currentrow[10];
+
+            var client = Client.Find(clientId);
+            if (client == null)
+                return;
+
+            var product = Product.Products.FirstOrDefault(x => x.ProductId == productId);
+            if (product == null)
+                return;
+
+            ParLevelHistory.Histories.Add(new ParLevelHistory()
+            {
+                Client = client,
+                Product = product,
+                DayOfWeek = dayOfWeek,
+                OldPar = oldQty,
+                NewPar = newQty,
+                Date = when,
+                Counted = counted,
+                Sold = sold,
+                Credit = credit,
+                Department = department
+            });
+        }
+
+        void LoadReasons()
+        {
+            try
+            {
+                Reason.Clear();
+
+                if (File.Exists(Config.ReasonsFile))
+                {
+                    using (var reader = new StreamReader(Config.ReasonsFile))
+                    {
+                        string currentline;
+
+                        while ((currentline = reader.ReadLine()) != null)
+                        {
+                            string[] currentrow = currentline.Split(DataLineSplitter);
+
+                            var reason = new Reason()
+                            {
+                                Id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture),
+                                Description = currentrow[1],
+                                AvailableIn = Convert.ToInt32(currentrow[2], CultureInfo.InvariantCulture)
+                            };
+
+                            if (currentrow.Length > 4)
+                                reason.Language = currentrow[4];
+
+                            if (currentrow.Length > 5)
+                                reason.LoadingError = Convert.ToInt32(currentrow[5], CultureInfo.InvariantCulture) > 0;
+
+                            Reason.Add(reason);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
+        void LoadFutureRoutes()
+        {
+            if (!File.Exists(Config.FutureRoutesFile))
+                return;
+            using (var reader = new StreamReader(Config.FutureRoutesFile))
+            {
+                string currentline;
+
+                bool readingRoutes = true;
+                bool readingClients = false;
+
+                List<string> routes = new List<string>();
+
+                while ((currentline = reader.ReadLine()) != null)
+                {
+                    if (currentline == "NewClients")
+                    {
+                        readingRoutes = false;
+                        readingClients = true;
+                        continue;
+                    }
+
+                    if (readingRoutes)
+                        routes.Add(currentline);
+                    else if (readingClients)
+                    {
+                        string[] currentrow = currentline.Split(DataLineSplitter);
+                        CreateClient(currentrow, true);
+                    }
+                }
+
+                foreach (var currentline1 in routes)
+                {
+                    string[] currentrow = currentline1.Split(DataLineSplitter);
+                    CreateRouteEX(currentrow);
+                }
+            }
+        }
+
+        void LoadOrders()
+        {
+            // clean up the list of orders
+            Order.Orders.Clear();
+            var files = Directory.GetFiles(Config.CurrentOrdersPath).ToList();
+            Logger.CreateLog("Number of orders file in the current order path: " + files.Count.ToString());
+            foreach (string file in files)
+                Order.AddOrderFromFile(file);
+        }
+
+        void LoadBatches()
+        {
+            foreach (string file in Directory.GetFiles(Config.BatchPath))
+                Batch.LoadFromFile(file);
+        }
+
+        void LoadNewDeliveryClients()
+        {
+            if (!File.Exists(Config.TmpDeliveryClientsFile))
+                Logger.CreateLog("TmpDeliveryClientsFile FILE NOT FOUND");
+            else
+            {
+                try
+                {
+                    using (StreamReader reader = new StreamReader(Config.TmpDeliveryClientsFile))
+                    {
+                        string currentline;
+                        while ((currentline = reader.ReadLine()) != null)
+                        {
+                            string[] currentrow = currentline.Split(DataLineSplitter);
+
+                            CreateClient(currentrow, true, true);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog("Loading TmpDeliveryClientsFile " + ex);
+                }
+            }
+
+            if (!File.Exists(Config.DeliveryNewClientsFile))
+                Logger.CreateLog("DeliveryNewClientsFile FILE NOT FOUND");
+            else
+            {
+                try
+                {
+                    using (StreamReader reader = new StreamReader(Config.DeliveryNewClientsFile))
+                    {
+                        string currentline;
+                        while ((currentline = reader.ReadLine()) != null)
+                        {
+                            string[] currentrow = currentline.Split(DataLineSplitter);
+
+                            CreateClient(currentrow, true, true);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog("Loading DeliveryNewClientsFile " + ex);
+                }
+            }
+        }
 
         void LoadUoM(string uomFile)
         {
@@ -573,37 +980,37 @@ namespace LaceupMigration
                     if (currenttable == 24 && !currentline.Contains((char)20))
                         continue;
 
-                    currentrow = currentline.Split(DataAccess.DataLineSplitter);
+                    currentrow = currentline.Split(DataLineSplitter);
                     switch (currenttable)
                     {
                         case 1:
                             CreateDefaultInventory(currentrow);
                             continue;
                         case 2:
-                            DataAccess.CreateProductTaxability(currentrow);
+                            CreateProductTaxability(currentrow);
                             continue;
                         case 3:
-                            DataAccess.CreateRetailPriceLevel(currentrow);
+                            CreateRetailPriceLevel(currentrow);
                             continue;
                         case 4:
-                            visibleProducts.Add(DataAccess.CreateProductVisibleToClient(currentrow));
+                            visibleProducts.Add(CreateProductVisibleToClient(currentrow));
                             continue;
                         case 5:
-                            DataAccess.CreateConsignment(currentrow);
+                            CreateConsignment(currentrow);
                             continue;
                         case 6:
                             if (loadUnitOfMeasures)
-                                DataAccess.CreateUnitOfMeasure(currentrow);
+                                CreateUnitOfMeasure(currentrow);
                             continue;
                         case 7:
-                            DataAccess.LoadBuildToQty(currentrow);
+                            LoadBuildToQty(currentrow);
                             continue;
                         case 8:
                             if (updateInventory && !Config.UsePairLotQty)
                                 LoadInventorySite(currentrow);
                             continue;
                         case 9:
-                            DataAccess.CreateCategory(currentrow);
+                            CreateCategory(currentrow);
                             continue;
                         case 10:
                             if (Config.IsTest)
@@ -613,17 +1020,17 @@ namespace LaceupMigration
                             CreateProduct(usedCategories, currentrow);
                             continue;
                         case 11:
-                            DataAccess.CreateOffer(currentrow);
+                            CreateOffer(currentrow);
                             continue;
                         case 12:
-                            DataAccess.CreateProductPrice(currentrow);
+                            CreateProductPrice(currentrow);
                             continue;
                         case 13:
                             if (Config.IsTest)
-                                if (readedEntities == DataAccess.EntitiesToReadInTestMode)
+                                if (readedEntities == 100)
                                     continue;
                             readedEntities++;
-                            DataAccess.CreateClient(currentrow, false);
+                            CreateClient(currentrow, false);
                             break;
                         case 14:
                             if (currentrow.Length == 1)
@@ -637,13 +1044,13 @@ namespace LaceupMigration
                                 clientProductList[catId].Add(p);
                             break;
                         case 15:
-                            DataAccess.CreateClientOffer(currentrow);
+                            CreateClientOffer(currentrow);
                             break;
                         case 16:
-                            DataAccess.CreateRoute(currentrow);
+                            CreateRoute(currentrow);
                             continue;
                         case 17:
-                            DataAccess.CreateSalesman(currentrow);
+                            CreateSalesman(currentrow);
                             continue;
                         case 18:
                             if (updateInventory)
@@ -654,25 +1061,25 @@ namespace LaceupMigration
                                 CreateProductLot(currentrow);
                             continue;
                         case 20:
-                            DataAccess.CreateRetailProductPrices(currentrow);
+                            CreateRetailProductPrices(currentrow);
                             continue;
                         case 21:
-                            DataAccess.CreateClientDailyParLevel(currentrow);
+                            ClientDailyParLevel.CreateClientDailyParLevel(currentrow);
                             continue;
                         case 22:
-                            DataAccess.CreateBranch(currentrow);
+                            CreateBranch(currentrow);
                             continue;
                         case 23:
-                            DataAccess.CreateCompanyInfo(currentrow);
+                            CreateCompanyInfo(currentrow);
                             continue;
                         case 24:
-                            DataAccess.CreateClientAvailableCompany(currentrow);
+                            CreateClientAvailableCompany(currentrow);
                             continue;
                         case 25:
-                            DataAccess.CreateSalesmanAvailableCompany(currentrow);
+                            CreateSalesmanAvailableCompany(currentrow);
                             continue;
                         case 26:
-                            var clientPath = Path.Combine(Config.InvoicesPath, currentrow[DataAccess.OpenInvoiceClientIdIndex]);
+                            var clientPath = Path.Combine(Config.InvoicesPath, currentrow[OpenInvoiceClientIdIndex]);
                             if (!Directory.Exists(clientPath))
                                 Directory.CreateDirectory(clientPath);
 
@@ -680,7 +1087,7 @@ namespace LaceupMigration
                             using (var writer = new StreamWriter(finalInvoiceFile, true))
                                 writer.WriteLine(currentline);
 
-                            DataAccess.CreateInvoice(currentrow);
+                            CreateInvoice(currentrow);
                             continue;
                         case 27:
                             var clientPath_ = Path.Combine(Config.InvoicesPath, currentrow[5]);
@@ -706,22 +1113,22 @@ namespace LaceupMigration
                             }
                             continue;
                         case 28:
-                            DataAccess.CreateOfferEx(currentrow);
+                            CreateOfferEx(currentrow);
                             continue;
                         case 29:
-                            DataAccess.CreateDiscountCategory(currentrow);
+                            CreateDiscountCategory(currentrow);
                             continue;
                         case 30:
-                            DataAccess.CreateProductOfferEx(currentrow);
+                            CreateProductOfferEx(currentrow);
                             continue;
                         case 31:
-                            DataAccess.CreateClientOfferEx(currentrow);
+                            CreateClientOfferEx(currentrow);
                             continue;
                         case 32:
-                            DataAccess.CreatePriceLevel(currentrow);
+                            CreatePriceLevel(currentrow);
                             continue;
                         case 33:
-                            DataAccess.CreateCategoryProduct(currentrow);
+                            CreateCategoryProduct(currentrow);
                             continue;
                         case 100:
                             try
@@ -736,85 +1143,85 @@ namespace LaceupMigration
                             }
                             continue;
                         case 45:
-                            DataAccess.CreateSuggestedClientCategory(currentrow);
+                            CreateSuggestedClientCategory(currentrow);
                             continue;
                         case 46:
-                            DataAccess.CreateSuggestedClientCategoryClient(currentrow);
+                            CreateSuggestedClientCategoryClient(currentrow);
                             continue;
                         case 47:
-                            DataAccess.CreateSuggestedClientCategoryProduct(currentrow);
+                            CreateSuggestedClientCategoryProduct(currentrow);
                             continue;
                         case 50:
-                            DataAccess.CreateOrderDiscount(currentrow);
+                            CreateOrderDiscount(currentrow);
                             continue;
                         case 51:
-                            DataAccess.CreateOrderDiscountClient(currentrow);
+                            CreateOrderDiscountClient(currentrow);
                             continue;
                         case 52:
-                            DataAccess.CreateOrderDiscountClientArea(currentrow);
+                            CreateOrderDiscountClientArea(currentrow);
                             continue;
                         case 53:
-                            DataAccess.CreateOrderDiscountProduct(currentrow);
+                            CreateOrderDiscountProduct(currentrow);
                             continue;
                         case 54:
-                            DataAccess.CreateOrderDiscountVendor(currentrow);
+                            CreateOrderDiscountVendor(currentrow);
                             continue;
                         case 55:
-                            DataAccess.CreateOrderDiscountBreak(currentrow);
+                            CreateOrderDiscountBreak(currentrow);
                             continue;
                         case 56:
-                            DataAccess.CreateOrderDiscountProductBreak(currentrow);
+                            CreateOrderDiscountProductBreak(currentrow);
                             continue;
                         case 57:
-                            DataAccess.CreateOrderDiscountVendorBreak(currentrow);
+                            CreateOrderDiscountVendorBreak(currentrow);
                             continue;
                         case 58:
-                            DataAccess.CreateArea(currentrow);
+                            CreateArea(currentrow);
                             continue;
                         case 59:
-                            DataAccess.CreateVendor(currentrow);
+                            CreateVendor(currentrow);
                             continue;
                         case 60:
-                            DataAccess.CreateAreaClient(currentrow);
+                            CreateAreaClient(currentrow);
                             continue;
                         case 61:
-                            DataAccess.CreateOrderDiscountCategory(currentrow);
+                            CreateOrderDiscountCategory(currentrow);
                             continue;
                         case 62:
-                            DataAccess.CreateOrderDiscountCategoryBreak(currentrow);
+                            CreateOrderDiscountCategoryBreak(currentrow);
                             continue;
                         case 63:
-                            DataAccess.CreateClientCategoryEx(currentrow);
+                            CreateClientCategoryEx(currentrow);
                             continue;
                         case 64:
-                            DataAccess.CreateClientDepartmentGroup(currentrow);
+                            CreateClientDepartmentGroup(currentrow);
                             continue;
                         case 65:
-                            DataAccess.CreateClientClientDepartmentGroup(currentrow);
+                            CreateClientClientDepartmentGroup(currentrow);
                             continue;
                         case 66:
-                            DataAccess.CreateDepartmentClientDepartmentGroup(currentrow);
+                            CreateDepartmentClientDepartmentGroup(currentrow);
                             continue;
                         case 67:
-                            DataAccess.CreateDepartmertClientCategories(currentrow);
+                            CreateDepartmertClientCategories(currentrow);
                             continue;
                         case 68:
-                            DataAccess.CreateDepartmentProduct(currentrow);
+                            CreateDepartmentProduct(currentrow);
                             continue;
                         case 69:
-                            DataAccess.CreateOrderDiscountClientPriceLevel(currentrow);
+                            CreateOrderDiscountClientPriceLevel(currentrow);
                             continue;
                         case 70:
-                            DataAccess.CreateProductVisibleCompany(currentrow);
+                            CreateProductVisibleCompany(currentrow);
                             continue;
                         case 71:
-                            DataAccess.CreateAsset(currentrow);
+                            CreateAsset(currentrow);
                             continue;
                         case 72:
-                            DataAccess.CreateClientAssetTrack(currentrow);
+                            CreateClientAssetTrack(currentrow);
                             continue;
                         case 73:
-                            DataAccess.CreateProductAllowedSites(currentrow);
+                            CreateProductAllowedSites(currentrow);
                             continue;
                     }
                 }
@@ -914,7 +1321,7 @@ namespace LaceupMigration
                 }
                 Product.LoadLots();
 
-                DataAccess.SetRelatedProducts();
+                SetRelatedProducts();
             }
 
             if (visibleProducts.Count > 0)
@@ -931,6 +1338,1504 @@ namespace LaceupMigration
             var c2 = OfferEx.List.Count;
             var c3 = DiscountCategory.DiscountCategories.Count;
             Logger.CreateLog("df");
+        }
+
+        void SetRelatedProducts()
+        {
+            foreach (var prod in Product.Products)
+            {
+                foreach (var p in prod.ExtraProperties)
+                {
+                    if (p.Item1.ToLowerInvariant() == "relateditem")
+                    {
+                        var products = p.Item2.Split(",");
+
+                        foreach (var p1 in products)
+                        {
+                            int o = 0;
+                            Int32.TryParse(p1, out o);
+
+                            var relatedProduct = Product.Find(o, true);
+
+                            if (relatedProduct != null)
+                                relatedProduct.IsRelatedProduct = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        static int invoiceReportCounter;
+
+        void CreateInvoice(string[] currentrow)
+        {
+            try
+            {
+                int salesmanId = 0;
+                if (currentrow.Length > 11)
+                {
+                    salesmanId = Convert.ToInt32(currentrow[11], CultureInfo.InvariantCulture);
+                    if (Config.ShowOnlyInvoiceForSalesman && salesmanId != Config.SalesmanId)
+                        return;
+                }
+
+                Invoice oi = new Invoice();
+
+                oi.ClientId = Convert.ToInt32(currentrow[OpenInvoiceClientIdIndex], CultureInfo.InvariantCulture);
+
+                //Client client = Client.Find(oi.ClientId);
+                //if (client == null)
+                //    return;
+                //oi.Client = client;
+
+                oi.InvoiceNumber = currentrow[OpenInvoiceInvoiceNumberIndex];
+                oi.Amount = Convert.ToDouble(currentrow[OpenInvoiceAmountIndex], CultureInfo.InvariantCulture);
+                oi.Balance = Convert.ToDouble(currentrow[OpenInvoiceBalanceIndex], CultureInfo.InvariantCulture);
+                if (!Config.ShowInvoiceTotal)
+                {
+                    oi.Balance = 0;
+                    oi.Amount = 0;
+                }
+                oi.Date = Convert.ToDateTime(currentrow[OpenInvoiceDateIndex], CultureInfo.InvariantCulture);
+                oi.DueDate = Convert.ToDateTime(currentrow[OpenInvoiceDueDateIndex], CultureInfo.InvariantCulture);
+
+                if (currentrow.Length > 6)
+                    try
+                    {
+                        oi.InvoiceId = Convert.ToInt32(currentrow[6], CultureInfo.InvariantCulture);
+                    }
+                    catch
+                    {
+                        oi.InvoiceId = -1;
+                    }
+                if (currentrow.Length > 7)
+                    oi.Comments = currentrow[7];
+                try
+                {
+                    if (currentrow.Length > 8)
+                        oi.InvoiceType = Convert.ToInt32(currentrow[8], CultureInfo.InvariantCulture);
+                }
+                catch (Exception ee)
+                {
+                    Logger.CreateLog(ee);
+                }
+
+                //requested not to show RP with 0 balance on android
+                if (oi.InvoiceType == 4 && oi.Balance == 0)
+                    return;
+
+                if (currentrow.Length > 9)
+                    oi.SalesmanName = currentrow[9];
+
+                if (currentrow.Length > 10)
+                    oi.ExtraFields = currentrow[10];
+
+                if (currentrow.Length > 11)
+                    oi.SalesmanId = Convert.ToInt32(currentrow[11], CultureInfo.InvariantCulture);
+
+                if (currentrow.Length > 12)
+                    oi.Tax = Convert.ToDouble(currentrow[12], CultureInfo.InvariantCulture);
+
+                if (currentrow.Length > 13)
+                    oi.CompanyName = currentrow[13];
+
+                Invoice.Add(oi);
+
+                if (!Invoice.InvoiceTypeDic.ContainsKey(oi.InvoiceId))
+                    Invoice.InvoiceTypeDic.Add(oi.InvoiceId, oi.InvoiceType);
+            }
+            catch (Exception ex)
+            {
+                invoiceReportCounter++;
+                if (invoiceReportCounter < 20)
+                {
+                    //Log the exception
+                    Logger.CreateLog(ex);
+                    Logger.CreateLog(Concatenate(currentrow));
+                    //Xamarin.Insights.Report(ex);
+                }
+            }
+        }
+
+        void CreateProductAllowedSites(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var productId = Convert.ToInt32(currentrow[1]);
+            var Siteid = Convert.ToInt32(currentrow[2]);
+            var extraFields = currentrow[3];
+
+            var item = new ProductAllowedSite()
+            {
+                Id = id,
+                ProductId = productId,
+                SiteId = Siteid,
+                ExtraFields = extraFields
+            };
+
+            ProductAllowedSite.List.Add(item);
+        }
+
+        void CreateClientAssetTrack(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var assetId = Convert.ToInt32(currentrow[1]);
+            var clientId = Convert.ToInt32(currentrow[2]);
+            var startDate = new DateTime(Convert.ToInt64(currentrow[3]));
+            var Qty = Convert.ToDouble(currentrow[4]);
+            var Price = Convert.ToDouble(currentrow[5]);
+            var comments = currentrow[6];
+            var active = Convert.ToInt32(currentrow[7]) > 0;
+            var deactivedDate = new DateTime(Convert.ToInt64(currentrow[8]));
+            var extraFields = currentrow[9];
+            var siteId = Convert.ToInt32(currentrow[10]);
+
+            var item = new ClientAssetTrack()
+            {
+                Id = id,
+                AssetId = assetId,
+                ClientId = clientId,
+                StartDate = startDate,
+                Qty = Qty,
+                Price = Price,
+                Comments = comments,
+                Active = active,
+                DeactivatedDate = deactivedDate,
+                Extrafields = extraFields,
+                SiteId = siteId
+            };
+
+            ClientAssetTrack.List.Add(item);
+        }
+
+        void CreateAsset(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var productId = Convert.ToInt32(currentrow[1]);
+            var startDate = new DateTime(Convert.ToInt64(currentrow[2]));
+            var serialNumber = currentrow[3];
+            var Qty = Convert.ToDouble(currentrow[4]);
+            var Price = Convert.ToDouble(currentrow[5]);
+            var comments = currentrow[6];
+            var createdOn = new DateTime(Convert.ToInt64(currentrow[7]));
+            var active = Convert.ToInt32(currentrow[8]) > 0;
+            var deactivedDate = new DateTime(Convert.ToInt64(currentrow[9]));
+            var extraFields = currentrow[10];
+            var siteId = Convert.ToInt32(currentrow[11]);
+
+            var item = new Asset()
+            {
+                Id = id,
+                ProductId = productId,
+                StartDate = startDate,
+                SerialNumber = serialNumber,
+                Qty = Qty,
+                Price = Price,
+                Comments = comments,
+                CreatedOn = createdOn,
+                Active = active,
+                DeactivatedDate = deactivedDate,
+                Extrafields = extraFields,
+                SiteId = siteId
+            };
+
+            Asset.List.Add(item);
+        }
+
+        void CreateProductVisibleCompany(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var productId = Convert.ToInt32(currentrow[1]);
+            var companyId = Convert.ToInt32(currentrow[2]);
+            var extraFields = currentrow[3];
+
+            var item = new ProductVisibleCompany()
+            {
+                Id = id,
+                ProductId = productId,
+                CompanyId = companyId,
+                ExtraFields = extraFields
+            };
+
+            ProductVisibleCompany.List.Add(item);
+        }
+
+        void CreateOrderDiscountClientPriceLevel(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var discountId = Convert.ToInt32(currentrow[1]);
+            var priceLevelId = (Convert.ToInt32(currentrow[2]) + 10);
+            var DiscountType = Convert.ToInt32(currentrow[3]);
+            var Buy = Convert.ToDouble(currentrow[4]);
+            var Qty = Convert.ToDouble(currentrow[5]);
+            var extraFields = currentrow[6];
+
+            var item = new OrderDiscountClientPriceLevel()
+            {
+                Id = id,
+                OrderDiscountId = discountId,
+                PriceLevelId = priceLevelId,
+                DiscountType = DiscountType,
+                Buy = Buy,
+                Qty = Qty,
+                ExtraFields = extraFields
+            };
+
+
+            var orderDiscount = OrderDiscount.List.FirstOrDefault(x => x.Id == item.OrderDiscountId);
+            if (orderDiscount != null)
+                orderDiscount.OrderDisocuntClientPriceLevels.Add(item);
+
+            OrderDiscountClientPriceLevel.List.Add(item);
+        }
+
+        void CreateDepartmentProduct(string[] currentrow)
+        {
+
+            var id = Convert.ToInt32(currentrow[0]);
+            var departmentId = Convert.ToInt32(currentrow[1]);
+            var productId = Convert.ToInt32(currentrow[2]);
+            var extraFields = currentrow[3];
+
+            var item = new DepartmentProduct()
+            {
+                Id = id,
+                DepartmentId = departmentId,
+                ProductId = productId,
+                ExtraFields = extraFields
+            };
+
+            DepartmentProduct.List.Add(item);
+        }
+
+        void CreateDepartmertClientCategories(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var name = currentrow[1];
+            var isActive = Convert.ToInt32(currentrow[2]) > 0;
+            var extraFields = currentrow[3];
+
+            var item = new DepartmertClientCategory()
+            {
+                Id = id,
+                Name = name,
+                IsActive = isActive,
+                ExtraFields = extraFields
+            };
+
+            DepartmertClientCategory.List.Add(item);
+        }
+
+        void CreateDepartmentClientDepartmentGroup(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var departmentId = Convert.ToInt32(currentrow[1]);
+            var clientDepartmentGroupid = Convert.ToInt32(currentrow[2]);
+            var extraFields = currentrow[3];
+
+            var item = new DepartmentClientDepartmentGroup()
+            {
+                Id = id,
+                DepartmentId = departmentId,
+                ClientDepartmentGroupId = clientDepartmentGroupid,
+                ExtraFields = extraFields
+            };
+
+            DepartmentClientDepartmentGroup.List.Add(item);
+        }
+
+        void CreateClientClientDepartmentGroup(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var clientId = Convert.ToInt32(currentrow[1]);
+            var clientDepartmentGroupid = Convert.ToInt32(currentrow[2]);
+            var extraFields = currentrow[3];
+
+            var item = new ClientClientDepartmentGroup()
+            {
+                Id = id,
+                ClientId = clientId,
+                ClientDepartmentGroupId = clientDepartmentGroupid,
+                ExtraFields = extraFields,
+            };
+
+            ClientClientDepartmentGroup.List.Add(item);
+        }
+
+        void CreateClientDepartmentGroup(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var name = currentrow[1];
+            var comments = currentrow[2];
+            var extraFields = currentrow[3];
+            var status = Convert.ToInt32(currentrow[4]);
+
+            var item = new ClientDepartmentGroup()
+            {
+                Id = id,
+                Name = name,
+                Comments = comments,
+                ExtraFields = extraFields,
+                Status = status
+            };
+
+            ClientDepartmentGroup.List.Add(item);
+        }
+
+        void CreateVendor(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var name = currentrow[1];
+            var originalId = currentrow[2];
+            var comments = currentrow[3];
+            var contactName = currentrow[4];
+            var contactPhone = currentrow[5];
+            var isActive = Convert.ToInt32(currentrow[6]) > 0;
+            var openBalance = Convert.ToDouble(currentrow[7]);
+            var creditLimit = Convert.ToDouble(currentrow[8]);
+            var extraFields = currentrow[9];
+            var uniqueId = currentrow[10];
+            var nonVisibleExtraFields = currentrow[11];
+            var email = currentrow[12];
+
+            var item = new Vendor()
+            {
+                Id = id,
+                Name = name,
+                OriginalId = originalId,
+                Comments = comments,
+                ContactName = contactName,
+                ContactPhone = contactPhone,
+                IsActive = isActive,
+                OpenBalance = openBalance,
+                CreditLimit = creditLimit,
+                ExtraFields = extraFields,
+                UniqueId = uniqueId,
+                NonVisibleExtraFields = nonVisibleExtraFields,
+                Email = email
+            };
+
+            Vendor.List.Add(item);
+        }
+
+        void CreateAreaClient(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var areaId = Convert.ToInt32(currentrow[1]);
+            var clientId = Convert.ToInt32(currentrow[2]);
+
+            var item = new AreaClient()
+            {
+                Id = id,
+                AreaId = areaId,
+                ClientId = clientId
+            };
+
+            AreaClient.List.Add(item);
+        }
+
+        void CreateOrderDiscountCategory(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var orderDiscountId = Convert.ToInt32(currentrow[1]);
+            var discountType = Convert.ToInt32(currentrow[2]);
+            var buy = Convert.ToDouble(currentrow[3]);
+            var qty = Convert.ToDouble(currentrow[4]);
+            var categoryId = Convert.ToInt32(currentrow[5]);
+            var categoryType = Convert.ToInt32(currentrow[6]);
+            var extraFields = currentrow[7];
+
+            var item = new OrderDiscountCategory()
+            {
+                Id = id,
+                OrderDiscountId = orderDiscountId,
+                DiscountType = discountType,
+                Buy = buy,
+                Qty = qty,
+                CategoryId = categoryId,
+                CategoryType = categoryType,
+                ExtraFields = extraFields
+            };
+
+            var discount = OrderDiscount.List.FirstOrDefault(x => x.Id == orderDiscountId);
+            if (discount != null)
+                discount.OrderDiscountCategories.Add(item);
+
+            OrderDiscountCategory.List.Add(item);
+        }
+
+        void CreateOrderDiscountCategoryBreak(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var breakId = Convert.ToInt32(currentrow[1]);
+            var categoryId = Convert.ToInt32(currentrow[2]);
+            var extraFields = currentrow[3];
+
+            var item = new OrderDiscountCategoryBreak()
+            {
+                Id = id,
+                BreakId = breakId,
+                CategoryId = categoryId,
+                ExtraFields = extraFields
+            };
+
+            foreach (var o in OrderDiscount.List)
+            {
+                var disc_break = o.OrderDiscountBreaks.FirstOrDefault(x => x.Id == breakId);
+                if (disc_break != null)
+                    disc_break.OrderDiscountCategoryBreaks.Add(item);
+            }
+        }
+
+        void CreateClientCategoryEx(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var name = currentrow[1];
+
+            var item = new ClientCategoryEx()
+            {
+                Id = id,
+                Name = name
+            };
+
+            ClientCategoryEx.List.Add(item);
+        }
+
+        void CreateArea(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var name = currentrow[1];
+            var extraFields = currentrow[2];
+            var color = Convert.ToInt32(currentrow[3]);
+            var isActive = Convert.ToInt32(currentrow[4]) > 0;
+            var forDelivery = Convert.ToInt32(currentrow[5]) > 0;
+
+            var item = new Area()
+            {
+                Id = id,
+                Name = name,
+                ExtraFields = extraFields,
+                Color = color,
+                Active = isActive,
+                ForDelivery = forDelivery
+            };
+
+            Area.List.Add(item);
+        }
+
+        void CreateOrderDiscountVendorBreak(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var breakId = Convert.ToInt32(currentrow[1]);
+            var vendorId = Convert.ToInt32(currentrow[2]);
+            var extraFields = currentrow[3];
+
+            var item = new OrderDiscountVendorBreak()
+            {
+                Id = id,
+                BreakId = breakId,
+                VendorId = vendorId,
+                ExtraFields = extraFields
+            };
+
+            foreach (var o in OrderDiscount.List)
+            {
+                var disc_break = o.OrderDiscountBreaks.FirstOrDefault(x => x.Id == breakId);
+                if (disc_break != null)
+                    disc_break.OrderDiscountVendorBreaks.Add(item);
+            }
+        }
+
+        void CreateOrderDiscountProductBreak(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var breakId = Convert.ToInt32(currentrow[1]);
+            var productId = Convert.ToInt32(currentrow[2]);
+            var extraFields = currentrow[3];
+
+            var item = new OrderDiscountProductBreak()
+            {
+                Id = id,
+                BreakId = breakId,
+                ProductId = productId,
+                ExtraFields = extraFields
+            };
+
+            foreach (var o in OrderDiscount.List)
+            {
+                var disc_break = o.OrderDiscountBreaks.FirstOrDefault(x => x.Id == breakId);
+                if (disc_break != null)
+                    disc_break.OrderDiscountProductBreaks.Add(item);
+            }
+        }
+
+        void CreateOrderDiscountBreak(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var orderDiscountId = Convert.ToInt32(currentrow[1]);
+            var minQty = Convert.ToDouble(currentrow[2]);
+            var maxQty = Convert.ToDouble(currentrow[3]);
+            var discount = Convert.ToDouble(currentrow[4]);
+            var qtySelectProduct = Convert.ToDouble(currentrow[5]);
+            var extraFields = currentrow[6];
+            var discountType = Convert.ToInt32(currentrow[7]);
+
+            bool fixedPrice = false;
+            if (currentrow.Length > 8)
+                fixedPrice = Convert.ToInt32(currentrow[8]) > 0;
+
+            var item = new OrderDiscountBreak()
+            {
+                Id = id,
+                OrderDiscountId = orderDiscountId,
+                MinQty = minQty,
+                MaxQty = maxQty,
+                Discount = discount,
+                QtySelectProduct = qtySelectProduct,
+                ExtraFields = extraFields,
+                DiscountType = discountType,
+                FixPrice = fixedPrice
+            };
+
+            var orderdiscount = OrderDiscount.List.FirstOrDefault(x => x.Id == orderDiscountId);
+            if (orderdiscount != null)
+                orderdiscount.OrderDiscountBreaks.Add(item);
+        }
+
+        void CreateOrderDiscountVendor(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var orderDiscountId = Convert.ToInt32(currentrow[1]);
+            var discountType = Convert.ToInt32(currentrow[2]);
+            var buy = Convert.ToDouble(currentrow[3]);
+            var qty = Convert.ToDouble(currentrow[4]);
+            var vendorId = Convert.ToInt32(currentrow[5]);
+            var extraFields = currentrow[6];
+
+            var item = new OrderDiscountVendor()
+            {
+                Id = id,
+                OrderDiscountId = orderDiscountId,
+                DiscountType = discountType,
+                Buy = buy,
+                Qty = qty,
+                VendorId = vendorId,
+                ExtraFields = extraFields
+            };
+
+            var discount = OrderDiscount.List.FirstOrDefault(x => x.Id == orderDiscountId);
+            if (discount != null)
+                discount.OrderDiscountVendors.Add(item);
+        }
+
+        void CreateOrderDiscountProduct(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var orderDiscountId = Convert.ToInt32(currentrow[1]);
+            var discountType = Convert.ToInt32(currentrow[2]);
+            var buy = Convert.ToDouble(currentrow[3]);
+            var qty = Convert.ToDouble(currentrow[4]);
+            var prodId = Convert.ToInt32(currentrow[5]);
+            var extraFields = currentrow[6];
+
+            var item = new OrderDiscountProduct()
+            {
+                Id = id,
+                OrderDiscountId = orderDiscountId,
+                DiscountType = discountType,
+                Buy = buy,
+                Qty = qty,
+                ProductId = prodId,
+                ExtraFields = extraFields
+            };
+
+            var discount = OrderDiscount.List.FirstOrDefault(x => x.Id == orderDiscountId);
+            if (discount != null)
+                discount.OrderDiscountProducts.Add(item);
+
+            OrderDiscountProduct.List.Add(item);
+        }
+
+        void CreateOrderDiscountClientArea(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var orderDiscountId = Convert.ToInt32(currentrow[1]);
+            var discountType = Convert.ToInt32(currentrow[2]);
+            var buy = Convert.ToDouble(currentrow[3]);
+            var qty = Convert.ToDouble(currentrow[4]);
+            var areaId = Convert.ToInt32(currentrow[5]);
+            var extraFields = currentrow[6];
+
+            var item = new OrderDiscountClientArea()
+            {
+                Id = id,
+                OrderDiscountId = orderDiscountId,
+                DiscountType = discountType,
+                Buy = buy,
+                Qty = qty,
+                AreaId = areaId,
+                ExtraFields = extraFields
+            };
+
+            var discount = OrderDiscount.List.FirstOrDefault(x => x.Id == orderDiscountId);
+            if (discount != null)
+                discount.OrderDiscountClientAreas.Add(item);
+
+            OrderDiscountClientArea.List.Add(item);
+        }
+
+        void CreateOrderDiscountClient(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var orderDiscountId = Convert.ToInt32(currentrow[1]);
+            var discountType = Convert.ToInt32(currentrow[2]);
+            var buy = Convert.ToDouble(currentrow[3]);
+            var qty = Convert.ToDouble(currentrow[4]);
+            var clientId = Convert.ToInt32(currentrow[5]);
+            var extraFields = currentrow[6];
+
+            var item = new OrderDiscountClient()
+            {
+                Id = id,
+                OrderDiscountId = orderDiscountId,
+                DiscountType = discountType,
+                Buy = buy,
+                Qty = qty,
+                ClientId = clientId,
+                ExtraFields = extraFields
+            };
+
+            var discount = OrderDiscount.List.FirstOrDefault(x => x.Id == orderDiscountId);
+            if (discount != null)
+                discount.OrderDiscountClients.Add(item);
+
+            OrderDiscountClient.List.Add(item);
+        }
+
+        void CreateOrderDiscount(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var name = currentrow[1];
+            var discountType = Convert.ToInt32(currentrow[2]);
+            var appliedTo = Convert.ToInt32(currentrow[3]);
+            var Comments = currentrow[4];
+            var ExtraFields = currentrow[5];
+            var status = Convert.ToInt32(currentrow[6]);
+            var startDate = new DateTime(Convert.ToInt64(currentrow[7]));
+            var endDate = new DateTime(Convert.ToInt64(currentrow[8]));
+            var productDiscountId = Convert.ToInt32(currentrow[9]);
+            var automatic = Convert.ToInt32(currentrow[10]) > 0;
+            var exclusive = Convert.ToInt32(currentrow[11]) > 0;
+
+            bool permanent = false;
+            if (currentrow.Length > 12)
+                permanent = Convert.ToInt32(currentrow[12]) > 0;
+
+            var item = new OrderDiscount()
+            {
+                Id = id,
+                Name = name,
+                DiscountType = discountType,
+                AppliedTo = appliedTo,
+                Comments = Comments,
+                ExtraFields = ExtraFields,
+                Status = status,
+                StartDate = startDate,
+                EndDate = endDate,
+                ProductDiscountId = productDiscountId,
+                AutomaticApplied = automatic,
+                Exclusive = exclusive,
+                Permanent = permanent
+            };
+
+            OrderDiscount.List.Add(item);
+        }
+
+        void CreateSuggestedClientCategoryProduct(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var suggestedCatId = Convert.ToInt32(currentrow[1]);
+            var productId = Convert.ToInt32(currentrow[2]);
+
+            var item = new SuggestedClientCategoryProduct()
+            {
+                Id = id,
+                SuggestedClientCategoryId = suggestedCatId,
+                ProductId = productId
+            };
+
+            var cat = SuggestedClientCategory.List.FirstOrDefault(x => x.Id == suggestedCatId);
+            if (cat != null)
+                cat.SuggestedClientCategoryProducts.Add(item);
+
+            SuggestedClientCategoryProduct.List.Add(item);
+        }
+
+        void CreateSuggestedClientCategoryClient(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var suggestedCatId = Convert.ToInt32(currentrow[1]);
+            var clientId = Convert.ToInt32(currentrow[2]);
+
+            var item = new SuggestedClientCategoryClient()
+            {
+                Id = id,
+                SuggestedClientCategoryId = suggestedCatId,
+                ClientId = clientId
+            };
+
+            var cat = SuggestedClientCategory.List.FirstOrDefault(x => x.Id == suggestedCatId);
+            if (cat != null)
+                cat.SuggestedClientCategoryClients.Add(item);
+
+            SuggestedClientCategoryClient.List.Add(item);
+        }
+
+        void CreateSuggestedClientCategory(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0]);
+            var name = currentrow[1];
+
+            SuggestedClientCategory.List.Add(new SuggestedClientCategory() { Id = id, Name = name });
+        }
+
+        void CreateCategoryProduct(string[] currentrow)
+        {
+            try
+            {
+                if (currentrow[1].Length == 0)
+                    return;
+                CategoryProduct cat = new CategoryProduct();
+                cat.id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+                cat.productId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+                cat.categoryId = Convert.ToInt32(currentrow[2], CultureInfo.InvariantCulture);
+                CategoryProduct.Add(cat);
+            }
+            catch (Exception ex)
+            {
+                //Log the exception
+                Logger.CreateLog(ex);
+                //Xamarin.Insights.Report(ex);
+                Logger.CreateLog(Concatenate(currentrow));
+            }
+        }
+
+        void CreatePriceLevel(string[] currentrow)
+        {
+            try
+            {
+                int id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+                string name = currentrow[1];
+
+                string extraFields = string.Empty;
+                if (currentrow.Length > 6)
+                    extraFields = currentrow[6];
+
+                PriceLevel.Add(new PriceLevel() { Id = id, Name = name, ExtraFields = extraFields });
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
+        void CreateClientOfferEx(string[] currentRow)
+        {
+            try
+            {
+                var line = new ClientOfferEx();
+                ClientOfferEx.Add(line);
+                line.OfferExId = Convert.ToInt32(currentRow[0], CultureInfo.InvariantCulture);
+                line.ClientId = Convert.ToInt32(currentRow[1], CultureInfo.InvariantCulture);
+                if (currentRow.Length > 2)
+                    line.ExtraFields = currentRow[2];
+                else
+                    line.ExtraFields = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
+        void CreateProductOfferEx(string[] currentRow)
+        {
+            try
+            {
+                var line = new ProductOfferEx();
+                ProductOfferEx.Add(line);
+                line.OfferExId = Convert.ToInt32(currentRow[0], CultureInfo.InvariantCulture);
+                line.ProductId = Convert.ToInt32(currentRow[1], CultureInfo.InvariantCulture);
+                line.BreakQty = Convert.ToDouble(currentRow[2], CultureInfo.InvariantCulture);
+                line.Price = Convert.ToDouble(currentRow[3], CultureInfo.InvariantCulture);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
+        void CreateDiscountCategory(string[] currentRow)
+        {
+            try
+            {
+                var line = new DiscountCategory();
+                DiscountCategory.AddCategory(line);
+                line.Id = Convert.ToInt32(currentRow[0], CultureInfo.InvariantCulture);
+                line.Name = currentRow[1];
+                line.ExtraFields = currentRow[2];
+                line.IsPriceCategory = Convert.ToInt32(currentRow[3], CultureInfo.InvariantCulture) > 0;
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
+        void CreateOfferEx(string[] currentrow)
+        {
+            OfferEx newItem = new OfferEx();
+            OfferEx.Add(newItem);
+            newItem.Id = Convert.ToInt32(currentrow[0]);
+            newItem.Name = currentrow[1];
+            newItem.FromDate = Convert.ToDateTime(currentrow[2]);
+            newItem.ToDate = Convert.ToDateTime(currentrow[3]);
+            newItem.OfferType = Convert.ToInt32(currentrow[4]);
+            if (currentrow[5] != "")
+                newItem.Price = Convert.ToDouble(currentrow[5]);
+            if (currentrow[6] != "")
+                newItem.ProductId = Convert.ToInt32(currentrow[6]);
+            if (currentrow[7] != "")
+                newItem.TriggerQty = Convert.ToDouble(currentrow[7]);
+            if (currentrow[8] != "")
+                newItem.DiscountedQty = Convert.ToDouble(currentrow[8]);
+            if (currentrow[9] != "")
+                newItem.DiscountedPrice = Convert.ToDouble(currentrow[9]);
+            if (currentrow[10] != "")
+                newItem.TriggerUnitOfMeasureId = Convert.ToInt32(currentrow[10]);
+            if (currentrow[11] != "")
+                newItem.DiscountedUnitOfMeasureId = Convert.ToInt32(currentrow[11]);
+            if (currentrow[12] != "")
+                newItem.DiscountedProductId = Convert.ToInt32(currentrow[12]);
+            if (currentrow[13] != "")
+                newItem.BreaksAsString = currentrow[13];
+            if (currentrow[14] != "")
+                newItem.OriginGroup = Convert.ToInt32(currentrow[14]);
+            if (currentrow[15] != "")
+                newItem.OriginProductCategory = Convert.ToInt32(currentrow[15]);
+            newItem.Primary = Convert.ToInt32(currentrow[16]) > 0;
+            newItem.Recurrent = Convert.ToInt32(currentrow[17]) > 0;
+            if (currentrow.Length > 18)
+                newItem.ExtraFields = currentrow[18];
+            else
+                newItem.ExtraFields = string.Empty;
+            if (currentrow.Length > 19)
+                newItem.DateUsed = Convert.ToInt32(currentrow[19]);
+            else
+                newItem.DateUsed = 0;
+        }
+
+        #region OpenInvoice Index
+
+        public static int OpenInvoiceClientIdIndex = 0;
+        static int OpenInvoiceInvoiceNumberIndex = 1;
+        static int OpenInvoiceAmountIndex = 2;
+        static int OpenInvoiceBalanceIndex = 3;
+        static int OpenInvoiceDateIndex = 4;
+        static int OpenInvoiceDueDateIndex = 5;
+
+        #endregion
+
+        static int invoiceDetailReportCounter;
+
+        void CreateInvoiceDetails(string[] currentrow)
+        {
+            //if (InvoiceDetail.Details.Count == 37000)
+            //    return;
+            try
+            {
+                InvoiceDetail oiDetail = new InvoiceDetail();
+                oiDetail.InvoiceId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+                oiDetail.ProductId = Convert.ToInt32(currentrow[2], CultureInfo.InvariantCulture);
+                oiDetail.Quantity = Math.Round(Convert.ToDouble(currentrow[3], CultureInfo.InvariantCulture), 2);
+
+                var price = Convert.ToDouble(currentrow[4], CultureInfo.InvariantCulture);
+
+                oiDetail.Price = price;
+                if (!Config.ShowInvoiceTotal)
+                    oiDetail.Price = 0;
+
+                if (currentrow.Length > 5)
+                    oiDetail.ClientId = Convert.ToInt32(currentrow[5], CultureInfo.InvariantCulture);
+                if (currentrow.Length > 6)
+                    oiDetail.Date = Convert.ToDateTime(currentrow[6], CultureInfo.InvariantCulture);
+                if (currentrow.Length > 7)
+                    oiDetail.Comments = currentrow[7];
+                if (currentrow.Length > 8 && !string.IsNullOrEmpty(currentrow[8]))
+                    oiDetail.UnitOfMeasureId = Convert.ToInt32(currentrow[8], CultureInfo.InvariantCulture);
+                if (currentrow.Length > 10 && !string.IsNullOrEmpty(currentrow[10]))
+                    oiDetail.ExtraFields = currentrow[10];
+                //oiDetail.Product = Product.Find(oiDetail.ProductId);
+
+                int invoiceType = price < 0 ? 1 : 0;
+                Invoice.InvoiceTypeDic.TryGetValue(oiDetail.InvoiceId, out invoiceType);
+
+                oiDetail.InvoiceType = invoiceType;
+
+                InvoiceDetail.Add(oiDetail);
+            }
+            catch (Exception e)
+            {
+                invoiceDetailReportCounter++;
+                if (invoiceDetailReportCounter < 20)
+                {
+                    Logger.CreateLog(e);
+                    //Xamarin.Insights.Report(e);
+                    Logger.CreateLog(Concatenate(currentrow));
+                }
+            }
+        }
+
+        void CreateSalesmanAvailableCompany(string[] currentrow)
+        {
+            int clientId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+            int companyId = Convert.ToInt32(currentrow[2], CultureInfo.InvariantCulture);
+            string extrafields = currentrow[3];
+
+            SalesmanAvailableCompany.Add(clientId, companyId, extrafields);
+        }
+
+        void CreateCompanyInfo(string[] currentrow)
+        {
+            int id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+            string name = currentrow[1];
+            string extraFields = currentrow[2];
+
+            CompanyInfo company = new CompanyInfo();
+            company.CompanyName = name;
+            company.FromFile = true;
+            company.ExtraFields = extraFields;
+
+            if (currentrow.Length > 3)
+            {
+                company.CompanyAddress1 = currentrow[3];
+                company.CompanyAddress2 = currentrow.Length > 4 ? currentrow[4] : "";
+                company.Vendor = currentrow.Length > 5 ? currentrow[5] : "";
+                company.CompanyPhone = currentrow.Length > 6 ? currentrow[6] : "";
+                company.DUNS = currentrow.Length > 7 ? currentrow[7] : "";
+                company.Location = currentrow.Length > 8 ? currentrow[8] : "";
+                company.CommId = currentrow.Length > 9 ? currentrow[9] : "";
+                company.CompanyLicenses = currentrow.Length > 10 ? currentrow[10] : "";
+                company.CompanyEmail = currentrow.Length > 11 ? currentrow[11] : "";
+
+                if (currentrow.Length > 12)
+                    company.IsDefault = currentrow[12] == "0" ? false : Convert.ToBoolean(currentrow[12]);
+
+                if (currentrow.Length > 13)
+                    company.ExtraFields = currentrow[13];
+
+            }
+            else
+            {
+                company.CompanyAddress1 = UDFHelper.GetSingleUDF("address1", extraFields);
+                company.CompanyAddress2 = UDFHelper.GetSingleUDF("address2", extraFields);
+            }
+
+            if (currentrow.Length > 14 && !string.IsNullOrEmpty(currentrow[14]))
+            {
+                company.PaymentClientId = StringEncription.DecryptString(currentrow[14]);
+            }
+
+            if (currentrow.Length > 15 && !string.IsNullOrEmpty(currentrow[15]))
+            {
+                company.PaymentClientSecret = StringEncription.DecryptString(currentrow[15]);
+            }
+
+            if (currentrow.Length > 16 && !string.IsNullOrEmpty(currentrow[16]))
+            {
+                company.PaymentMerchant = StringEncription.DecryptString(currentrow[16]);
+            }
+
+            if (currentrow.Length > 17 && !string.IsNullOrEmpty(currentrow[17]))
+            {
+                company.BottomTextPrint = currentrow[17];
+            }
+
+            company.CompanyId = id;
+
+            CompanyInfo.Companies.Add(company);
+        }
+
+        void CreateClientAvailableCompany(string[] currentrow)
+        {
+            int clientId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+            int companyId = Convert.ToInt32(currentrow[2], CultureInfo.InvariantCulture);
+            string extrafields = currentrow[3];
+
+            ClientAvailableCompany.Add(clientId, companyId, extrafields);
+        }
+
+        void CreateBranch(string[] currentrow)
+        {
+            try
+            {
+                if (currentrow[1].Length == 0)
+                    return;
+                Branch branch = new Branch();
+                branch.Id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+                branch.Name = currentrow[1];
+                branch.ExtraFields = currentrow[2];
+                branch.Latitude = Convert.ToDouble(currentrow[3]);
+                branch.Longitude = Convert.ToDouble(currentrow[4]);
+                branch.Active = Convert.ToInt32(currentrow[5]);
+                branch.Color = Convert.ToInt32(currentrow[6]);
+                branch.Address1 = currentrow[7];
+                branch.Address2 = currentrow[8];
+                branch.City = currentrow[9];
+                branch.State = currentrow[10];
+                branch.ZipCode = currentrow[11];
+                branch.InventorySiteId = Convert.ToInt32(currentrow[12]);
+                branch.Email = currentrow[13];
+                branch.Phone = currentrow[14];
+                Branch.List.Add(branch);
+            }
+            catch (Exception ex)
+            {
+                //Log the exception
+                Logger.CreateLog(ex);
+                //Xamarin.Insights.Report(ex);
+                Logger.CreateLog(Concatenate(currentrow));
+            }
+        }
+
+        void CreateRetailProductPrices(string[] currentrow)
+        {
+            var pid = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+            var levelId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+            var price = Convert.ToDouble(currentrow[2], CultureInfo.InvariantCulture);
+            var allowance = Convert.ToDouble(currentrow[3], CultureInfo.InvariantCulture);
+
+            RetailProductPrice.Add(new RetailProductPrice()
+            {
+                ProductId = pid,
+                RetailPriceLevelId = levelId,
+                Price = price,
+                Allowance = allowance
+            });
+        }
+
+        void CreateSalesman(string[] currentrow)
+        {
+            try
+            {
+                if (currentrow[1].Length == 0)
+                    return;
+                Salesman salesman = new Salesman();
+                salesman.Id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+                salesman.Name = currentrow[1];
+                salesman.RouteNumber = currentrow[2];
+                salesman.Email = currentrow[3];
+                salesman.Password = currentrow[4];
+                salesman.CreatedLocally = Convert.ToInt32(currentrow[5], CultureInfo.InvariantCulture) > 0;
+                salesman.InventorySiteId = Convert.ToInt32(currentrow[6], CultureInfo.InvariantCulture);
+                salesman.Phone = currentrow[7];
+                salesman.IsActive = true;
+
+                if (currentrow.Length > 8)
+                    salesman.IsActive = Convert.ToInt32(currentrow[8], CultureInfo.InvariantCulture) > 0;
+
+                if (currentrow.Length > 9)
+                    salesman.OriginalId = currentrow[9];
+
+                if (currentrow.Length > 10)
+                    salesman.ExtraProperties = currentrow[10];
+
+                if (currentrow.Length > 11)
+                    salesman.PresalePrefix = currentrow[11];
+
+                if (currentrow.Length > 12)
+                    salesman.PrintedPrefix = currentrow[12];
+
+                if (currentrow.Length > 13)
+                    salesman.SequencePrefix = currentrow[13];
+
+                if (currentrow.Length > 14)
+                {
+                    var ticks = Convert.ToInt64(currentrow[14]);
+                    if (ticks > 0)
+                        salesman.SequenceExpirationDate = DateTime.FromBinary(ticks);
+                }
+
+                if (currentrow.Length > 15)
+                    salesman.SequenceFrom = Convert.ToInt32(currentrow[15]);
+
+                if (currentrow.Length > 16)
+                    salesman.SequenceTo = Convert.ToInt32(currentrow[16]);
+
+                if (currentrow.Length > 17)
+                    salesman.SequenceCAI = currentrow[17];
+
+                if (currentrow.Length > 18)
+                    salesman.BranchId = Convert.ToInt32(currentrow[18]);
+
+                if (currentrow.Length > 19)
+                    salesman.Loginname = currentrow[19];
+
+                if (currentrow.Length > 20)
+                    salesman.Roles = (SalesmanRole)Convert.ToInt32(currentrow[20]);
+                else
+                    salesman.Roles = SalesmanRole.Driver | SalesmanRole.DSD;
+
+                if (Config.SalesmanSeqValues && Config.SalesmanId == salesman.Id)
+                {
+                    salesman.PresalePrefix = Config.InvoicePresalePrefix;
+                    salesman.PrintedPrefix = Config.InvoicePrefix;
+                    salesman.SequencePrefix = Config.SalesmanSeqPrefix;
+                    salesman.SequenceExpirationDate = Config.SalesmanSeqExpirationDate;
+                    salesman.SequenceFrom = Config.SalesmanSeqFrom;
+                    salesman.SequenceTo = Config.SalesmanSeqTo;
+                }
+
+                Salesman.AddSalesman(salesman);
+
+                if (salesman.Id == Config.SalesmanId)
+                    Salesman.CurrentSalesman = salesman;
+            }
+            catch (Exception ex)
+            {
+                //Log the exception
+                Logger.CreateLog(ex);
+                //Xamarin.Insights.Report(ex);
+                Logger.CreateLog(Concatenate(currentrow));
+            }
+        }
+
+        void CreateRoute(string[] currentrow)
+        {
+            try
+            {
+                var id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+                var day = Convert.ToInt32(currentrow[3], CultureInfo.InvariantCulture);
+                var clientId = Convert.ToInt32(currentrow[2], CultureInfo.InvariantCulture);
+                var stop = Int32.MaxValue;
+
+                if (currentrow.Length > 4)
+                    stop = Convert.ToInt32(currentrow[4], CultureInfo.InvariantCulture);
+
+                DateTime start = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek + 1);
+
+                var routeEx = new RouteEx();
+                routeEx.Id = id;
+
+                routeEx.Client = Client.Find(clientId);
+                if (routeEx.Client == null)
+                    return;
+
+                if (day == 6 && 0 == (int)DateTime.Today.DayOfWeek)
+                    routeEx.Date = DateTime.Today;
+                else
+                    routeEx.Date = start.AddDays(day);
+
+                routeEx.Stop = stop;
+                routeEx.FromDelivery = false;
+
+                if (routeEx.Order == null && routeEx.Client == null)
+                    Logger.CreateLog("CreateRoute has both orders and Client in null: " + currentrow[2]);
+                else
+                {
+                    var oldRoute = RouteEx.Routes.FirstOrDefault(x => x.Id == id);
+                    if (oldRoute == null)
+                        RouteEx.Routes.Add(routeEx);
+                    else
+                        oldRoute.Stop = routeEx.Stop;
+                }
+            }
+            catch (Exception ex)
+            {
+                //Log the exception
+                Logger.CreateLog(ex);
+                //Xamarin.Insights.Report(ex);
+                Logger.CreateLog(Concatenate(currentrow));
+            }
+        }
+
+        void CreateClientOffer(string[] currentrow)
+        {
+            try
+            {
+                ClientsOffer co = new ClientsOffer();
+                co.OfferId = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+                co.ClientId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+                ClientsOffer.AddClientsOffer(co);
+            }
+            catch (Exception ee)
+            {
+                Logger.CreateLog(ee);
+                Logger.CreateLog(Concatenate(currentrow));
+                //Xamarin.Insights.Report(ee);
+            }
+        }
+
+        static int productPriceCounter;
+
+        void CreateProductPrice(string[] currentrow)
+        {
+            try
+            {
+                int productId = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+                int clientId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+                ProductPrice pp = new ProductPrice();
+                pp.ClientId = clientId;
+                pp.ProductId = productId;
+                pp.IsBasedOnPriceLevel = Convert.ToInt32(currentrow[2], CultureInfo.InvariantCulture) > 0;
+                pp.PriceLevelId = Convert.ToInt32(currentrow[3], CultureInfo.InvariantCulture);
+                pp.Price = Convert.ToDouble(currentrow[4], CultureInfo.InvariantCulture);
+                if (currentrow.Length > 5)
+                    pp.Allowance = Convert.ToDouble(currentrow[5], CultureInfo.InvariantCulture);
+                if (currentrow.Length > 6)
+                    pp.Extrafields = currentrow[6];
+
+                pp.PartNumber = UDFHelper.GetSingleUDF("partnumber", pp.Extrafields);
+
+                ProductPrice.Add(pp);
+            }
+            catch (Exception ex)
+            {
+                productPriceCounter++;
+                if (productPriceCounter < 20)
+                {
+                    //Log the exception
+                    Logger.CreateLog(ex);
+                    //Xamarin.Insights.Report(ex);
+                    Logger.CreateLog(Concatenate(currentrow));
+                }
+            }
+        }
+
+        void CreateOffer(string[] currentrow, bool checkIfExists = false)
+        {
+            try
+            {
+                Offer offer = new Offer();
+                offer.OfferId = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+
+                if (currentrow.Length > 12)
+                    offer.OriginalId = currentrow[12];
+
+                if (checkIfExists)
+                {
+                    if (!string.IsNullOrEmpty(offer.OriginalId))
+                    {
+                        var alreadyAdded1 = Offer.OfferList.FirstOrDefault(x => x.OriginalId == offer.OriginalId);
+                        if (alreadyAdded1 != null)
+                            return;
+                    }
+                    else
+                    {
+                        var alreadyAdded = Offer.OfferList.FirstOrDefault(x => x.OfferId == offer.OfferId);
+                        if (alreadyAdded != null)
+                            return;
+                    }
+                }
+
+                offer.FromDate = Convert.ToDateTime(currentrow[1], CultureInfo.InvariantCulture);
+                offer.ToDate = Convert.ToDateTime(currentrow[2], CultureInfo.InvariantCulture);
+                offer.ToDate = offer.ToDate.Date.AddMinutes(1399);
+
+                var offerType = Convert.ToInt32(currentrow[3], CultureInfo.InvariantCulture);
+                if (offerType == 11)
+                    offerType = 0;
+                offer.Type = (OfferType)offerType;
+                offer.ProductId = Convert.ToInt32(currentrow[4], CultureInfo.InvariantCulture);
+                if (offer.Type == OfferType.Discount || offer.Type == OfferType.DiscountQty || offer.Type == OfferType.DiscountAmount)
+                    offer.Product = Product.Find(offer.ProductId, true);
+                else
+                    offer.Product = Product.Find(offer.ProductId);
+                if (offer.Product == null)
+                {
+                    Logger.CreateLog("Offer has a null product: " + offer.ProductId.ToString(CultureInfo.InvariantCulture));
+                    return;
+                }
+                offer.MinimunQty = Convert.ToSingle(currentrow[5], CultureInfo.InvariantCulture);
+                offer.Price = Convert.ToDouble(currentrow[6], CultureInfo.InvariantCulture);
+                offer.FreeQty = Convert.ToSingle(currentrow[7], CultureInfo.InvariantCulture);
+                if (currentrow.Length > 8)
+                    offer.ClienBased = Convert.ToInt32(currentrow[8], CultureInfo.InvariantCulture) > 0;
+                if (currentrow.Length > 9)
+                    offer.UnitOfMeasureId = Convert.ToInt32(currentrow[9], CultureInfo.InvariantCulture);
+
+                if (currentrow.Length > 10)
+                    offer.ExtraFields = currentrow[10];
+
+                Offer.AddOffer(offer);
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                Logger.CreateLog(Concatenate(currentrow));
+            }
+        }
+
+        void CreateCategory(string[] currentrow)
+        {
+            try
+            {
+                if (currentrow[1].Length == 0)
+                    return;
+                Category cat = new Category();
+                cat.CategoryId = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+                cat.Name = currentrow[1];
+                if (currentrow.Length > 2)
+                {
+                    try
+                    {
+                        cat.VisibleIn = Convert.ToInt32(currentrow[2], CultureInfo.InvariantCulture);
+
+                        if (cat.VisibleIn == 1 || cat.VisibleIn == -1)
+                            return;
+                    }
+                    catch
+                    {
+                        cat.VisibleIn = 0;
+                    }
+                }
+                else
+                    cat.VisibleIn = 0;
+
+                if (currentrow.Length > 3)
+                    cat.ParentCategoryId = Convert.ToInt32(currentrow[3], CultureInfo.InvariantCulture);
+
+                if (currentrow.Length > 4)
+                    cat.TypeServiPart = (CategoryServiPartType)Convert.ToInt32(currentrow[4], CultureInfo.InvariantCulture);
+
+                if (currentrow.Length > 5)
+                    cat.ExtraFields = currentrow[5] ?? string.Empty;
+
+                Category.AddCategory(cat);
+            }
+            catch (Exception ex)
+            {
+                //Log the exception
+                Logger.CreateLog(ex);
+                //Xamarin.Insights.Report(ex);
+                Logger.CreateLog(Concatenate(currentrow));
+            }
+        }
+
+        void LoadBuildToQty(string[] parts)
+        {
+            int productID = Convert.ToInt32(parts[0], CultureInfo.InvariantCulture);
+            int clientId = Convert.ToInt32(parts[1], CultureInfo.InvariantCulture);
+            float qtyty = Convert.ToSingle(parts[2], CultureInfo.InvariantCulture);
+
+            BuildToQty btq = new BuildToQty();
+            btq.ClientId = clientId;
+            btq.ProductId = productID;
+            btq.Qty = qtyty;
+
+            BuildToQty.List.Add(btq);
+        }
+
+        void CreateUnitOfMeasure(string[] currentrow)
+        {
+            bool isActive = true;
+            if (currentrow.Length > 8)
+                isActive = Convert.ToBoolean(currentrow[8], CultureInfo.InvariantCulture);
+
+            int id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+            string name = currentrow[1];
+            float conversion = Convert.ToSingle(currentrow[2], CultureInfo.InvariantCulture);
+            string family = currentrow[3];
+            bool isBase = currentrow[4] == "1";
+            bool isDefault = currentrow[5] == "1";
+            string originalId = currentrow[6];
+            string defaultPurchase = string.Empty;
+            bool createdLocally = false;
+            string familyName = string.Empty;
+            string extraFields = string.Empty;
+
+            if (currentrow.Length > 7)
+                defaultPurchase = currentrow[7];
+
+            if (currentrow.Length > 9)
+                createdLocally = currentrow[9] == "1";
+
+            if (currentrow.Length > 10)
+                familyName = currentrow[10] ?? string.Empty;
+
+            if (currentrow.Length > 11)
+                extraFields = currentrow[11] ?? string.Empty;
+
+            if (!isActive)
+                UnitOfMeasure.InactiveUoM.Add(new UnitOfMeasure() { Conversion = conversion, FamilyId = family, Id = id, IsBase = isBase, IsDefault = isDefault, Name = name, OriginalId = originalId, DefaultPurchase = defaultPurchase, CreatedLocally = createdLocally, FamilyName = familyName, ExtraFields = extraFields });
+            else
+                UnitOfMeasure.List.Add(new UnitOfMeasure() { Conversion = conversion, FamilyId = family, Id = id, IsBase = isBase, IsDefault = isDefault, Name = name, OriginalId = originalId, DefaultPurchase = defaultPurchase, CreatedLocally = createdLocally, FamilyName = familyName, ExtraFields = extraFields });
+        }
+
+        void CreateConsignment(string[] currentrow)
+        {
+            var clientID = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+            var client = Client.Find(clientID);
+            if (client == null)
+            {
+                return;
+            }
+            if (client.ConsignmentTemplate == null)
+                client.ConsignmentTemplate = new List<Consignment>();
+            var pId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+            var product = Product.Find(pId);
+            if (product == null)
+            {
+                return;
+            }
+            var qty = Convert.ToSingle(currentrow[2], CultureInfo.InvariantCulture);
+            var price = Convert.ToDouble(currentrow[3], CultureInfo.InvariantCulture);
+            client.ConsignmentTemplate.Add(new Consignment() { Client = client, Product = product, Qty = qty, Price = price });
+        }
+
+        ProductVisibleSalesman CreateProductVisibleToClient(string[] currentrow)
+        {
+            int id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+            int productId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+
+            return new ProductVisibleSalesman() { Id = id, ProductId = productId };
+        }
+
+        void CreateRetailPriceLevel(string[] currentrow)
+        {
+            try
+            {
+                var id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+                var name = currentrow[1];
+                var originalId = currentrow[2];
+                var retailpricelvltype = Convert.ToInt32(currentrow[3], CultureInfo.InvariantCulture);
+                var percentage = Convert.ToDouble(currentrow[4], CultureInfo.InvariantCulture);
+                var createdLocally = Convert.ToInt32(currentrow[5], CultureInfo.InvariantCulture) > 0;
+
+                RetailPriceLevel.Add(new RetailPriceLevel()
+                {
+                    Id = id,
+                    Name = name,
+                    OriginalId = originalId,
+                    RetailPriceLevelType = retailpricelvltype,
+                    Percentage = percentage,
+                    CreatedLocally = createdLocally
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog("Excpetion reading retail price level ==>" + ex.ToString());
+            }
+        }
+
+        void CreateProductTaxability(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+            var productId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+            var clientId = Convert.ToInt32(currentrow[2], CultureInfo.InvariantCulture);
+            var taxed = Convert.ToInt32(currentrow[3], CultureInfo.InvariantCulture) > 0;
+            var extraFields = currentrow[4];
+            var taxRate = Convert.ToDouble(currentrow[5], CultureInfo.InvariantCulture);
+            ProductTaxability.List.Add(new ProductTaxability() { ClientId = clientId, ExtraFields = extraFields, Id = id, ProductId = productId, Taxed = taxed, TaxRate = taxRate });
         }
 
         void CreateDefaultInventory(string[] currentrow)
@@ -1192,13 +3097,13 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(prod.NonVisibleExtraFieldsAsString))
                 {
-                    var nef = DataAccess.GetSingleUDF("inventoryByWeight", prod.NonVisibleExtraFieldsAsString);
+                    var nef = UDFHelper.GetSingleUDF("inventoryByWeight", prod.NonVisibleExtraFieldsAsString);
                     prod.InventoryByWeight = !string.IsNullOrEmpty(nef) && nef == "1";
                 }
 
                 if (!string.IsNullOrEmpty(prod.ExtraPropertiesAsString))
                 {
-                    var caseCount = DataAccess.GetSingleUDF("CASECOUNT", prod.ExtraPropertiesAsString);
+                    var caseCount = UDFHelper.GetSingleUDF("CASECOUNT", prod.ExtraPropertiesAsString);
                     int cc = 1;
                     int.TryParse(caseCount, out cc);
                     prod.CaseCount = cc;
@@ -1221,7 +3126,7 @@ namespace LaceupMigration
                 Logger.CreateLog("Error creating product " + currentrow[0]);
 
                 Logger.CreateLog(e);
-                Logger.CreateLog(DataAccess.Concatenate(currentrow));
+                Logger.CreateLog(Concatenate(currentrow));
             }
         }
 
@@ -1285,41 +3190,41 @@ namespace LaceupMigration
                                 continue;
                         }
 
-                        string[] currentrow = currentline.Split(DataAccess.DataLineSplitter);
+                        string[] currentrow = currentline.Split(DataLineSplitter);
 
                         switch (currenttable)
                         {
                             case 21:
-                                DataAccess.CreateInvoice(currentrow);
+                                CreateInvoice(currentrow);
                                 continue;
                             case 1:
-                                DataAccess.CreateClient(currentrow, true);
+                                CreateClient(currentrow, true);
                                 continue;
                             case 2:
                                 if (fromDownload)
-                                    DataAccess.CreateBatch(currentrow, createdBatches);
+                                    CreateBatch(currentrow, createdBatches);
                                 continue;
                             case 3:
                                 if (fromDownload)
-                                    DataAccess.CreateOrder(currentrow, createdBatches, createdOrders);
+                                    CreateOrder(currentrow, createdBatches, createdOrders);
                                 continue;
                             case 4:
                                 if (fromDownload)
-                                    DataAccess.CreateRouteEX(currentrow);
+                                    CreateRouteEX(currentrow);
                                 continue;
                             case 5:
                                 if (fromDownload)
-                                    DataAccess.CreateOrderDetails(currentrow, createdBatches, createdOrders);
+                                    CreateOrderDetails(currentrow, createdBatches, createdOrders);
                                 continue;
                             case 6:
                                 if (fromDownload && updateInventory)
                                     LoadInventorySite(currentrow);
                                 continue;
                             case 7:
-                                DataAccess.CreateShipment(currentrow);
+                                CreateShipment(currentrow);
                                 continue;
                             case 23:
-                                DataAccess.CreateOffer(currentrow, true);
+                                CreateOffer(currentrow, true);
                                 continue;
                         }
                     }
@@ -1351,7 +3256,7 @@ namespace LaceupMigration
                     foreach (var detail in order.Details)
                         if (detail.ExtraFields.IndexOf("RelatedDetail") != -1)
                         {
-                            var pair = DataAccess.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
+                            var pair = UDFHelper.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
                             if (pair != null)
                             {
                                 var relatedDetail = order.Details.FirstOrDefault(x => x.OriginalId == pair.Value);
@@ -1376,6 +3281,27 @@ namespace LaceupMigration
                 var line = frame.GetFileLineNumber();
 
                 Logger.CreateLog("LaceUPMobileClassesIOS.DataAccess.ProcessDeliveryFile LINE=" + line + "\n" + ex.Message);
+            }
+        }
+
+        void CreateShipment(string[] currentrow)
+        {
+            try
+            {
+                Shipment shp = new Shipment();
+                shp.Id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+                shp.Name = currentrow[1];
+                shp.ExtraFields = currentrow[2];
+                shp.Date = DateTime.FromBinary(Convert.ToInt64(currentrow[3], CultureInfo.InvariantCulture));
+                shp.TruckId = Convert.ToInt32(currentrow[4], CultureInfo.InvariantCulture);
+                shp.DriverId = Convert.ToInt32(currentrow[5], CultureInfo.InvariantCulture);
+                shp.TruckName = currentrow[13];
+
+                Shipment.CurrentShipment = shp;
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
             }
         }
 
@@ -1808,7 +3734,7 @@ namespace LaceupMigration
 
                         if (currenttable == 24 && !currentline.Contains((char)20)) continue;
 
-                        currentrow = currentline.Split(DataAccess.DataLineSplitter);
+                        currentrow = currentline.Split(DataLineSplitter);
                         switch (currenttable)
                         {
                             case 1:
@@ -2570,10 +4496,10 @@ namespace LaceupMigration
                 Logger.CreateLog("Communicator version got " + Config.CommunicatorVersion + " in " + DateTime.Now.Subtract(now).TotalSeconds);
 
                 now = DateTime.Now;
-                DataAccess.GetSalesmanSettings();
+                GetSalesmanSettings();
                 Logger.CreateLog("Salesman Settings downloaded in " + DateTime.Now.Subtract(now).TotalSeconds);
 
-                DataAccess.SendSalesmanDeviceInfo();
+                SendSalesmanDeviceInfo();
 
                 //syncloadondemand is always active for new versions
                 if (Config.CheckCommunicatorVersion("26.0.0.0"))
@@ -2651,13 +4577,13 @@ namespace LaceupMigration
                     bool inventoryOnDemand = Config.CheckCommunicatorVersion("13.0.0.0");
 
                     now = DateTime.Now;
-                    DataAccess.UnzipFile(basefileP, targetfileP);
+                    ZipMethods.UnzipFile(basefileP, targetfileP);
                     LoadData(Config.ProductStoreFile, updateInventory && !inventoryOnDemand, !gotUnitOfMeasures);
                     Logger.CreateLog("Products processed in " + DateTime.Now.Subtract(now).TotalSeconds);
                     File.Delete(basefileP);
 
                     now = DateTime.Now;
-                    DataAccess.UnzipFile(basefileC, targetfileC);
+                    ZipMethods.UnzipFile(basefileC, targetfileC);
                     Client.DeleteClients();
                     LoadData(Config.ClientStoreFile, updateInventory && !inventoryOnDemand, !gotUnitOfMeasures);
                     Logger.CreateLog("Clients processed in " + DateTime.Now.Subtract(now).TotalSeconds);
@@ -2681,7 +4607,7 @@ namespace LaceupMigration
 
                             netaccess.ReceiveFile(tmp);
 
-                            DataAccess.LoadParLevels(tmp);
+                            LoadParLevels(tmp);
 
                             if (File.Exists(tmp))
                                 File.Delete(tmp);
@@ -2720,7 +4646,7 @@ namespace LaceupMigration
 
                                     netaccess.ReceiveFile(Config.DailyParLevelFile);
 
-                                    DataAccess.LoadClientDailyParLevel(Config.DailyParLevelFile);
+                                    LoadClientDailyParLevel(Config.DailyParLevelFile);
                                 }
                             }
                             catch (Exception ee)
@@ -2738,7 +4664,7 @@ namespace LaceupMigration
 
                                 netaccess.ReceiveFile(Config.ParLevelHistoryFile);
 
-                                DataAccess.LoadParLevelHistory();
+                                LoadParLevelHistory();
                             }
                             catch (Exception ee)
                             {
@@ -2771,7 +4697,7 @@ namespace LaceupMigration
 
                             netaccess.ReceiveFile(Config.OrderHistoryFile);
 
-                            DataAccess.LoadOrderHistory();
+                            LoadOrderHistory();
                         }
                         catch (Exception ee)
                         {
@@ -2797,7 +4723,7 @@ namespace LaceupMigration
 
                             netaccess.ReceiveFile(Config.ProjectionFile);
 
-                            DataAccess.LoadProjectionValues();
+                            LoadProjectionValues();
                         }
                         catch (Exception ee)
                         {
@@ -2820,7 +4746,7 @@ namespace LaceupMigration
 
                             netaccess.ReceiveFile(tempFile);
 
-                            DataAccess.LoadClientDepartsFile(tempFile);
+                            LoadClientDepartsFile(tempFile);
                         }
                         catch (Exception ee)
                         {
@@ -2878,7 +4804,7 @@ namespace LaceupMigration
                             netaccess.WriteStringToNetwork(Config.SalesmanId.ToString(CultureInfo.InvariantCulture) + "," + DateTime.Now.ToString(CultureInfo.InvariantCulture) + ",yes");
                             netaccess.ReceiveFile(deliveriesInSite);
 
-                            DataAccess.LoadDeliveriesInSite(deliveriesInSite);
+                            LoadDeliveriesInSite(deliveriesInSite);
                         }
                         catch (Exception ex)
                         {
@@ -3059,11 +4985,11 @@ namespace LaceupMigration
                     {
                         var deliveries = Order.Orders.Where(x => x.IsDelivery && (x.SignaturePoints == null || x.SignaturePoints.Count == 0));
                         foreach (var d in deliveries)
-                            DataAccess.GetDeliverySignature(d);
+                            GetDeliverySignature(d);
                     }
 
                     if (Config.CheckCommunicatorVersion("46.2.0.0"))
-                        DataAccess.GetCompaniesInfo();
+                        GetCompaniesInfo();
 
                     if (Config.CheckCommunicatorVersion("46.2.0"))
                         GetProductLabelDecoder();
@@ -3137,7 +5063,7 @@ namespace LaceupMigration
                         item.UpdateInventory(item.CurrentWarehouseInventory, null, 1, item.Weight);
                     }
 
-                SaveInventory();
+                ProductInventory.Save();
             }
 
             SaveLastSync();
@@ -3181,6 +5107,469 @@ namespace LaceupMigration
         }
 
         #region Download Data
+
+        void GetCompaniesInfo()
+        {
+            var logosZip = Path.GetTempFileName();
+
+            logosZip = logosZip.Replace(".tmp", ".zip");
+
+            try
+            {
+                using (var netaccess = new NetAccess())
+                {
+                    netaccess.OpenConnection();
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    netaccess.WriteStringToNetwork("GetCompanyLogosCommand");
+
+                    var d = netaccess.ReadStringFromNetwork();
+
+                    if (d == "sendinglogosnow")
+                    {
+                        netaccess.ReceiveFile(logosZip);
+
+                        ProcessLogosZipFile(logosZip);
+
+                        AsignLogosToCompanies();
+                    }
+
+                    netaccess.CloseConnection();
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                if (File.Exists(logosZip))
+                    File.Delete(logosZip);
+            }
+        }
+
+        #region process order sign
+
+        private static List<SixLabors.ImageSharp.Point> ExtractSignaturePointsFromBitmap(Image<Rgba32> image)
+        {
+            var signaturePoints = new List<SixLabors.ImageSharp.Point>();
+
+            if (image == null) return signaturePoints;
+
+            int width = image.Width;
+            int height = image.Height;
+
+            // Create a boolean array to track visited pixels
+            bool[,] visited = new bool[width, height];
+
+            // Find signature pixels (assuming dark pixels on light background)
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    // Check if pixel is part of signature (dark pixel)
+                    if (IsSignaturePixel(image[x, y]) && !visited[x, y])
+                    {
+                        // Trace the stroke from this point
+                        var strokePoints = TraceStroke(image, width, height, x, y, visited);
+                        signaturePoints.AddRange(strokePoints);
+
+                        // Add empty point to separate strokes (Point.Empty equivalent)
+                        signaturePoints.Add(new SixLabors.ImageSharp.Point(-1, -1)); // Using -1,-1 as empty marker
+                    }
+                }
+            }
+
+            return signaturePoints;
+        }
+
+        private static bool IsSignaturePixel(Rgba32 pixel)
+        {
+            // Extract RGB values
+            int alpha = pixel.A;
+            int red = pixel.R;
+            int green = pixel.G;
+            int blue = pixel.B;
+
+            // Consider pixel as signature if it's dark enough and not transparent
+            int brightness = (red + green + blue) / 3;
+            return alpha > 128 && brightness < 200; // Adjust threshold as needed
+        }
+
+        private static List<SixLabors.ImageSharp.Point> TraceStroke(Image<Rgba32> image, int width, int height,
+            int startX, int startY, bool[,] visited)
+        {
+            var strokePoints = new List<SixLabors.ImageSharp.Point>();
+            var toProcess = new Queue<SixLabors.ImageSharp.Point>();
+
+            toProcess.Enqueue(new SixLabors.ImageSharp.Point(startX, startY));
+
+            // Directions for 8-connected pixels (including diagonals)
+            int[] dx = { -1, -1, -1, 0, 0, 1, 1, 1 };
+            int[] dy = { -1, 0, 1, -1, 1, -1, 0, 1 };
+
+            while (toProcess.Count > 0)
+            {
+                var current = toProcess.Dequeue();
+                int x = current.X;
+                int y = current.Y;
+
+                if (x < 0 || x >= width || y < 0 || y >= height || visited[x, y]) continue;
+
+                if (!IsSignaturePixel(image[x, y])) continue;
+
+                visited[x, y] = true;
+                strokePoints.Add(new SixLabors.ImageSharp.Point(x, y));
+
+                // Check 8-connected neighbors
+                for (int i = 0; i < 8; i++)
+                {
+                    int newX = x + dx[i];
+                    int newY = y + dy[i];
+
+                    if (newX >= 0 && newX < width && newY >= 0 && newY < height && !visited[newX, newY])
+                    {
+                        toProcess.Enqueue(new SixLabors.ImageSharp.Point(newX, newY));
+                    }
+                }
+            }
+
+            // Sort points to create a more natural stroke order
+            if (strokePoints.Count > 1)
+            {
+                strokePoints = OrderPointsForStroke(strokePoints);
+            }
+
+            return strokePoints;
+        }
+
+        private static List<SixLabors.ImageSharp.Point> OrderPointsForStroke(List<SixLabors.ImageSharp.Point> points)
+        {
+            if (points.Count <= 2) return points;
+
+            var orderedPoints = new List<SixLabors.ImageSharp.Point>();
+            var remainingPoints = new List<SixLabors.ImageSharp.Point>(points);
+
+            // Start with the leftmost point (or topmost if same X)
+            var currentPoint = remainingPoints.OrderBy(p => p.X).ThenBy(p => p.Y).First();
+            orderedPoints.Add(currentPoint);
+            remainingPoints.Remove(currentPoint);
+
+            // Connect points by finding the nearest unvisited point
+            while (remainingPoints.Count > 0)
+            {
+                var nearest = remainingPoints.OrderBy(p =>
+                        Math.Sqrt(Math.Pow(p.X - currentPoint.X, 2) + Math.Pow(p.Y - currentPoint.Y, 2)))
+                    .First();
+
+                orderedPoints.Add(nearest);
+                remainingPoints.Remove(nearest);
+                currentPoint = nearest;
+            }
+
+            return orderedPoints;
+        }
+
+        private static void ProcessAndSaveSignaturePoints(Order order, List<SixLabors.ImageSharp.Point> signaturePoints,
+            string signatureName)
+        {
+            int minX = int.MaxValue;
+            int minY = int.MaxValue;
+            int width = 0;
+            int height = 0;
+
+            foreach (var point in signaturePoints)
+            {
+                if (point.X == -1 && point.Y == -1) // Check for empty marker
+                    continue;
+
+                if (minX > point.X) minX = point.X;
+                if (minY > point.Y) minY = point.Y;
+                if (width < point.X) width = point.X;
+                if (height < point.Y) height = point.Y;
+            }
+
+            if (minX == int.MaxValue || minY == int.MaxValue)
+            {
+                Logger.CreateLog("Signature too small or empty");
+                return;
+            }
+
+            // round up to 32
+            int x = Convert.ToInt32((width + 31 - minX)) / 32 * 32;
+            int y = Convert.ToInt32((height + 31 - minY)) / 32 * 32;
+
+            if (x < 10 || y < 10)
+            {
+                Logger.CreateLog("Signature dimensions too small");
+                return;
+            }
+
+            int factor = 1;
+            if (x > 320 && x < 641)
+                factor = 2;
+            else if (x > 640 && x < 961)
+                factor = 3;
+            else if (x > 960) factor = 4;
+
+            if (x > 300)
+            {
+                // reduce by factor
+                for (int i = 0; i < signaturePoints.Count; i++)
+                {
+                    if (!(signaturePoints[i].X == -1 && signaturePoints[i].Y == -1)) // Check for empty marker
+                    {
+                        var p = new SixLabors.ImageSharp.Point(signaturePoints[i].X / factor,
+                            signaturePoints[i].Y / factor);
+                        signaturePoints[i] = p;
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(order.SignatureUniqueId)) order.SignatureUniqueId = Guid.NewGuid().ToString("N");
+            order.SignatureName = signatureName;
+            order.SignaturePoints = signaturePoints;
+            order.Save();
+        }
+
+        #endregion
+
+        void ProcessLogosZipFile(string logosZip)
+        {
+            if (Directory.Exists(Config.CompanyLogosPath))
+                Directory.Delete(Config.CompanyLogosPath, true);
+
+            Directory.CreateDirectory(Config.CompanyLogosPath);
+
+            FastZip zip = new FastZip();
+            zip.ExtractZip(logosZip, Config.CompanyLogosPath, null);
+        }
+
+        void GetDeliverySignature(Order order)
+        {
+            try
+            {
+                Logger.CreateLog("GetExternalInvoiceSignature");
+
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // send the orders
+                    netaccess.WriteStringToNetwork("GetDeliverySignatureCommand");
+                    netaccess.WriteStringToNetwork(order.Client.ClientId + "," + order.UniqueId);
+
+                    var reply = netaccess.ReadStringFromNetwork();
+                    if (reply != "nosignature")
+                    {
+                        var tempFile = Path.GetTempFileName() + ".png";
+                        netaccess.ReceiveFile(tempFile);
+
+                        using (var image = SixLabors.ImageSharp.Image.Load<Rgba32>(tempFile))
+                        {
+                            var signaturePoints = ExtractSignaturePointsFromBitmap(image);
+
+                            if (signaturePoints == null || signaturePoints.Count == 0)
+                            {
+                                Logger.CreateLog("No signature points found in bitmap");
+                                return;
+                            }
+
+                            // Process points similar to your original code
+                            ProcessAndSaveSignaturePoints(order, signaturePoints, reply);
+                        }
+                    }
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    Logger.CreateLog("Done ExternalInvoiceSignatureCommand");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
+        void LoadClientDepartsFile(string tempFile)
+        {
+            if (!File.Exists(tempFile))
+                return;
+
+            var updated = ClientDepartment.Departments.Where(x => x.Updated).ToList();
+
+            ClientDepartment.Clear();
+
+            using (StreamReader reader = new StreamReader(tempFile))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    var dep = ClientDepartment.CreateDepartment(line);
+
+                    var d = updated.FirstOrDefault(x => x.UniqueId == dep.UniqueId);
+                    if (d != null)
+                    {
+                        dep.Name = d.Name;
+                        dep.ExtraFields = d.ExtraFields;
+                        dep.Updated = true;
+
+                        updated.Remove(d);
+                    }
+
+                    ClientDepartment.Departments.Add(dep);
+                }
+            }
+
+            ClientDepartment.Departments.AddRange(updated);
+
+            ClientDepartment.Save();
+        }
+
+        
+
+        void LoadClientDailyParLevel(string file)
+        {
+            try
+            {
+                if (File.Exists(file))
+                {
+                    ClientDailyParLevel.Clear();
+
+                    using (StreamReader reader = new StreamReader(file))
+                    {
+                        string line;
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            var parts = line.Split(DataLineSplitter);
+
+                            ClientDailyParLevel.CreateClientDailyParLevel(parts);
+                        }
+                    }
+
+                    ClientDailyParLevel.LoadCreatedParLevels();
+                }
+                else
+                    Logger.CreateLog("Temporal file for ClientDailyParLevel not found");
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+
+        }
+
+        void LoadParLevels(string tmpFile)
+        {
+            ParLevel.Clear();
+
+            if (File.Exists(Config.ParLevelFile))
+            {
+                using (var reader = new StreamReader(Config.ParLevelFile))
+                {
+                    string currentline;
+
+                    while ((currentline = reader.ReadLine()) != null)
+                    {
+                        string[] currentrow = currentline.Split(DataLineSplitter);
+                        CreateParLevel(currentrow);
+                    }
+                }
+            }
+
+            using (var reader = new StreamReader(tmpFile))
+            {
+                string currentline;
+
+                while ((currentline = reader.ReadLine()) != null)
+                {
+                    string[] currentrow = currentline.Split(DataLineSplitter);
+                    CreateParLevel(currentrow);
+                }
+            }
+        }
+
+        void CreateParLevel(string[] currentrow)
+        {
+            try
+            {
+                var prodId = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+                var qty = Convert.ToSingle(currentrow[1], CultureInfo.InvariantCulture);
+
+                var product = Product.Products.FirstOrDefault(x => x.ProductId == prodId);
+
+                if (product != null && ParLevel.List.FirstOrDefault(x => x.Product.ProductId == prodId) == null)
+                    ParLevel.List.Add(new ParLevel() { Product = product, Qty = qty });
+                else
+                {
+                    Logger.CreateLog("The product with ID " + currentrow[0] + " was not found. These are the par levels in the system: ");
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                //Xamarin.Insights.Report(e);
+                Logger.CreateLog(Concatenate(currentrow));
+            }
+        }
+
+        void SendSalesmanDeviceInfo()
+        {
+            try
+            {
+                NetAccess.GetCommunicatorVersion();
+
+                if (!Config.CheckCommunicatorVersion("24.0.0.0"))
+                {
+                    Logger.CreateLog("Communicator to old to send SalesmanDeviceInfo");
+                    return;
+                }
+
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // send the orders
+                    netaccess.WriteStringToNetwork("SalesmanDeviceCommand");
+                    netaccess.WriteStringToNetwork(Config.SalesmanId + "|" + Config.GetDeviceInfo());
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    Logger.CreateLog("Salesman Device Info sent");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
 
         void GetSessionId()
         {
@@ -3293,7 +5682,7 @@ namespace LaceupMigration
 
                     access.CloseConnection();
 
-                    DataAccess.LoadFutureRoutes();
+                    LoadFutureRoutes();
                 }
             }
             catch (Exception ee)
@@ -3323,7 +5712,7 @@ namespace LaceupMigration
 
                     access.ReceiveFile(Config.ReasonsFile);
 
-                    DataAccess.LoadReasons();
+                    LoadReasons();
 
                     access.CloseConnection();
                 }
@@ -3348,7 +5737,7 @@ namespace LaceupMigration
                     string line;
                     while ((line = reader.ReadLine()) != null)
                     {
-                        var parts = line.Split(DataAccess.DataLineSplitter);
+                        var parts = line.Split(DataLineSplitter);
                         LoadInventorySite(parts);
                     }
                 }
@@ -3367,7 +5756,7 @@ namespace LaceupMigration
                     string line;
                     while ((line = reader.ReadLine()) != null)
                     {
-                        var parts = line.Split(DataAccess.DataLineSplitter);
+                        var parts = line.Split(DataLineSplitter);
                         CreateProductLot(parts);
                     }
                 }
@@ -4043,14 +6432,14 @@ namespace LaceupMigration
             //miche request need insta refresh images everytime
             //BackgroundDataSync.GetImages();
 
-            DataAccess.UpdateProductImagesMap();
+            UpdateProductImagesMap();
 
             DateTime start = DateTime.Now;
 
             try
             {
                 DateTime now = DateTime.Now;
-                DataAccess.GetSalesmanSettings();
+                GetSalesmanSettings();
                 Logger.CreateLog("Salesman Settings downloaded in " + DateTime.Now.Subtract(now).TotalSeconds);
 
                 bool gotUnitOfMeasure = GetUnitOfMeasures();
@@ -4094,13 +6483,13 @@ namespace LaceupMigration
                     Logger.CreateLog("Clients downloaded in " + DateTime.Now.Subtract(now).TotalSeconds);
 
                     now = DateTime.Now;
-                    DataAccess.UnzipFile(basefileP, targetfileP);
+                    ZipMethods.UnzipFile(basefileP, targetfileP);
                     LoadData(Config.ProductStoreFile, true, !gotUnitOfMeasure);
                     Logger.CreateLog("Products processed in " + DateTime.Now.Subtract(now).TotalSeconds);
                     File.Delete(basefileP);
 
                     now = DateTime.Now;
-                    DataAccess.UnzipFile(basefileC, targetfileC);
+                    ZipMethods.UnzipFile(basefileC, targetfileC);
                     Client.DeleteClients();
                     LoadData(Config.ClientStoreFile, true, !gotUnitOfMeasure);
                     Logger.CreateLog("Clients processed in " + DateTime.Now.Subtract(now).TotalSeconds);
@@ -4168,7 +6557,7 @@ namespace LaceupMigration
                     bool inventoryOnDemand = Config.CheckCommunicatorVersion("13.0.0.0");
 
                     now = DateTime.Now;
-                    DataAccess.UnzipFile(basefileP, targetfileP);
+                    ZipMethods.UnzipFile(basefileP, targetfileP);
                     LoadData(Config.ProductStoreFile, true && !inventoryOnDemand, !gotUnitOfMeasures);
                     Logger.CreateLog("Products processed in " + DateTime.Now.Subtract(now).TotalSeconds);
                     File.Delete(basefileP);
@@ -4302,76 +6691,7 @@ namespace LaceupMigration
 
         #region GetPendingLoadOrders
 
-        void DeletePengingLoads()
-        {
-            var acceptedOrders = Order.Orders.Where(x => x.IsDelivery && !x.PendingLoad).ToList();
-            var acceptedBatches = new List<Batch>();
-            var acceptedClients = new List<Client>();
-
-            foreach (var item in acceptedOrders)
-            {
-                if (acceptedBatches.FirstOrDefault(x => x.Id == item.BatchId) == null)
-                {
-                    var batch = Batch.List.FirstOrDefault(x => x.Id == item.BatchId);
-                    acceptedBatches.Add(batch);
-
-                    if (batch.Client.ClientId != item.Client.ClientId)
-                        if (acceptedClients.FirstOrDefault(x => x.ClientId == batch.Client.ClientId) == null)
-                            acceptedClients.Add(batch.Client);
-                }
-                if (acceptedClients.FirstOrDefault(x => x.ClientId == item.Client.ClientId) == null)
-                    acceptedClients.Add(item.Client);
-            }
-
-
-            var orders = Order.Orders.Where(x => (x.OrderType == OrderType.Load || x.IsDelivery) && x.PendingLoad).ToList();
-
-            var batchToDelete = new List<Batch>();
-
-            for (int i = 0; i < orders.Count(); i++)
-            {
-                var order = orders[i];
-
-                if (order.IsDelivery)
-                {
-                    bool removeBatch = acceptedBatches.All(x => x.Id != order.BatchId);
-                    if (removeBatch)
-                    {
-                        var batch = Batch.List.FirstOrDefault(x => x.Id == order.BatchId);
-                        if (batch != null)
-                        {
-                            if (acceptedClients.All(x => x.ClientId != batch.Client.ClientId))
-                            {
-                                var batchClient = Client.Clients.FirstOrDefault(x => x.ClientId == batch.Client.ClientId && x.FromDelivery);
-                                if (batchClient != null)
-                                    Client.Remove(batchClient);
-                            }
-                            batchToDelete.Add(batch);
-                        }
-                    }
-
-                    bool removeClient = acceptedClients.All(x => x.ClientId != order.Client.ClientId);
-                    if (removeClient)
-                    {
-                        var client = Client.Clients.FirstOrDefault(x => x.ClientId == order.Client.ClientId && x.FromDelivery);
-                        if (client != null)
-                            Client.Remove(client);
-                    }
-
-                    var routeEx = RouteEx.Routes.FirstOrDefault(x => x.Order != null && x.Order.OrderId == order.OrderId);
-                    if (routeEx != null)
-                        RouteEx.Routes.Remove(routeEx);
-                }
-
-                order.ForceDelete();
-            }
-
-            for (int i = 0; i < batchToDelete.Count; i++)
-                batchToDelete[i].Delete();
-
-            if (File.Exists(Config.TmpDeliveryClientsFile))
-                File.Delete(Config.TmpDeliveryClientsFile);
-        }
+        
 
         void LoadPendingLoads(string loadFile)
         {
@@ -4524,7 +6844,7 @@ namespace LaceupMigration
                     foreach (var detail in order.Details)
                         if (detail.ExtraFields.IndexOf("RelatedDetail") != -1)
                         {
-                            var pair = DataAccess.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
+                            var pair = UDFHelper.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
                             if (pair != null)
                             {
                                 var relatedDetail = order.Details.FirstOrDefault(x => x.OriginalId == pair.Value);
@@ -5375,12 +7695,12 @@ namespace LaceupMigration
 
                 if (detail.FromOffer)
                 {
-                    var offerType = DataAccess.GetSingleUDF("OFFERTYPE", detail.ExtraFields);
+                    var offerType = UDFHelper.GetSingleUDF("OFFERTYPE", detail.ExtraFields);
                     if (!string.IsNullOrEmpty(offerType))
                         detail.FromOfferType = Convert.ToInt32(offerType);
                     else
                     {
-                        var fromOfferPrice = DataAccess.GetSingleUDF("fromOfferPrice", detail.ExtraFields);
+                        var fromOfferPrice = UDFHelper.GetSingleUDF("fromOfferPrice", detail.ExtraFields);
                         if (!string.IsNullOrEmpty(fromOfferPrice))
                             detail.FromOfferType = 0;
                     }
@@ -5404,6 +7724,139 @@ namespace LaceupMigration
         }
 
         #endregion
+
+        public string GetClientImages(int clientId)
+        {
+            string tempFile = null;
+
+            using (NetAccess netaccess = new NetAccess())
+            {
+                try
+                {
+                    tempFile = Path.GetTempFileName();
+
+                    bool error = false;
+
+                    netaccess.OpenConnection();
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    netaccess.WriteStringToNetwork("GetClientPicturesCommand");
+                    netaccess.WriteStringToNetwork(clientId.ToString());
+                    string message = netaccess.ReadStringFromNetwork();
+
+                    if (message == "emptyfolder")
+                        return string.Empty;
+
+                    error = netaccess.ReceiveFile(tempFile) == 0;
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    if (!error)
+                        return tempFile;
+                    else
+                        return string.Empty;
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex.ToString());
+                    return string.Empty;
+                }
+
+
+            }
+
+        }
+
+        public void AddDeliveryClient(Client client)
+        {
+            string s = string.Format("{1}{0}{2}{0}{3}{0}{4}{0}{5}{0}{6}{0}{7}{0}{8}{0}{9}{0}{10}{0}{11}{0}{12}{0}{13}{0}{14}" +
+                "{0}{15}{0}{16}{0}{17}{0}{18}{0}{19}{0}{20}{0}{21}{0}{22}{0}{23}{0}{24}{0}{25}",
+                (char)20,                                   //0
+                client.ClientId,                            //0
+                client.ClientName,                          //1
+                client.ShipToAddress,                       //2
+                client.PriceLevel,                          //3
+                client.Comment,                             //4
+                client.ContactName,                         //5
+                client.ContactPhone,                        //6
+                "",                                         //7
+                client.OriginalId,                          //8
+                client.OpenBalance,                         //9
+                client.CategoryId,                          //10
+                client.OverCreditLimit ? "1" : "0",         //11
+                client.ExtraPropertiesAsString,             //12
+                client.Latitude,                            //13
+                client.Longitude,                           //14
+                client.TaxRate,                             //15
+                client.NonvisibleExtraPropertiesAsString,   //16
+                client.OneDoc ? "1" : "0",                  //17
+                client.BillToAddress,                       //18
+                client.LicenceNumber,                       //19
+                client.VendorNumber,                        //20
+                client.Notes,                               //21
+                client.CreditLimit,                         //22
+                client.UniqueId,                            //23
+                client.RetailPriceLevelId                   //24
+                );
+
+            using (StreamWriter writer = new StreamWriter(Config.DeliveryNewClientsFile, true))
+            {
+                writer.WriteLine(s);
+            }
+        }
+
+        public DriverRoute GetRouteForDriverShipDate(int driverId, DateTime date)
+        {
+            try
+            {
+                Logger.CreateLog("GetRouteForDriverShipDate");
+
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // send the orders
+                    netaccess.WriteStringToNetwork("GetRouteForDriverShipDateCommand");
+                    netaccess.WriteStringToNetwork(driverId + "|" + date.Ticks);
+
+                    var reply = netaccess.ReadStringFromNetwork();
+                    if (reply == "error")
+                        throw new Exception("Error getting the route");
+                    if (reply == "emptyroute")
+                        return new DriverRoute() { DriverId = driverId, DateTicks = date.Ticks };
+
+                    var filePath = Path.GetTempFileName();
+                    netaccess.ReceiveFile(filePath);
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    var route = DriverRoute.Load(filePath);
+
+                    Logger.CreateLog("Done GetRouteForDriverShipDate");
+
+                    return route;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                throw;
+            }
+        }
 
         #endregion
 
@@ -5592,6 +8045,288 @@ namespace LaceupMigration
             File.Delete(goalProgressPath);
         }
 
+        public void EnsureInvoicesAreLoadedForClient(Client client)
+        {
+            if (client.Invoices != null)
+                return;
+
+            var clientPath = Path.Combine(Config.InvoicesPath, client.ClientId.ToString());
+            if (Directory.Exists(clientPath))
+            {
+                var finalInvoiceFile = Path.Combine(clientPath, "invoices.xml");
+                if (File.Exists(finalInvoiceFile))
+                {
+                    using (var reader = new StreamReader(finalInvoiceFile))
+                    {
+                        string currentline;
+                        int currenttable = -1;
+                        while ((currentline = reader.ReadLine()) != null)
+                        {
+                            if (currentline == "EndOfTable")
+                                currenttable = 1;
+                            else
+                            {
+                                var currentrow = currentline.Split(DataLineSplitter);
+                                if (currenttable < 1)
+                                {
+                                    //DataAccess.CreateInvoice(currentrow);
+                                }
+                                else
+                                {
+                                    CreateInvoiceDetails(currentrow);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            client.Invoices = Invoice.OpenInvoices.Where(x => x.ClientId == client.ClientId).ToList();
+        }
+
+        public void GetExcelFile(string source, string destination)
+        {
+            try
+            {
+                Logger.CreateLog("GetExcelFile");
+
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // send the orders
+                    netaccess.WriteStringToNetwork("GetExcelFileCommand");
+                    netaccess.WriteStringToNetwork(Config.SalesmanId.ToString());
+                    netaccess.SendFile(source);
+
+                    netaccess.ReceiveFile(destination);
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    Logger.CreateLog("Got Excel file");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                throw;
+            }
+        }
+
+        public void LoadDeliveriesInSite(string file)
+        {
+            try
+            {
+
+                Dictionary<int, Batch> createdBatches = new Dictionary<int, Batch>();
+                Dictionary<int, Order> createdOrders = new Dictionary<int, Order>();
+
+                if (File.Exists(Config.TmpDeliveryClientsFile))
+                    File.Delete(Config.TmpDeliveryClientsFile);
+
+                using (StreamWriter writer = new StreamWriter(Config.TmpDeliveryClientsFile))
+                {
+                    using (StreamReader reader = new StreamReader(file))
+                    {
+                        string currentline;
+                        int currenttable = -1;
+                        while ((currentline = reader.ReadLine()) != null)
+                        {
+                            switch (currentline)
+                            {
+                                case "NEWCLIENTS":
+                                    currenttable = 1;
+                                    continue;
+                                case "BATCHES":
+                                    currenttable = 2;
+                                    continue;
+                                case "ROUTEORDERS":
+                                    currenttable = 3;
+                                    createdOrders.Clear();
+                                    continue;
+                                case "ROUTEEX":
+                                    currenttable = 4;
+                                    continue;
+                                case "ROUTEORDERDETAILS":
+                                    currenttable = 5;
+                                    continue;
+                                case "NEWOFFERS":
+                                    currenttable = 6;
+                                    continue;
+                                case "ENDOFTABLE":
+                                    currenttable = -1;
+                                    continue;
+                            }
+
+                            string[] currentrow = currentline.Split(DataLineSplitter);
+
+                            switch (currenttable)
+                            {
+                                case 1:
+                                    CreateClient(currentrow, true, true);
+                                    writer.WriteLine(currentline);
+                                    continue;
+                                case 2:
+                                    CreateBatch(currentrow, createdBatches);
+                                    continue;
+                                case 3:
+                                    CreateOrder(currentrow, createdBatches, createdOrders);
+                                    continue;
+                                case 4:
+                                    CreateRouteEX(currentrow);
+                                    continue;
+                                case 5:
+                                    CreateOrderDetails(currentrow, createdBatches, createdOrders);
+                                    continue;
+                                case 6:
+                                    CreateOffer(currentrow, true);
+                                    continue;
+                            }
+                        }
+                    }
+                }
+
+                foreach (var order in createdOrders.Values)
+                {
+                    if (order.IsDelivery && order.OrderType == OrderType.Consignment && !Config.ParInConsignment)
+                        order.ConvertConsignmentPar();
+
+                    order.Save();
+                }
+
+                // delete any bathc that contains no order
+                List<Batch> deleted = new List<Batch>();
+                foreach (var batch in createdBatches.Values)
+                    if (createdOrders.Values.FirstOrDefault(x => x.BatchId == batch.Id) != null)
+                        batch.Save();
+                    else
+                        deleted.Add(batch);
+
+                foreach (var batch in deleted)
+                    batch.Delete();
+
+                RouteEx.Save();
+
+                // The related Items lines came in a different way, readjust it to the expected way
+                foreach (var order in Order.Orders)
+                {
+                    bool needSave = false;
+                    foreach (var detail in order.Details)
+                        if (detail.ExtraFields.IndexOf("RelatedDetail") != -1)
+                        {
+                            var pair = UDFHelper.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
+                            if (pair != null)
+                            {
+                                var relatedDetail = order.Details.FirstOrDefault(x => x.OriginalId == pair.Value);
+                                if (relatedDetail != null)
+                                {
+                                    detail.RelatedOrderDetail = relatedDetail.OrderDetailId;
+                                    needSave = true;
+                                }
+                            }
+                        }
+                    if (needSave)
+                        order.Save();
+                }
+
+            }
+            catch (Exception ex)
+            {
+                // Get stack trace for the exception with source file information
+                var st = new StackTrace(ex, true);
+                // Get the top stack frame
+                var frame = st.GetFrame(0);
+                // Get the line number from the stack frame
+                var line = frame.GetFileLineNumber();
+
+                Logger.CreateLog("LaceUPMobileClassesIOS.DataAccess.ProcessDeliveryFile LINE=" + line + "\n" + ex.Message);
+            }
+        }
+
+        public void DeletePengingLoads()
+        {
+            var acceptedOrders = Order.Orders.Where(x => x.IsDelivery && !x.PendingLoad).ToList();
+            var acceptedBatches = new List<Batch>();
+            var acceptedClients = new List<Client>();
+
+            foreach (var item in acceptedOrders)
+            {
+                if (acceptedBatches.FirstOrDefault(x => x.Id == item.BatchId) == null)
+                {
+                    var batch = Batch.List.FirstOrDefault(x => x.Id == item.BatchId);
+                    acceptedBatches.Add(batch);
+
+                    if (batch.Client.ClientId != item.Client.ClientId)
+                        if (acceptedClients.FirstOrDefault(x => x.ClientId == batch.Client.ClientId) == null)
+                            acceptedClients.Add(batch.Client);
+                }
+                if (acceptedClients.FirstOrDefault(x => x.ClientId == item.Client.ClientId) == null)
+                    acceptedClients.Add(item.Client);
+            }
+
+
+            var orders = Order.Orders.Where(x => (x.OrderType == OrderType.Load || x.IsDelivery) && x.PendingLoad).ToList();
+
+            var batchToDelete = new List<Batch>();
+
+            for (int i = 0; i < orders.Count(); i++)
+            {
+                var order = orders[i];
+
+                if (order.IsDelivery)
+                {
+                    bool removeBatch = acceptedBatches.All(x => x.Id != order.BatchId);
+                    if (removeBatch)
+                    {
+                        var batch = Batch.List.FirstOrDefault(x => x.Id == order.BatchId);
+                        if (batch != null)
+                        {
+                            if (acceptedClients.All(x => x.ClientId != batch.Client.ClientId))
+                            {
+                                var batchClient = Client.Clients.FirstOrDefault(x => x.ClientId == batch.Client.ClientId && x.FromDelivery);
+                                if (batchClient != null)
+                                    Client.Remove(batchClient);
+                            }
+                            batchToDelete.Add(batch);
+                        }
+                    }
+
+                    bool removeClient = acceptedClients.All(x => x.ClientId != order.Client.ClientId);
+                    if (removeClient)
+                    {
+                        var client = Client.Clients.FirstOrDefault(x => x.ClientId == order.Client.ClientId && x.FromDelivery);
+                        if (client != null)
+                            Client.Remove(client);
+                    }
+
+                    var routeEx = RouteEx.Routes.FirstOrDefault(x => x.Order != null && x.Order.OrderId == order.OrderId);
+                    if (routeEx != null)
+                        RouteEx.Routes.Remove(routeEx);
+                }
+
+                order.ForceDelete();
+            }
+
+            for (int i = 0; i < batchToDelete.Count; i++)
+                batchToDelete[i].Delete();
+
+            if (File.Exists(Config.TmpDeliveryClientsFile))
+                File.Delete(Config.TmpDeliveryClientsFile);
+        }
+
         #endregion
 
         #region Data Sending/Upload
@@ -5646,7 +8381,7 @@ namespace LaceupMigration
 
                 ZipMethods.ZipFile(dstFile, dstFileZipped);
 
-                DataAccess.SendTheOrders(dstFileZipped);
+                SendTheOrders(dstFileZipped);
 
                 File.Delete(dstFileZipped);
 
@@ -5668,7 +8403,7 @@ namespace LaceupMigration
                 {
                     ZipMethods.ZipFile(dstFile, dstFileZipped);
 
-                    DataAccess.SendTheSignatures(dstFileZipped);
+                    SendTheSignatures(dstFileZipped);
 
                     File.Delete(dstFileZipped);
                 }
@@ -5686,7 +8421,7 @@ namespace LaceupMigration
                         if (anyPZLOrders)
                         {
                             ZipMethods.ZipFile(dstFile, dstFileZipped);
-                            DataAccess.SendZPLPrinter(dstFileZipped);
+                            SendZPLPrinter(dstFileZipped);
                             File.Delete(dstFileZipped);
                         }
 
@@ -5718,7 +8453,7 @@ namespace LaceupMigration
                 var imageZipFile = SerializeOrderImages(source, ordersId);
                 if (!string.IsNullOrEmpty(imageZipFile) && File.Exists(imageZipFile))
                 {
-                    DataAccess.SendOrdersImages(imageZipFile);
+                    SendOrdersImages(imageZipFile);
                     File.Delete(imageZipFile);
                 }
 
@@ -5726,7 +8461,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.SendOrderHistory(historyFile);
+                        SendOrderHistory(historyFile);
                         File.Delete(historyFile);
                     }
                     catch (Exception ex)
@@ -5741,7 +8476,7 @@ namespace LaceupMigration
                     Logger.CreateLog("Payments Sent with order(s)");
                 }
 
-                DataAccess.SendSalesmanDeviceInfo();
+                SendSalesmanDeviceInfo();
 
                 if (deleteOrders)
                 {
@@ -5762,7 +8497,7 @@ namespace LaceupMigration
                     // send the client notes
                     if (File.Exists(Config.ClientNotesStoreFile))
                     {
-                        DataAccess.SendClientNotes(Config.ClientNotesStoreFile);
+                        SendClientNotes(Config.ClientNotesStoreFile);
                         File.Delete(Config.ClientNotesStoreFile);
                     }
                 }
@@ -5776,6 +8511,123 @@ namespace LaceupMigration
                 if (File.Exists(dstFileZipped))
                     File.Delete(dstFileZipped);
                 throw;
+            }
+        }
+
+        void SendZPLPrinter(string dstFileZipped)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("ZplPrintedOrderCommand");
+                    access.SendFile(dstFileZipped);
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException ex)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex.ToString());
+                    throw;
+                }
+            }
+        }
+
+        void SendClientNotes(string clientNotesStoreFile)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("ClientNotesCommand");
+                    access.SendFile(clientNotesStoreFile);
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                    throw;
+                }
+            }
+        }
+
+        void SendOrderHistory(string historyFile)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("SaveOrderDetailHistoryCommand");
+
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
+                    access.SendFile(historyFile);
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                    throw;
+                }
+            }
+        }
+
+        void SendOrdersImages(string dstFileZipped)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("OrderImagesCommand");
+
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
+                    access.SendFile(dstFileZipped);
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                    throw;
+                }
             }
         }
 
@@ -5817,8 +8669,265 @@ namespace LaceupMigration
             }
         }
 
-        #region SendTheOrders
+        public bool SendCurrentSession(string file)
+        {
+            try
+            {
+                SendSession(file);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
+        void SendSession(string fileName)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("ReceiveSessionCommand");
+                    string confirm = access.ReadStringFromNetwork();
+
+                    if (confirm != "GO")
+                        throw new AuthorizationException(confirm);
+
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
+                    access.SendFile(fileName);
+
+
+                    access.WriteStringToNetwork("GoodBye");
+                    access.CloseConnection();
+
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new ConnectionException("Error sending session, one of the steps failed ==> ", e);
+                }
+            }
+
+        }
+
+        public void SendInvoicePaymentsBySource(List<InvoicePayment> source, bool delete = false, bool inBackground = false)
+        {
+            if (inBackground)
+            {
+                if (source.Count == 0)
+                    return;
+
+                if (inBackground)
+                {
+                    foreach (var p in source)
+                    {
+                        foreach (var comp in p.Components)
+                            comp.ExtraFields = UDFHelper.SyncSingleUDF("MarkPaymentAsUnDeposit", "1", comp.ExtraFields);
+                    }
+                }
+                else
+                {
+                    foreach (var p in source)
+                    {
+                        foreach (var comp in p.Components)
+                            comp.ExtraFields = UDFHelper.RemoveSingleUDF("MarkPaymentAsUnDeposit", comp.ExtraFields);
+                    }
+                }
+
+                DataSet ds = CreateInvoicePaymentDS();
+
+                SerializeInvoicePaymentsToDataSet(ds, Config.SessionId, source, null, inBackground);
+
+                string dstFile = string.Empty;
+                string dstFileZipped = string.Empty;
+
+                try
+                {
+                    try
+                    {
+                        //FileOperationsLocker.InUse = true;
+
+                        dstFile = Path.Combine(Config.SentPaymentPath, DateTime.Now.Ticks.ToString(CultureInfo.InvariantCulture));
+                        dstFileZipped = dstFile + ".zip";
+                        using (StreamWriter stream = new StreamWriter(dstFile))
+                        using (XmlTextWriter reader = new XmlTextWriter(stream))
+                            ds.WriteXml(reader, XmlWriteMode.WriteSchema);
+                        //Zip it
+                        ZipMethods.ZipFile(dstFile, dstFileZipped);
+                        NetAccess netaccess = new NetAccess();
+
+                        netaccess.OpenConnection();
+                        netaccess.WriteStringToNetwork("HELO");
+                        netaccess.WriteStringToNetwork(Config.GetAuthString());
+                        netaccess.WriteStringToNetwork("InvoicesAR");
+                        netaccess.SendFile(dstFileZipped);
+
+                        //string s = netaccess.ReadStringFromNetwork(); //this is the confirmation
+
+                        netaccess.WriteStringToNetwork("Goodbye");
+                        Thread.Sleep(1000);
+                        netaccess.CloseConnection();
+
+                        if (delete)
+                        {
+                            foreach (var item in source)
+                                item.Delete();
+                        }
+                    }
+                    finally
+                    {
+                        //FileOperationsLocker.InUse = false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex);
+                    throw;
+                }
+                finally
+                {
+                    if (File.Exists(dstFile))
+                        File.Delete(dstFile);
+                }
+
+
+                if (Config.CheckCommunicatorVersion("45.0.0"))
+                {
+                    //images
+                    try
+                    {
+                        var paymentZip = SerializePaymentImages();
+                        if (!string.IsNullOrEmpty(paymentZip) && File.Exists(paymentZip))
+                        {
+                            SendPaymentImages(paymentZip);
+                            File.Delete(paymentZip);
+                        }
+
+                        if (Directory.Exists(Config.PaymentImagesPath))
+                            Directory.Delete(Config.PaymentImagesPath, true);
+                    }
+                    catch (Exception ex)
+                    {
+
+                    }
+                }
+
+            }
+            else
+            {
+
+
+                lock (FileOperationsLocker.lockFilesObject)
+                {
+                    if (source.Count == 0)
+                        return;
+
+                    if (inBackground)
+                    {
+                        foreach (var p in source)
+                        {
+                            foreach (var comp in p.Components)
+                                comp.ExtraFields = UDFHelper.SyncSingleUDF("MarkPaymentAsUnDeposit", "1", comp.ExtraFields);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var p in source)
+                        {
+                            foreach (var comp in p.Components)
+                                comp.ExtraFields = UDFHelper.RemoveSingleUDF("MarkPaymentAsUnDeposit", comp.ExtraFields);
+                        }
+                    }
+
+                    DataSet ds = CreateInvoicePaymentDS();
+
+                    SerializeInvoicePaymentsToDataSet(ds, Config.SessionId, source, null, inBackground);
+
+                    string dstFile = string.Empty;
+                    string dstFileZipped = string.Empty;
+
+                    try
+                    {
+                        try
+                        {
+                            //FileOperationsLocker.InUse = true;
+
+                            dstFile = Path.Combine(Config.SentPaymentPath, DateTime.Now.Ticks.ToString(CultureInfo.InvariantCulture));
+                            dstFileZipped = dstFile + ".zip";
+                            using (StreamWriter stream = new StreamWriter(dstFile))
+                            using (XmlTextWriter reader = new XmlTextWriter(stream))
+                                ds.WriteXml(reader, XmlWriteMode.WriteSchema);
+                            //Zip it
+                            ZipMethods.ZipFile(dstFile, dstFileZipped);
+                            NetAccess netaccess = new NetAccess();
+
+                            netaccess.OpenConnection();
+                            netaccess.WriteStringToNetwork("HELO");
+                            netaccess.WriteStringToNetwork(Config.GetAuthString());
+                            netaccess.WriteStringToNetwork("InvoicesAR");
+                            netaccess.SendFile(dstFileZipped);
+
+                            //string s = netaccess.ReadStringFromNetwork(); //this is the confirmation
+
+                            netaccess.WriteStringToNetwork("Goodbye");
+                            Thread.Sleep(1000);
+                            netaccess.CloseConnection();
+
+                            if (delete)
+                            {
+                                foreach (var item in source)
+                                    item.Delete();
+                            }
+                        }
+                        finally
+                        {
+                            //FileOperationsLocker.InUse = false;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog(ex);
+                        throw;
+                    }
+                    finally
+                    {
+                        if (File.Exists(dstFile))
+                            File.Delete(dstFile);
+                    }
+
+
+                    if (Config.CheckCommunicatorVersion("45.0.0"))
+                    {
+                        //images
+                        try
+                        {
+                            var paymentZip = SerializePaymentImages();
+                            if (!string.IsNullOrEmpty(paymentZip) && File.Exists(paymentZip))
+                            {
+                                SendPaymentImages(paymentZip);
+                                File.Delete(paymentZip);
+                            }
+
+                            if (Directory.Exists(Config.PaymentImagesPath))
+                                Directory.Delete(Config.PaymentImagesPath, true);
+                        }
+                        catch (Exception ex)
+                        {
+
+                        }
+                    }
+                }
+            }
+        }
+
+        #region SendTheOrders
 
         class T_OrderHistory
         {
@@ -6025,7 +9134,7 @@ namespace LaceupMigration
 
                     if (toRemove.Count == order.Details.Count)
                     {
-                        order.ExtraFields = DataAccess.SyncSingleUDF("fullTemplateOnlyCount", "1", order.ExtraFields);
+                        order.ExtraFields = UDFHelper.SyncSingleUDF("fullTemplateOnlyCount", "1", order.ExtraFields);
                         order.Save();
                     }
                 }
@@ -6256,7 +9365,7 @@ namespace LaceupMigration
                             if (string.IsNullOrEmpty(detail.ExtraFields))
                                 continue;
 
-                            var invoiceId = DataAccess.GetSingleUDF("frominvoice", detail.ExtraFields);
+                            var invoiceId = UDFHelper.GetSingleUDF("frominvoice", detail.ExtraFields);
                             if (!string.IsNullOrEmpty(invoiceId))
                             {
                                 var found = groupedCredits.FirstOrDefault(x => x.InvoiceId == invoiceId && x.ClientId == credit.Client.ClientId && x.AsPresale == credit.AsPresale);
@@ -6363,9 +9472,9 @@ namespace LaceupMigration
                                 string zeroLines = "";
                                 foreach (var item in order.Details.Where(x => x.ConsignmentUpdated && (x.ConsignmentOld != x.ConsignmentNew || x.Price != x.ConsignmentNewPrice) && !x.ParLevelDetail))
                                 {
-                                    var rotation = DataAccess.GetSingleUDF("rotatedQty", item.ExtraFields);
-                                    var adjQty = DataAccess.GetSingleUDF("adjustedQty", item.ExtraFields);
-                                    var core = DataAccess.GetSingleUDF("coreQty", item.ExtraFields);
+                                    var rotation = UDFHelper.GetSingleUDF("rotatedQty", item.ExtraFields);
+                                    var adjQty = UDFHelper.GetSingleUDF("adjustedQty", item.ExtraFields);
+                                    var core = UDFHelper.GetSingleUDF("coreQty", item.ExtraFields);
 
                                     if (item.Qty == 0 && string.IsNullOrEmpty(rotation) && string.IsNullOrEmpty(adjQty) && string.IsNullOrEmpty(core))
                                     {
@@ -6377,7 +9486,7 @@ namespace LaceupMigration
                                 }
 
                                 if (!string.IsNullOrEmpty(zeroLines))
-                                    order.ExtraFields = DataAccess.SyncSingleUDF("zerolines", zeroLines, order.ExtraFields);
+                                    order.ExtraFields = UDFHelper.SyncSingleUDF("zerolines", zeroLines, order.ExtraFields);
                             }
                             else if (order.AsPresale || order.Reshipped)
                                 FixConsignmentPar(order);
@@ -6440,9 +9549,9 @@ namespace LaceupMigration
                     if (order.ExtraFields.ToLowerInvariant().IndexOf("aspresale") < 0)
                     {
                         if (order.AsPresale)
-                            order.ExtraFields = DataAccess.SyncSingleUDF("AsPresale", "1", order.ExtraFields);
+                            order.ExtraFields = UDFHelper.SyncSingleUDF("AsPresale", "1", order.ExtraFields);
                         else
-                            order.ExtraFields = DataAccess.SyncSingleUDF("AsPresale", "0", order.ExtraFields);
+                            order.ExtraFields = UDFHelper.SyncSingleUDF("AsPresale", "0", order.ExtraFields);
                     }
 
                     orderRow["DateLong"] = order.Date.Ticks;
@@ -6457,7 +9566,7 @@ namespace LaceupMigration
                         orderRow["SessionId"] = sessionId;
 
                     if (Config.UseQuote && order.FromInvoiceId > 0)
-                        order.ExtraFields = DataAccess.SyncSingleUDF("ExternalInvoiceId", order.FromInvoiceId.ToString(), order.ExtraFields);
+                        order.ExtraFields = UDFHelper.SyncSingleUDF("ExternalInvoiceId", order.FromInvoiceId.ToString(), order.ExtraFields);
 
                     if (order.IsScanBasedTrading)
                         order.ExtraFields = UDFHelper.SyncSingleUDF("scanBasedTrading", "1", order.ExtraFields);
@@ -7198,7 +10307,7 @@ namespace LaceupMigration
 
                     var extraFields = c.ExtraPropertiesAsString ?? string.Empty;
                     if (Config.NewClientCanHaveDiscount)
-                        extraFields = DataAccess.RemoveSingleUDF("allowDiscount", extraFields);
+                        extraFields = UDFHelper.RemoveSingleUDF("allowDiscount", extraFields);
 
                     row["ExtraFields"] = extraFields;
                     row["NonVisibleExtraFields"] = c.NonvisibleExtraPropertiesAsString ?? string.Empty;
@@ -7221,7 +10330,7 @@ namespace LaceupMigration
                 foreach (var p in InvoicePayment.List.ToList())
                 {
                     foreach (var comp in p.Components)
-                        comp.ExtraFields = DataAccess.RemoveSingleUDF("MarkPaymentAsUnDeposit", comp.ExtraFields);
+                        comp.ExtraFields = UDFHelper.RemoveSingleUDF("MarkPaymentAsUnDeposit", comp.ExtraFields);
                 }
 
                 DataSet ds = CreateInvoicePaymentDS();
@@ -7266,7 +10375,7 @@ namespace LaceupMigration
                                 var paymentZip = SerializePaymentImages();
                                 if (!string.IsNullOrEmpty(paymentZip) && File.Exists(paymentZip))
                                 {
-                                    DataAccess.SendPaymentImages(paymentZip);
+                                    SendPaymentImages(paymentZip);
                                     File.Delete(paymentZip);
                                 }
 
@@ -7314,6 +10423,35 @@ namespace LaceupMigration
             }
         }
 
+        void SendPaymentImages(string dstFileZipped)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("PaymentImagesCommand");
+
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
+                    access.SendFile(dstFileZipped);
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                }
+            }
+        }
         void FixConsignmentPar(Order order)
         {
             if (order.IsDelivery && !order.Reshipped)
@@ -7355,9 +10493,9 @@ namespace LaceupMigration
 
                 item.Detail.Price = item.Price;
 
-                var rotation = DataAccess.GetSingleUDF("rotatedQty", item.Detail.ExtraFields);
-                var adjQty = DataAccess.GetSingleUDF("adjustedQty", item.Detail.ExtraFields);
-                var core = DataAccess.GetSingleUDF("coreQty", item.Detail.ExtraFields);
+                var rotation = UDFHelper.GetSingleUDF("rotatedQty", item.Detail.ExtraFields);
+                var adjQty = UDFHelper.GetSingleUDF("adjustedQty", item.Detail.ExtraFields);
+                var core = UDFHelper.GetSingleUDF("coreQty", item.Detail.ExtraFields);
 
                 if (Config.IncludeRotationInDelivery)
                 {
@@ -7379,7 +10517,7 @@ namespace LaceupMigration
 
             foreach (var det in order.Details.Where(x => x.ParLevelDetail))
             {
-                var parId = DataAccess.GetSingleUDF("parid", det.ExtraFields);
+                var parId = UDFHelper.GetSingleUDF("parid", det.ExtraFields);
                 if (!string.IsNullOrEmpty(parId))
                 {
                     var par = ClientDailyParLevel.List.FirstOrDefault(x => x.Id == Convert.ToInt32(parId));
@@ -8028,23 +11166,23 @@ namespace LaceupMigration
             if (par == null)
                 par = ClientDailyParLevel.GetNewParLevel(order.Client, det.Product, 0);
 
-            var newvalue = Convert.ToSingle(DataAccess.GetSingleUDF("newvalue", det.ExtraFields));
+            var newvalue = Convert.ToSingle(UDFHelper.GetSingleUDF("newvalue", det.ExtraFields));
             if (newvalue != par.NewQty)
                 par.SetNewPar(newvalue);
 
-            var counted = Convert.ToSingle(DataAccess.GetSingleUDF("count", det.ExtraFields));
+            var counted = Convert.ToSingle(UDFHelper.GetSingleUDF("count", det.ExtraFields));
             if (counted != par.Counted)
                 par.SetCountedQty(counted);
 
-            var sold = Convert.ToSingle(DataAccess.GetSingleUDF("sold", det.ExtraFields));
+            var sold = Convert.ToSingle(UDFHelper.GetSingleUDF("sold", det.ExtraFields));
             if (sold != par.Sold)
                 par.SetSoldQty(sold);
 
-            var returns = Convert.ToSingle(DataAccess.GetSingleUDF("return", det.ExtraFields));
+            var returns = Convert.ToSingle(UDFHelper.GetSingleUDF("return", det.ExtraFields));
             if (returns != par.Return)
                 par.SetReturnQty(returns);
 
-            var dumps = Convert.ToSingle(DataAccess.GetSingleUDF("damaged", det.ExtraFields));
+            var dumps = Convert.ToSingle(UDFHelper.GetSingleUDF("damaged", det.ExtraFields));
             if (dumps != par.Dump)
                 par.SetDumpQty(dumps);
         }
@@ -8072,17 +11210,7 @@ namespace LaceupMigration
             }
 
             if (!string.IsNullOrEmpty(s))
-                order.ExtraFields = DataAccess.SyncSingleUDF("zerolines", s, order.ExtraFields);
-        }
-
-        class PaymentSplit
-        {
-            public string UniqueId { get; set; }
-            public double Amount { get; set; }
-            public InvoicePaymentMethod PaymentMethod { get; set; }
-            public string Ref { get; set; }
-            public string Comments { get; set; }
-            public string ExtraFields { get; set; }
+                order.ExtraFields = UDFHelper.SyncSingleUDF("zerolines", s, order.ExtraFields);
         }
 
         List<PaymentSplit> SplitPayment(InvoicePayment payment_, Dictionary<string, double> ordersTotals = null)
@@ -8252,7 +11380,7 @@ namespace LaceupMigration
                 order.Save();
             }
 
-            DataAccess.SendTheOrders(batches, orders.Select(x => x.OrderId.ToString()).ToList());
+            SendTheOrders(batches, orders.Select(x => x.OrderId.ToString()).ToList());
 
             RouteEx.ClearAll();
 
@@ -8347,6 +11475,36 @@ namespace LaceupMigration
 
         #region Send All
 
+        void SendClientProdSort(string fileName)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("ClientProdSortCommand");
+                    access.SendFile(fileName);
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                    throw;
+                }
+            }
+        }
+
         void SendClientProdSort()
         {
             lock (FileOperationsLocker.lockFilesObject)
@@ -8355,7 +11513,7 @@ namespace LaceupMigration
                 {
                     //FileOperationsLocker.InUse = true;
 
-                    DataAccess.SendClientProdSort(Config.ClientProdSortFile);
+                    SendClientProdSort(Config.ClientProdSortFile);
 
                     ClientProdSort.Clear();
 
@@ -8427,53 +11585,6 @@ namespace LaceupMigration
             }
         }
 
-        void SendTransfer(string transferFile)
-        {
-            try
-            {
-                using (NetAccess netaccess = new NetAccess())
-                {
-                    try
-                    {
-                        netaccess.OpenConnection();
-                    }
-                    catch (Exception ee)
-                    {
-                        Logger.CreateLog(ee);
-                        throw;
-                    }
-
-                    netaccess.WriteStringToNetwork("HELO");
-                    netaccess.WriteStringToNetwork(Config.GetAuthString());
-
-                    if (Config.CheckCommunicatorVersion("29.0.0.0"))
-                    {
-                        netaccess.WriteStringToNetwork("GetTransferForDSDCommand");
-                        netaccess.WriteStringToNetwork(Config.SalesmanId.ToString());
-                        netaccess.SendFile(transferFile);
-                    }
-                    else
-                    {
-                        netaccess.WriteStringToNetwork("ReceiveTransferCommand");
-                        netaccess.SendFile(transferFile);
-                    }
-
-                    //Close the connection and disconnect
-                    netaccess.WriteStringToNetwork("Goodbye");
-                    netaccess.CloseConnection();
-
-                    Logger.CreateLog("Transfers sent");
-
-                    File.Delete(transferFile);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.CreateLog(ex);
-                throw;
-            }
-        }
-
         void SendTransfers()
         {
             try
@@ -8493,6 +11604,71 @@ namespace LaceupMigration
             catch
             {
                 throw;
+            }
+        }
+
+        void SendTheLeftOverInventory(string fileName)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    bool verify = false;
+                    string version = string.Empty;
+
+                    try
+                    {
+                        access.OpenConnection();
+                        access.WriteStringToNetwork("HELO");
+                        access.WriteStringToNetwork(Config.GetAuthString());
+                        access.WriteStringToNetwork("systemversion");
+                        version = access.ReadStringFromNetwork();
+                        access.CloseConnection();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog(ex);
+                    }
+
+                    access.OpenConnection();
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("LeftOverInventory");
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
+                    access.SendFile(fileName);
+
+                    if (!string.IsNullOrEmpty(version))
+                    {
+                        var vs = version.Split(new char[] { '.' });
+
+                        if (Convert.ToInt32(vs[0]) > 12)
+                            verify = true;
+                        else if (vs[0] == "12" && Convert.ToInt32(vs[1]) > 7)
+                            verify = true;
+                    }
+
+                    if (verify)
+                    {
+                        string confirm = access.ReadStringFromNetwork();
+
+                        //this is the confirmation
+                        if (confirm != "done")
+                            throw new Exception("Error processing the LeftOver Inventory in the Communicator");
+                    }
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                    throw;
+                }
             }
         }
 
@@ -8592,7 +11768,7 @@ namespace LaceupMigration
                         return;
                     }
                     //network access
-                    DataAccess.SendTheLeftOverInventory(dstFile);
+                    SendTheLeftOverInventory(dstFile);
 
                     File.Delete(dstFile);
                 }
@@ -8642,7 +11818,7 @@ namespace LaceupMigration
                         return;
                     }
                     //network access
-                    DataAccess.SendTheBuildQty(dstFile);
+                    SendTheBuildQty(dstFile);
 
                     File.Delete(dstFile);
                 }
@@ -8658,6 +11834,35 @@ namespace LaceupMigration
                 finally
                 {
                     //FileOperationsLocker.InUse = false;
+                }
+            }
+        }
+
+        void SendTheBuildQty(string fileName)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("BuildToQtyCommand");
+                    access.SendFile(fileName);
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                    throw;
                 }
             }
         }
@@ -8843,7 +12048,7 @@ namespace LaceupMigration
                         }
                     }
 
-                    DataAccess.SendTheLoadOrder(dstFile, LoadOrder.SalesmanId);
+                    SendTheLoadOrder(dstFile, LoadOrder.SalesmanId);
 
                     LoadOrder.Date = DateTime.MinValue;
                     LoadOrder.List.Clear();
@@ -8865,6 +12070,40 @@ namespace LaceupMigration
                 finally
                 {
                     //FileOperationsLocker.InUse = true;
+                }
+            }
+        }
+
+        void SendTheLoadOrder(string fileName, int salesmanId = 0)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("LoadOrderCommand");
+
+                    if (salesmanId == 0)
+                        salesmanId = Config.SalesmanId;
+
+                    access.WriteStringToNetwork(salesmanId.ToString());
+                    access.SendFile(fileName);
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                    throw;
                 }
             }
         }
@@ -8895,9 +12134,7 @@ namespace LaceupMigration
                         }
                     }
 
-                    //network access
-                    //if (LoadOrder.List.Count > 0)
-                    DataAccess.SendTheParLevel(dstFile);
+                    SendTheParLevel(dstFile);
                     ParLevel.List.Clear();
                     if (File.Exists(Config.ParLevelFile))
                         File.Delete(Config.ParLevelFile);
@@ -8917,6 +12154,36 @@ namespace LaceupMigration
             }
         }
 
+        void SendTheParLevel(string fileName)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("SetParLevelCommand");
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
+                    access.SendFile(fileName);
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                    throw;
+                }
+            }
+        }
+
         void SendDailyParLevel(bool delete = true)
         {
             lock (FileOperationsLocker.lockFilesObject)
@@ -8925,7 +12192,7 @@ namespace LaceupMigration
                 {
                     //FileOperationsLocker.InUse = true;
 
-                    DataAccess.SendClientDailyParLevel();
+                    SendClientDailyParLevel();
 
                     if (delete)
                     {
@@ -8951,17 +12218,95 @@ namespace LaceupMigration
             }
         }
 
-        void SendClientDepartments(bool delete = true)
+        void SendClientDailyParLevel()
         {
-            string tempFile = Path.GetTempFileName();
-
-            using (var writer = new StreamWriter(tempFile))
+            using (var access = new NetAccess())
             {
-                foreach (var item in ClientDepartment.Departments.Where(x => x.Updated))
-                    writer.WriteLine(item.Serialize());
-            }
+                string fileName = string.Empty;
 
-            DataAccess.SaveClientDepartments(tempFile, delete);
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("systemversion");
+
+                    var version = access.ReadStringFromNetwork();
+                    var vs = version.Split(new char[] { '.' });
+
+                    if (string.IsNullOrEmpty(version) || 12 > Convert.ToInt32(vs[0]) || (vs[0] == "12" && Convert.ToInt32(vs[1]) < 7))
+                    {
+                        fileName = Config.SavedDailyParLevelFile;
+                    }
+                    else
+                    {
+                        fileName = Path.GetTempFileName();
+                        ClientDailyParLevel.Save(fileName);
+                    }
+
+                    access.WriteStringToNetwork("DailyParLevelSetCommand");
+                    access.SendFile(fileName);
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                    throw;
+                }
+            }
+        }
+
+        
+
+        void SaveClientDepartments(string tempFile, bool delete)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("SaveClientDepartmentsCommand");
+
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
+                    access.SendFile(tempFile);
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+
+                    File.Delete(tempFile);
+
+                    if (delete)
+                    {
+                        ClientDepartment.Clear();
+                        if (File.Exists(Config.ClientDepartmentsFile))
+                            File.Delete(Config.ClientDepartmentsFile);
+                    }
+                }
+                catch (AuthorizationException)
+                {
+                    File.Delete(tempFile);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    File.Delete(tempFile);
+                    Logger.CreateLog(ex);
+                    throw;
+                }
+            }
         }
 
         void DeleteTransferFiles()
@@ -9084,14 +12429,469 @@ namespace LaceupMigration
             }
         }
 
+        public void UpdateProductImagesMap()
+        {
+            string tempFile = null;
+            try
+            {
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    //Set the target files
+                    tempFile = Path.GetTempFileName();
+
+                    bool error = false;
+
+                    //open the connection
+                    netaccess.OpenConnection();
+                    // Get the products file
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    netaccess.WriteStringToNetwork("ProductImages");
+                    error = netaccess.ReceiveFile(tempFile) == 0;
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    netaccess.CloseConnection();
+
+                    //now unzip the Product file
+                    if (!error)
+                    {
+                        ProductImage.UpdateMap(tempFile, true);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+            }
+        }
+
+        public void SendClientPictures(string tempPathFile, int clientId)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("ClientPicturesCommand");
+                    access.WriteStringToNetwork(clientId.ToString());
+                    access.SendFile(tempPathFile);
+                    access.WriteStringToNetwork("Goodbye");
+
+                    Thread.Sleep(1000);
+
+                    access.CloseConnection();
+
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex.ToString());
+                    throw;
+                }
+            }
+        }
+
+        public void AcceptLoadOrders(Order order, string valuesChanged)
+        {
+            StringBuilder sb = new StringBuilder();
+            DateTime start = DateTime.Now;
+            try
+            {
+                NetAccess.GetCommunicatorVersion();
+
+                Logger.CreateLog("accepting load order");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        sb.Append(string.Format("Error connecting to the server {0} : {1}", Config.ConnectionAddress, Config.Port));
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork("AcceptLoadOrderCommand");
+                    netaccess.WriteStringToNetwork(order.OriginalOrderId.ToString(CultureInfo.InvariantCulture));
+
+                    if (Config.CheckCommunicatorVersion("23.2.0.0") || (Config.CheckCommunicatorVersion("14.6.0.0")
+                                                                        && !Config.CheckCommunicatorVersion("20.0.0.0")))
+                    {
+                        var ack = netaccess.ReadStringFromNetwork();
+                        if (ack != "got it")
+                            throw new Exception("Error accepting the load order. Ack=" + ack);
+                    }
+
+                    Logger.CreateLog("load order accepted");
+
+                    if (Config.CheckCommunicatorVersion("22.0.0.0"))
+                        netaccess.WriteStringToNetwork(valuesChanged);
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                throw new Exception("Error accepting the load order");
+            }
+            finally
+            {
+            }
+            TimeSpan ts = DateTime.Now.Subtract(start);
+            Logger.CreateLog("Total time accepting load: " + ts.TotalSeconds);
+        }
+
+        public void AcceptLoadOrders(List<int> ids, string valuesChanged)
+        {
+            if (ids.Count == 0)
+                return;
+
+            string s = "";
+            foreach (var item in ids)
+            {
+                if (!string.IsNullOrEmpty(s))
+                    s += ",";
+                s += item;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            DateTime start = DateTime.Now;
+            try
+            {
+                NetAccess.GetCommunicatorVersion();
+
+                Logger.CreateLog("accepting load order");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        sb.Append(string.Format("Error connecting to the server {0} : {1}", Config.ConnectionAddress, Config.Port));
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork("AcceptLoadOrderListCommand");
+                    netaccess.WriteStringToNetwork(s);
+
+                    if (Config.CheckCommunicatorVersion("23.2.0.0") || (Config.CheckCommunicatorVersion("14.6.0.0")
+                                                        && !Config.CheckCommunicatorVersion("20.0.0.0")))
+                    {
+                        var ack = netaccess.ReadStringFromNetwork();
+                        if (ack != "got it")
+                            throw new Exception("Error accepting the load order. Ack=" + ack);
+                    }
+
+                    Logger.CreateLog("load orders accepted");
+
+                    if (Config.CheckCommunicatorVersion("22.0.0.0"))
+                        netaccess.WriteStringToNetwork(valuesChanged);
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+            }
+            finally
+            {
+            }
+            TimeSpan ts = DateTime.Now.Subtract(start);
+            Logger.CreateLog("Total time accepting load: " + ts.TotalSeconds);
+        }
+
+        public void SendClientDepartments(bool delete = true)
+        {
+            string tempFile = Path.GetTempFileName();
+
+            using (var writer = new StreamWriter(tempFile))
+            {
+                foreach (var item in ClientDepartment.Departments.Where(x => x.Updated))
+                    writer.WriteLine(item.Serialize());
+            }
+
+            SaveClientDepartments(tempFile, delete);
+        }
+
+        public void SendScannerToUse()
+        {
+            try
+            {
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // send the orders
+                    netaccess.WriteStringToNetwork("UpdateScannerToUseCommand");
+                    netaccess.WriteStringToNetwork(Config.SalesmanId + "|" + Config.ScannerToUse.ToString());
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    Logger.CreateLog("Salesman New Scanner Info Sent");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
+        public void ExportData(string subject = "")
+        {
+            lock (FileOperationsLocker.lockFilesObject)
+            {
+                try
+                {
+
+                    var fastZip = new FastZip();
+
+                    bool recurse = true;  // Include all files by recursing through the directory structure
+                    string filter = null; // Dont filter any files at all
+
+                    // Serialize the config
+                    var sb = new StringBuilder();
+
+                    foreach (var line in Config.SerializeConfig().Split(new string[] { System.Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var parts = line.Split(new char[] { '=' });
+                        if (parts.Length == 2)
+                        {
+                            if (sb.Length > 0)
+                                sb.Append("|");
+                            sb.Append(parts[0]);
+                            sb.Append("=");
+                            switch (parts[1])
+                            {
+                                case "True":
+                                    sb.Append("1");
+                                    break;
+                                case "False":
+                                    sb.Append("0");
+                                    break;
+
+                                default:
+                                    sb.Append(parts[1]);
+                                    break;
+                            }
+                        }
+                    }
+                    string p = Path.Combine(Config.CodeBase, "serialized_config");
+
+                    using (var writer = new StreamWriter(p))
+                        writer.Write(sb.ToString());
+
+                    fastZip.CreateZip(Config.ExportImportPath, Config.CodeBase, recurse, filter);
+
+                    var l = new FileInfo(Config.ExportImportPath).Length;
+
+                    try
+                    {
+                        NetAccess access = new NetAccess();
+
+                        access.OpenConnection("app.laceupsolutions.com", 9999);
+                        access.WriteStringToNetwork("SendLogFile");
+
+                        var serializedConfig = subject + Config.SerializeConfig().Replace(System.Environment.NewLine, "<br>");
+                        serializedConfig = serializedConfig.Replace("'", "");
+                        serializedConfig = serializedConfig.Replace("’", "");
+
+                        access.WriteStringToNetwork(serializedConfig);
+
+                        access.SendFile(Config.ExportImportPath);
+                        access.WriteStringToNetwork("Goodbye");
+
+                        Thread.Sleep(1000);
+                        access.CloseConnection();
+
+                        DialogHelper._dialogService.ShowAlertAsync("Debug Data Sent!");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog(ex);
+                        DialogHelper._dialogService.ShowAlertAsync($"Error exporting data. {ex.Message}");
+
+                    }
+                    finally
+                    {
+                        File.Delete(Config.ExportImportPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex);
+                    DialogHelper._dialogService.ShowAlertAsync($"Error exporting data. {ex.Message}");
+                }
+                finally
+                {
+                }
+            }
+        }
+
+        public void SendEmailSequenceNotification(string text)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("SeqNotificationCommand");
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString() + "|" + text);
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException ae)
+                {
+                    Logger.CreateLog(ae);
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                }
+            }
+        }
+
+        public void SaveRoute(string filename)
+        {
+            try
+            {
+                Logger.CreateLog("SaveRoute");
+
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // send the orders
+                    netaccess.WriteStringToNetwork("UpdateRouteForDriverShipdateCommand");
+                    netaccess.WriteStringToNetwork(Config.SalesmanId.ToString());
+                    netaccess.SendFile(filename);
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    Logger.CreateLog("Done UpdateRouteForDriverShipdateCommand");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                throw;
+            }
+        }
+
+        public void SendTransfer(string transferFile)
+        {
+            try
+            {
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    if (Config.CheckCommunicatorVersion("29.0.0.0"))
+                    {
+                        netaccess.WriteStringToNetwork("GetTransferForDSDCommand");
+                        netaccess.WriteStringToNetwork(Config.SalesmanId.ToString());
+                        netaccess.SendFile(transferFile);
+                    }
+                    else
+                    {
+                        netaccess.WriteStringToNetwork("ReceiveTransferCommand");
+                        netaccess.SendFile(transferFile);
+                    }
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    Logger.CreateLog("Transfers sent");
+
+                    File.Delete(transferFile);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                throw;
+            }
+        }
+
         #endregion
 
         #region Inventory Operations
-
-        public void SaveInventory()
-        {
-            ProductInventory.Save();
-        }
 
         public void UpdateInventoryBySite()
         {
@@ -9152,7 +12952,7 @@ namespace LaceupMigration
 
                                 while ((currentline = reader.ReadLine()) != null)
                                 {
-                                    string[] currentrow = currentline.Split(DataAccess.DataLineSplitter);
+                                    string[] currentrow = currentline.Split(DataLineSplitter);
                                     var item = new InventorySiteInventory();
                                     item.ProductId = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
                                     item.LeftOver = Convert.ToSingle(currentrow[1], CultureInfo.InvariantCulture);
@@ -9182,7 +12982,7 @@ namespace LaceupMigration
 
                                 while ((currentline = reader.ReadLine()) != null)
                                 {
-                                    string[] currentrow = currentline.Split(DataAccess.DataLineSplitter);
+                                    string[] currentrow = currentline.Split(DataLineSplitter);
                                     int pId = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
 
                                     var inv = ProductInventory.GetInventoryForProduct(pId);
@@ -9237,7 +13037,7 @@ namespace LaceupMigration
 
                             while ((currentline = reader.ReadLine()) != null)
                             {
-                                string[] currentrow = currentline.Split(DataAccess.DataLineSplitter);
+                                string[] currentrow = currentline.Split(DataLineSplitter);
                                 var item = new InventorySiteInventory();
                                 item.ProductId = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
                                 item.LeftOver = Convert.ToSingle(currentrow[1], CultureInfo.InvariantCulture);
@@ -9267,7 +13067,7 @@ namespace LaceupMigration
 
                             while ((currentline = reader.ReadLine()) != null)
                             {
-                                string[] currentrow = currentline.Split(DataAccess.DataLineSplitter);
+                                string[] currentrow = currentline.Split(DataLineSplitter);
                                 int pId = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
 
                                 var inv = ProductInventory.GetInventoryForProduct(pId);
@@ -9328,7 +13128,7 @@ namespace LaceupMigration
 
                                 while ((currentline = reader.ReadLine()) != null)
                                 {
-                                    string[] currentrow = currentline.Split(DataAccess.DataLineSplitter);
+                                    string[] currentrow = currentline.Split(DataLineSplitter);
                                     var item = new InventorySiteInventory();
                                     item.ProductId = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
                                     item.LeftOver = Convert.ToSingle(currentrow[1], CultureInfo.InvariantCulture);
@@ -9358,7 +13158,7 @@ namespace LaceupMigration
 
                                 while ((currentline = reader.ReadLine()) != null)
                                 {
-                                    string[] currentrow = currentline.Split(DataAccess.DataLineSplitter);
+                                    string[] currentrow = currentline.Split(DataLineSplitter);
                                     int pId = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
 
                                     var inv = ProductInventory.GetInventoryForProduct(pId);
@@ -9454,6 +13254,20 @@ namespace LaceupMigration
             return map;
         }
 
+        public void UpdateInventory()
+        {
+            var CheckInternetThread = new Thread(delegate () { GetInventoryInBackground(); });
+            CheckInternetThread.IsBackground = true;
+            CheckInternetThread.Start();
+        }
+
+        public void UpdateInventory(bool isPresale = false)
+        {
+            var CheckInternetThread = new Thread(delegate () { GetInventoryInBackground(isPresale); });
+            CheckInternetThread.IsBackground = true;
+            CheckInternetThread.Start();
+        }
+
         #endregion
 
         #region Validation and Checks
@@ -9509,6 +13323,81 @@ namespace LaceupMigration
             }
         }
 
+        public string CheckOrderChangesBeforeSaveRoute(List<DriverRouteOrder> orders)
+        {
+            string tempFile = Path.GetTempFileName();
+
+            try
+            {
+                Logger.CreateLog("GetOrdersToRoute");
+
+                try
+                {
+                    // Creates XmlSerializer of the List<User> type
+                    XmlSerializer serializer = new XmlSerializer(orders.GetType());
+
+                    // Creates a stream using which we'll serialize
+                    using (StreamWriter sw = new StreamWriter(tempFile))
+                    {
+                        // We call the Serialize() method and pass the stream created above as the first parameter
+                        // The second parameter is the object which we want to serialize
+                        serializer.Serialize(sw, orders);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex);
+                }
+
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // send the orders
+                    netaccess.WriteStringToNetwork("CheckOrderChangesBeforeSaveRouteCommand");
+                    netaccess.WriteStringToNetwork(Config.SalesmanId.ToString());
+
+                    netaccess.SendFile(tempFile);
+
+                    string result = netaccess.ReadStringFromNetwork();
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    Logger.CreateLog("Done GetOrdersToRoute");
+
+                    if (result == "error")
+                        throw new Exception("Error checking changes in orders");
+
+                    if (File.Exists(tempFile))
+                        File.Delete(tempFile);
+
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+
+                throw;
+            }
+        }
+
         #endregion
 
         #region Reports and Catalog
@@ -9558,6 +13447,483 @@ namespace LaceupMigration
             }
             finally
             {
+            }
+        }
+
+        public string GetCommissionReport(string command)
+        {
+            try
+            {
+                Logger.CreateLog("Running report");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    string fullPath = Path.GetTempFileName();
+
+                    bool errorProd = false;
+
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    string reportCommand = "CommissionReportCommand";
+                    if (Config.CheckCommunicatorVersion("30.0.0.0") && !Config.ShowOldReportsRegardless)
+                        reportCommand = "SalesmanCommByCustReportCommand";
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork(reportCommand);
+                    netaccess.WriteStringToNetwork(command);
+
+                    errorProd = netaccess.ReceiveFile(fullPath) == 0;
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    return fullPath;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                throw new Exception(e.ToString());
+            }
+        }
+
+        public string GetLoadOrderReport(string command)
+        {
+            try
+            {
+                Logger.CreateLog("Running report");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    string fullPath = Path.GetTempFileName();
+
+                    bool errorProd = false;
+
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork("LoadOrderReportCommand");
+                    netaccess.WriteStringToNetwork(command);
+
+                    errorProd = netaccess.ReceiveFile(fullPath) == 0;
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    return fullPath;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                throw new Exception(e.ToString());
+            }
+        }
+
+        public string GetQtyProdSalesReport(string command)
+        {
+            try
+            {
+                Logger.CreateLog("Running report");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    string fullPath = Path.GetTempFileName();
+
+                    bool errorProd = false;
+
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork("QtyProdSalesReportCommand");
+                    netaccess.WriteStringToNetwork(command);
+
+                    errorProd = netaccess.ReceiveFile(fullPath) == 0;
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    return fullPath;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                throw new Exception(e.ToString());
+            }
+        }
+
+        public string GetSalesmenCommReport(string command)
+        {
+            try
+            {
+                Logger.CreateLog("Running report");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    string fullPath = Path.GetTempFileName();
+
+                    bool errorProd = false;
+
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    string reportCommand = "SalesmenCommReportCommand";
+                    if (Config.CheckCommunicatorVersion("30.0.0.0") && !Config.ShowOldReportsRegardless)
+                        reportCommand = "SalesmanCommByCustReportCommand";
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork(reportCommand);
+                    netaccess.WriteStringToNetwork(command);
+
+                    errorProd = netaccess.ReceiveFile(fullPath) == 0;
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    return fullPath;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                throw new Exception(e.ToString());
+            }
+        }
+
+        public string GetSalesProdCatReport(string command)
+        {
+            try
+            {
+                Logger.CreateLog("Running report");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    string fullPath = Path.GetTempFileName();
+
+                    bool errorProd = false;
+
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork("SalesByProdCatReportCommand");
+                    netaccess.WriteStringToNetwork(command);
+
+                    errorProd = netaccess.ReceiveFile(fullPath) == 0;
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    return fullPath;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                throw new Exception(e.ToString());
+            }
+        }
+
+        public string GetSalesReportWithDetails(string command)
+        {
+            try
+            {
+                Logger.CreateLog("Running report");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    string fullPath = Path.GetTempFileName();
+
+                    bool errorProd = false;
+
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork("SalesReportWithDetailsCommand");
+                    netaccess.WriteStringToNetwork(command);
+
+                    errorProd = netaccess.ReceiveFile(fullPath) == 0;
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    return fullPath;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                throw new Exception(e.ToString());
+            }
+        }
+
+        public string GetSalesReport(string command)
+        {
+            try
+            {
+                Logger.CreateLog("Running report");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    string fullPath = Path.GetTempFileName();
+
+                    bool errorProd = false;
+
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    string communicatorCommand = "DailySalesReportCommand";
+                    if (Config.CheckCommunicatorVersion("28.3") && !Config.UseLaceupDataInSalesReport)
+                        communicatorCommand = "SalesReportCommand";
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork(communicatorCommand);
+                    netaccess.WriteStringToNetwork(command);
+
+                    errorProd = netaccess.ReceiveFile(fullPath) == 0;
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    return fullPath;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                throw new Exception(e.ToString());
+            }
+        }
+
+        public string GetSAPReport(string command)
+        {
+            try
+            {
+                Logger.CreateLog("Running report");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    string fullPath = Path.GetTempFileName();
+
+                    bool errorProd = false;
+
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork("SAPOrderStatusReportCommand");
+                    netaccess.WriteStringToNetwork(command);
+
+                    errorProd = netaccess.ReceiveFile(fullPath) == 0;
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    if (errorProd)
+                    {
+                        Logger.CreateLog("Error downloading SAP report - ReceiveFile returned 0");
+                        // Delete the temp file if it exists but is invalid
+                        if (File.Exists(fullPath))
+                        {
+                            try
+                            {
+                                File.Delete(fullPath);
+                            }
+                            catch { }
+                        }
+                        return string.Empty;
+                    }
+
+                    return fullPath;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                throw new Exception(e.ToString());
+            }
+        }
+
+        public string GetTransmissionReport(string command)
+        {
+            try
+            {
+                Logger.CreateLog("Running report");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    string fullPath = Path.GetTempFileName();
+
+                    bool errorProd = false;
+
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork("TransmissionReportCommand");
+                    netaccess.WriteStringToNetwork(command);
+
+                    errorProd = netaccess.ReceiveFile(fullPath) == 0;
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    return fullPath;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                throw new Exception(e.ToString());
+            }
+        }
+
+        public string GetPaymentsReport(string command)
+        {
+            try
+            {
+                Logger.CreateLog("Running report");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    string fullPath = Path.GetTempFileName();
+
+                    bool errorProd = false;
+
+                    //open the connection
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork("ReceivedPaymentsReportCommand");
+                    netaccess.WriteStringToNetwork(command);
+
+                    errorProd = netaccess.ReceiveFile(fullPath) == 0;
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    return fullPath;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                throw new Exception(e.ToString());
             }
         }
 

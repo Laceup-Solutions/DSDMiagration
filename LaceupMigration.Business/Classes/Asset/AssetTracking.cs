@@ -5,17 +5,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-
-
-
-
-
-
-
 namespace LaceupMigration
 {
     public class AssetTrackingHistory 
     {
+        public static char[] DataLineSplitter = new char[] { (char)20 };
         public Product Product { get; set; }
         public Client Client { get; set; }
         public double Cost { get; set; }
@@ -43,7 +37,7 @@ namespace LaceupMigration
 
                 while ((line = reader.ReadLine()) != null)
                 {
-                    var parts = line.Split(DataAccess.DataLineSplitter);
+                    var parts = line.Split(DataLineSplitter);
 
                     var at = new AssetTrackingHistory()
                     {
@@ -75,6 +69,8 @@ namespace LaceupMigration
 
     public class AssetTracking 
     {
+        public static char[] DataLineSplitter = new char[] { (char)20 };
+
         public Product Product { get; set; }
         public Client Client { get; set; }
         public string ClientUniqueId { get; set; }
@@ -117,7 +113,7 @@ namespace LaceupMigration
             {
                 foreach (var item in o.Details)
                 {
-                    var units = DataAccess.GetSingleUDF("units per crate", item.Product.NonVisibleExtraFieldsAsString);
+                    var units = UDFHelper.GetSingleUDF("units per crate", item.Product.NonVisibleExtraFieldsAsString);
 
                     if (string.IsNullOrEmpty(units))
                         continue;
@@ -215,7 +211,7 @@ namespace LaceupMigration
 
                 while ((line = reader.ReadLine()) != null)
                 {
-                    var parts = line.Split(DataAccess.DataLineSplitter);
+                    var parts = line.Split(DataLineSplitter);
 
                     var at = new AssetTracking()
                     {

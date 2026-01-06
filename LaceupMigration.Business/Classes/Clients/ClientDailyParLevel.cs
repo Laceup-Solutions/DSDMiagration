@@ -236,8 +236,8 @@ namespace LaceupMigration
 
                         while ((line = reader.ReadLine()) != null)
                         {
-                            var parts = line.Split(DataAccess.DataLineSplitter);
-                            DataAccess.CreateClientDailyParLevel(parts);
+                            var parts = line.Split((char)20);
+                            CreateClientDailyParLevel(parts);
                         }
                         reader.Close();
                     }
@@ -255,6 +255,49 @@ namespace LaceupMigration
                     reader.Close();
                 }
             }
+        }
+
+        public static void CreateClientDailyParLevel(string[] currentrow)
+        {
+            var id = Convert.ToInt32(currentrow[0], CultureInfo.InvariantCulture);
+            var clientId = Convert.ToInt32(currentrow[1], CultureInfo.InvariantCulture);
+            var productId = Convert.ToInt32(currentrow[2], CultureInfo.InvariantCulture);
+            var dayOfWeek = Convert.ToInt32(currentrow[3], CultureInfo.InvariantCulture);
+            var qty = Convert.ToSingle(currentrow[4], CultureInfo.InvariantCulture);
+            string department = string.Empty;
+
+            if (currentrow.Length > 5)
+                department = currentrow[5];
+
+            var client = Client.Find(clientId);
+            if (client == null)
+            {
+                Logger.CreateLog("ClientDailyParLevel. Client not found with id=" + clientId);
+                return;
+            }
+
+            var product = Product.Find(productId);
+            if (product == null)
+            {
+                Logger.CreateLog("ClientDailyParLevel. Product not found with id=" + productId);
+                return;
+            }
+
+            var cdpl = new ClientDailyParLevel()
+            {
+                Id = id,
+                ProductId = productId,
+                ClientId = clientId,
+                DayOfWeek = dayOfWeek,
+                Qty = qty,
+                NewQty = qty,
+                Product = product,
+                Client = client,
+                Department = department
+            };
+
+            ClientDailyParLevel.Add(cdpl);
+
         }
 
         static void CreateParLevelFromLine(string line, bool checkIfExists = false)

@@ -344,7 +344,7 @@ namespace LaceupMigration.ViewModels
 
             CompanyInfo.SelectedCompany = CompanyInfo.Companies[0];
 
-            var map = DataAccess.ExtendedSendTheLeftOverInventory();
+            var map = DataProvider.ExtendedSendTheLeftOverInventory();
 
             int index = 1;
 
@@ -560,7 +560,7 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            DataAccess.SaveInventory();
+            ProductInventory.Save();
 
             _routeReturns = true;
             UpdateButtonStates();
@@ -741,7 +741,7 @@ namespace LaceupMigration.ViewModels
                 {
                     try
                     {
-                        DataAccess.SendAll();
+                        DataProvider.SendAll();
 
                         // TODO: test this
                         if (Config.DexAvailable)
@@ -981,7 +981,7 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SyncData()
         {
-            if (DataAccess.MustEndOfDay())
+            if (DataProvider.MustEndOfDay())
             {
                 await _dialogService.ShowAlertAsync("Do end of day.", "Warning", "OK");
                 return;
@@ -1003,14 +1003,14 @@ namespace LaceupMigration.ViewModels
                             access.CloseConnection();
                         }
 
-                        DataAccess.CheckAuthorization();
+                        DataProvider.CheckAuthorization();
                         if (Config.AuthorizationFailed)
                             throw new Exception("Not authorized");
 
-                        if (!DataAccess.CheckSyncAuthInfo())
+                        if (!DataProvider.CheckSyncAuthInfo())
                             throw new Exception("Wait before sync");
 
-                        responseMessage = DataAccess.DownloadData(true, !Config.TrackInventory || true);
+                        responseMessage = DataProvider.DownloadData(true, !Config.TrackInventory || true);
                     }
                     catch (Exception ee)
                     {

@@ -34,7 +34,7 @@ namespace LaceupMigration
             lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[StandarPrintTitle], startY, ss1, string.Empty));
             startY += font36Separation;
 
-            var orderNumber = DataAccess.GetSingleUDF("Sales Order", invoice.ExtraFields);
+            var orderNumber = UDFHelper.GetSingleUDF("Sales Order", invoice.ExtraFields);
 
             if (!string.IsNullOrEmpty(orderNumber))
             {
@@ -78,7 +78,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {
@@ -171,7 +171,7 @@ namespace LaceupMigration
 
             AddExtraSpace(ref startY, lines, 36, 1);
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             lines.AddRange(GetHeaderRowsInOneDoc(ref startY, asPreOrder, order, order.Client, printedId, payments, payments != null && payments.Sum(x => x.Amount) == balance));
 
             lines.AddRange(GetOrderLabel(ref startY, order, asPreOrder));

@@ -107,10 +107,10 @@ namespace LaceupMigration.ViewModels
 
 				if (Config.CheckCommunicatorVersion("80.0.0"))
 				{
-					var field = DataAccess.GetFieldForLogin();
+					var field = DataProvider.GetFieldForLogin();
 					if (!string.IsNullOrEmpty(field))
 					{
-						DataAccess.GetSalesmanList();
+						DataProvider.GetSalesmanList();
 						var actualSalesman = GetSalesmanBasedOnField(field);
 						if (actualSalesman != null)
 						{
@@ -178,16 +178,16 @@ namespace LaceupMigration.ViewModels
 						Directory.CreateDirectory(Config.SessionPath);
 					}
 					
-					DataAccess.Initialize();
+					DataProvider.Initialize();
 
-					DataAccess.GetUserSettingLine();
-					DataAccess.CheckAuthorization();
+					DataProvider.GetUserSettingLine();
+					DataProvider.CheckAuthorization();
 
 					error = 1;
 
 					if (!Config.AuthorizationFailed)
 					{
-						DataAccess.GetSalesmanSettings(false);
+						DataProvider.GetSalesmanSettings(false);
 
 						error = 2;
 
@@ -198,7 +198,7 @@ namespace LaceupMigration.ViewModels
 							{
 								ProgressDialogHelper.SetMessage("Downloading data.");
 							});
-							DataAccess.DownloadStaticData();
+							DataProvider.DownloadStaticData();
 						}
 
 						error = 3;
@@ -519,7 +519,7 @@ namespace LaceupMigration.ViewModels
 					}
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() line 1612
-					DataAccess.CheckAuthorization();
+					DataProvider.CheckAuthorization();
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() lines 1614-1617
 					if (Config.AuthorizationFailed)
@@ -528,7 +528,7 @@ namespace LaceupMigration.ViewModels
 					}
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() lines 1619-1622
-					if (!DataAccess.CheckSyncAuthInfo())
+					if (!DataProvider.CheckSyncAuthInfo())
 					{
 						throw new Exception("Wait before sync");
 					}
@@ -537,7 +537,7 @@ namespace LaceupMigration.ViewModels
 					Logger.CreateLog("called MenuHandlerSyncData");
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() line 1626
-					responseMessage = DataAccess.DownloadData(true, !Config.TrackInventory || updateInventory);
+					responseMessage = DataProvider.DownloadData(true, !Config.TrackInventory || updateInventory);
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() lines 1628-1636
 					// When called automatically after login, save vendor name
@@ -639,7 +639,7 @@ namespace LaceupMigration.ViewModels
 					// Simplified for now - full implementation would update inventory
 					Config.PendingLoadToAccept = false;
 					Config.SaveAppStatus();
-					DataAccess.SaveInventory();
+					ProductInventory.Save();
 				}
 				else
 				{

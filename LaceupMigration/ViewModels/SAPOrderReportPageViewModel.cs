@@ -41,7 +41,7 @@ namespace LaceupMigration.ViewModels
             {
                 try
                 {
-                    DataAccess.GetSalesmanList();
+                    DataProvider.GetSalesmanList();
                 }
                 catch (Exception e)
                 {
@@ -176,7 +176,7 @@ namespace LaceupMigration.ViewModels
         {
             try
             {
-                return DataAccess.GetSAPReport(command);
+                return DataProvider.GetSAPReport(command);
             }
             catch
             {

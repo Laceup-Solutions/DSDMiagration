@@ -329,7 +329,7 @@ namespace LaceupMigration.ViewModels
 
 		private void RefreshUI()
 		{
-			if (!DataAccess.CanUseApplication() || !Config.ReceivedData)
+			if (!DataProvider.CanUseApplication() || !Config.ReceivedData)
 			{
 			IsSearchVisible = false;
 			ShowButtonsLayout = false;

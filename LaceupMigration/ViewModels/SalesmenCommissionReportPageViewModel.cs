@@ -43,7 +43,7 @@ namespace LaceupMigration.ViewModels
             {
                 try
                 {
-                    DataAccess.GetSalesmanList();
+                    DataProvider.GetSalesmanList();
                 }
                 catch (Exception e)
                 {
@@ -107,7 +107,7 @@ namespace LaceupMigration.ViewModels
         {
             try
             {
-                return DataAccess.GetSalesmenCommReport(command);
+                return DataProvider.GetSalesmenCommReport(command);
             }
             catch
             {

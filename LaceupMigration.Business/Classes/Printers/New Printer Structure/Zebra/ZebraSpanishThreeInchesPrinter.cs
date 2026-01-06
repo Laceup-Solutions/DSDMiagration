@@ -749,7 +749,7 @@ namespace LaceupMigration
             return docName;
         }
 
-        protected override IEnumerable<string> GetPaymentLines(ref int startY, IList<DataAccess.PaymentSplit> payments, bool paidInFull)
+        protected override IEnumerable<string> GetPaymentLines(ref int startY, IList<PaymentSplit> payments, bool paidInFull)
         {
             List<string> lines = new List<string>();
 

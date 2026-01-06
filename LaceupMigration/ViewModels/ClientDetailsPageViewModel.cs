@@ -376,7 +376,7 @@ namespace LaceupMigration.ViewModels
             var dueTextColor = isOverdue ? Colors.Red : Colors.Black;
             var openTextColor = isOverdue ? Colors.Red : Colors.Black;
 
-            var status = DataAccess.GetSingleUDF("status", invoice.ExtraFields) ?? string.Empty;
+            var status = UDFHelper.GetSingleUDF("status", invoice.ExtraFields) ?? string.Empty;
 
             var hasDiscount = false;
             var discountText = string.Empty;
@@ -976,12 +976,12 @@ namespace LaceupMigration.ViewModels
                 }
 
                 if (Config.ConsignmentBeta)
-                    consignment.ExtraFields = DataAccess.SyncSingleUDF("cosignmentOrder", "1", consignment.ExtraFields);
+                    consignment.ExtraFields = UDFHelper.SyncSingleUDF("cosignmentOrder", "1", consignment.ExtraFields);
 
                 if (Config.UseFullConsignment)
                 {
-                    consignment.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentCount", "1", consignment.ExtraFields);
-                    consignment.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentSet", "1", consignment.ExtraFields);
+                    consignment.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentCount", "1", consignment.ExtraFields);
+                    consignment.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentSet", "1", consignment.ExtraFields);
                 }
 
                 if (includePar || Config.ConsignmentBeta)
@@ -1334,7 +1334,7 @@ namespace LaceupMigration.ViewModels
             {
                 if (((Config.SalesmanCanChangeSite || Config.SelectWarehouseForSales) && Config.SalesmanSelectedSite > 0) || Config.PresaleUseInventorySite)
                 {
-                    DataAccess.UpdateInventoryBySite();
+                    DataProvider.UpdateInventoryBySite();
                 }
             }
 
@@ -1344,7 +1344,7 @@ namespace LaceupMigration.ViewModels
             // Check for subsalesmen
             if (salesman != null)
             {
-                var salesmanNode = DataAccess.GetSingleUDF("subsalesmen", salesman.ExtraProperties);
+                var salesmanNode = UDFHelper.GetSingleUDF("subsalesmen", salesman.ExtraProperties);
                 if (!string.IsNullOrEmpty(salesmanNode))
                 {
                     var ids = salesmanNode.Split(',');
@@ -1403,7 +1403,7 @@ namespace LaceupMigration.ViewModels
                         Config.SalesmanSelectedSite = site.Id;
                         Config.SaveSettings();
                         order.SiteId = site.Id;
-                        DataAccess.UpdateInventoryBySite();
+                        DataProvider.UpdateInventoryBySite();
                     }
                     else
                     {
@@ -1466,7 +1466,7 @@ namespace LaceupMigration.ViewModels
 
                 if (Config.CheckCommunicatorVersion("29.91"))
                 {
-                    DataAccess.UpdateClientNote(_client);
+                    DataProvider.UpdateClientNote(_client);
                 }
 
                 BuildClientDetails();
@@ -1524,7 +1524,7 @@ namespace LaceupMigration.ViewModels
 
             try
             {
-                DataAccess.SendSelfServiceInvitation(_client.ClientId, name, email ?? string.Empty, phone ?? string.Empty);
+                DataProvider.SendSelfServiceInvitation(_client.ClientId, name, email ?? string.Empty, phone ?? string.Empty);
                 await _dialogService.ShowAlertAsync("Invitation sent successfully", "Success");
             }
             catch (Exception ex)
@@ -1576,7 +1576,7 @@ namespace LaceupMigration.ViewModels
                 // Also try getting from ExtraPropertiesAsString using DataAccess
                 if (string.IsNullOrEmpty(clientEmail) && !string.IsNullOrEmpty(_client.ExtraPropertiesAsString))
                 {
-                    clientEmail = DataAccess.GetSingleUDF("email", _client.ExtraPropertiesAsString);
+                    clientEmail = UDFHelper.GetSingleUDF("email", _client.ExtraPropertiesAsString);
                 }
                 
                 if (!string.IsNullOrEmpty(clientEmail))
@@ -1700,7 +1700,7 @@ namespace LaceupMigration.ViewModels
                     _client.InsertedLatitude = location.Latitude;
                     _client.InsertedLongitude = location.Longitude;
 
-                    if (DataAccess.SendClientLocation(_client))
+                    if (DataProvider.SendClientLocation(_client))
                     {
                         _client.Latitude = _client.InsertedLatitude;
                         _client.Longitude = _client.InsertedLongitude;

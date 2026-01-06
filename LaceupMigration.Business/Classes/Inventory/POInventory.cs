@@ -37,46 +37,5 @@ namespace LaceupMigration
             poList.Add(item);
         }
 
-
-        public static void GetUpdatedPO()
-        {
-            string fileLocation = DataAccess.GetOnPOInventory();
-
-            if (fileLocation == string.Empty)
-                return;
-
-            try
-            {
-                using (var reader = new StreamReader(fileLocation))
-                {
-                    poList.Clear();
-
-                    string currentline;
-
-                    while ((currentline = reader.ReadLine()) != null)
-                    {
-                        string[] currentrow = currentline.Split(DataLineSplitter);
-
-                        var poInventory = new POInventory()
-                        {
-                            Id = Convert.ToInt32(currentrow[0]),
-                            Qty = Convert.ToDouble(currentrow[1]),
-                        };
-
-                        POInventory.Add(poInventory);
-                    }
-                }
-            }
-            catch(Exception ex)
-            {
-
-            }
-            finally
-            {
-                if (File.Exists(fileLocation))
-                    File.Delete(fileLocation);
-            }
-          
-        }
     }
 }

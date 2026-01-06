@@ -15,7 +15,7 @@ namespace LaceupMigration
 {
     public class GrenPakPrinter : ZebraFourInchesPrinter1
     {
-        protected override IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool asPreOrder, Order order, Client client, string printedId, List<DataAccess.PaymentSplit> payments, bool paidInFull)
+        protected override IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool asPreOrder, Order order, Client client, string printedId, List<PaymentSplit> payments, bool paidInFull)
         {
             List<string> lines = new List<string>();
             startY += 10;
@@ -47,7 +47,7 @@ namespace LaceupMigration
             string TaxPayerId = string.Empty;
             if (company != null)
             {
-                TaxPayerId = DataAccess.GetSingleUDF("TIN", company.ExtraFields);
+                TaxPayerId = UDFHelper.GetSingleUDF("TIN", company.ExtraFields);
             }
 
             if (!string.IsNullOrEmpty(TaxPayerId))
@@ -123,7 +123,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {

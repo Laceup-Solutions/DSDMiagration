@@ -444,7 +444,7 @@ namespace LaceupMigration.ViewModels
 
                     if (!string.IsNullOrEmpty(product.NonVisibleExtraFieldsAsString))
                     {
-                        var available = DataAccess.GetSingleUDF("AvailableIn", product.NonVisibleExtraFieldsAsString);
+                        var available = UDFHelper.GetSingleUDF("AvailableIn", product.NonVisibleExtraFieldsAsString);
                         if (!string.IsNullOrEmpty(available))
                         {
                             if (available.ToLower() == "none" || !available.ToLower().Contains("order"))
@@ -646,7 +646,7 @@ namespace LaceupMigration.ViewModels
                 if (Config.CheckIfShipdateLocked)
                 {
                     var lockedDates = new List<DateTime>();
-                    if (!DataAccess.CheckIfShipdateIsValid(new List<DateTime>() { _order.ShipDate }, ref lockedDates))
+                    if (!DataProvider.CheckIfShipdateIsValid(new List<DateTime>() { _order.ShipDate }, ref lockedDates))
                     {
                         await _dialogService.ShowAlertAsync("The selected date is currently locked. Please select a different shipdate", "Alert");
                         return;
@@ -730,7 +730,7 @@ namespace LaceupMigration.ViewModels
                 }
 
                 // Send the orders
-                DataAccess.SendTheOrders(new Batch[] { batch });
+                DataProvider.SendTheOrders(new Batch[] { batch });
 
                 await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Order sent successfully.", "Success");

@@ -61,7 +61,7 @@ namespace LaceupMigration.ViewModels
         {
             try
             {
-                return DataAccess.GetTransmissionReport(command);
+                return DataProvider.GetTransmissionReport(command);
             }
             catch
             {

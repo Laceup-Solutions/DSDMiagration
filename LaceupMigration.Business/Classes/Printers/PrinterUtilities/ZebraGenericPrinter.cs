@@ -66,7 +66,7 @@ namespace LaceupMigration
                 lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[OrderHeaderClientName], clientSplit, startY));
                 startY += font36Separation;
             }
-            var custno = DataAccess.ExplodeExtraProperties(client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
                 custNoString = " " + custno.Value;
@@ -348,7 +348,7 @@ namespace LaceupMigration
 
             startY += 36;
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             lines.AddRange(GetHeaderRowsInOneDoc(ref startY, asPreOrder, order, order.Client, printedId, payments, payments != null && payments.Sum(x => x.Amount) == balance));
 
             string docName = "NOT AN INVOICE";
@@ -795,7 +795,7 @@ namespace LaceupMigration
             double paid = 0;
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
             // payment.Components.Sum(x => x.Amount) : 0;
@@ -1384,7 +1384,7 @@ namespace LaceupMigration
             return list;
         }
 
-        protected virtual IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool preOrder, Order order, Client client, string invoiceId, IList<DataAccess.PaymentSplit> payments, bool paidInFull)
+        protected virtual IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool preOrder, Order order, Client client, string invoiceId, IList<PaymentSplit> payments, bool paidInFull)
         {
             List<string> lines = new List<string>();
             startY += 10;
@@ -1456,7 +1456,7 @@ namespace LaceupMigration
 
             var clientName = order.Client.ClientName;
             //chilar 
-            var custno = DataAccess.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var chilarClientNameCode = @"^\d+-\d+-"; //code before ClientName
             if (custno != null)
             {
@@ -1597,7 +1597,7 @@ namespace LaceupMigration
             return lines;
         }
 
-        protected virtual IEnumerable<string> GetPaymentLines(ref int startY, IList<DataAccess.PaymentSplit> payments, bool paidInFull)
+        protected virtual IEnumerable<string> GetPaymentLines(ref int startY, IList<PaymentSplit> payments, bool paidInFull)
         {
             List<string> lines = new List<string>();
 
@@ -1922,7 +1922,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {
@@ -2726,7 +2726,7 @@ namespace LaceupMigration
             lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[OrderHeaderTitle2], startY, order.PrintedOrderId, "Invoice"));
             startY += font36Separation;
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             if (payments != null && payments.Count > 0)
             {
                 var paidInFull = payments != null && payments.Sum(x => x.Amount) == order.OrderTotalCost();
@@ -2796,7 +2796,7 @@ namespace LaceupMigration
                 var payment = InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId));
                 if (payment != null)
                 {
-                    var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                    var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                     paid = parts.Sum(x => x.Amount);
                 }
                 s = "TOTAL PAYMENT:";
@@ -4229,12 +4229,12 @@ namespace LaceupMigration
             }
         }
 
-        protected List<DataAccess.PaymentSplit> GetPaymentsForOrderCreatedReport()
+        protected List<PaymentSplit> GetPaymentsForOrderCreatedReport()
         {
-            List<DataAccess.PaymentSplit> result = new List<DataAccess.PaymentSplit>();
+            List<PaymentSplit> result = new List<PaymentSplit>();
 
             foreach (var payment in InvoicePayment.List)
-                result.AddRange(DataAccess.SplitPayment(payment));
+                result.AddRange(PaymentSplit.SplitPayment(payment));
 
             return result;
         }
@@ -4842,7 +4842,7 @@ namespace LaceupMigration
 
             InventorySettlementRow totalRow = new InventorySettlementRow();
 
-            var map = DataAccess.ExtendedSendTheLeftOverInventory();
+            var map = DataProvider.ExtendedSendTheLeftOverInventory();
 
             foreach (var value in map)
             {
@@ -5013,7 +5013,7 @@ namespace LaceupMigration
 
             InventorySettlementRow totalRow = new InventorySettlementRow();
 
-            var map = DataAccess.ExtendedSendTheLeftOverInventory(false, true);
+            var map = DataProvider.ExtendedSendTheLeftOverInventory(false, true);
 
             foreach (var value in map)
             {
@@ -5518,7 +5518,7 @@ namespace LaceupMigration
             double paid = 0;
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
             // payment.Components.Sum(x => x.Amount) : 0;
@@ -6281,7 +6281,7 @@ namespace LaceupMigration
         {
             List<string> lines = new List<string>();
             var yx = InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId));
-            var payments = DataAccess.SplitPayment(yx).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(yx).Where(x => x.UniqueId == order.UniqueId).ToList();
             if (payments != null && payments.Count > 0)
             {
                 lines.Add(string.Format(CultureInfo.InvariantCulture, linesTemplates[FullConsignmentSectionName], startIndex, "PAYMENTS"));
@@ -6321,7 +6321,7 @@ namespace LaceupMigration
             double paid = 0;
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
 

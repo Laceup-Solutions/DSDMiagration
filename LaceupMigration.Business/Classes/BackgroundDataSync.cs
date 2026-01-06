@@ -107,7 +107,7 @@ namespace LaceupMigration
 
         private static void WorkerMethod()
         {
-            if (DataAccess.LoadingData)
+            if (Config.LoadingData)
                 return;
 
             if (!Config.BackGroundSync)
@@ -186,7 +186,7 @@ namespace LaceupMigration
                             Directory.CreateDirectory(Config.SessionPath);
                         }
 
-                        DataAccess.SendCurrentSession(Path.Combine(Config.SessionPath, "SessionFile.cvs"));
+                        DataProvider.SendCurrentSession(Path.Combine(Config.SessionPath, "SessionFile.cvs"));
                         LastSessionSent = DateTime.Now;
                     }
                 }
@@ -212,7 +212,7 @@ namespace LaceupMigration
                         s.endTime = DateTime.Now;
                         s.endLatitude = Config.LastLatitude;
                         s.endLongitude = Config.LastLongitude;
-                        s.extraFields = DataAccess.SyncSingleUDF("comment",
+                        s.extraFields = UDFHelper.SyncSingleUDF("comment",
                             $"Automtically Closed after {Config.AutomaticClockOutTime} minutes", s.extraFields);
 
                         changesMade = true;
@@ -229,7 +229,7 @@ namespace LaceupMigration
                                 s.endTime = DateTime.Now;
                                 s.endLatitude = Config.LastLatitude;
                                 s.endLongitude = Config.LastLongitude;
-                                s.extraFields = DataAccess.SyncSingleUDF("comment",
+                                s.extraFields = UDFHelper.SyncSingleUDF("comment",
                                     $"Automtically Closed after {Config.AutomaticClockOutTime} minutes", s.extraFields);
 
                                 //close open batches
@@ -271,7 +271,7 @@ namespace LaceupMigration
 
             try
             {
-                DataAccess.SendInvoicePaymentsBySource(source, false, true);
+                DataProvider.SendInvoicePaymentsBySource(source, false, true);
                 LastSentCollectedPayments = DateTime.Now;
             }
             catch (Exception ex)
@@ -306,7 +306,7 @@ namespace LaceupMigration
 
                     try
                     {
-                        DataAccess.SendTheOrders(new Batch[] { batch }, item.Value, false);
+                        DataProvider.SendTheOrders(new Batch[] { batch }, item.Value, false);
                         LastSentFinalizedOrder = DateTime.Now;
                     }
                     catch (Exception ex)
@@ -984,7 +984,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.UpdateProductImagesMap();
+                        DataProvider.UpdateProductImagesMap();
                     }
                     catch (Exception ex)
                     {

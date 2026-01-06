@@ -212,7 +212,7 @@ namespace LaceupMigration
                 lines.AddRange(GetIndependendHeaders(ref startY, asPreorder, order));
             }
 
-            string vendorNumber = DataAccess.GetSingleUDF("VENDOR #", order.Client.ExtraPropertiesAsString);
+            string vendorNumber = UDFHelper.GetSingleUDF("VENDOR #", order.Client.ExtraPropertiesAsString);
             if (!string.IsNullOrEmpty(vendorNumber))
             {
                 vendorNumber = "Vendor #: " + vendorNumber;
@@ -232,7 +232,7 @@ namespace LaceupMigration
 
             startY += font18Separation;
 
-            var clientId = DataAccess.GetSingleUDF("Cust Id", order.Client.ExtraPropertiesAsString);
+            var clientId = UDFHelper.GetSingleUDF("Cust Id", order.Client.ExtraPropertiesAsString);
             if (!string.IsNullOrEmpty(clientId))
             {
                 lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[ToltecaClientId], startY, clientId));
@@ -543,7 +543,7 @@ namespace LaceupMigration
         {
             List<string> lines = new List<string>();
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
 
             lines.Add(string.Format(CultureInfo.InvariantCulture, linesTemplates[ToltecaSectionName], startY, "Payment Type"));
             startY += 35;
@@ -649,7 +649,7 @@ namespace LaceupMigration
             var totalDiscount = order.CalculateDiscount();
             var invoiceTotal = order.OrderTotalCost();
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             var paid = payments != null && payments.Count > 0 ? payments.Sum(x => x.Amount) : 0;
 
             lines.Add(string.Format(CultureInfo.InvariantCulture, linesTemplates[ToltecaTotals], startY, "                Sales Subtotal:", salesSub.ToCustomString()));

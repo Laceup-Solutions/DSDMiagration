@@ -91,7 +91,7 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(NonVisibleExtraFieldsAsString))
                 {
-                    var value = DataAccess.GetSingleUDF("templateMinimumQty", NonVisibleExtraFieldsAsString);
+                    var value = UDFHelper.GetSingleUDF("templateMinimumQty", NonVisibleExtraFieldsAsString);
                     if (!string.IsNullOrEmpty(value))
                         double.TryParse(value, out qty);
                 }
@@ -108,7 +108,7 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(NonVisibleExtraFieldsAsString))
                 {
-                    var value = DataAccess.GetSingleUDF("templateMultipleQty", NonVisibleExtraFieldsAsString);
+                    var value = UDFHelper.GetSingleUDF("templateMultipleQty", NonVisibleExtraFieldsAsString);
                     if (!string.IsNullOrEmpty(value))
                         double.TryParse(value, out qty);
                 }
@@ -124,7 +124,7 @@ namespace LaceupMigration
                 if (string.IsNullOrEmpty(ExtraPropertiesAsString))
                     return -1;
 
-                var extraFields = DataAccess.GetSingleUDF("split", ExtraPropertiesAsString.ToLower());
+                var extraFields = UDFHelper.GetSingleUDF("split", ExtraPropertiesAsString.ToLower());
                 if (!string.IsNullOrEmpty(extraFields))
                 {
                     int toReturn = -1;
@@ -145,7 +145,7 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(ExtraPropertiesAsString))
                 {
-                    var value = DataAccess.GetSingleUDF("fixedweight", ExtraPropertiesAsString);
+                    var value = UDFHelper.GetSingleUDF("fixedweight", ExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(value) && value == "yes")
                         isFixed = true;
                 }
@@ -162,7 +162,7 @@ namespace LaceupMigration
                 if (string.IsNullOrEmpty(NonVisibleExtraFieldsAsString))
                     return false;
 
-                var value = DataAccess.GetSingleUDF("useonlydefaultuom", NonVisibleExtraFieldsAsString);
+                var value = UDFHelper.GetSingleUDF("useonlydefaultuom", NonVisibleExtraFieldsAsString);
                 if (!string.IsNullOrEmpty(value) && value == "1")
                     return true;
                 else
@@ -245,16 +245,8 @@ namespace LaceupMigration
                     noVisibleExtraProperties = new List<Tuple<string, string>>();
                     if (NonVisibleExtraFieldsAsString == null || NonVisibleExtraFieldsAsString.Length == 0)
                         return noVisibleExtraProperties;
-                    string[] parts = NonVisibleExtraFieldsAsString.Split(DataAccess.ExtraPropertiesSeparator);
-                    if (parts.Length > 0)
-                    {
-                        foreach (string item in parts)
-                        {
-                            string[] detail = item.Split(DataAccess.ExtraPropertySeparator);
-                            if (detail.Length == 2)
-                                noVisibleExtraProperties.Add(new Tuple<string, string>(detail[0], detail[1]));
-                        }
-                    }
+                    
+                    noVisibleExtraProperties = UDFHelper.ExplodeExtraPropertiesTuple(NonVisibleExtraFieldsAsString);
                 }
                 return noVisibleExtraProperties;
             }
@@ -269,17 +261,8 @@ namespace LaceupMigration
                     extraProperties = new List<Tuple<string, string>>();
                     if (ExtraPropertiesAsString == null || ExtraPropertiesAsString.Length == 0)
                         return extraProperties;
-                    string extraPropertiesField = ExtraPropertiesAsString;
-                    string[] extraPropertiesParts = extraPropertiesField.Split(DataAccess.ExtraPropertiesSeparator);
-                    if (extraPropertiesParts.Length > 0)
-                    {
-                        foreach (string extraProperty in extraPropertiesParts)
-                        {
-                            string[] extraPropertyDetails = extraProperty.Split(DataAccess.ExtraPropertySeparator);
-                            if (extraPropertyDetails.Length == 2)
-                                extraProperties.Add(new Tuple<string, string>(extraPropertyDetails[0], extraPropertyDetails[1]));
-                        }
-                    }
+                    
+                    extraProperties = UDFHelper.ExplodeExtraPropertiesTuple(ExtraPropertiesAsString);
                 }
                 return extraProperties;
             }
@@ -445,7 +428,7 @@ namespace LaceupMigration
                     return retPrice;
             }
 
-            var hidePrices = DataAccess.GetSingleUDF("HidePriceInTransaction", client.NonvisibleExtraPropertiesAsString);
+            var hidePrices = UDFHelper.GetSingleUDF("HidePriceInTransaction", client.NonvisibleExtraPropertiesAsString);
 
             if (useConfig && (Config.HidePriceInTransaction || (!string.IsNullOrEmpty(hidePrices) && hidePrices == "1")))
                 return 0;
@@ -543,7 +526,7 @@ namespace LaceupMigration
             //                                    pp = price.Price * factor;
             //                                    fP = true;
             //                                    // detail.FromOffer = true;
-            //                                    //  detail.ExtraFields = DataAccess.SyncSingleUDF("TiertType", "Tier2", detail.ExtraFields);
+            //                                    //  detail.ExtraFields = UDFHelper.SyncSingleUDF("TiertType", "Tier2", detail.ExtraFields);
             //                                }
             //                            }
             //                        }
@@ -915,11 +898,11 @@ namespace LaceupMigration
                 if (string.IsNullOrEmpty(item.NonVisibleExtraFieldsAsString))
                     continue;
 
-                var type = DataAccess.GetSingleUDF("Type", item.NonVisibleExtraFieldsAsString);
+                var type = UDFHelper.GetSingleUDF("Type", item.NonVisibleExtraFieldsAsString);
                 if (string.IsNullOrEmpty(type) || type.ToLowerInvariant() == "vnr" || type.ToLowerInvariant() == "vpr")
                     continue;
 
-                var kit = DataAccess.GetSingleUDF("Kit", item.NonVisibleExtraFieldsAsString);
+                var kit = UDFHelper.GetSingleUDF("Kit", item.NonVisibleExtraFieldsAsString);
                 if (string.IsNullOrEmpty(kit))
                     continue;
 
@@ -987,11 +970,11 @@ namespace LaceupMigration
                 if (string.IsNullOrEmpty(item.NonVisibleExtraFieldsAsString))
                     continue;
 
-                var type = DataAccess.GetSingleUDF("Type", item.NonVisibleExtraFieldsAsString);
+                var type = UDFHelper.GetSingleUDF("Type", item.NonVisibleExtraFieldsAsString);
                 if (string.IsNullOrEmpty(type) || type.ToLowerInvariant() == "vnr" || type.ToLowerInvariant() == "vpr")
                     continue;
 
-                kit = DataAccess.GetSingleUDF("Kit", item.NonVisibleExtraFieldsAsString);
+                kit = UDFHelper.GetSingleUDF("Kit", item.NonVisibleExtraFieldsAsString);
                 if (string.IsNullOrEmpty(kit))
                     continue;
 
@@ -1044,11 +1027,11 @@ namespace LaceupMigration
                 if (string.IsNullOrEmpty(item.NonVisibleExtraFieldsAsString))
                     continue;
 
-                var type = DataAccess.GetSingleUDF("Type", item.NonVisibleExtraFieldsAsString);
+                var type = UDFHelper.GetSingleUDF("Type", item.NonVisibleExtraFieldsAsString);
                 if (string.IsNullOrEmpty(type) || type.ToLowerInvariant() == "vnr" || type.ToLowerInvariant() == "vpr")
                     continue;
 
-                kit = DataAccess.GetSingleUDF("Kit", item.NonVisibleExtraFieldsAsString);
+                kit = UDFHelper.GetSingleUDF("Kit", item.NonVisibleExtraFieldsAsString);
                 if (string.IsNullOrEmpty(kit))
                     continue;
 
@@ -1095,11 +1078,11 @@ namespace LaceupMigration
                 if (string.IsNullOrEmpty(item.NonVisibleExtraFieldsAsString))
                     continue;
 
-                var type = DataAccess.GetSingleUDF("Type", item.NonVisibleExtraFieldsAsString);
+                var type = UDFHelper.GetSingleUDF("Type", item.NonVisibleExtraFieldsAsString);
                 if (string.IsNullOrEmpty(type) || type.ToLowerInvariant() == "vnr" || type.ToLowerInvariant() == "vpr")
                     continue;
 
-                var kit = DataAccess.GetSingleUDF("Kit", item.NonVisibleExtraFieldsAsString);
+                var kit = UDFHelper.GetSingleUDF("Kit", item.NonVisibleExtraFieldsAsString);
                 if (string.IsNullOrEmpty(kit))
                     continue;
 

@@ -1005,7 +1005,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {

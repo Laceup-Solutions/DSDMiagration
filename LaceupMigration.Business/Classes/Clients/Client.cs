@@ -12,43 +12,10 @@ namespace LaceupMigration
         public List<ProductOfferEx> AvailableOffersForListPrice { get; set; }
 
         public List<Invoice> Invoices = null;
+        
         public void EnsureInvoicesAreLoaded()
         {
-            if (Invoices != null)
-                return;
-
-            var clientPath = Path.Combine(Config.InvoicesPath, ClientId.ToString());
-            if (Directory.Exists(clientPath))
-            {
-                var finalInvoiceFile = Path.Combine(clientPath, "invoices.xml");
-                if (File.Exists(finalInvoiceFile))
-                {
-                    using (var reader = new StreamReader(finalInvoiceFile))
-                    {
-                        string currentline;
-                        int currenttable = -1;
-                        while ((currentline = reader.ReadLine()) != null)
-                        {
-                            if (currentline == "EndOfTable")
-                                currenttable = 1;
-                            else
-                            {
-                                var currentrow = currentline.Split(DataAccess.DataLineSplitter);
-                                if (currenttable < 1)
-                                {
-                                    //DataAccess.CreateInvoice(currentrow);
-                                }
-                                else
-                                {
-                                    DataAccess.CreateInvoiceDetails(currentrow);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Invoices = Invoice.OpenInvoices.Where(x => x.ClientId == ClientId).ToList();
+            DataProvider.EnsureInvoicesAreLoadedForClient(this);
         }
 
         IList<Tuple<string, string>> extraProperties;
@@ -63,7 +30,7 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(NonvisibleExtraPropertiesAsString) && NonvisibleExtraPropertiesAsString.ToLower().Contains("copiesperinvoice"))
                 {
-                    var copiesAsString = DataAccess.GetSingleUDF("copiesperinvoice", NonvisibleExtraPropertiesAsString);
+                    var copiesAsString = UDFHelper.GetSingleUDF("copiesperinvoice", NonvisibleExtraPropertiesAsString);
 
                     if (!string.IsNullOrEmpty(copiesAsString))
                     {
@@ -74,7 +41,7 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(ExtraPropertiesAsString) && ExtraPropertiesAsString.ToLower().Contains("copiesperinvoice"))
                 {
-                    var copiesAsString = DataAccess.GetSingleUDF("copiesperinvoice", ExtraPropertiesAsString);
+                    var copiesAsString = UDFHelper.GetSingleUDF("copiesperinvoice", ExtraPropertiesAsString);
 
                     if (!string.IsNullOrEmpty(copiesAsString))
                     {
@@ -93,7 +60,7 @@ namespace LaceupMigration
             {
                 if (!string.IsNullOrEmpty(NonvisibleExtraPropertiesAsString))
                 {
-                    var remitTo = DataAccess.GetSingleUDF("remitto", NonvisibleExtraPropertiesAsString);
+                    var remitTo = UDFHelper.GetSingleUDF("remitto", NonvisibleExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(remitTo))
                     {
                         return remitTo;
@@ -132,7 +99,7 @@ namespace LaceupMigration
                 if (string.IsNullOrEmpty(NonvisibleExtraPropertiesAsString))
                     return false;
 
-                var extraFields = DataAccess.GetSingleUDF("usebaseunitofmeasurebydefault", NonvisibleExtraPropertiesAsString);
+                var extraFields = UDFHelper.GetSingleUDF("usebaseunitofmeasurebydefault", NonvisibleExtraPropertiesAsString);
                 if (!string.IsNullOrEmpty(extraFields) && extraFields == "1")
                     return true;
 
@@ -154,7 +121,7 @@ namespace LaceupMigration
                 if (string.IsNullOrEmpty(ExtraPropertiesAsString))
                     return list;
 
-                var extraFields = DataAccess.GetSingleUDF("split", ExtraPropertiesAsString.ToLower());
+                var extraFields = UDFHelper.GetSingleUDF("split", ExtraPropertiesAsString.ToLower());
                 if (!string.IsNullOrEmpty(extraFields))
                 {
                     var parts = extraFields.Split(",");
@@ -256,13 +223,13 @@ namespace LaceupMigration
         {
             get
             {
-                var data = DataAccess.GetSingleUDF("MinimumOrderQty", NonvisibleExtraPropertiesAsString);
+                var data = UDFHelper.GetSingleUDF("MinimumOrderQty", NonvisibleExtraPropertiesAsString);
                 if (!string.IsNullOrEmpty(data))
                 {
                     return Convert.ToInt32(data);
                 }
 
-                data = DataAccess.GetSingleUDF("MinimumOrderQty", ExtraPropertiesAsString);
+                data = UDFHelper.GetSingleUDF("MinimumOrderQty", ExtraPropertiesAsString);
                 if (!string.IsNullOrEmpty(data))
                 {
                     return Convert.ToDouble(data);
@@ -279,14 +246,14 @@ namespace LaceupMigration
             {
                 if (!string.IsNullOrEmpty(NonvisibleExtraPropertiesAsString))
                 {
-                    var data = DataAccess.GetSingleUDF("PrintSKUInsteadUPC", NonvisibleExtraPropertiesAsString);
+                    var data = UDFHelper.GetSingleUDF("PrintSKUInsteadUPC", NonvisibleExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(data) && data == "1")
                         return true;
                 }
 
                 if (!string.IsNullOrEmpty(ExtraPropertiesAsString))
                 {
-                    var data = DataAccess.GetSingleUDF("PrintSKUInsteadUPC", ExtraPropertiesAsString);
+                    var data = UDFHelper.GetSingleUDF("PrintSKUInsteadUPC", ExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(data) && data == "1")
                         return true;
                 }
@@ -301,14 +268,14 @@ namespace LaceupMigration
             {
                 if (!string.IsNullOrEmpty(NonvisibleExtraPropertiesAsString))
                 {
-                    var data = DataAccess.GetSingleUDF("CreditHold", NonvisibleExtraPropertiesAsString);
+                    var data = UDFHelper.GetSingleUDF("CreditHold", NonvisibleExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(data) && data == "yes")
                         return true;
                 }
 
                 if (!string.IsNullOrEmpty(ExtraPropertiesAsString))
                 {
-                    var data = DataAccess.GetSingleUDF("CreditHold", ExtraPropertiesAsString);
+                    var data = UDFHelper.GetSingleUDF("CreditHold", ExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(data) && data == "yes")
                         return true;
                 }
@@ -325,19 +292,10 @@ namespace LaceupMigration
                 {
                     if (ExtraPropertiesAsString == null || ExtraPropertiesAsString.Length == 0)
                         return extraProperties;
-                    extraProperties = new List<Tuple<string, string>>();
-                    string extraPropertiesField = ExtraPropertiesAsString;
-                    string[] extraPropertiesParts = extraPropertiesField.Split(DataAccess.ExtraPropertiesSeparator);
-                    if (extraPropertiesParts.Length > 0)
-                    {
-                        foreach (string extraProperty in extraPropertiesParts)
-                        {
-                            string[] extraPropertyDetails = extraProperty.Split(DataAccess.ExtraPropertySeparator);
-                            if (extraPropertyDetails.Length == 2)
-                                extraProperties.Add(new Tuple<string, string>(extraPropertyDetails[0], extraPropertyDetails[1]));
-                        }
-                    }
+
+                    extraProperties = UDFHelper.ExplodeExtraPropertiesTuple(ExtraPropertiesAsString);
                 }
+
                 return extraProperties;
             }
             set
@@ -368,18 +326,7 @@ namespace LaceupMigration
                 {
                     if (NonvisibleExtraPropertiesAsString == null || NonvisibleExtraPropertiesAsString.Length == 0)
                         return new List<Tuple<string, string>>();
-                    nonVisibleExtraProperties = new List<Tuple<string, string>>();
-                    string extraPropertiesField = NonvisibleExtraPropertiesAsString;
-                    string[] extraPropertiesParts = extraPropertiesField.Split(DataAccess.ExtraPropertiesSeparator);
-                    if (extraPropertiesParts.Length > 0)
-                    {
-                        foreach (string extraProperty in extraPropertiesParts)
-                        {
-                            string[] extraPropertyDetails = extraProperty.Split(DataAccess.ExtraPropertySeparator);
-                            if (extraPropertyDetails.Length == 2)
-                                nonVisibleExtraProperties.Add(new Tuple<string, string>(extraPropertyDetails[0], extraPropertyDetails[1]));
-                        }
-                    }
+                    nonVisibleExtraProperties = UDFHelper.ExplodeExtraPropertiesTuple(NonvisibleExtraPropertiesAsString);
                 }
                 return nonVisibleExtraProperties;
             }
@@ -906,7 +853,7 @@ namespace LaceupMigration
                         double paid = 0;
                         if (payment != null)
                         {
-                            var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                            var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                             paid = parts.Sum(x => x.Amount);
                         }
 
@@ -969,7 +916,7 @@ namespace LaceupMigration
         {
             get
             {
-                var allow = DataAccess.GetSingleUDF("allowDiscount", ExtraPropertiesAsString);
+                var allow = UDFHelper.GetSingleUDF("allowDiscount", ExtraPropertiesAsString);
 
                 if (string.IsNullOrEmpty(allow) && Config.AllowDiscount)
                     return true;
@@ -982,7 +929,7 @@ namespace LaceupMigration
         {
             get
             {
-                var allow = DataAccess.GetSingleUDF("allowDiscountPerLine", ExtraPropertiesAsString);
+                var allow = UDFHelper.GetSingleUDF("allowDiscountPerLine", ExtraPropertiesAsString);
 
                 if (string.IsNullOrEmpty(allow) && Config.AllowDiscountPerLine)
                     return true;
@@ -995,7 +942,7 @@ namespace LaceupMigration
         {
             get
             {
-                var ls = DataAccess.GetSingleUDF("LicenseStatus", ExtraPropertiesAsString);
+                var ls = UDFHelper.GetSingleUDF("LicenseStatus", ExtraPropertiesAsString);
                 return ls;
             }
         }
@@ -1018,7 +965,7 @@ namespace LaceupMigration
             if (averages == null)
             {
                 averages = new Dictionary<int, double>();
-                var udf = DataAccess.ExplodeExtraProperties(NonvisibleExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLower() == "saleaverage");
+                var udf = UDFHelper.ExplodeExtraProperties(NonvisibleExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLower() == "saleaverage");
                 if (udf != null)
                 {
                     var vars = udf.Value.Split(new char[] { ';' });
@@ -1043,7 +990,7 @@ namespace LaceupMigration
         {
             get
             {
-                var poIsMandatoryForCustomer = DataAccess.GetSingleUDF("poIsRequired", NonvisibleExtraPropertiesAsString);
+                var poIsMandatoryForCustomer = UDFHelper.GetSingleUDF("poIsRequired", NonvisibleExtraPropertiesAsString);
 
                 return Config.POIsMandatory || (!string.IsNullOrEmpty(poIsMandatoryForCustomer) && poIsMandatoryForCustomer == "1");
             }
@@ -1056,7 +1003,7 @@ namespace LaceupMigration
                 if (string.IsNullOrEmpty(NonvisibleExtraPropertiesAsString))
                     return string.Empty;
 
-                return DataAccess.GetSingleUDF("password", NonvisibleExtraPropertiesAsString);
+                return UDFHelper.GetSingleUDF("password", NonvisibleExtraPropertiesAsString);
             }
         }
 
@@ -1310,14 +1257,14 @@ namespace LaceupMigration
 
                     if (!string.IsNullOrEmpty(Config.EnablePaymentsByTerms) && !string.IsNullOrEmpty(ExtraPropertiesAsString))
                     {
-                        var terms = DataAccess.GetSingleUDF("TERMS", ExtraPropertiesAsString);
+                        var terms = UDFHelper.GetSingleUDF("TERMS", ExtraPropertiesAsString);
                         if (!string.IsNullOrEmpty(terms))
                             return terms.ToLower() != Config.EnablePaymentsByTerms.ToLower();
                     }
 
                     if (!string.IsNullOrEmpty(Config.TrackTermsPaymentBotton) && !string.IsNullOrEmpty(ExtraPropertiesAsString))
                     {
-                        var terms = DataAccess.GetSingleUDF("TERMS", ExtraPropertiesAsString);
+                        var terms = UDFHelper.GetSingleUDF("TERMS", ExtraPropertiesAsString);
 
                         var list = Config.TrackTermsPaymentBotton.Split(",");
 
@@ -1369,7 +1316,7 @@ namespace LaceupMigration
 
             ImageList = new List<string>();
 
-            var imagesZipFolder = DataAccess.GetClientImages(ClientId);
+            var imagesZipFolder = DataProvider.GetClientImages(ClientId);
 
             if (!string.IsNullOrEmpty(imagesZipFolder))
             {
@@ -1543,7 +1490,7 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(tempPathFile) && File.Exists(tempPathFile))
                 {
-                    DataAccess.SendClientPictures(tempPathFile, ClientId);
+                    DataProvider.SendClientPictures(tempPathFile, ClientId);
                     File.Delete(tempPathFile);
                 }
 

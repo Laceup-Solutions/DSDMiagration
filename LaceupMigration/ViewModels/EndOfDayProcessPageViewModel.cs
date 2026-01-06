@@ -181,7 +181,7 @@ namespace LaceupMigration.ViewModels
                 await Task.Run(() =>
                 {
                     // Execute SendAll which handles all end of day operations
-                    DataAccess.SendAll();
+                    DataProvider.SendAll();
                     
                     // Update status
                     Config.PendingLoadToAccept = false;

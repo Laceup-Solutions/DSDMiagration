@@ -88,7 +88,7 @@ namespace LaceupMigration.ViewModels
             }
 
             // Check if counting mode
-            _counting = DataAccess.GetSingleUDF("ConsignmentCount", _order.ExtraFields) == "1";
+            _counting = UDFHelper.GetSingleUDF("ConsignmentCount", _order.ExtraFields) == "1";
 
             _initialized = true;
             _lastDetailCount = _order.Details.Count;
@@ -723,7 +723,7 @@ namespace LaceupMigration.ViewModels
                 var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
                 if (batch != null)
                 {
-                    DataAccess.SendTheOrders(new Batch[] { batch });
+                    DataProvider.SendTheOrders(new Batch[] { batch });
                     await _dialogService.ShowAlertAsync("Order sent successfully.", "Info");
                     await _appService.GoBackToMainAsync();
                 }

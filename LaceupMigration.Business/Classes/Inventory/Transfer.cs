@@ -40,7 +40,7 @@ namespace LaceupMigration
             UniqueId = Guid.NewGuid().ToString();
             ClockIn = DateTime.Now;
             ClockOut = DateTime.Now;
-            ExtraFields = DataAccess.SyncSingleUDF("uniqueId", UniqueId, "");
+            ExtraFields = UDFHelper.SyncSingleUDF("uniqueId", UniqueId, "");
             SalesmanId = Config.SalesmanId;
             Type = action;
             SourceSiteId = sourceId;
@@ -147,7 +147,7 @@ namespace LaceupMigration
                 var clockIn = DateTime.Now;
                 var clockOut = DateTime.Now;
                 string uniqueId = Guid.NewGuid().ToString();
-                string extrafields = DataAccess.SyncSingleUDF("uniqueId", uniqueId, "");
+                string extrafields = UDFHelper.SyncSingleUDF("uniqueId", uniqueId, "");
                 
                 string commentTemp = this.Comment == null ? string.Empty : this.Comment.Replace((char)13, (char)32).Replace((char)10, (char)32);
 

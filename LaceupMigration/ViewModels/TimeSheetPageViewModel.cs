@@ -317,7 +317,7 @@ namespace LaceupMigration.ViewModels
                         System.IO.Directory.CreateDirectory(Config.SessionPath);
                     }
 
-                    bool success = DataAccess.SendCurrentSession(System.IO.Path.Combine(Config.SessionPath, "SessionFile.cvs"));
+                    bool success = DataProvider.SendCurrentSession(System.IO.Path.Combine(Config.SessionPath, "SessionFile.cvs"));
                     if (success)
                     {
                         if (System.IO.File.Exists(Session.session.fileName))

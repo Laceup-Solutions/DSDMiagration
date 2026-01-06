@@ -28,7 +28,7 @@ namespace LaceupMigration
 
             try
             {
-                DataAccess.GetExcelFile(tempFile, fullPath);
+                DataProvider.GetExcelFile(tempFile, fullPath);
             }
             catch (Exception ex)
             {
@@ -92,7 +92,7 @@ namespace LaceupMigration
             list.Add(new T("F8", "Buyer"));
             list.Add(new T("G8", order.Client.ContactName));
 
-            var printTerms = DataAccess.GetSingleUDF("printterms", order.Client.ExtraPropertiesAsString);
+            var printTerms = UDFHelper.GetSingleUDF("printterms", order.Client.ExtraPropertiesAsString);
 
             if (!string.IsNullOrEmpty(printTerms) && printTerms == "1")
             {

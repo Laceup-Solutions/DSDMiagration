@@ -220,8 +220,8 @@ namespace LaceupMigration
                 Site = this
             };
 
-            var ml = DataAccess.GetSingleUDF("mfgLot", inv.ExtraFields);
-            var md = DataAccess.GetSingleUDF("mfgDate", inv.ExtraFields);
+            var ml = UDFHelper.GetSingleUDF("mfgLot", inv.ExtraFields);
+            var md = UDFHelper.GetSingleUDF("mfgDate", inv.ExtraFields);
 
             if (!string.IsNullOrEmpty(ml))
                 inv.MfgLot = ml;

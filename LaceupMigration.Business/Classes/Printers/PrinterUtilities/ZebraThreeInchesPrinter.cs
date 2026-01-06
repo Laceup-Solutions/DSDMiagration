@@ -1030,7 +1030,8 @@ namespace LaceupMigration
 
             InventorySettlementRow totalRow = new InventorySettlementRow();
 
-            var map = DataAccess.ExtendedSendTheLeftOverInventory();
+            var map = DataProvider.ExtendedSendTheLeftOverInventory();
+
             foreach (var value in map)
             {
                 var product = value.Product;
@@ -1201,7 +1202,8 @@ namespace LaceupMigration
 
             InventorySettlementRow totalRow = new InventorySettlementRow();
 
-            var map = DataAccess.ExtendedSendTheLeftOverInventory(false,true);
+            var map = DataProvider.ExtendedSendTheLeftOverInventory(false,true);
+
             foreach (var value in map)
             {
                 var product = value.Product;
@@ -1815,7 +1817,7 @@ namespace LaceupMigration
         {
             List<string> lines = new List<string>();
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             if (payments != null && payments.Count > 0)
             {
                 lines.Add(string.Format(CultureInfo.InvariantCulture, linesTemplates[FullConsignmentSectionName], startIndex, "PAYMENTS"));
@@ -1855,7 +1857,7 @@ namespace LaceupMigration
             double paid = 0;
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
 
@@ -2098,7 +2100,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {

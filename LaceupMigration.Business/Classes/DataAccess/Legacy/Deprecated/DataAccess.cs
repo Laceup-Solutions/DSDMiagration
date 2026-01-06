@@ -18,7 +18,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using SkiaSharp;
 
-namespace LaceupMigration
+namespace LaceupMigration.DataAccess.Deprecated
 {
     public partial class DataAccess 
     {
@@ -146,7 +146,7 @@ namespace LaceupMigration
                     foreach (var detail in order.Details)
                         if (detail.ExtraFields.IndexOf("RelatedDetail") != -1)
                         {
-                            var pair = DataAccess.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
+                            var pair = UDFHelper.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
                             if (pair != null)
                             {
                                 var relatedDetail = order.Details.FirstOrDefault(x => x.OriginalId == pair.Value);
@@ -853,12 +853,12 @@ namespace LaceupMigration
 
                 if (detail.FromOffer)
                 {
-                    var offerType = DataAccess.GetSingleUDF("OFFERTYPE", detail.ExtraFields);
+                    var offerType = UDFHelper.GetSingleUDF("OFFERTYPE", detail.ExtraFields);
                     if (!string.IsNullOrEmpty(offerType))
                         detail.FromOfferType = Convert.ToInt32(offerType);
                     else
                     {
-                        var fromOfferPrice = DataAccess.GetSingleUDF("fromOfferPrice", detail.ExtraFields);
+                        var fromOfferPrice = UDFHelper.GetSingleUDF("fromOfferPrice", detail.ExtraFields);
                         if (!string.IsNullOrEmpty(fromOfferPrice))
                             detail.FromOfferType = 0;
                     }
@@ -2722,7 +2722,7 @@ namespace LaceupMigration
                             if (string.IsNullOrEmpty(detail.ExtraFields))
                                 continue;
 
-                            var invoiceId = DataAccess.GetSingleUDF("frominvoice", detail.ExtraFields);
+                            var invoiceId = UDFHelper.GetSingleUDF("frominvoice", detail.ExtraFields);
                             if (!string.IsNullOrEmpty(invoiceId))
                             {
                                 var found = groupedCredits.FirstOrDefault(x => x.InvoiceId == invoiceId && x.ClientId == credit.Client.ClientId && x.AsPresale == credit.AsPresale);
@@ -2829,9 +2829,9 @@ namespace LaceupMigration
                                 string zeroLines = "";
                                 foreach (var item in order.Details.Where(x => x.ConsignmentUpdated && (x.ConsignmentOld != x.ConsignmentNew || x.Price != x.ConsignmentNewPrice) && !x.ParLevelDetail))
                                 {
-                                    var rotation = DataAccess.GetSingleUDF("rotatedQty", item.ExtraFields);
-                                    var adjQty = DataAccess.GetSingleUDF("adjustedQty", item.ExtraFields);
-                                    var core = DataAccess.GetSingleUDF("coreQty", item.ExtraFields);
+                                    var rotation = UDFHelper.GetSingleUDF("rotatedQty", item.ExtraFields);
+                                    var adjQty = UDFHelper.GetSingleUDF("adjustedQty", item.ExtraFields);
+                                    var core = UDFHelper.GetSingleUDF("coreQty", item.ExtraFields);
 
                                     if (item.Qty == 0 && string.IsNullOrEmpty(rotation) && string.IsNullOrEmpty(adjQty) && string.IsNullOrEmpty(core))
                                     {
@@ -2843,7 +2843,7 @@ namespace LaceupMigration
                                 }
 
                                 if (!string.IsNullOrEmpty(zeroLines))
-                                    order.ExtraFields = DataAccess.SyncSingleUDF("zerolines", zeroLines, order.ExtraFields);
+                                    order.ExtraFields = UDFHelper.SyncSingleUDF("zerolines", zeroLines, order.ExtraFields);
                             }
                             else if (order.AsPresale || order.Reshipped)
                                 FixConsignmentPar(order);
@@ -2906,9 +2906,9 @@ namespace LaceupMigration
                     if (order.ExtraFields.ToLowerInvariant().IndexOf("aspresale") < 0)
                     {
                         if (order.AsPresale)
-                            order.ExtraFields = DataAccess.SyncSingleUDF("AsPresale", "1", order.ExtraFields);
+                            order.ExtraFields = UDFHelper.SyncSingleUDF("AsPresale", "1", order.ExtraFields);
                         else
-                            order.ExtraFields = DataAccess.SyncSingleUDF("AsPresale", "0", order.ExtraFields);
+                            order.ExtraFields = UDFHelper.SyncSingleUDF("AsPresale", "0", order.ExtraFields);
                     }
 
                     orderRow["DateLong"] = order.Date.Ticks;
@@ -2923,7 +2923,7 @@ namespace LaceupMigration
                         orderRow["SessionId"] = sessionId;
 
                     if (Config.UseQuote && order.FromInvoiceId > 0)
-                        order.ExtraFields = DataAccess.SyncSingleUDF("ExternalInvoiceId", order.FromInvoiceId.ToString(), order.ExtraFields);
+                        order.ExtraFields = UDFHelper.SyncSingleUDF("ExternalInvoiceId", order.FromInvoiceId.ToString(), order.ExtraFields);
 
                     if (order.IsScanBasedTrading)
                         order.ExtraFields = SyncSingleUDF("scanBasedTrading", "1", order.ExtraFields);
@@ -3776,7 +3776,7 @@ namespace LaceupMigration
                 foreach (var p in InvoicePayment.List.ToList())
                 {
                     foreach (var comp in p.Components)
-                        comp.ExtraFields = DataAccess.RemoveSingleUDF("MarkPaymentAsUnDeposit", comp.ExtraFields);
+                        comp.ExtraFields = UDFHelper.RemoveSingleUDF("MarkPaymentAsUnDeposit", comp.ExtraFields);
                 }
 
                 DataSet ds = CreateInvoicePaymentDS();
@@ -3881,7 +3881,7 @@ namespace LaceupMigration
                     foreach (var p in source)
                     {
                         foreach (var comp in p.Components)
-                            comp.ExtraFields = DataAccess.SyncSingleUDF("MarkPaymentAsUnDeposit", "1", comp.ExtraFields);
+                            comp.ExtraFields = UDFHelper.SyncSingleUDF("MarkPaymentAsUnDeposit", "1", comp.ExtraFields);
                     }
                 }
                 else
@@ -3889,7 +3889,7 @@ namespace LaceupMigration
                     foreach (var p in source)
                     {
                         foreach (var comp in p.Components)
-                            comp.ExtraFields = DataAccess.RemoveSingleUDF("MarkPaymentAsUnDeposit", comp.ExtraFields);
+                            comp.ExtraFields = UDFHelper.RemoveSingleUDF("MarkPaymentAsUnDeposit", comp.ExtraFields);
                     }
                 }
 
@@ -3986,7 +3986,7 @@ namespace LaceupMigration
                         foreach (var p in source)
                         {
                             foreach (var comp in p.Components)
-                                comp.ExtraFields = DataAccess.SyncSingleUDF("MarkPaymentAsUnDeposit", "1", comp.ExtraFields);
+                                comp.ExtraFields = UDFHelper.SyncSingleUDF("MarkPaymentAsUnDeposit", "1", comp.ExtraFields);
                         }
                     }
                     else
@@ -3994,7 +3994,7 @@ namespace LaceupMigration
                         foreach (var p in source)
                         {
                             foreach (var comp in p.Components)
-                                comp.ExtraFields = DataAccess.RemoveSingleUDF("MarkPaymentAsUnDeposit", comp.ExtraFields);
+                                comp.ExtraFields = UDFHelper.RemoveSingleUDF("MarkPaymentAsUnDeposit", comp.ExtraFields);
                         }
                     }
 
@@ -4632,7 +4632,7 @@ namespace LaceupMigration
 
                     var extraFields = c.ExtraPropertiesAsString ?? string.Empty;
                     if (Config.NewClientCanHaveDiscount)
-                        extraFields = DataAccess.RemoveSingleUDF("allowDiscount", extraFields);
+                        extraFields = UDFHelper.RemoveSingleUDF("allowDiscount", extraFields);
 
                     row["ExtraFields"] = extraFields;
                     row["NonVisibleExtraFields"] = c.NonvisibleExtraPropertiesAsString ?? string.Empty;
@@ -5849,7 +5849,7 @@ namespace LaceupMigration
         public static string SyncSingleUDF(string udfName, string udfValue, string current, List<KeyValuePairWritable<string, string>> currentList = null, bool concat = true)
         {
             if (currentList == null)
-                currentList = DataAccess.ExplodeExtraProperties(current);
+                currentList = UDFHelper.ExplodeExtraProperties(current);
 
             var udf = currentList.FirstOrDefault(x => x.Key.ToLowerInvariant() == udfName.ToLowerInvariant());
             if (udf == null)
@@ -6608,7 +6608,7 @@ namespace LaceupMigration
                     foreach (var detail in order.Details)
                         if (detail.ExtraFields.IndexOf("RelatedDetail") != -1)
                         {
-                            var pair = DataAccess.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
+                            var pair = UDFHelper.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
                             if (pair != null)
                             {
                                 var relatedDetail = order.Details.FirstOrDefault(x => x.OriginalId == pair.Value);
@@ -7370,9 +7370,9 @@ namespace LaceupMigration
 
                 item.Detail.Price = item.Price;
 
-                var rotation = DataAccess.GetSingleUDF("rotatedQty", item.Detail.ExtraFields);
-                var adjQty = DataAccess.GetSingleUDF("adjustedQty", item.Detail.ExtraFields);
-                var core = DataAccess.GetSingleUDF("coreQty", item.Detail.ExtraFields);
+                var rotation = UDFHelper.GetSingleUDF("rotatedQty", item.Detail.ExtraFields);
+                var adjQty = UDFHelper.GetSingleUDF("adjustedQty", item.Detail.ExtraFields);
+                var core = UDFHelper.GetSingleUDF("coreQty", item.Detail.ExtraFields);
 
                 if (Config.IncludeRotationInDelivery)
                 {
@@ -7394,7 +7394,7 @@ namespace LaceupMigration
 
             foreach (var det in order.Details.Where(x => x.ParLevelDetail))
             {
-                var parId = DataAccess.GetSingleUDF("parid", det.ExtraFields);
+                var parId = UDFHelper.GetSingleUDF("parid", det.ExtraFields);
                 if (!string.IsNullOrEmpty(parId))
                 {
                     var par = ClientDailyParLevel.List.FirstOrDefault(x => x.Id == Convert.ToInt32(parId));
@@ -7404,7 +7404,7 @@ namespace LaceupMigration
                 else
                     CreateEditParLevel(order, null, det);
 
-                det.ExtraFields = DataAccess.SyncSingleUDF("frompar", "1", det.ExtraFields);
+                det.ExtraFields = UDFHelper.SyncSingleUDF("frompar", "1", det.ExtraFields);
             }
 
             ClientDailyParLevel.Save();
@@ -7424,10 +7424,10 @@ namespace LaceupMigration
             }
 
             order.OrderType = OrderType.Order;
-            order.ExtraFields = DataAccess.SyncSingleUDF("consignmentpar", "1", order.ExtraFields);
+            order.ExtraFields = UDFHelper.SyncSingleUDF("consignmentpar", "1", order.ExtraFields);
 
             if (onlyCounted)
-                order.ExtraFields = DataAccess.SyncSingleUDF("countonly", "1", order.ExtraFields);
+                order.ExtraFields = UDFHelper.SyncSingleUDF("countonly", "1", order.ExtraFields);
 
             order.Save();
         }
@@ -7437,23 +7437,23 @@ namespace LaceupMigration
             if (par == null)
                 par = ClientDailyParLevel.GetNewParLevel(order.Client, det.Product, 0);
 
-            var newvalue = Convert.ToSingle(DataAccess.GetSingleUDF("newvalue", det.ExtraFields));
+            var newvalue = Convert.ToSingle(UDFHelper.GetSingleUDF("newvalue", det.ExtraFields));
             if (newvalue != par.NewQty)
                 par.SetNewPar(newvalue);
 
-            var counted = Convert.ToSingle(DataAccess.GetSingleUDF("count", det.ExtraFields));
+            var counted = Convert.ToSingle(UDFHelper.GetSingleUDF("count", det.ExtraFields));
             if (counted != par.Counted)
                 par.SetCountedQty(counted);
 
-            var sold = Convert.ToSingle(DataAccess.GetSingleUDF("sold", det.ExtraFields));
+            var sold = Convert.ToSingle(UDFHelper.GetSingleUDF("sold", det.ExtraFields));
             if (sold != par.Sold)
                 par.SetSoldQty(sold);
 
-            var returns = Convert.ToSingle(DataAccess.GetSingleUDF("return", det.ExtraFields));
+            var returns = Convert.ToSingle(UDFHelper.GetSingleUDF("return", det.ExtraFields));
             if (returns != par.Return)
                 par.SetReturnQty(returns);
 
-            var dumps = Convert.ToSingle(DataAccess.GetSingleUDF("damaged", det.ExtraFields));
+            var dumps = Convert.ToSingle(UDFHelper.GetSingleUDF("damaged", det.ExtraFields));
             if (dumps != par.Dump)
                 par.SetDumpQty(dumps);
         }
@@ -7481,7 +7481,7 @@ namespace LaceupMigration
             }
 
             if (!string.IsNullOrEmpty(s))
-                order.ExtraFields = DataAccess.SyncSingleUDF("zerolines", s, order.ExtraFields);
+                order.ExtraFields = UDFHelper.SyncSingleUDF("zerolines", s, order.ExtraFields);
         }
 
         public static void SendEmailSequenceNotification(string text)
@@ -7781,7 +7781,7 @@ namespace LaceupMigration
 
                     if (toRemove.Count == order.Details.Count)
                     {
-                        order.ExtraFields = DataAccess.SyncSingleUDF("fullTemplateOnlyCount", "1", order.ExtraFields);
+                        order.ExtraFields = UDFHelper.SyncSingleUDF("fullTemplateOnlyCount", "1", order.ExtraFields);
                         order.Save();
                     }
                 }

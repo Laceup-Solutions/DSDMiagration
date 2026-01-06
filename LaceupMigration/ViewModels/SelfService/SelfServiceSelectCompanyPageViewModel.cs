@@ -133,18 +133,18 @@ namespace LaceupMigration.ViewModels.SelfService
 
             try
             {
-                DataAccess.GetUserSettingLine();
-                DataAccess.CheckAuthorization();
+                DataProvider.GetUserSettingLine();
+                DataProvider.CheckAuthorization();
                 error = 1;
 
                 if (!Config.AuthorizationFailed)
                 {
-                    DataAccess.GetSalesmanSettings(false);
+                    DataProvider.GetSalesmanSettings(false);
                     error = 2;
 
                     if (Config.EnableSelfServiceModule)
                     {
-                        DataAccess.DownloadStaticData();
+                        DataProvider.DownloadStaticData();
                     }
 
                     error = 3;

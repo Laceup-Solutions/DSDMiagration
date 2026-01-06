@@ -1281,25 +1281,25 @@ namespace LaceupMigration.ViewModels
                 order.OrderType = OrderType.Consignment;
 
                 if (Config.ConsignmentBeta)
-                    order.ExtraFields = DataAccess.SyncSingleUDF("cosignmentOrder", "1", order.ExtraFields);
+                    order.ExtraFields = UDFHelper.SyncSingleUDF("cosignmentOrder", "1", order.ExtraFields);
 
                 if (Config.UseFullConsignment)
                 {
-                    order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
-                    order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
+                    order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
+                    order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
                 }
                 else
                 {
                     if (isCounting)
-                        order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
+                        order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
                     else
-                        order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
+                        order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
                 }
 
                 order.Save();
 
                 if (Config.TrackInventory)
-                    DataAccess.SaveInventory();
+                    ProductInventory.Save();
             }
 
             await Shell.Current.GoToAsync($"consignment?orderId={order.OrderId}&counting={(isCounting ? "1" : "0")}");

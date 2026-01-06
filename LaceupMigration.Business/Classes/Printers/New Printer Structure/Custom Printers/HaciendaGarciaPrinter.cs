@@ -145,7 +145,7 @@ namespace LaceupMigration
             Client client = order.Client;
             var salesman = Salesman.List.FirstOrDefault(x => x.Id == order.SalesmanId);
 
-            var custno = DataAccess.ExplodeExtraProperties(client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
                 custNoString = " " + custno.Value;

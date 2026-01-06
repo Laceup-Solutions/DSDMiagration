@@ -263,7 +263,7 @@ namespace LaceupMigration
                 }
             }
 
-            string vendorNumber = DataAccess.GetSingleUDF("VENDOR #", order.Client.ExtraPropertiesAsString);
+            string vendorNumber = UDFHelper.GetSingleUDF("VENDOR #", order.Client.ExtraPropertiesAsString);
             if (!string.IsNullOrEmpty(vendorNumber))
             {
                 vendorNumber = "Vendor #: " + vendorNumber;
@@ -635,7 +635,7 @@ namespace LaceupMigration
         {
             List<string> lines = new List<string>();
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
 
             if (payments.Count == 0)
                 return lines;
@@ -666,7 +666,7 @@ namespace LaceupMigration
             return lines;
         }
 
-        protected override IEnumerable<string> GetPaymentLines(ref int startY, IList<DataAccess.PaymentSplit> payments, bool paidInFull)
+        protected override IEnumerable<string> GetPaymentLines(ref int startY, IList<PaymentSplit> payments, bool paidInFull)
         {
             List<string> lines = new List<string>();
 

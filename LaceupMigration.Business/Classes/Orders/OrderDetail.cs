@@ -646,7 +646,7 @@ namespace LaceupMigration
                 {
                     if (!string.IsNullOrEmpty(o.ExtraFields))
                     {
-                        var amount = DataAccess.GetSingleUDF("rebateamount", o.ExtraFields);
+                        var amount = UDFHelper.GetSingleUDF("rebateamount", o.ExtraFields);
                         if (!string.IsNullOrEmpty(amount))
                         {
                             double x = 0;
@@ -1011,7 +1011,7 @@ namespace LaceupMigration
                                     if (detail.RelatedOrderDetail > 0)
                                     {
                                         string extraField = string.Empty;
-                                        var values = DataAccess.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
+                                        var values = UDFHelper.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
                                         if (string.IsNullOrEmpty(values))
                                         {
                                             extraField = relatedDetail.OrderDetailId.ToString();
@@ -1020,7 +1020,7 @@ namespace LaceupMigration
                                         {
                                             extraField = values + "," + relatedDetail.OrderDetailId;
                                         }
-                                        detail.ExtraFields = DataAccess.SyncSingleUDF("ExtraRelatedItem", extraField, detail.ExtraFields);
+                                        detail.ExtraFields = UDFHelper.SyncSingleUDF("ExtraRelatedItem", extraField, detail.ExtraFields);
                                     }
                                     else
                                         detail.RelatedOrderDetail = relatedDetail.OrderDetailId;
@@ -1035,7 +1035,7 @@ namespace LaceupMigration
 
                             if (!string.IsNullOrEmpty(detail.ExtraFields) && detail.ExtraFields.Contains("ExtraRelatedItem"))
                             {
-                                var values = DataAccess.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
+                                var values = UDFHelper.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
 
                                 var parts = values.Split(",");
 
@@ -1064,7 +1064,7 @@ namespace LaceupMigration
 
             if (!string.IsNullOrEmpty(detail.ExtraFields) && detail.ExtraFields.Contains("ExtraRelatedItem"))
             {
-                var values = DataAccess.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
+                var values = UDFHelper.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
 
                 var parts = values.Split(",");
 

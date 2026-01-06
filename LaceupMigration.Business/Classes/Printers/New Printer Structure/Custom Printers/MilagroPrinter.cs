@@ -40,7 +40,7 @@ namespace LaceupMigration
 
             AddExtraSpace(ref startY, lines, 36, 1);
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && order.UniqueId != null && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && order.UniqueId != null && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             lines.AddRange(GetHeaderRowsInOneDoc(ref startY, asPreOrder, order, order.Client, printedId, payments, payments != null && payments.Sum(x => x.Amount) == balance, fromBatch));
 
             lines.AddRange(GetOrderLabel(ref startY, order, asPreOrder, fromBatch));
@@ -588,7 +588,7 @@ namespace LaceupMigration
             double paid = 0;
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
 
@@ -944,7 +944,7 @@ namespace LaceupMigration
             return docName;
         }
 
-        protected IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool asPreOrder, Order order, Client client, string printedId, List<DataAccess.PaymentSplit> payments, bool paidInFull, bool fromBatch)
+        protected IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool asPreOrder, Order order, Client client, string printedId, List<PaymentSplit> payments, bool paidInFull, bool fromBatch)
         {
             List<string> lines = new List<string>();
             startY += 10;
@@ -1032,7 +1032,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {
@@ -1527,14 +1527,14 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(p.Client.ExtraPropertiesAsString) && p.Client.ExtraPropertiesAsString.Contains("Account #"))
                 {
-                    var accNo = DataAccess.GetSingleUDF("Account #", p.Client.ExtraPropertiesAsString);
+                    var accNo = UDFHelper.GetSingleUDF("Account #", p.Client.ExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(accNo))
                         accNumber = accNo;
                 }
 
                 if (string.IsNullOrEmpty(accNumber) && !string.IsNullOrEmpty(p.Client.NonvisibleExtraPropertiesAsString) && p.Client.NonvisibleExtraPropertiesAsString.Contains("Account #"))
                 {
-                    var accNo = DataAccess.GetSingleUDF("Account #", p.Client.NonvisibleExtraPropertiesAsString);
+                    var accNo = UDFHelper.GetSingleUDF("Account #", p.Client.NonvisibleExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(accNo))
                         accNumber = accNo;
                 }
@@ -1615,14 +1615,14 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(p.Client.ExtraPropertiesAsString) && p.Client.ExtraPropertiesAsString.Contains("Account #"))
                 {
-                    var accNo = DataAccess.GetSingleUDF("Account #", p.Client.ExtraPropertiesAsString);
+                    var accNo = UDFHelper.GetSingleUDF("Account #", p.Client.ExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(accNo))
                         accNumber = accNo;
                 }
 
                 if (string.IsNullOrEmpty(accNumber) && !string.IsNullOrEmpty(p.Client.NonvisibleExtraPropertiesAsString) && p.Client.NonvisibleExtraPropertiesAsString.Contains("Account #"))
                 {
-                    var accNo = DataAccess.GetSingleUDF("Account #", p.Client.NonvisibleExtraPropertiesAsString);
+                    var accNo = UDFHelper.GetSingleUDF("Account #", p.Client.NonvisibleExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(accNo))
                         accNumber = accNo;
                 }
@@ -1703,14 +1703,14 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(p.Client.ExtraPropertiesAsString) && p.Client.ExtraPropertiesAsString.Contains("Account #"))
                 {
-                    var accNo = DataAccess.GetSingleUDF("Account #", p.Client.ExtraPropertiesAsString);
+                    var accNo = UDFHelper.GetSingleUDF("Account #", p.Client.ExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(accNo))
                         accNumber = accNo;
                 }
 
                 if (string.IsNullOrEmpty(accNumber) && !string.IsNullOrEmpty(p.Client.NonvisibleExtraPropertiesAsString) && p.Client.NonvisibleExtraPropertiesAsString.Contains("Account #"))
                 {
-                    var accNo = DataAccess.GetSingleUDF("Account #", p.Client.NonvisibleExtraPropertiesAsString);
+                    var accNo = UDFHelper.GetSingleUDF("Account #", p.Client.NonvisibleExtraPropertiesAsString);
                     if (!string.IsNullOrEmpty(accNo))
                         accNumber = accNo;
                 }
@@ -2058,14 +2058,14 @@ namespace LaceupMigration
 
                         if (!string.IsNullOrEmpty(pay.Client.ExtraPropertiesAsString) && pay.Client.ExtraPropertiesAsString.Contains("Account #"))
                         {
-                            var accNo = DataAccess.GetSingleUDF("Account #", pay.Client.ExtraPropertiesAsString);
+                            var accNo = UDFHelper.GetSingleUDF("Account #", pay.Client.ExtraPropertiesAsString);
                             if (!string.IsNullOrEmpty(accNo))
                                 accNumber = accNo;
                         }
 
                         if (string.IsNullOrEmpty(accNumber) && !string.IsNullOrEmpty(pay.Client.NonvisibleExtraPropertiesAsString) && pay.Client.NonvisibleExtraPropertiesAsString.Contains("Account #"))
                         {
-                            var accNo = DataAccess.GetSingleUDF("Account #", pay.Client.NonvisibleExtraPropertiesAsString);
+                            var accNo = UDFHelper.GetSingleUDF("Account #", pay.Client.NonvisibleExtraPropertiesAsString);
                             if (!string.IsNullOrEmpty(accNo))
                                 accNumber = accNo;
                         }
@@ -2341,7 +2341,7 @@ namespace LaceupMigration
 
         void CreateSettlementReportDataStructure(ref InventorySettlementRow totalRow, ref List<InventorySettlementRow> map)
         {
-            map = DataAccess.ExtendedSendTheLeftOverInventory();
+            map = DataProvider.ExtendedSendTheLeftOverInventory();
 
             foreach (var value in map)
             {
@@ -2941,7 +2941,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {

@@ -45,26 +45,26 @@ namespace LaceupMigration
             {
                 var consignment = new ConsignmentValues() { Client = order.Client, Product = det.Product };
 
-                var oldvalue = DataAccess.GetSingleUDF("oldvalue", det.ExtraFields);
+                var oldvalue = UDFHelper.GetSingleUDF("oldvalue", det.ExtraFields);
                 consignment.OldValue = Convert.ToSingle(oldvalue);
 
-                var newvalue = DataAccess.GetSingleUDF("newvalue", det.ExtraFields);
+                var newvalue = UDFHelper.GetSingleUDF("newvalue", det.ExtraFields);
                 consignment.NewValue = Convert.ToSingle(newvalue);
 
-                var counted = DataAccess.GetSingleUDF("count", det.ExtraFields);
+                var counted = UDFHelper.GetSingleUDF("count", det.ExtraFields);
                 consignment.Counted = Convert.ToSingle(counted);
 
-                var updated = DataAccess.GetSingleUDF("updated", det.ExtraFields);
+                var updated = UDFHelper.GetSingleUDF("updated", det.ExtraFields);
                 if (Convert.ToInt32(updated) == 0)
                     consignment.NewValue = consignment.OldValue;
 
-                var sold = DataAccess.GetSingleUDF("sold", det.ExtraFields);
+                var sold = UDFHelper.GetSingleUDF("sold", det.ExtraFields);
                 consignment.Sold = Convert.ToSingle(sold);
 
-                var newprice = DataAccess.GetSingleUDF("price", det.ExtraFields);
+                var newprice = UDFHelper.GetSingleUDF("price", det.ExtraFields);
                 consignment.NewPrice = Convert.ToDouble(newprice);
 
-                var picked = DataAccess.GetSingleUDF("picked", det.ExtraFields);
+                var picked = UDFHelper.GetSingleUDF("picked", det.ExtraFields);
                 consignment.Picked = Convert.ToSingle(picked);
 
                 Lines.Add(consignment);

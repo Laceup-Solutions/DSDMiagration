@@ -64,7 +64,7 @@ namespace LaceupMigration
                 {
                     relateds.Add(detail.RelatedOrderDetail);
 
-                    var values = DataAccess.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
+                    var values = UDFHelper.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
 
                     if (!string.IsNullOrEmpty(values))
                     {
@@ -110,7 +110,7 @@ namespace LaceupMigration
                             uomMap.Add(uomString, 0);
                         uomMap[uomString] += detail.Qty;
 
-                        string georgehoweValue = DataAccess.GetSingleUDF("georgehowe", detail.OrderDetail.UnitOfMeasure.ExtraFields);
+                        string georgehoweValue = UDFHelper.GetSingleUDF("georgehowe", detail.OrderDetail.UnitOfMeasure.ExtraFields);
                         if (int.TryParse(georgehoweValue, out int conversionFactor))
                         {
                             totalQtyNoUoM += detail.Qty * conversionFactor;
@@ -385,7 +385,7 @@ namespace LaceupMigration
             double paid = 0;
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.OrderId.ToString() || x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.OrderId.ToString() || x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
 
@@ -708,7 +708,7 @@ namespace LaceupMigration
 
         private  double GetPayment(Order order)
         {
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             if (payments != null && payments.Count > 0)
             {
                 var paidInFull = payments != null && payments.Sum(x => x.Amount) == order.OrderTotalCost();

@@ -955,7 +955,7 @@ namespace LaceupMigration
 
             AddExtraSpace(ref startY, lines, 36, 1);
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && order.UniqueId != null && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && order.UniqueId != null && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             lines.AddRange(GetHeaderRowsInOneDoc(ref startY, asPreOrder, order, order.Client, printedId, payments, payments != null && payments.Sum(x => x.Amount) == balance));
 
             if (order.IsWorkOrder)
@@ -1097,7 +1097,7 @@ namespace LaceupMigration
                             uomMap.Add(uomString, 0);
                         uomMap[uomString] += detail.Qty;
 
-                        string georgehoweValue = DataAccess.GetSingleUDF("georgehowe", detail.OrderDetail.UnitOfMeasure.ExtraFields);
+                        string georgehoweValue = UDFHelper.GetSingleUDF("georgehowe", detail.OrderDetail.UnitOfMeasure.ExtraFields);
                         if (int.TryParse(georgehoweValue, out int conversionFactor))
                         {
                             totalQtyNoUoM += detail.Qty * conversionFactor;
@@ -1270,7 +1270,7 @@ namespace LaceupMigration
             //}
             //else
             //{
-            var asset = DataAccess.GetSingleUDF("workOrderAsset", order.ExtraFields);
+            var asset = UDFHelper.GetSingleUDF("workOrderAsset", order.ExtraFields);
 
             Asset assetProduct = null;
 
@@ -1398,7 +1398,7 @@ namespace LaceupMigration
 
         }
 
-        protected virtual IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool asPreOrder, Order order, Client client, string printedId, List<DataAccess.PaymentSplit> payments, bool paidInFull)
+        protected virtual IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool asPreOrder, Order order, Client client, string printedId, List<PaymentSplit> payments, bool paidInFull)
         {
             List<string> lines = new List<string>();
             startY += 10;
@@ -1480,7 +1480,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {
@@ -1725,7 +1725,7 @@ namespace LaceupMigration
             }
         }
 
-        protected virtual IEnumerable<string> GetPaymentLines(ref int startY, IList<DataAccess.PaymentSplit> payments, bool paidInFull)
+        protected virtual IEnumerable<string> GetPaymentLines(ref int startY, IList<PaymentSplit> payments, bool paidInFull)
         {
             List<string> lines = new List<string>();
 
@@ -1998,7 +1998,7 @@ namespace LaceupMigration
                 {
                     relateds.Add(detail.RelatedOrderDetail);
 
-                    var values = DataAccess.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
+                    var values = UDFHelper.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
 
                     if (!string.IsNullOrEmpty(values))
                     {
@@ -2044,7 +2044,7 @@ namespace LaceupMigration
                             uomMap.Add(uomString, 0);
                         uomMap[uomString] += detail.Qty;
 
-                        string georgehoweValue = DataAccess.GetSingleUDF("georgehowe", detail.OrderDetail.UnitOfMeasure.ExtraFields);
+                        string georgehoweValue = UDFHelper.GetSingleUDF("georgehowe", detail.OrderDetail.UnitOfMeasure.ExtraFields);
                         if (int.TryParse(georgehoweValue, out int conversionFactor))
                         {
                             totalQtyNoUoM += detail.Qty * conversionFactor;
@@ -2397,7 +2397,7 @@ namespace LaceupMigration
             double paid = 0;
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
 
@@ -3068,7 +3068,7 @@ namespace LaceupMigration
                 {
                     relateds.Add(detail.RelatedOrderDetail);
 
-                    var values = DataAccess.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
+                    var values = UDFHelper.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
 
                     if (!string.IsNullOrEmpty(values))
                     {
@@ -3335,7 +3335,7 @@ namespace LaceupMigration
             double paid = 0;
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
             double taxableAmount = 0;
@@ -5056,12 +5056,12 @@ namespace LaceupMigration
                 v1, v2);
         }
 
-        protected List<DataAccess.PaymentSplit> GetPaymentsForOrderCreatedReport()
+        protected List<PaymentSplit> GetPaymentsForOrderCreatedReport()
         {
-            List<DataAccess.PaymentSplit> result = new List<DataAccess.PaymentSplit>();
+            List<PaymentSplit> result = new List<PaymentSplit>();
 
             foreach (var payment in InvoicePayment.List)
-                result.AddRange(DataAccess.SplitPayment(payment));
+                result.AddRange(PaymentSplit.SplitPayment(payment));
 
             return result;
         }
@@ -5431,7 +5431,7 @@ namespace LaceupMigration
 
         void CreateInventorySummaryDataStructure(ref InventorySettlementRow totalRow, ref List<InventorySettlementRow> map)
         {
-            map = DataAccess.ExtendedSendTheLeftOverInventory(false, true);
+            map = DataProvider.ExtendedSendTheLeftOverInventory(false, true);
 
             foreach (var value in map)
             {
@@ -5934,7 +5934,7 @@ namespace LaceupMigration
 
         void CreateSettlementReportDataStructure(ref InventorySettlementRow totalRow, ref List<InventorySettlementRow> map)
         {
-            map = DataAccess.ExtendedSendTheLeftOverInventory();
+            map = DataProvider.ExtendedSendTheLeftOverInventory();
 
             foreach (var value in map)
             {
@@ -6163,7 +6163,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             if (payments != null && payments.Count > 0)
             {
                 var paidInFull = payments != null && payments.Sum(x => x.Amount) == order.OrderTotalCost();
@@ -6218,7 +6218,7 @@ namespace LaceupMigration
                 var payment = InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId));
                 if (payment != null)
                 {
-                    var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                    var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                     paid = parts.Sum(x => x.Amount);
                 }
 
@@ -7145,7 +7145,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
                 custNoString = " " + custno.Value;
@@ -7906,7 +7906,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {
@@ -7962,7 +7962,7 @@ namespace LaceupMigration
                 startY += font18Separation;
             }
 
-            var poNumber = DataAccess.GetSingleUDF("PONumber", invoice.ExtraFields);
+            var poNumber = UDFHelper.GetSingleUDF("PONumber", invoice.ExtraFields);
 
             if (!string.IsNullOrEmpty(poNumber))
             {
@@ -9680,7 +9680,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {
@@ -10178,7 +10178,7 @@ namespace LaceupMigration
                 startY += font36Separation;
             }
 
-            var custno = DataAccess.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
+            var custno = UDFHelper.ExplodeExtraProperties(order.Client.ExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToLowerInvariant() == "custno");
             var custNoString = string.Empty;
             if (custno != null)
             {

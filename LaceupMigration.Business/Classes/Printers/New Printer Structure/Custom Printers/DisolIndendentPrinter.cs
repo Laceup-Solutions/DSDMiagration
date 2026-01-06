@@ -95,13 +95,13 @@ namespace LaceupMigration
                     int qtyDigits = 0;
                     if (order.AsPresale)
                     {
-                        var pre = DataAccess.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "PresaleFormatQtyDigits");
+                        var pre = UDFHelper.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "PresaleFormatQtyDigits");
                         if (pre != null)
                             qtyDigits = Convert.ToInt32(pre.Value);
                     }
                     else
                     {
-                        var pre = DataAccess.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "DSDFormatQtyDigits");
+                        var pre = UDFHelper.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "DSDFormatQtyDigits");
                         if (pre != null)
                             qtyDigits = Convert.ToInt32(pre.Value);
                     }
@@ -187,8 +187,8 @@ namespace LaceupMigration
 
             var clientName = SplitProductName(order.Client.ClientName, 32, 40);
 
-            var newClientName = DataAccess.GetSingleUDF("newclientname", order.ExtraFields);
-            var newRTN = DataAccess.GetSingleUDF("rtn", order.ExtraFields);
+            var newClientName = UDFHelper.GetSingleUDF("newclientname", order.ExtraFields);
+            var newRTN = UDFHelper.GetSingleUDF("rtn", order.ExtraFields);
 
             if (!string.IsNullOrEmpty(newClientName))
             {

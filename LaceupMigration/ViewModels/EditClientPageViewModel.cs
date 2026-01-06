@@ -133,7 +133,7 @@ namespace LaceupMigration.ViewModels
             ContactName = _client.ContactName;
             Phone = _client.ContactPhone;
 
-            var email = DataAccess.GetSingleUDF("email", _client.ExtraPropertiesAsString);
+            var email = UDFHelper.GetSingleUDF("email", _client.ExtraPropertiesAsString);
             Email = email ?? string.Empty;
 
             var addr = _client.ShipToAddress.Split('|');
@@ -170,7 +170,7 @@ namespace LaceupMigration.ViewModels
             TaxRate = _client.TaxRate.ToString();
             OneDoc = _client.OneDoc;
 
-            var hasField = DataAccess.GetSingleUDF("pricechangeable", _client.NonvisibleExtraPropertiesAsString);
+            var hasField = UDFHelper.GetSingleUDF("pricechangeable", _client.NonvisibleExtraPropertiesAsString);
             CanChangePrices = hasField?.ToLowerInvariant() == "yes";
 
             _initialized = true;
@@ -227,7 +227,7 @@ namespace LaceupMigration.ViewModels
             _client.ContactName = ContactName;
             _client.ContactPhone = Phone;
 
-            _client.ExtraPropertiesAsString = DataAccess.SyncSingleUDF("email", Email, _client.ExtraPropertiesAsString);
+            _client.ExtraPropertiesAsString = UDFHelper.SyncSingleUDF("email", Email, _client.ExtraPropertiesAsString);
 
             var address = $"{Address1}|{Address2}|{City}|{State}|{Zip}";
             _client.ShipToAddress = address;
@@ -255,7 +255,7 @@ namespace LaceupMigration.ViewModels
                 _client.TaxRate = taxRateValue;
             }
 
-            _client.NonvisibleExtraPropertiesAsString = DataAccess.SyncSingleUDF("pricechangeable", 
+            _client.NonvisibleExtraPropertiesAsString = UDFHelper.SyncSingleUDF("pricechangeable", 
                 CanChangePrices ? "yes" : "no", _client.NonvisibleExtraPropertiesAsString);
 
             Client.Save();

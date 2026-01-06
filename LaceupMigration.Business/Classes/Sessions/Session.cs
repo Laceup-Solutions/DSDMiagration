@@ -449,7 +449,7 @@ namespace LaceupMigration
                     Directory.CreateDirectory(Config.SessionPath);
                 }
 
-                bool success = DataAccess.SendCurrentSession(Path.Combine(Config.SessionPath, "SessionFile.cvs"));
+                bool success = DataProvider.SendCurrentSession(Path.Combine(Config.SessionPath, "SessionFile.cvs"));
 
                 if (success == true)
                 {

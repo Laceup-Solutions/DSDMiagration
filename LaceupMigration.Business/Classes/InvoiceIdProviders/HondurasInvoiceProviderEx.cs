@@ -27,7 +27,7 @@ namespace LaceupMigration
 
                     if (salesman != null && !string.IsNullOrEmpty(salesman.ExtraProperties))
                     {
-                        var pre = DataAccess.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "PresaleFormatQtyDigits");
+                        var pre = UDFHelper.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "PresaleFormatQtyDigits");
                         if (pre != null)
                             qtyDigits = Convert.ToInt32(pre.Value);
                     }
@@ -41,7 +41,7 @@ namespace LaceupMigration
 
                     if (salesman != null && !string.IsNullOrEmpty(salesman.ExtraProperties))
                     {
-                        var pre = DataAccess.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "DSDFormatQtyDigits");
+                        var pre = UDFHelper.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "DSDFormatQtyDigits");
                         if (pre != null)
                             qtyDigits = Convert.ToInt32(pre.Value);
                     }

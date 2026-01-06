@@ -177,10 +177,10 @@ namespace LaceupMigration.ViewModels
                     try
                     {
                         // Download products first
-                        DataAccess.DownloadProducts();
+                        DataProvider.DownloadProducts();
 
                         // Get pending load orders for the selected date
-                        DataAccess.GetPendingLoadOrders(date);
+                        DataProvider.GetPendingLoadOrders(date);
                     }
                     catch (Exception e)
                     {

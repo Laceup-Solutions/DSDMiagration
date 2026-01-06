@@ -800,7 +800,7 @@ namespace LaceupMigration
             if (!chargeCore)
                 return 0;
 
-            var core = DataAccess.GetSingleUDF("coreQty", detail.ExtraFields);
+            var core = UDFHelper.GetSingleUDF("coreQty", detail.ExtraFields);
 
             if (string.IsNullOrEmpty(core))
                 return 0;
@@ -864,7 +864,7 @@ namespace LaceupMigration
         {
             double totalCost = 0;
 
-            var adjQty = DataAccess.GetSingleUDF("adjustedQty", detail.ExtraFields);
+            var adjQty = UDFHelper.GetSingleUDF("adjustedQty", detail.ExtraFields);
 
             if (string.IsNullOrEmpty(adjQty))
                 return 0;
@@ -939,7 +939,7 @@ namespace LaceupMigration
 
         double CalculateBatteryRotationCost(OrderDetail detail)
         {
-            var rotQty = DataAccess.GetSingleUDF("rotatedQty", detail.ExtraFields);
+            var rotQty = UDFHelper.GetSingleUDF("rotatedQty", detail.ExtraFields);
 
             if (string.IsNullOrEmpty(rotQty))
                 return 0;
@@ -1204,7 +1204,7 @@ namespace LaceupMigration
                 if (!d.IsCredit)
                     qty += d.Qty;
 
-                var x = DataAccess.GetSingleUDF("countedQty", d.ExtraFields);
+                var x = UDFHelper.GetSingleUDF("countedQty", d.ExtraFields);
                 if (!string.IsNullOrEmpty(x))
                 {
                     double counted = 0;
@@ -1231,7 +1231,7 @@ namespace LaceupMigration
                 if (!d.IsCredit)
                     qty += d.Qty;
 
-                var x = DataAccess.GetSingleUDF("countedQty", d.ExtraFields);
+                var x = UDFHelper.GetSingleUDF("countedQty", d.ExtraFields);
                 if (!string.IsNullOrEmpty(x))
                 {
                     double counted = 0;
@@ -1248,7 +1248,7 @@ namespace LaceupMigration
 
             foreach (var d in Details)
             {
-                var x = DataAccess.GetSingleUDF("countedQty", d.ExtraFields);
+                var x = UDFHelper.GetSingleUDF("countedQty", d.ExtraFields);
                 if (!string.IsNullOrEmpty(x))
                 {
                     double counted = 0;
@@ -1501,7 +1501,7 @@ namespace LaceupMigration
             orders.Add(this);
 
             if (client != null && (client.OnCreditHold || client.OverCreditLimit))
-                this.ExtraFields = DataAccess.SyncSingleUDF("OrderCreatedOnCreditHold", "1", this.ExtraFields);
+                this.ExtraFields = UDFHelper.SyncSingleUDF("OrderCreatedOnCreditHold", "1", this.ExtraFields);
 
             if (Config.DefaultItem > 0 && addDefault)
             {
@@ -1539,7 +1539,7 @@ namespace LaceupMigration
                     CompanyName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(cName.Item2.ToLower());
             }
 
-            var automaticDiscount = DataAccess.GetSingleUDF("automatic discount", client.ExtraPropertiesAsString);
+            var automaticDiscount = UDFHelper.GetSingleUDF("automatic discount", client.ExtraPropertiesAsString);
             if (!string.IsNullOrEmpty(automaticDiscount))
             {
                 DiscountType = DiscountType.Percent;
@@ -1625,9 +1625,9 @@ namespace LaceupMigration
 
                 orderDetails.ForEach(x => x.ExtraComments = setNameDiscount(x.ExtraComments, itemD.OrderDiscount?.Name));
 
-                var unId = DataAccess.GetSingleUDF("UniqueId", itemD.ExtraFields);
+                var unId = UDFHelper.GetSingleUDF("UniqueId", itemD.ExtraFields);
 
-                var plId = DataAccess.GetSingleUDF("PLId", itemD.ExtraFields);
+                var plId = UDFHelper.GetSingleUDF("PLId", itemD.ExtraFields);
 
                 if (!(!string.IsNullOrEmpty(unId) || !string.IsNullOrEmpty(plId)))
                 {
@@ -1637,22 +1637,22 @@ namespace LaceupMigration
 
             foreach (var itemD in itemDetailDiscount)
             {
-                var unId = DataAccess.GetSingleUDF("UniqueId", itemD.ExtraFields);
+                var unId = UDFHelper.GetSingleUDF("UniqueId", itemD.ExtraFields);
                 if (!string.IsNullOrEmpty(unId))
                 {
                     var detailGet = Details.FirstOrDefault(x => x.OriginalId?.ToString() == unId);
                     if (detailGet != null)
                     {
                         if (detailGet.CostDiscount > 0)
-                            detailGet.ExtraFields = DataAccess.SyncSingleUDF("CostOrden", detailGet.CostDiscount.ToString(), detailGet.ExtraFields);
+                            detailGet.ExtraFields = UDFHelper.SyncSingleUDF("CostOrden", detailGet.CostDiscount.ToString(), detailGet.ExtraFields);
 
                         detailGet.CostPrice += ((-1 * itemD.Price) / detailGet.Qty);
                     }
                 }
                 /*Case Fixep Price*/
 
-                var plId = DataAccess.GetSingleUDF("PLId", itemD.ExtraFields);
-                var pId = DataAccess.GetSingleUDF("ProductId", itemD.ExtraFields);
+                var plId = UDFHelper.GetSingleUDF("PLId", itemD.ExtraFields);
+                var pId = UDFHelper.GetSingleUDF("ProductId", itemD.ExtraFields);
                 if (!string.IsNullOrEmpty(plId) && !string.IsNullOrEmpty(pId))
                 {
                     int prouctID = 0;
@@ -1701,7 +1701,7 @@ namespace LaceupMigration
             List<OrderDetail> result = new List<OrderDetail>();
 
             #region If Gift
-            var extrafields = DataAccess.GetSingleUDF("UniqueId", itemD.ExtraFields);
+            var extrafields = UDFHelper.GetSingleUDF("UniqueId", itemD.ExtraFields);
             if (!string.IsNullOrEmpty(extrafields))
             {
                 var uniqueIdList = extrafields.Split(',').ToList();
@@ -1864,7 +1864,7 @@ namespace LaceupMigration
 
                     if (!string.IsNullOrEmpty(detail.ExtraFields))
                     {
-                        var extra = DataAccess.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
+                        var extra = UDFHelper.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
                         if (!string.IsNullOrEmpty(extra))
                         {
                             var parts = extra.Split(",");
@@ -1926,7 +1926,7 @@ namespace LaceupMigration
                     File.Delete(this.fileName);
 
             deleted = true;
-            DataAccess.SaveInventory();
+            ProductInventory.Save();
         }
 
         public void ForceDelete()
@@ -1974,7 +1974,7 @@ namespace LaceupMigration
                     {
                         SerializeOrder(writer);
                     }
-                    DataAccess.SaveInventory();
+                    ProductInventory.Save();
                     BackgroundDataSync.SyncOrderPayment();
                 }
                 finally
@@ -2278,7 +2278,7 @@ namespace LaceupMigration
             {
                 relateds.Add(detail.RelatedOrderDetail);
 
-                var values = DataAccess.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
+                var values = UDFHelper.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
 
                 if (!string.IsNullOrEmpty(values))
                 {
@@ -3171,7 +3171,7 @@ namespace LaceupMigration
 
             if (orders.Count > 0 && !string.IsNullOrEmpty(orders[0].Client.NonvisibleExtraPropertiesAsString) && orders[0].Client.NonvisibleExtraPropertiesAsString.Contains("DEX_VERSION"))
             {
-                var v = DataAccess.ExplodeExtraProperties(orders[0].Client.NonvisibleExtraPropertiesAsString).FirstOrDefault(x => x.Key == "DEX_VERSION");
+                var v = UDFHelper.ExplodeExtraProperties(orders[0].Client.NonvisibleExtraPropertiesAsString).FirstOrDefault(x => x.Key == "DEX_VERSION");
                 if (v != null)
                 {
                     dexversion = v.Value;
@@ -3490,7 +3490,7 @@ namespace LaceupMigration
 
         //        if (!string.IsNullOrEmpty(client.NonvisibleExtraPropertiesAsString) && client.NonvisibleExtraPropertiesAsString.Contains("DEX_VERSION"))
         //        {
-        //            var v = DataAccess.ExplodeExtraProperties(client.NonvisibleExtraPropertiesAsString).FirstOrDefault(x => x.Key == "DEX_VERSION");
+        //            var v = UDFHelper.ExplodeExtraProperties(client.NonvisibleExtraPropertiesAsString).FirstOrDefault(x => x.Key == "DEX_VERSION");
         //            if (v != null)
         //            {
         //                dexversion = v.Value;
@@ -3640,7 +3640,7 @@ namespace LaceupMigration
                 UpdateInventory(det, -1);
 
             if (Config.TrackInventory)
-                DataAccess.SaveInventory();
+                ProductInventory.Save();
 
             Save();
 
@@ -3846,7 +3846,7 @@ namespace LaceupMigration
                 }
                 else
                 {
-                    var parId = DataAccess.GetSingleUDF("parid", item.ExtraFields);
+                    var parId = UDFHelper.GetSingleUDF("parid", item.ExtraFields);
                     if (!string.IsNullOrEmpty(parId))
                     {
                         var par = ClientDailyParLevel.List.FirstOrDefault(x => x.Id == Convert.ToInt32(parId));
@@ -3864,7 +3864,7 @@ namespace LaceupMigration
                         detail.Order = this;
                         detail.Qty = st.Sold;
                         detail.Price = st.Price;
-                        detail.ExtraFields = DataAccess.SyncSingleUDF("frompar", "1", detail.ExtraFields);
+                        detail.ExtraFields = UDFHelper.SyncSingleUDF("frompar", "1", detail.ExtraFields);
                         detail.ConsignmentSalesItem = true;
                         detail.ConsignmentSet = true;
                         detail.ConsignmentCounted = true;
@@ -3881,7 +3881,7 @@ namespace LaceupMigration
                         detail.IsCredit = true;
                         detail.Damaged = true;
                         detail.Price = st.Price;
-                        detail.ExtraFields = DataAccess.SyncSingleUDF("frompar", "1", detail.ExtraFields);
+                        detail.ExtraFields = UDFHelper.SyncSingleUDF("frompar", "1", detail.ExtraFields);
                         detail.ConsignmentCreditItem = true;
                         detail.ConsignmentSet = true;
                         detail.ConsignmentCounted = true;
@@ -3900,7 +3900,7 @@ namespace LaceupMigration
                         detail.IsCredit = true;
                         detail.Damaged = false;
                         detail.Price = st.Price;
-                        detail.ExtraFields = DataAccess.SyncSingleUDF("frompar", "1", detail.ExtraFields);
+                        detail.ExtraFields = UDFHelper.SyncSingleUDF("frompar", "1", detail.ExtraFields);
                         detail.ConsignmentCreditItem = true;
                         detail.ConsignmentSet = true;
                         detail.ConsignmentCounted = true;
@@ -3926,7 +3926,7 @@ namespace LaceupMigration
 
             details = new List<OrderDetail>(newDetails);
             OrderType = OrderType.Consignment;
-            ExtraFields = DataAccess.SyncSingleUDF("ConsignmentCount", "1", ExtraFields);
+            ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentCount", "1", ExtraFields);
             Save();
         }
 
@@ -3937,17 +3937,17 @@ namespace LaceupMigration
                 par = ClientDailyParLevel.GetNewParLevel(Client, det.Product, 0);
             }
 
-            var newvalue = DataAccess.GetSingleUDF("newvalue", det.ExtraFields);
+            var newvalue = UDFHelper.GetSingleUDF("newvalue", det.ExtraFields);
             par.SetNewPar(Convert.ToSingle(newvalue));
 
-            var counted = DataAccess.GetSingleUDF("count", det.ExtraFields);
+            var counted = UDFHelper.GetSingleUDF("count", det.ExtraFields);
             par.SetCountedQty(Convert.ToSingle(counted));
 
-            var sold = DataAccess.GetSingleUDF("sold", det.ExtraFields);
+            var sold = UDFHelper.GetSingleUDF("sold", det.ExtraFields);
             par.SetSoldQty(Convert.ToSingle(sold));
 
-            var returns = DataAccess.GetSingleUDF("return", det.ExtraFields);
-            var dumps = DataAccess.GetSingleUDF("damaged", det.ExtraFields);
+            var returns = UDFHelper.GetSingleUDF("return", det.ExtraFields);
+            var dumps = UDFHelper.GetSingleUDF("damaged", det.ExtraFields);
             par.SetReturnQty(Convert.ToSingle(returns));
             par.SetDumpQty(Convert.ToSingle(dumps));
 
@@ -3955,7 +3955,7 @@ namespace LaceupMigration
 
         public Tuple<string, string> GetWarrantyPerClient(Product prod)
         {
-            var categories = DataAccess.GetSingleUDF("Warranty", Client.NonvisibleExtraPropertiesAsString);
+            var categories = UDFHelper.GetSingleUDF("Warranty", Client.NonvisibleExtraPropertiesAsString);
 
             if (!string.IsNullOrEmpty(categories))
             {
@@ -4021,7 +4021,7 @@ namespace LaceupMigration
 
                         if (Config.AddCoreBalance)
                         {
-                            var coreQty = DataAccess.GetSingleUDF("coreQty", item.Detail.ExtraFields);
+                            var coreQty = UDFHelper.GetSingleUDF("coreQty", item.Detail.ExtraFields);
                             float qty = 0;
                             float.TryParse(coreQty, out qty);
 
@@ -4074,7 +4074,7 @@ namespace LaceupMigration
                             var prodCore = Product.Products.FirstOrDefault(x => x.ProductId.ToString() == coreId.Item2);
                             if (prodCore != null)
                             {
-                                var qty = DataAccess.GetSingleUDF("coreQty", od.ExtraFields);
+                                var qty = UDFHelper.GetSingleUDF("coreQty", od.ExtraFields);
 
                                 float coreQty = 0;
                                 float.TryParse(qty, out coreQty);
@@ -4106,7 +4106,7 @@ namespace LaceupMigration
             if (sourceDetail != null)
                 if (sourceDetail.ExtraFields != null && sourceDetail.ExtraFields.Contains("sourceoffer"))
                 {
-                    var udf = DataAccess.ExplodeExtraProperties(sourceDetail.ExtraFields).FirstOrDefault(x => x.Key == "sourceoffer");
+                    var udf = UDFHelper.ExplodeExtraProperties(sourceDetail.ExtraFields).FirstOrDefault(x => x.Key == "sourceoffer");
                     // maybe an error here, checking for the end of the string, or the matching |
                     var matchStr = "sourceoffer=" + udf.Value;
                     var matchingDetails = Details.Where(x => x.ExtraFields != null && x.ExtraFields.Contains(matchStr)).ToList();
@@ -4118,7 +4118,7 @@ namespace LaceupMigration
                         if (!IsDelivery)
                         {
                             // removed the added line
-                            int idProdF = Convert.ToInt32(DataAccess.ExplodeExtraProperties(offer.ExtraFields).FirstOrDefault(x => x.Key.ToLowerInvariant() == "productfree")?.Value);
+                            int idProdF = Convert.ToInt32(UDFHelper.ExplodeExtraProperties(offer.ExtraFields).FirstOrDefault(x => x.Key.ToLowerInvariant() == "productfree")?.Value);
                             var addedDetail = matchingDetails.FirstOrDefault(x => x.Product.ProductId == idProdF && x.ExtraFields != null && x.ExtraFields.Contains("productfree=yes"));
                             if (addedDetail != null)
                             {
@@ -4148,7 +4148,7 @@ namespace LaceupMigration
                     }
 
                     foreach (var detail in matchingDetails)
-                        detail.ExtraFields = DataAccess.RemoveSingleUDF("sourceoffer", detail.ExtraFields);
+                        detail.ExtraFields = UDFHelper.RemoveSingleUDF("sourceoffer", detail.ExtraFields);
                     // remove ALL the source offers marks
                 }
             var part1 = Details.Where(o =>
@@ -4234,16 +4234,16 @@ namespace LaceupMigration
                                     if (uom1 != null)
                                         newDetail.UnitOfMeasure = uom1;
                                 }
-                                newDetail.ExtraFields = DataAccess.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), newDetail.ExtraFields);
+                                newDetail.ExtraFields = UDFHelper.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), newDetail.ExtraFields);
                                 foreach (var toMarkDetail in detDisc.details)
                                 {
-                                    toMarkDetail.ExtraFields = DataAccess.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), toMarkDetail.ExtraFields);
+                                    toMarkDetail.ExtraFields = UDFHelper.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), toMarkDetail.ExtraFields);
                                 }
                                 modified = true;
                             }
                             break;
                         case 6:
-                            extraFields = DataAccess.ExplodeExtraProperties(item.ExtraFields);
+                            extraFields = UDFHelper.ExplodeExtraProperties(item.ExtraFields);
                             int idProdF = Convert.ToInt32(extraFields.FirstOrDefault(x => x.Key.ToLowerInvariant() == "productfree")?.Value);
                             string isMult = extraFields.FirstOrDefault(x => x.Key.ToLowerInvariant() == "multiple")?.Value;
                             var prod = Product.Find(idProdF);
@@ -4346,11 +4346,11 @@ namespace LaceupMigration
                                     if (removedFreeDetail != null && removedFreeDetail.Product.ProductId == newDetail.Product.ProductId &&
                                         ((newDetail.UnitOfMeasure == null) || (removedFreeDetail.UnitOfMeasure == newDetail.UnitOfMeasure)))
                                         newDetail.Lot = removedFreeDetail.Lot;
-                                    newDetail.ExtraFields = DataAccess.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), newDetail.ExtraFields);
-                                    newDetail.ExtraFields = DataAccess.SyncSingleUDF("productfree", "yes", newDetail.ExtraFields);
+                                    newDetail.ExtraFields = UDFHelper.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), newDetail.ExtraFields);
+                                    newDetail.ExtraFields = UDFHelper.SyncSingleUDF("productfree", "yes", newDetail.ExtraFields);
                                     foreach (var toMarkDetail in detDisc.details)
                                     {
-                                        toMarkDetail.ExtraFields = DataAccess.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), toMarkDetail.ExtraFields);
+                                        toMarkDetail.ExtraFields = UDFHelper.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), toMarkDetail.ExtraFields);
                                     }
                                     modified = true;
                                 }
@@ -4376,9 +4376,9 @@ namespace LaceupMigration
                                 {
                                     double pr = odi.Price;
                                     if (pr != item.Price)
-                                        odi.ExtraFields = DataAccess.SyncSingleUDF("PriceBeforeOffer", pr.ToString(), odi.ExtraFields);
+                                        odi.ExtraFields = UDFHelper.SyncSingleUDF("PriceBeforeOffer", pr.ToString(), odi.ExtraFields);
                                     odi.Price = item.Price;
-                                    odi.ExtraFields = DataAccess.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), odi.ExtraFields);
+                                    odi.ExtraFields = UDFHelper.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), odi.ExtraFields);
                                     odi.FromOffer = true;
                                     modified = true;
 
@@ -4400,8 +4400,8 @@ namespace LaceupMigration
                                     //{
                                     bool cameFromOffer = false;
                                     odi.Price = Product.GetPriceForProduct(odi.Product, this, out cameFromOffer, false, false, odi.UnitOfMeasure);
-                                    odi.ExtraFields = DataAccess.RemoveSingleUDF("PriceBeforeOffer", odi.ExtraFields);
-                                    odi.ExtraFields = DataAccess.RemoveSingleUDF("sourceoffer", odi.ExtraFields);
+                                    odi.ExtraFields = UDFHelper.RemoveSingleUDF("PriceBeforeOffer", odi.ExtraFields);
+                                    odi.ExtraFields = UDFHelper.RemoveSingleUDF("sourceoffer", odi.ExtraFields);
                                     odi.FromOffer = cameFromOffer;
                                     modified = true;
 
@@ -4634,14 +4634,14 @@ namespace LaceupMigration
                     if (orderDiscount.OrderDiscountClientAreas.Any(x => x.AreaId == Client.AreaId))
                     {
                         var discountApply = orderDiscount.OrderDiscountClientAreas.FirstOrDefault(x => x.AreaId == Client.AreaId);
-                        bool Incremental = (DataAccess.GetSingleUDF("IncrementalDiscount", discountApply.OrderDiscount.ExtraFields) == "1");
+                        bool Incremental = (UDFHelper.GetSingleUDF("IncrementalDiscount", discountApply.OrderDiscount.ExtraFields) == "1");
                         calculateApplay(discountApply.DiscountType, Incremental, ref discountInLine, ref minQtyBuy, countItem, discountApply.Qty, discountApply.Buy, subTotal);
 
                     }
                     if (orderDiscount.OrderDiscountCategories.Any(x => x.CategoryType == (int)OrderDiscountCategoryType.Client && x.CategoryId == Client.CategoryId))
                     {
                         var discountApply = orderDiscount.OrderDiscountCategories.FirstOrDefault(x => x.CategoryType == (int)OrderDiscountCategoryType.Client && x.CategoryId == Client.CategoryId);
-                        bool Incremental = (DataAccess.GetSingleUDF("IncrementalDiscount", discountApply.OrderDiscount.ExtraFields) == "1");
+                        bool Incremental = (UDFHelper.GetSingleUDF("IncrementalDiscount", discountApply.OrderDiscount.ExtraFields) == "1");
 
                         calculateApplay(discountApply.DiscountType, Incremental, ref discountInLine, ref minQtyBuy, countItem, discountApply.Qty, discountApply.Buy, subTotal);
 
@@ -4650,7 +4650,7 @@ namespace LaceupMigration
                     if (orderDiscount.OrderDiscountClients.Any(x => x.ClientId == Client.ClientId))
                     {
                         var discountApply = orderDiscount.OrderDiscountClients.FirstOrDefault(x => x.ClientId == Client.ClientId);
-                        bool Incremental = (DataAccess.GetSingleUDF("IncrementalDiscount", discountApply.OrderDiscount.ExtraFields) == "1");
+                        bool Incremental = (UDFHelper.GetSingleUDF("IncrementalDiscount", discountApply.OrderDiscount.ExtraFields) == "1");
                         calculateApplay(discountApply.DiscountType, Incremental, ref discountInLine, ref minQtyBuy, countItem, discountApply.Qty, discountApply.Buy, subTotal);
 
                     }
@@ -4672,9 +4672,9 @@ namespace LaceupMigration
                 else
                 {
 
-                    bool Incremental = (DataAccess.GetSingleUDF("IncrementalDiscount", orderDiscountBreak.ExtraFields) == "1");
+                    bool Incremental = (UDFHelper.GetSingleUDF("IncrementalDiscount", orderDiscountBreak.ExtraFields) == "1");
 
-                    bool IncrementalFreeIems = !string.IsNullOrEmpty(DataAccess.GetSingleUDF("IncrementalFreeIems", orderDiscountBreak.ExtraFields));
+                    bool IncrementalFreeIems = !string.IsNullOrEmpty(UDFHelper.GetSingleUDF("IncrementalFreeIems", orderDiscountBreak.ExtraFields));
 
                     if (countItem < orderDiscountBreak.MinQty || (orderDiscountBreak.MaxQty != -1 && orderDiscountBreak.MaxQty < countItem) || !stillApplyByDate)
                     {
@@ -4712,7 +4712,7 @@ namespace LaceupMigration
             //delete 
             foreach (var item in toDelate)
             {
-                var uniqId = DataAccess.GetSingleUDF("UniqueId", item.ExtraFields ?? "");
+                var uniqId = UDFHelper.GetSingleUDF("UniqueId", item.ExtraFields ?? "");
                 if (!string.IsNullOrEmpty(uniqId))
                 {
                     var itemOrderDetail = Details.FirstOrDefault(x => x.OriginalId.ToString() == uniqId);
@@ -4778,7 +4778,7 @@ namespace LaceupMigration
                         new List<KeyValuePairWritable<string, string>>() { new KeyValuePairWritable<string, string>("PLId", "1") }),
                  */
 
-                var idProduct = DataAccess.GetSingleUDF("ProductId", itemD.ExtraFields);
+                var idProduct = UDFHelper.GetSingleUDF("ProductId", itemD.ExtraFields);
                 if (string.IsNullOrEmpty(idProduct))
                     continue;
 
@@ -4870,7 +4870,7 @@ namespace LaceupMigration
 
         private double GetValueToIncrementalGiff(OrderDiscountBreak itemB, double countCurrent, OrderDiscount orderDiscount)
         {
-            var extrafiels = DataAccess.GetSingleUDF("IncrementalFreeIems", itemB.ExtraFields);
+            var extrafiels = UDFHelper.GetSingleUDF("IncrementalFreeIems", itemB.ExtraFields);
             var IncrementalGifItems = (!string.IsNullOrEmpty(extrafiels));
             var MaxSelect = (itemB.QtySelectProduct == 0 ? -1 : itemB.QtySelectProduct ?? -1);
             try
@@ -4940,7 +4940,7 @@ namespace LaceupMigration
 
 
                     }
-                    var productId = DataAccess.GetSingleUDF("ProductId", item.ExtraFields);
+                    var productId = UDFHelper.GetSingleUDF("ProductId", item.ExtraFields);
                     var idP = (string.IsNullOrEmpty(productId)) ? 0 : int.Parse(productId);
                     orderDicosuntApply.Breaks[item.OrderDiscountBreakId].Add(new ProductParams()
                     {
@@ -4973,7 +4973,7 @@ namespace LaceupMigration
         private List<OrderDiscount> GetOrdersDiscountAutomatic(Order order, DateTime? dateTime = null)
         {
 
-            var exclude = DataAccess.GetSingleUDF("ExcludeDiscount", order.ExtraFields);
+            var exclude = UDFHelper.GetSingleUDF("ExcludeDiscount", order.ExtraFields);
 
 
             DateTime _dateTime = (dateTime != null) ? (DateTime)dateTime : DateTime.Now;
@@ -5186,7 +5186,7 @@ namespace LaceupMigration
                             itemGridB.Status = (orderDiscount.Status == (int)ClientDiscountType.Draft) ? ClientDiscountType.Draft : (orderDiscount.Status == (int)ClientDiscountType.Active) ? ClientDiscountType.Active : ClientDiscountType.Inactive;
                             itemGridB.AppliedTo = orderDiscount.AppliedTo;
                             itemGridB.ProductDiscountId = orderDiscount.ProductDiscountId ?? 0;
-                            itemGridB.IncrementalDiscount = (DataAccess.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
+                            itemGridB.IncrementalDiscount = (UDFHelper.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
 
                             /*Productos a dar  */
                             itemGridB.SubParamsGet = (itemB.QtySelectProduct == 0) ? new List<ProductParams>() : SubParamsGet.Select(x => (ProductParams)x.Clone()).ToList();
@@ -5255,7 +5255,7 @@ namespace LaceupMigration
                             itemGridB.Status = (orderDiscount.Status == (int)ClientDiscountType.Draft) ? ClientDiscountType.Draft : (orderDiscount.Status == (int)ClientDiscountType.Active) ? ClientDiscountType.Active : ClientDiscountType.Inactive;
                             itemGridB.AppliedTo = orderDiscount.AppliedTo;
                             itemGridB.ProductDiscountId = orderDiscount.ProductDiscountId ?? 0;
-                            itemGridB.IncrementalDiscount = (DataAccess.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
+                            itemGridB.IncrementalDiscount = (UDFHelper.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
 
                             /*Productos a dar  */
                             itemGridB.SubParamsGet = (itemB.QtySelectProduct == 0) ? new List<ProductParams>() : SubParamsGet.Select(x => (ProductParams)x.Clone()).ToList();
@@ -5340,7 +5340,7 @@ namespace LaceupMigration
                                 itemGridB.Status = (orderDiscount.Status == (int)ClientDiscountType.Draft) ? ClientDiscountType.Draft : (orderDiscount.Status == (int)ClientDiscountType.Active) ? ClientDiscountType.Active : ClientDiscountType.Inactive;
                                 itemGridB.AppliedTo = orderDiscount.AppliedTo;
                                 itemGridB.ProductDiscountId = orderDiscount.ProductDiscountId ?? 0;
-                                itemGridB.IncrementalDiscount = (DataAccess.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
+                                itemGridB.IncrementalDiscount = (UDFHelper.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
 
                                 /*Productos a dar  */
                                 itemGridB.SubParamsGet = (itemB.QtySelectProduct == null) ? new List<ProductParams>() : SubParamsGet.Select(x => (ProductParams)x.Clone()).ToList();
@@ -5431,7 +5431,7 @@ namespace LaceupMigration
                             itemGridB.Status = (orderDiscount.Status == (int)ClientDiscountType.Draft) ? ClientDiscountType.Draft : (orderDiscount.Status == (int)ClientDiscountType.Active) ? ClientDiscountType.Active : ClientDiscountType.Inactive;
                             itemGridB.AppliedTo = orderDiscount.AppliedTo;
                             itemGridB.ProductDiscountId = orderDiscount.ProductDiscountId ?? 0;
-                            itemGridB.IncrementalDiscount = (DataAccess.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
+                            itemGridB.IncrementalDiscount = (UDFHelper.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
 
                             /*Productos a dar  */
                             itemGridB.SubParamsGet = (itemB.QtySelectProduct == 0) ? new List<ProductParams>() : SubParamsGet.Select(x => (ProductParams)x.Clone()).ToList();
@@ -5499,7 +5499,7 @@ namespace LaceupMigration
                             itemGridB.Status = (orderDiscount.Status == (int)ClientDiscountType.Draft) ? ClientDiscountType.Draft : (orderDiscount.Status == (int)ClientDiscountType.Active) ? ClientDiscountType.Active : ClientDiscountType.Inactive;
                             itemGridB.AppliedTo = orderDiscount.AppliedTo;
                             itemGridB.ProductDiscountId = orderDiscount.ProductDiscountId ?? 0;
-                            itemGridB.IncrementalDiscount = (DataAccess.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
+                            itemGridB.IncrementalDiscount = (UDFHelper.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
 
                             /*Productos a dar  */
                             itemGridB.SubParamsGet = (itemB.QtySelectProduct == 0) ? new List<ProductParams>() : SubParamsGet.Select(x => (ProductParams)x.Clone()).ToList();
@@ -5585,7 +5585,7 @@ namespace LaceupMigration
                                 itemGridB.Status = (orderDiscount.Status == (int)ClientDiscountType.Draft) ? ClientDiscountType.Draft : (orderDiscount.Status == (int)ClientDiscountType.Active) ? ClientDiscountType.Active : ClientDiscountType.Inactive;
                                 itemGridB.AppliedTo = orderDiscount.AppliedTo;
                                 itemGridB.ProductDiscountId = orderDiscount.ProductDiscountId ?? 0;
-                                itemGridB.IncrementalDiscount = (DataAccess.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
+                                itemGridB.IncrementalDiscount = (UDFHelper.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
 
                                 /*Productos a dar  */
                                 itemGridB.SubParamsGet = (itemB.QtySelectProduct == null) ? new List<ProductParams>() : SubParamsGet.Select(x => (ProductParams)x.Clone()).ToList();
@@ -5679,7 +5679,7 @@ namespace LaceupMigration
                             itemGridB.Status = (orderDiscount.Status == (int)ClientDiscountType.Draft) ? ClientDiscountType.Draft : (orderDiscount.Status == (int)ClientDiscountType.Active) ? ClientDiscountType.Active : ClientDiscountType.Inactive;
                             itemGridB.AppliedTo = orderDiscount.AppliedTo;
                             itemGridB.ProductDiscountId = orderDiscount.ProductDiscountId ?? 0;
-                            itemGridB.IncrementalDiscount = (DataAccess.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
+                            itemGridB.IncrementalDiscount = (UDFHelper.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
 
                             /*Productos a dar  */
                             itemGridB.SubParamsGet = (itemB.QtySelectProduct == 0) ? new List<ProductParams>() : SubParamsGet.Select(x => (ProductParams)x.Clone()).ToList();
@@ -5748,7 +5748,7 @@ namespace LaceupMigration
                             itemGridB.Status = (orderDiscount.Status == (int)ClientDiscountType.Draft) ? ClientDiscountType.Draft : (orderDiscount.Status == (int)ClientDiscountType.Active) ? ClientDiscountType.Active : ClientDiscountType.Inactive;
                             itemGridB.AppliedTo = orderDiscount.AppliedTo;
                             itemGridB.ProductDiscountId = orderDiscount.ProductDiscountId ?? 0;
-                            itemGridB.IncrementalDiscount = (DataAccess.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
+                            itemGridB.IncrementalDiscount = (UDFHelper.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
 
                             /*Productos a dar  */
                             itemGridB.SubParamsGet = (itemB.QtySelectProduct == 0) ? new List<ProductParams>() : SubParamsGet.Select(x => (ProductParams)x.Clone()).ToList();
@@ -5833,7 +5833,7 @@ namespace LaceupMigration
                                 itemGridB.Status = (orderDiscount.Status == (int)ClientDiscountType.Draft) ? ClientDiscountType.Draft : (orderDiscount.Status == (int)ClientDiscountType.Active) ? ClientDiscountType.Active : ClientDiscountType.Inactive;
                                 itemGridB.AppliedTo = orderDiscount.AppliedTo;
                                 itemGridB.ProductDiscountId = orderDiscount.ProductDiscountId ?? 0;
-                                itemGridB.IncrementalDiscount = (DataAccess.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
+                                itemGridB.IncrementalDiscount = (UDFHelper.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
 
                                 /*Productos a dar  */
                                 itemGridB.SubParamsGet = (itemB.QtySelectProduct == null) ? new List<ProductParams>() : SubParamsGet.Select(x => (ProductParams)x.Clone()).ToList();
@@ -5936,7 +5936,7 @@ namespace LaceupMigration
                             itemGridB.Status = (orderDiscount.Status == (int)ClientDiscountType.Draft) ? ClientDiscountType.Draft : (orderDiscount.Status == (int)ClientDiscountType.Active) ? ClientDiscountType.Active : ClientDiscountType.Inactive;
                             itemGridB.AppliedTo = orderDiscount.AppliedTo;
                             itemGridB.ProductDiscountId = orderDiscount.ProductDiscountId ?? 0;
-                            itemGridB.IncrementalDiscount = (DataAccess.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
+                            itemGridB.IncrementalDiscount = (UDFHelper.GetSingleUDF("IncrementalDiscount", itemB.ExtraFields) == "1");
 
                             /*Productos a dar  */
                             itemGridB.SubParamsGet = (itemB.QtySelectProduct == 0) ? new List<ProductParams>() : SubParamsGet.Select(x => (ProductParams)x.Clone()).ToList();
@@ -6034,7 +6034,7 @@ namespace LaceupMigration
         {
             try
             {
-                var extrafiels = DataAccess.GetSingleUDF("IncrementalFreeIems", itemB.ExtraFields);
+                var extrafiels = UDFHelper.GetSingleUDF("IncrementalFreeIems", itemB.ExtraFields);
                 itemGrid.IncrementalGifItems = (!string.IsNullOrEmpty(extrafiels));
                 itemGrid.MaxSelect = (itemB.QtySelectProduct ?? -1);
                 if (itemGrid.IncrementalGifItems)
@@ -6179,7 +6179,7 @@ namespace LaceupMigration
                 return true;
 
             var productsDiscount = order.Details.Where(x => IsDiscount(x.Product)).Select(x => x.ExtraFields).ToList();
-            var uniqueIdList = productsDiscount.Select(x => DataAccess.GetSingleUDF("UniqueId", x)).ToList();
+            var uniqueIdList = productsDiscount.Select(x => UDFHelper.GetSingleUDF("UniqueId", x)).ToList();
             return uniqueIdList.Contains(line.OriginalId.ToString());
         }
 
@@ -6276,7 +6276,7 @@ namespace LaceupMigration
 
                     };
 
-                    itemDiscount.ExtraFields = DataAccess.SyncSingleUDF("ProductId", item.Id.ToString(), "",
+                    itemDiscount.ExtraFields = UDFHelper.SyncSingleUDF("ProductId", item.Id.ToString(), "",
                         new List<KeyValuePairWritable<string, string>>() { new KeyValuePairWritable<string, string>("UniqueId", itemGet.OriginalId.ToString()) });
 
 
@@ -6335,7 +6335,7 @@ namespace LaceupMigration
                         ExtraComments = gridItem.DiscountName + "-" + productBuy.Name,
                         OrderDiscountId = gridItem.Id,
                         OrderDiscountBreakId = gridItem.BreackId ?? 0,
-                        ExtraFields = DataAccess.SyncSingleUDF("ProductId", productBuy.Id.ToString(), "",
+                        ExtraFields = UDFHelper.SyncSingleUDF("ProductId", productBuy.Id.ToString(), "",
                         new List<KeyValuePairWritable<string, string>>() { new KeyValuePairWritable<string, string>("PLId", "1") })
                     });
 
@@ -6568,7 +6568,7 @@ namespace LaceupMigration
             {
                 if (!string.IsNullOrEmpty(detail.ExtraFields) && detail.ExtraFields.IndexOf("RelatedDetail") >= 0)
                 {
-                    var related = DataAccess.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
+                    var related = UDFHelper.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
                     if (related != null)
                         relatedIds.Add(related.Value);
                 }
@@ -6860,7 +6860,7 @@ namespace LaceupMigration
             if (sourceDetail != null)
                 if (sourceDetail.ExtraFields != null && sourceDetail.ExtraFields.Contains("sourceoffer"))
                 {
-                    var udf = DataAccess.ExplodeExtraProperties(sourceDetail.ExtraFields).FirstOrDefault(x => x.Key == "sourceoffer");
+                    var udf = UDFHelper.ExplodeExtraProperties(sourceDetail.ExtraFields).FirstOrDefault(x => x.Key == "sourceoffer");
                     // maybe an error here, checking for the end of the string, or the matching |
                     var matchStr = "sourceoffer=" + udf.Value;
                     var matchingDetails = Details.Where(x => x.ExtraFields != null && x.ExtraFields.Contains(matchStr)).ToList();
@@ -6872,7 +6872,7 @@ namespace LaceupMigration
                         if (!IsDelivery)
                         {
                             // removed the added line
-                            int idProdF = Convert.ToInt32(DataAccess.ExplodeExtraProperties(offer.ExtraFields).FirstOrDefault(x => x.Key.ToLowerInvariant() == "productfree")?.Value);
+                            int idProdF = Convert.ToInt32(UDFHelper.ExplodeExtraProperties(offer.ExtraFields).FirstOrDefault(x => x.Key.ToLowerInvariant() == "productfree")?.Value);
                             var addedDetail = matchingDetails.FirstOrDefault(x => x.Product.ProductId == idProdF && x.ExtraFields != null && x.ExtraFields.Contains("productfree=yes"));
                             if (addedDetail != null)
                             {
@@ -6902,7 +6902,7 @@ namespace LaceupMigration
                     }
 
                     foreach (var detail in matchingDetails)
-                        detail.ExtraFields = DataAccess.RemoveSingleUDF("sourceoffer", detail.ExtraFields);
+                        detail.ExtraFields = UDFHelper.RemoveSingleUDF("sourceoffer", detail.ExtraFields);
                     // remove ALL the source offers marks
                 }
             var part1 = Details.Where(o =>
@@ -6980,16 +6980,16 @@ namespace LaceupMigration
                                     if (uom1 != null)
                                         newDetail.UnitOfMeasure = uom1;
                                 }
-                                newDetail.ExtraFields = DataAccess.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), newDetail.ExtraFields);
+                                newDetail.ExtraFields = UDFHelper.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), newDetail.ExtraFields);
                                 foreach (var toMarkDetail in detDisc.details)
                                 {
-                                    toMarkDetail.ExtraFields = DataAccess.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), toMarkDetail.ExtraFields);
+                                    toMarkDetail.ExtraFields = UDFHelper.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), toMarkDetail.ExtraFields);
                                 }
                                 modified = true;
                             }
                             break;
                         case 6:
-                            extraFields = DataAccess.ExplodeExtraProperties(item.ExtraFields);
+                            extraFields = UDFHelper.ExplodeExtraProperties(item.ExtraFields);
                             int idProdF = Convert.ToInt32(extraFields.FirstOrDefault(x => x.Key.ToLowerInvariant() == "productfree")?.Value);
                             string isMult = extraFields.FirstOrDefault(x => x.Key.ToLowerInvariant() == "multiple")?.Value;
                             var prod = Product.Find(idProdF);
@@ -7045,11 +7045,11 @@ namespace LaceupMigration
                                     if (removedFreeDetail != null && removedFreeDetail.Product.ProductId == newDetail.Product.ProductId &&
                                         ((newDetail.UnitOfMeasure == null) || (removedFreeDetail.UnitOfMeasure == newDetail.UnitOfMeasure)))
                                         newDetail.Lot = removedFreeDetail.Lot;
-                                    newDetail.ExtraFields = DataAccess.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), newDetail.ExtraFields);
-                                    newDetail.ExtraFields = DataAccess.SyncSingleUDF("productfree", "yes", newDetail.ExtraFields);
+                                    newDetail.ExtraFields = UDFHelper.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), newDetail.ExtraFields);
+                                    newDetail.ExtraFields = UDFHelper.SyncSingleUDF("productfree", "yes", newDetail.ExtraFields);
                                     foreach (var toMarkDetail in detDisc.details)
                                     {
-                                        toMarkDetail.ExtraFields = DataAccess.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), toMarkDetail.ExtraFields);
+                                        toMarkDetail.ExtraFields = UDFHelper.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), toMarkDetail.ExtraFields);
                                     }
                                     modified = true;
                                 }
@@ -7073,9 +7073,9 @@ namespace LaceupMigration
                                 {
                                     double pr = odi.Price;
                                     if (pr != item.Price)
-                                        odi.ExtraFields = DataAccess.SyncSingleUDF("PriceBeforeOffer", pr.ToString(), odi.ExtraFields);
+                                        odi.ExtraFields = UDFHelper.SyncSingleUDF("PriceBeforeOffer", pr.ToString(), odi.ExtraFields);
                                     odi.Price = item.Price;
-                                    odi.ExtraFields = DataAccess.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), odi.ExtraFields);
+                                    odi.ExtraFields = UDFHelper.SyncSingleUDF("sourceoffer", item.OfferId.ToString(), odi.ExtraFields);
                                     odi.FromOffer = true;
                                     modified = true;
 
@@ -7097,8 +7097,8 @@ namespace LaceupMigration
                                     //{
                                     bool cameFromOffer = false;
                                     odi.Price = Product.GetPriceForProduct(odi.Product, this, out cameFromOffer, false, false, odi.UnitOfMeasure);
-                                    odi.ExtraFields = DataAccess.RemoveSingleUDF("PriceBeforeOffer", odi.ExtraFields);
-                                    odi.ExtraFields = DataAccess.RemoveSingleUDF("sourceoffer", odi.ExtraFields);
+                                    odi.ExtraFields = UDFHelper.RemoveSingleUDF("PriceBeforeOffer", odi.ExtraFields);
+                                    odi.ExtraFields = UDFHelper.RemoveSingleUDF("sourceoffer", odi.ExtraFields);
                                     modified = true;
 
                                     if (!string.IsNullOrEmpty(odi.Comments) && odi.Comments.Contains("Offer:"))
@@ -7146,7 +7146,7 @@ namespace LaceupMigration
 
                 if (IsDelivery && ExtraFields != null)
                 {
-                    var termsExtra = DataAccess.GetSingleUDF("TERMS", ExtraFields);
+                    var termsExtra = UDFHelper.GetSingleUDF("TERMS", ExtraFields);
 
                     if (!string.IsNullOrEmpty(termsExtra))
                         terms = termsExtra.ToUpperInvariant();
@@ -7417,7 +7417,7 @@ namespace LaceupMigration
                                             factor = detail.UnitOfMeasure.Conversion;
                                         detail.Price = price.Price * factor;
                                         //detail.FromOffer = true;
-                                        detail.ExtraFields = DataAccess.SyncSingleUDF("TiertType", "Tier2", detail.ExtraFields);
+                                        detail.ExtraFields = UDFHelper.SyncSingleUDF("TiertType", "Tier2", detail.ExtraFields);
                                     }
                                 }
                             }
@@ -7485,7 +7485,7 @@ namespace LaceupMigration
                                                 factor = detail.UnitOfMeasure.Conversion;
                                             detail.Price = price.Price * factor;
                                             // detail.FromOffer = true;
-                                            //  detail.ExtraFields = DataAccess.SyncSingleUDF("TiertType", "Tier2", detail.ExtraFields);
+                                            //  detail.ExtraFields = UDFHelper.SyncSingleUDF("TiertType", "Tier2", detail.ExtraFields);
                                         }
                                     }
                                 }
@@ -7588,7 +7588,7 @@ namespace LaceupMigration
                                             factor = detail.UnitOfMeasure.Conversion;
                                         detail.Price = price.Price * factor;
                                         //detail.FromOffer = true;
-                                        detail.ExtraFields = DataAccess.SyncSingleUDF("TiertType", "Tier2", detail.ExtraFields);
+                                        detail.ExtraFields = UDFHelper.SyncSingleUDF("TiertType", "Tier2", detail.ExtraFields);
                                     }
                                 }
                             }
@@ -7632,7 +7632,7 @@ namespace LaceupMigration
                                                 factor = detail.UnitOfMeasure.Conversion;
                                             detail.Price = price.Price * factor;
                                             //detail.FromOffer = true;
-                                            //detail.ExtraFields = DataAccess.SyncSingleUDF("TiertType", "Tier2", detail.ExtraFields);
+                                            //detail.ExtraFields = UDFHelper.SyncSingleUDF("TiertType", "Tier2", detail.ExtraFields);
                                         }
                                     }
                                 }
@@ -7702,7 +7702,7 @@ namespace LaceupMigration
 
         public bool AddDeliveryCharge()
         {
-            var excludedFlag = DataAccess.ExplodeExtraProperties(Client.NonvisibleExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToUpper() == "EXCLUDEDELIVERYCHARGE");
+            var excludedFlag = UDFHelper.ExplodeExtraProperties(Client.NonvisibleExtraPropertiesAsString).FirstOrDefault(x => x.Key.ToUpper() == "EXCLUDEDELIVERYCHARGE");
             if (excludedFlag != null)
             {
                 Logger.CreateLog("The client " + Client.ClientName + " has the EXCLUDEDELIVERYCHARGE flag");
@@ -7774,7 +7774,7 @@ namespace LaceupMigration
         {
             foreach (var item in Details)
             {
-                var units = DataAccess.GetSingleUDF("units per crate", item.Product.NonVisibleExtraFieldsAsString);
+                var units = UDFHelper.GetSingleUDF("units per crate", item.Product.NonVisibleExtraFieldsAsString);
 
                 if (string.IsNullOrEmpty(units))
                     continue;
@@ -7944,7 +7944,7 @@ namespace LaceupMigration
             {
                 double minOrder = 0;
                 int miniumExtrafield = 0;
-                var min = DataAccess.GetSingleUDF("MinimumOrderAmount", Client.ExtraPropertiesAsString);
+                var min = UDFHelper.GetSingleUDF("MinimumOrderAmount", Client.ExtraPropertiesAsString);
 
                 if (Client.MinimumOrderAmount > 0)
                     minOrder = Client.MinimumOrderAmount;
@@ -7964,7 +7964,7 @@ namespace LaceupMigration
                     }
 
                 }
-                var minOrderQtyString = DataAccess.GetSingleUDF("MinimumOrderQty", Client.ExtraPropertiesAsString);
+                var minOrderQtyString = UDFHelper.GetSingleUDF("MinimumOrderQty", Client.ExtraPropertiesAsString);
 
 
 

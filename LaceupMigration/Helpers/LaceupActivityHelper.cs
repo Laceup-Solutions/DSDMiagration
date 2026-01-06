@@ -187,7 +187,7 @@ namespace LaceupMigration.Helpers
         /// </summary>
         public static void ExportData(string subject = "")
         {
-            DataAccess.ExportData(subject);
+            DataProvider.ExportData(subject);
         }
     }
 }

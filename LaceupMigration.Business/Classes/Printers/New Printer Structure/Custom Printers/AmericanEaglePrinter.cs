@@ -58,7 +58,7 @@ namespace LaceupMigration
                 {
                     relateds.Add(detail.RelatedOrderDetail);
 
-                    var values = DataAccess.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
+                    var values = UDFHelper.GetSingleUDF("ExtraRelatedItem", detail.ExtraFields);
 
                     if (!string.IsNullOrEmpty(values))
                     {
@@ -104,7 +104,7 @@ namespace LaceupMigration
                             uomMap.Add(uomString, 0);
                         uomMap[uomString] += detail.Qty;
 
-                        string georgehoweValue = DataAccess.GetSingleUDF("georgehowe", detail.OrderDetail.UnitOfMeasure.ExtraFields);
+                        string georgehoweValue = UDFHelper.GetSingleUDF("georgehowe", detail.OrderDetail.UnitOfMeasure.ExtraFields);
                         if (int.TryParse(georgehoweValue, out int conversionFactor))
                         {
                             totalQtyNoUoM += detail.Qty * conversionFactor;

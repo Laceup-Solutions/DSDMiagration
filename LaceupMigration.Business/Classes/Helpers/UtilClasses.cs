@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Text;
 using System.Text.RegularExpressions;
 
 
@@ -482,6 +483,62 @@ namespace LaceupMigration
         public KitPartItem(Product product)
         {
             ProductId = product.ProductId;
+        }
+    }
+
+    public static class StringEncription
+    {
+        public static string EncryptString(string inputString)
+        {
+            MemoryStream memStream = null;
+            try
+            {
+                byte[] key = { };
+                byte[] IV = { 12, 21, 43, 17, 57, 35, 67, 27 };
+                string encryptKey = "aXb2uy4z"; // MUST be 8 characters
+                key = Encoding.UTF8.GetBytes(encryptKey);
+                byte[] byteInput = Encoding.UTF8.GetBytes(inputString);
+                var provider = new System.Security.Cryptography.DESCryptoServiceProvider();
+                memStream = new MemoryStream();
+                var transform = provider.CreateEncryptor(key, IV);
+                var cryptoStream = new System.Security.Cryptography.CryptoStream(memStream, transform, System.Security.Cryptography.CryptoStreamMode.Write);
+                cryptoStream.Write(byteInput, 0, byteInput.Length);
+                cryptoStream.FlushFinalBlock();
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                throw;
+            }
+            return Convert.ToBase64String(memStream.ToArray());
+        }
+
+        public static string DecryptString(string inputString)
+        {
+            MemoryStream memStream = null;
+            try
+            {
+                byte[] key = { };
+                byte[] IV = { 12, 21, 43, 17, 57, 35, 67, 27 };
+                string encryptKey = "aXb2uy4z"; // MUST be 8 characters
+                key = Encoding.UTF8.GetBytes(encryptKey);
+                byte[] byteInput = new byte[inputString.Length];
+                byteInput = Convert.FromBase64String(inputString);
+                var provider = new System.Security.Cryptography.DESCryptoServiceProvider();
+                memStream = new MemoryStream();
+                var transform = provider.CreateDecryptor(key, IV);
+                var cryptoStream = new System.Security.Cryptography.CryptoStream(memStream, transform, System.Security.Cryptography.CryptoStreamMode.Write);
+                cryptoStream.Write(byteInput, 0, byteInput.Length);
+                cryptoStream.FlushFinalBlock();
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                throw;
+            }
+
+            Encoding encoding1 = Encoding.UTF8;
+            return encoding1.GetString(memStream.ToArray());
         }
     }
 }

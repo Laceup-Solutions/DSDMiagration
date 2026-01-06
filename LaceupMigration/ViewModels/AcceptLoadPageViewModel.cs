@@ -311,13 +311,13 @@ namespace LaceupMigration.ViewModels
                     try
                     {
                         // Download products first
-                        DataAccess.DownloadProducts();
+                        DataProvider.DownloadProducts();
 
                         // Get pending load orders based on ViewAll flag
                         if (ViewAll)
-                            DataAccess.GetPendingLoadOrders(_currentDate, true);
+                            DataProvider.GetPendingLoadOrders(_currentDate, true);
                         else
-                            DataAccess.GetPendingLoadOrders(_currentDate);
+                            DataProvider.GetPendingLoadOrders(_currentDate);
                     }
                     catch (Exception e)
                     {
@@ -482,7 +482,7 @@ namespace LaceupMigration.ViewModels
             // 2. Cancel button is clicked (Cancel_Click)
             // 3. Page is disappearing and not navigating forward to accept load
             // This deletes pending load orders that haven't been accepted yet
-            DataAccess.DeletePengingLoads();
+            DataProvider.DeletePengingLoads();
         }
 
         public void OnDisappearing()

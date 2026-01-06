@@ -70,13 +70,13 @@ namespace LaceupMigration
             //panamerican crap
             if (Math.Round(price, Config.Round) != Math.Round(originalPrice, Config.Round))
             {
-                odLine.ExtraFields = DataAccess.SyncSingleUDF("pricechanged", "yes", odLine.ExtraFields);
+                odLine.ExtraFields = UDFHelper.SyncSingleUDF("pricechanged", "yes", odLine.ExtraFields);
 
                 if (!string.IsNullOrEmpty(odLine.Comments) && odLine.Comments.Contains("Offer:"))
                     comment = string.Empty;
             }
             else
-                odLine.ExtraFields = DataAccess.RemoveSingleUDF("pricechanged", odLine.ExtraFields);
+                odLine.ExtraFields = UDFHelper.RemoveSingleUDF("pricechanged", odLine.ExtraFields);
 
             #endregion
 
@@ -799,7 +799,7 @@ namespace LaceupMigration
         {
             var x = new ConsStruct() { Detail = detail, Product = detail.Product, FromPar = detail.ParLevelDetail };
 
-            var list = DataAccess.ExplodeExtraProperties(detail.ExtraFields);
+            var list = UDFHelper.ExplodeExtraProperties(detail.ExtraFields);
             foreach (var item in list)
             {
                 switch (item.Key)

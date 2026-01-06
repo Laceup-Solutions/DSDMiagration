@@ -61,7 +61,8 @@ namespace LaceupMigration
 			{
 				if (File.Exists(tempFile))
 					File.Delete(tempFile);
-				DataAccess.UnzipFile(PackagePath, tempFile);
+
+				ZipMethods.UnzipFile(PackagePath, tempFile);
 
 				using (StreamReader stream = new StreamReader(tempFile))
 				{

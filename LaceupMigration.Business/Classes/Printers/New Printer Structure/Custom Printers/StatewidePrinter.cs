@@ -120,7 +120,7 @@ namespace LaceupMigration
             return new String(' ', half - halfS) + s;
         }
 
-        protected override IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool asPreOrder, Order order, Client client, string printedId, List<DataAccess.PaymentSplit> payments, bool paidInFull)
+        protected override IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool asPreOrder, Order order, Client client, string printedId, List<PaymentSplit> payments, bool paidInFull)
         {
             List<string> lines = new List<string>();
             startY += 10;
@@ -226,7 +226,7 @@ namespace LaceupMigration
 
                 List<string> list = new List<string>();
 
-                string cName = company.FromFile ? DataAccess.GetSingleUDF("company", company.ExtraFields) : company.CompanyName;
+                string cName = company.FromFile ? UDFHelper.GetSingleUDF("company", company.ExtraFields) : company.CompanyName;
 
                 foreach (string part in CompanyNameSplit(cName))
                 {
@@ -278,7 +278,7 @@ namespace LaceupMigration
                     startIndex += font18Separation;
                 }
 
-                string vendor = company.FromFile ? DataAccess.GetSingleUDF("vendor", company.ExtraFields) : "";
+                string vendor = company.FromFile ? UDFHelper.GetSingleUDF("vendor", company.ExtraFields) : "";
                 if (!string.IsNullOrEmpty(vendor))
                 {
                     list.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[StatewideCompanyPhone], startIndex, CenterText(vendor)));
@@ -518,7 +518,7 @@ namespace LaceupMigration
 
         //    if (payment != null)
         //    {
-        //        var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+        //        var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
 
         //        foreach (var item in parts)
         //        {

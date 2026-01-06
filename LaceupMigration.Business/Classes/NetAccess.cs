@@ -129,7 +129,7 @@ namespace LaceupMigration
                     {
                         if (buff.ToString() == "Device Data Wiped")
                         {
-                            DataAccess.SignOutDevice();
+                            SignOutDevice();
                             throw new Exception("Device Data Wiped");
                         }
 
@@ -148,11 +148,39 @@ namespace LaceupMigration
 
             if (buff.ToString() == "Device Data Wiped")
             {
-                DataAccess.SignOutDevice();
+                SignOutDevice();
                 throw new Exception("Device Data Wiped");
             }
 
             return buff.ToString();
+        }
+
+        public void SignOutDevice()
+        {
+            bool isButler = false;
+
+            isButler = Config.ButlerCustomization;
+
+            var acceptedTerms = Config.AcceptedTermsAndConditions;
+            var enabledlogin = Config.EnableLogin;
+
+            ActivityState.RemoveAll();
+
+            Config.ClearSettings();
+
+            Config.AcceptedTermsAndConditions = acceptedTerms;
+            Config.EnableLogin = enabledlogin;
+
+            Config.ButlerSignedIn = false;
+
+            Config.Initialize();
+
+            Config.IPAddressGateway = "";
+            Config.Port = 0;
+            Config.SalesmanId = 0;
+
+            Config.SaveSettings();
+
         }
 
         public void SendFile(string fileName)

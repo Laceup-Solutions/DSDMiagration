@@ -222,8 +222,8 @@ namespace LaceupMigration.ViewModels
 
 			try
 			{
-				DataAccess.SendInvoicePaymentsBySource(SelectedPayments, true);
-				DataAccess.LoadPayments();
+				DataProvider.SendInvoicePaymentsBySource(SelectedPayments, true);
+				InvoicePayment.LoadPayments();
 			}
 			catch (Exception ee)
 			{
@@ -324,7 +324,7 @@ namespace LaceupMigration.ViewModels
 		{
 			_payments = new Dictionary<Client, List<InvoicePayment>>();
 
-			if (!DataAccess.CanUseApplication() || !Config.ReceivedData)
+			if (!DataProvider.CanUseApplication() || !Config.ReceivedData)
 			{
 				IsSearchVisible = false;
 				ShowButtonsLayout = false;

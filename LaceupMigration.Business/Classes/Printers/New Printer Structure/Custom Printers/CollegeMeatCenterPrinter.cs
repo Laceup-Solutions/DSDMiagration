@@ -111,7 +111,7 @@ namespace LaceupMigration
                     name = p.Name + " " + p.Upc;
                 var productSlices = GetOrderDetailsRowsSplitProductName(name);
 
-                string units = DataAccess.GetSingleUDF("units", p.ExtraPropertiesAsString);
+                string units = UDFHelper.GetSingleUDF("units", p.ExtraPropertiesAsString);
                 
                 foreach (string pName in productSlices)
                 {

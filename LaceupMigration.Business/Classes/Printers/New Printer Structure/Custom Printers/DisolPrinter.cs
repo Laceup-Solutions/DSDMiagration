@@ -72,7 +72,7 @@ namespace LaceupMigration
 
             foreach (var od in order.Details)
             {
-                var type = DataAccess.GetSingleUDF("type", od.Product.NonVisibleExtraFieldsAsString);
+                var type = UDFHelper.GetSingleUDF("type", od.Product.NonVisibleExtraFieldsAsString);
                 if (!string.IsNullOrEmpty(type) && type.Contains("VP"))
                 {
                     var det = od.GetOrderDetailCopy();
@@ -98,11 +98,11 @@ namespace LaceupMigration
             if (string.IsNullOrEmpty(prod.NonVisibleExtraFieldsAsString))
                 return string.Empty;
 
-            var type = DataAccess.GetSingleUDF("Type", prod.NonVisibleExtraFieldsAsString);
+            var type = UDFHelper.GetSingleUDF("Type", prod.NonVisibleExtraFieldsAsString);
             if (string.IsNullOrEmpty(type) || type.ToLowerInvariant() == "vnr")
                 return string.Empty;
 
-            var kit = DataAccess.GetSingleUDF("Kit", prod.NonVisibleExtraFieldsAsString);
+            var kit = UDFHelper.GetSingleUDF("Kit", prod.NonVisibleExtraFieldsAsString);
             if (string.IsNullOrEmpty(kit))
                 return string.Empty;
 
@@ -294,13 +294,13 @@ namespace LaceupMigration
                     int qtyDigits = 0;
                     if (order.AsPresale)
                     {
-                        var pre = DataAccess.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "PresaleFormatQtyDigits");
+                        var pre = UDFHelper.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "PresaleFormatQtyDigits");
                         if (pre != null)
                             qtyDigits = Convert.ToInt32(pre.Value);
                     }
                     else
                     {
-                        var pre = DataAccess.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "DSDFormatQtyDigits");
+                        var pre = UDFHelper.ExplodeExtraProperties(salesman.ExtraProperties).FirstOrDefault(x => x.Key == "DSDFormatQtyDigits");
                         if (pre != null)
                             qtyDigits = Convert.ToInt32(pre.Value);
                     }
@@ -399,8 +399,8 @@ namespace LaceupMigration
 
             string clientRtn = !string.IsNullOrEmpty(order.Client.LicenceNumber) ? order.Client.LicenceNumber : "Consumidor Final";
 
-            var newClientName = DataAccess.GetSingleUDF("newclientname", order.ExtraFields);
-            var newRTN = DataAccess.GetSingleUDF("rtn", order.ExtraFields);
+            var newClientName = UDFHelper.GetSingleUDF("newclientname", order.ExtraFields);
+            var newRTN = UDFHelper.GetSingleUDF("rtn", order.ExtraFields);
 
             if (!string.IsNullOrEmpty(newClientName))
             {
@@ -665,7 +665,7 @@ namespace LaceupMigration
                 lines.Add(string.Empty);
             }
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             if (payments != null && payments.Count > 0)
             {
                 var result = GetPaymentLines(payments, order.OrderTotalCost());
@@ -682,7 +682,7 @@ namespace LaceupMigration
             return lines;
         }
 
-        List<string> GetPaymentLines(IList<DataAccess.PaymentSplit> payments, double totalCost)
+        List<string> GetPaymentLines(IList<PaymentSplit> payments, double totalCost)
         {
             List<string> lines = new List<string>();
 

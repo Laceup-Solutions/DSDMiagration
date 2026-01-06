@@ -171,15 +171,15 @@ namespace LaceupMigration
 
             foreach (var item in products)
             {
-                var uom = DataAccess.GetSingleUDF("uom", item.Product.ExtraPropertiesAsString);
+                var uom = UDFHelper.GetSingleUDF("uom", item.Product.ExtraPropertiesAsString);
                 if (uom == null)
                     uom = string.Empty;
 
-                string gallons = DataAccess.GetSingleUDF("gallons", item.Product.ExtraPropertiesAsString);
+                string gallons = UDFHelper.GetSingleUDF("gallons", item.Product.ExtraPropertiesAsString);
                 float gallonsConversion = 1;
                 if (!string.IsNullOrEmpty(gallons))
                     float.TryParse(gallons, out gallonsConversion);
-                string weight = DataAccess.GetSingleUDF("weight", item.Product.ExtraPropertiesAsString);
+                string weight = UDFHelper.GetSingleUDF("weight", item.Product.ExtraPropertiesAsString);
                 float weightConversion = 1;
                 if (!string.IsNullOrEmpty(weight))
                     float.TryParse(weight, out weightConversion);

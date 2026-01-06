@@ -142,7 +142,7 @@ namespace LaceupMigration
                         foreach (var component in Components)
                         {
                             if (component.PostedDate != DateTime.MinValue)
-                                component.ExtraFields = DataAccess.SyncSingleUDF("PostedDate", component.PostedDate.Ticks.ToString(), component.ExtraFields);
+                                component.ExtraFields = UDFHelper.SyncSingleUDF("PostedDate", component.PostedDate.Ticks.ToString(), component.ExtraFields);
 
                             string checkNumber = component.Ref == null ? string.Empty : component.Ref.Replace((char)13, (char)32).Replace((char)10, (char)32);
                             string comment = component.Comments == null ? string.Empty : component.Comments.Replace((char)13, (char)32).Replace((char)10, (char)32);
@@ -247,7 +247,7 @@ namespace LaceupMigration
                 {
                     c.ExtraFields = parts[4];
 
-                    var postedDate = DataAccess.GetSingleUDF("PostedDate", c.ExtraFields);
+                    var postedDate = UDFHelper.GetSingleUDF("PostedDate", c.ExtraFields);
                     if (!string.IsNullOrEmpty(postedDate))
                         c.PostedDate = new DateTime(Convert.ToInt64(postedDate, CultureInfo.InvariantCulture));
                 }
@@ -350,6 +350,14 @@ namespace LaceupMigration
 
             return comment;
         }
+
+        public static void LoadPayments()
+        {
+            // clean up the list of orders
+            ClearMemory();
+            foreach (string file in Directory.GetFiles(Config.PaymentPath))
+                AddPaymentFromFile(file);
+        }
     }
 
     public class PaymentComponent
@@ -395,7 +403,7 @@ namespace LaceupMigration
             {
                 if(!string.IsNullOrEmpty(ExtraFields))
                 {
-                    var bankName = DataAccess.GetSingleUDF("BankName", ExtraFields);
+                    var bankName = UDFHelper.GetSingleUDF("BankName", ExtraFields);
                     if (!string.IsNullOrEmpty(bankName))
                         return bankName;
                 }

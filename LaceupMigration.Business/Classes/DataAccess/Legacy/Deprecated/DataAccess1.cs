@@ -12,7 +12,7 @@ using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 
-namespace LaceupMigration
+namespace LaceupMigration.DataAccess.Deprecated
 {
     public partial class DataAccess
     {
@@ -2850,13 +2850,13 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(prod.NonVisibleExtraFieldsAsString))
                 {
-                    var nef = DataAccess.GetSingleUDF("inventoryByWeight", prod.NonVisibleExtraFieldsAsString);
+                    var nef = UDFHelper.GetSingleUDF("inventoryByWeight", prod.NonVisibleExtraFieldsAsString);
                     prod.InventoryByWeight = !string.IsNullOrEmpty(nef) && nef == "1";
                 }
 
                 if (!string.IsNullOrEmpty(prod.ExtraPropertiesAsString))
                 {
-                    var caseCount = DataAccess.GetSingleUDF("CASECOUNT", prod.ExtraPropertiesAsString);
+                    var caseCount = UDFHelper.GetSingleUDF("CASECOUNT", prod.ExtraPropertiesAsString);
                     int cc = 1;
                     int.TryParse(caseCount, out cc);
                     prod.CaseCount = cc;
@@ -3112,7 +3112,7 @@ namespace LaceupMigration
                     foreach (var detail in order.Details)
                         if (detail.ExtraFields.IndexOf("RelatedDetail") != -1)
                         {
-                            var pair = DataAccess.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
+                            var pair = UDFHelper.ExplodeExtraProperties(detail.ExtraFields).FirstOrDefault(x => x.Key == "RelatedDetail");
                             if (pair != null)
                             {
                                 var relatedDetail = order.Details.FirstOrDefault(x => x.OriginalId == pair.Value);
@@ -5037,13 +5037,13 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(prod.NonVisibleExtraFieldsAsString))
                 {
-                    var nef = DataAccess.GetSingleUDF("inventoryByWeight", prod.NonVisibleExtraFieldsAsString);
+                    var nef = UDFHelper.GetSingleUDF("inventoryByWeight", prod.NonVisibleExtraFieldsAsString);
                     prod.InventoryByWeight = !string.IsNullOrEmpty(nef) && nef == "1";
                 }
 
                 if (!string.IsNullOrEmpty(prod.ExtraPropertiesAsString))
                 {
-                    var caseCount = DataAccess.GetSingleUDF("CASECOUNT", prod.ExtraPropertiesAsString);
+                    var caseCount = UDFHelper.GetSingleUDF("CASECOUNT", prod.ExtraPropertiesAsString);
                     int cc = 1;
                     int.TryParse(caseCount, out cc);
                     prod.CaseCount = cc;

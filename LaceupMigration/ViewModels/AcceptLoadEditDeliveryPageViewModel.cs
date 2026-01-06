@@ -375,7 +375,9 @@ namespace LaceupMigration.ViewModels
                     {
                         var orders = list.Where(x => x.OrderType == OrderType.Load).ToList();
                         var valuesChanged = GetValuesChangedPerOrder(orders);
-                        DataAccess.AcceptLoadOrders(orders.Select(x => x.OriginalOrderId).ToList(), valuesChanged);
+
+                        DataProvider.AcceptLoadOrders(orders.Select(x => x.OriginalOrderId).ToList(), valuesChanged);
+
                         UpdateInventoryAndOrderStatus(list);
                     }
                     catch (Exception e)
@@ -655,7 +657,7 @@ namespace LaceupMigration.ViewModels
                 if (order.IsDelivery)
                 {
                     order.PendingLoad = false;
-                    DataAccess.AddDeliveryClient(order.Client);
+                    DataProvider.AddDeliveryClient(order.Client);
 
                     if (Config.DeleteZeroItemsOnDelivery)
                     {
@@ -674,7 +676,7 @@ namespace LaceupMigration.ViewModels
                 RecalculateStops();
 
             _inventoryAccepted = true;
-            DataAccess.SaveInventory();
+            ProductInventory.Save();
         }
 
         void RecalculateStops()
@@ -729,7 +731,7 @@ namespace LaceupMigration.ViewModels
                             netaccess.WriteStringToNetwork(Config.SalesmanId.ToString(CultureInfo.InvariantCulture) + "," + DateTime.Now.ToString(CultureInfo.InvariantCulture) + ",yes");
                             netaccess.ReceiveFile(deliveriesInSite);
 
-                            DataAccess.LoadDeliveriesInSite(deliveriesInSite);
+                            DataProvider.LoadDeliveriesInSite(deliveriesInSite);
 
                             if (File.Exists(deliveriesInSite))
                                 File.Delete(deliveriesInSite);

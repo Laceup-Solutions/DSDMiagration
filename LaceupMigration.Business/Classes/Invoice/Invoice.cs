@@ -59,7 +59,7 @@ namespace LaceupMigration
                 if (string.IsNullOrEmpty(ExtraFields))
                     return string.Empty;
 
-                var ex = DataAccess.GetSingleUDF("ponumber", ExtraFields);
+                var ex = UDFHelper.GetSingleUDF("ponumber", ExtraFields);
                 if (!string.IsNullOrEmpty(ex))
                     return ex;
                 else

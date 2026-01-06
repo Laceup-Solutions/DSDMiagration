@@ -605,7 +605,7 @@ namespace LaceupMigration
 
         T GetCoreForDetail(Order order, OrderDetail detail, float sold)
         {
-            var core = DataAccess.GetSingleUDF("coreQty", detail.ExtraFields);
+            var core = UDFHelper.GetSingleUDF("coreQty", detail.ExtraFields);
             var coreId = detail.Product.NonVisibleExtraFields.FirstOrDefault(x => x.Item1 == "core");
 
             if (string.IsNullOrEmpty(core) || coreId == null)
@@ -673,7 +673,7 @@ namespace LaceupMigration
 
         T GetRotateForDetail(Order order, OrderDetail detail)
         {
-            var rotation = DataAccess.GetSingleUDF("rotatedQty", detail.ExtraFields);
+            var rotation = UDFHelper.GetSingleUDF("rotatedQty", detail.ExtraFields);
 
             if (string.IsNullOrEmpty(rotation))
                 return null;
@@ -702,7 +702,7 @@ namespace LaceupMigration
 
         T GetAdjustmentForDetail(Order order, OrderDetail detail)
         {
-            var adjQty = DataAccess.GetSingleUDF("adjustedQty", detail.ExtraFields);
+            var adjQty = UDFHelper.GetSingleUDF("adjustedQty", detail.ExtraFields);
 
             if (string.IsNullOrEmpty(adjQty))
                 return null;
@@ -1026,7 +1026,7 @@ namespace LaceupMigration
             var payment = InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId));
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
 

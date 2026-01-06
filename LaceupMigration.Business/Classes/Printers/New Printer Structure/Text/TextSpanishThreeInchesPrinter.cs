@@ -397,7 +397,7 @@ namespace LaceupMigration
             return docName;
         }
 
-        protected override IEnumerable<string> GetPaymentLines(ref int startY, IList<DataAccess.PaymentSplit> payments, bool paidInFull)
+        protected override IEnumerable<string> GetPaymentLines(ref int startY, IList<PaymentSplit> payments, bool paidInFull)
         {
             List<string> lines = new List<string>();
 
@@ -573,7 +573,7 @@ namespace LaceupMigration
                             uomMap.Add(uomString, 0);
                         uomMap[uomString] += detail.Qty;
 
-                        string georgehoweValue = DataAccess.GetSingleUDF("georgehowe", detail.OrderDetail.UnitOfMeasure.ExtraFields);
+                        string georgehoweValue = UDFHelper.GetSingleUDF("georgehowe", detail.OrderDetail.UnitOfMeasure.ExtraFields);
                         if (int.TryParse(georgehoweValue, out int conversionFactor))
                         {
                             totalQtyNoUoM += detail.Qty * conversionFactor;

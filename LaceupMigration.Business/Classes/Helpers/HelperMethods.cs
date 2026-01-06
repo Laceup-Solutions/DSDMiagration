@@ -41,7 +41,7 @@ public static class ActivityExtensionMethods
                 var product = products.FirstOrDefault();
                 if (!string.IsNullOrEmpty(product.NonVisibleExtraFieldsAsString))
                 {
-                    var available = DataAccess.GetSingleUDF("AvailableIn", product.NonVisibleExtraFieldsAsString);
+                    var available = UDFHelper.GetSingleUDF("AvailableIn", product.NonVisibleExtraFieldsAsString);
                     if (!string.IsNullOrEmpty(available))
                     {
                         if (available.ToLower() == "none")
@@ -164,7 +164,7 @@ public static class UDFHelper
     public static string SyncSingleUDF(string udfName, string udfValue, string current, List<KeyValuePairWritable<string, string>> currentList = null, bool concat = true)
     {
         if (currentList == null)
-            currentList = DataAccess.ExplodeExtraProperties(current);
+            currentList = UDFHelper.ExplodeExtraProperties(current);
 
         var udf = currentList.FirstOrDefault(x => x.Key.ToLowerInvariant() == udfName.ToLowerInvariant());
         if (udf == null)
@@ -176,7 +176,7 @@ public static class UDFHelper
             udf.Value = udfValue ?? string.Empty;
 
         if (concat)
-            return DataAccess.ImplodeExtraProperties(currentList);
+            return ImplodeExtraProperties(currentList);
         return null;
     }
 
@@ -219,6 +219,28 @@ public static class UDFHelper
                 string keyPart = subParts[0];
                 string valuePart = subParts[1];
                 retValue.Add(new KeyValuePairWritable<string, string>(keyPart, valuePart));
+            }
+        }
+        return retValue;
+    }
+
+    public static List<Tuple<string, string>> ExplodeExtraPropertiesTuple(string ExtraFields)
+    {
+        var retValue = new List<Tuple<string, string>>();
+        if (!string.IsNullOrEmpty(ExtraFields))
+        {
+            string[] parts = ExtraFields.Split(ExtraPropertiesSeparator);
+            foreach (string part in parts)
+            {
+                string[] subParts = part.Split(ExtraPropertySeparator);
+                if (subParts.Length != 2)
+                {
+                    Logger.CreateLog("Found a miss formed UDF string, " + ExtraFields);
+                    continue;
+                }
+                string keyPart = subParts[0];
+                string valuePart = subParts[1];
+                retValue.Add(new Tuple<string, string>(keyPart, valuePart));
             }
         }
         return retValue;

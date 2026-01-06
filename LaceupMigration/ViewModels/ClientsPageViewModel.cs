@@ -134,12 +134,12 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			if (DataAccess.MustEndOfDay())
+			if (DataProvider.MustEndOfDay())
 			{
 				await _dialogService.ShowAlertAsync("End of Day process is required before continuing.", "Warning");
 				ClearClientListAndLock();
 			}
-			else if (!DataAccess.CanUseApplication())
+			else if (!DataProvider.CanUseApplication())
 			{
 				await _dialogService.ShowAlertAsync("You must sync data before continuing.", "Warning");
 				ClearClientListAndLock();
