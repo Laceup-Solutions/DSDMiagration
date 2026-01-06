@@ -285,8 +285,8 @@ namespace LaceupMigration.ViewModels
                 {
                     stop.Closed = true;
                     stop.When = DateTime.Now;
-                    stop.Latitude = DataAccess.LastLatitude;
-                    stop.Longitude = DataAccess.LastLongitude;
+                    stop.Latitude = Config.LastLatitude;
+                    stop.Longitude = Config.LastLongitude;
                 }
 
                 if (_order.UniqueId != null)

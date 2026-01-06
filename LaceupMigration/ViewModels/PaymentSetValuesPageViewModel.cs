@@ -740,8 +740,8 @@ namespace LaceupMigration.ViewModels
             // Add location to payments
             foreach (var component in _invoicePayment.Components)
             {
-                component.ExtraFields = DataAccess.SyncSingleUDF("location", 
-                    $"{DataAccess.LastLatitude},{DataAccess.LastLongitude}", 
+                component.ExtraFields = UDFHelper.SyncSingleUDF("location", 
+                    $"{Config.LastLatitude},{Config.LastLongitude}", 
                     component.ExtraFields);
             }
 
@@ -843,7 +843,7 @@ namespace LaceupMigration.ViewModels
             string toEmail = string.Empty;
             if (_invoicePayment!.Client != null)
             {
-                toEmail = DataAccess.GetSingleUDF("email", _invoicePayment.Client.ExtraPropertiesAsString);
+                toEmail = UDFHelper.GetSingleUDF("email", _invoicePayment.Client.ExtraPropertiesAsString);
             }
 
             // Determine subject and body (matches Xamarin SendByEmail)
@@ -1001,7 +1001,7 @@ namespace LaceupMigration.ViewModels
                             string extraFields = component.Component.ExtraFields ?? string.Empty;
                             if (component.PostedDate != DateTime.MinValue)
                             {
-                                extraFields = DataAccess.SyncSingleUDF("PostedDate", component.PostedDate.Ticks.ToString(), extraFields);
+                                extraFields = UDFHelper.SyncSingleUDF("PostedDate", component.PostedDate.Ticks.ToString(), extraFields);
                             }
 
                             string checkNumber = component.Ref ?? string.Empty;
@@ -1096,7 +1096,7 @@ namespace LaceupMigration.ViewModels
                             // BankName is stored in ExtraFields
                             var bankName = parts[4] ?? string.Empty;
                             if (!string.IsNullOrEmpty(bankName))
-                                component.ExtraFields = DataAccess.SyncSingleUDF("BankName", bankName, component.ExtraFields ?? string.Empty);
+                                component.ExtraFields = UDFHelper.SyncSingleUDF("BankName", bankName, component.ExtraFields ?? string.Empty);
                         }
 
                         if (parts.Length > 5)
@@ -1111,7 +1111,7 @@ namespace LaceupMigration.ViewModels
                             // Also check ExtraFields for PostedDate if not already set
                             if (component.PostedDate == DateTime.MinValue)
                             {
-                                var postedDate = DataAccess.GetSingleUDF("PostedDate", component.ExtraFields);
+                                var postedDate = UDFHelper.GetSingleUDF("PostedDate", component.ExtraFields);
                                 if (!string.IsNullOrEmpty(postedDate) && long.TryParse(postedDate, out var postedTicks))
                                     component.PostedDate = new DateTime(postedTicks);
                             }
@@ -1215,9 +1215,9 @@ namespace LaceupMigration.ViewModels
         partial void OnBankNameChanged(string value)
         {
             if (!string.IsNullOrEmpty(value))
-                _component.ExtraFields = DataAccess.SyncSingleUDF("BankName", value, _component.ExtraFields);
+                _component.ExtraFields = UDFHelper.SyncSingleUDF("BankName", value, _component.ExtraFields);
             else
-                _component.ExtraFields = DataAccess.RemoveSingleUDF("BankName", _component.ExtraFields);
+                _component.ExtraFields = UDFHelper.RemoveSingleUDF("BankName", _component.ExtraFields);
         }
 
         partial void OnPostedDateChanged(DateTime value)

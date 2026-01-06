@@ -811,12 +811,12 @@ namespace LaceupMigration
                 v1, v2);
         }
 
-        protected List<DataAccess.PaymentSplit> GetPaymentsForOrderCreatedReport()
+        protected List<PaymentSplit> GetPaymentsForOrderCreatedReport()
         {
-            List<DataAccess.PaymentSplit> result = new List<DataAccess.PaymentSplit>();
+            List<PaymentSplit> result = new List<PaymentSplit>();
 
             foreach (var payment in InvoicePayment.List)
-                result.AddRange(DataAccess.SplitPayment(payment));
+                result.AddRange(PaymentSplit.SplitPayment(payment));
 
             return result;
         }

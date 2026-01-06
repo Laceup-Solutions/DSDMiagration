@@ -43,7 +43,7 @@ namespace LaceupMigration.ViewModels
             _file = Path.Combine(Config.DataPath, "accpetInventoryResume.xml");
             
             // Match Xamarin ReadOnly property logic
-            ReadOnly = DataAccess.AcceptInventoryReadOnly || !Config.AcceptLoadEditable || !Config.NewSyncLoadOnDemand || !_canLeave;
+            ReadOnly = Config.AcceptInventoryReadOnly || !Config.AcceptLoadEditable || !Config.NewSyncLoadOnDemand || !_canLeave;
         }
 
         public async Task InitializeAsync(string ordersIds, bool changed = false, bool inventoryAccepted = false, bool canLeave = true, string uniqueId = null)
@@ -74,7 +74,7 @@ namespace LaceupMigration.ViewModels
 
         private void RefreshReadOnly()
         {
-            ReadOnly = DataAccess.AcceptInventoryReadOnly || !Config.AcceptLoadEditable || !Config.NewSyncLoadOnDemand || !_canLeave;
+            ReadOnly = Config.AcceptInventoryReadOnly || !Config.AcceptLoadEditable || !Config.NewSyncLoadOnDemand || !_canLeave;
         }
 
         private async Task LoadProductListAsync()
@@ -375,7 +375,9 @@ namespace LaceupMigration.ViewModels
                     {
                         var orders = list.Where(x => x.OrderType == OrderType.Load).ToList();
                         var valuesChanged = GetValuesChangedPerOrder(orders);
-                        DataAccess.AcceptLoadOrders(orders.Select(x => x.OriginalOrderId).ToList(), valuesChanged);
+
+                        DataProvider.AcceptLoadOrders(orders.Select(x => x.OriginalOrderId).ToList(), valuesChanged);
+
                         UpdateInventoryAndOrderStatus(list);
                     }
                     catch (Exception e)
@@ -417,7 +419,7 @@ namespace LaceupMigration.ViewModels
         {
             string result = "";
 
-            bool addSession = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "35.0.0.0");
+            bool addSession = Config.CheckCommunicatorVersion("35.0.0.0");
 
             foreach (var item in orders)
             {
@@ -547,7 +549,7 @@ namespace LaceupMigration.ViewModels
                     // Check RouteOrdersCount after RecalculateRoutes() was called
                     // If no more loads to accept, go to main (clients tab)
                     // Otherwise, go back to Accept Load page
-                    if (DataAccess.RouteOrdersCount == 0)
+                    if (Config.RouteOrdersCount == 0)
                     {
                         await _appService.GoBackToMainAsync();
                     }
@@ -655,7 +657,7 @@ namespace LaceupMigration.ViewModels
                 if (order.IsDelivery)
                 {
                     order.PendingLoad = false;
-                    DataAccess.AddDeliveryClient(order.Client);
+                    DataProvider.AddDeliveryClient(order.Client);
 
                     if (Config.DeleteZeroItemsOnDelivery)
                     {
@@ -674,7 +676,7 @@ namespace LaceupMigration.ViewModels
                 RecalculateStops();
 
             _inventoryAccepted = true;
-            DataAccess.SaveInventory();
+            ProductInventory.Save();
         }
 
         void RecalculateStops()
@@ -720,7 +722,7 @@ namespace LaceupMigration.ViewModels
                         string result = netaccess.ReadStringFromNetwork();
                         int routeCount = 0;
                         int.TryParse(result, out routeCount);
-                        DataAccess.RouteOrdersCount = routeCount;
+                        Config.RouteOrdersCount = routeCount;
 
                         try
                         {
@@ -729,7 +731,7 @@ namespace LaceupMigration.ViewModels
                             netaccess.WriteStringToNetwork(Config.SalesmanId.ToString(CultureInfo.InvariantCulture) + "," + DateTime.Now.ToString(CultureInfo.InvariantCulture) + ",yes");
                             netaccess.ReceiveFile(deliveriesInSite);
 
-                            DataAccess.LoadDeliveriesInSite(deliveriesInSite);
+                            DataProvider.LoadDeliveriesInSite(deliveriesInSite);
 
                             if (File.Exists(deliveriesInSite))
                                 File.Delete(deliveriesInSite);
@@ -797,7 +799,7 @@ namespace LaceupMigration.ViewModels
                 // If no more loads to accept, go to main (clients tab)
                 // Otherwise, go back to Accept Load page
                 // For old sync method, always navigate back to Accept Load and let RefreshAsync check the count
-                if (Config.NewSyncLoadOnDemand && DataAccess.RouteOrdersCount == 0)
+                if (Config.NewSyncLoadOnDemand && Config.RouteOrdersCount == 0)
                 {
                     await _appService.GoBackToMainAsync();
                 }

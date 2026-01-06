@@ -586,7 +586,7 @@ namespace LaceupMigration.ViewModels
                     }
                 }
 
-                DataAccess.SaveInventory();
+                ProductInventory.Save();
 
                 if (File.Exists(_fileName))
                     File.Delete(_fileName);

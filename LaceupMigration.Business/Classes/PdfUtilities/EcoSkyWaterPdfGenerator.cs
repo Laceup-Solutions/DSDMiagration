@@ -101,7 +101,7 @@ namespace LaceupMigration
 
             if (!string.IsNullOrEmpty(company.ExtraFields))
             {
-                var extra = DataAccess.GetSingleUDF("TIN", company.ExtraFields);
+                var extra = UDFHelper.GetSingleUDF("TIN", company.ExtraFields);
                 if (!string.IsNullOrEmpty(extra))
                 {
                     AddTextLine(doc, "TIN:" + extra, GetNormalFont());
@@ -362,7 +362,7 @@ namespace LaceupMigration
 
         protected virtual double GetPayment(Order order)
         {
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             if (payments != null && payments.Count > 0)
             {
                 var paidInFull = payments != null && payments.Sum(x => x.Amount) == order.OrderTotalCost();
@@ -1582,7 +1582,7 @@ namespace LaceupMigration
 
         protected virtual BatteryItem GetCoreForDetail(Order order, OrderDetail detail, float sold)
         {
-            var core = DataAccess.GetSingleUDF("coreQty", detail.ExtraFields);
+            var core = UDFHelper.GetSingleUDF("coreQty", detail.ExtraFields);
             var coreId = detail.Product.NonVisibleExtraFields.FirstOrDefault(x => x.Item1 == "core");
 
             if (string.IsNullOrEmpty(core) || coreId == null)
@@ -1650,7 +1650,7 @@ namespace LaceupMigration
 
         protected virtual BatteryItem GetRotateForDetail(Order order, OrderDetail detail)
         {
-            var rotation = DataAccess.GetSingleUDF("rotatedQty", detail.ExtraFields);
+            var rotation = UDFHelper.GetSingleUDF("rotatedQty", detail.ExtraFields);
 
             if (string.IsNullOrEmpty(rotation))
                 return null;
@@ -1679,7 +1679,7 @@ namespace LaceupMigration
 
         protected virtual BatteryItem GetAdjustmentForDetail(Order order, OrderDetail detail)
         {
-            var adjQty = DataAccess.GetSingleUDF("adjustedQty", detail.ExtraFields);
+            var adjQty = UDFHelper.GetSingleUDF("adjustedQty", detail.ExtraFields);
 
             if (string.IsNullOrEmpty(adjQty))
                 return null;
@@ -2439,7 +2439,7 @@ namespace LaceupMigration
 
             if (!string.IsNullOrEmpty(company.ExtraFields))
             {
-                var extra = DataAccess.GetSingleUDF("TIN", company.ExtraFields);
+                var extra = UDFHelper.GetSingleUDF("TIN", company.ExtraFields);
                 if (!string.IsNullOrEmpty(extra))
                 {
                     companyText += ("TIN:" + extra) + "\n";
@@ -2482,7 +2482,7 @@ namespace LaceupMigration
 
             if (!string.IsNullOrEmpty(company.ExtraFields))
             {
-                var extra = DataAccess.GetSingleUDF("TIN", company.ExtraFields);
+                var extra = UDFHelper.GetSingleUDF("TIN", company.ExtraFields);
                 if (!string.IsNullOrEmpty(extra))
                 {
                     companyText += ("TIN:" + extra) + "\n";

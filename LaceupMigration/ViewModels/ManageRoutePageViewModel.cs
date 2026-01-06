@@ -313,7 +313,7 @@ namespace LaceupMigration.ViewModels
                 IsLoading = true;
                 
                 int vendorId = SelectedSalesmanId > 0 ? SelectedSalesmanId : SelectedDriverId;
-                _currentRoute = DataAccess.GetRouteForDriverShipDate(vendorId, RouteDate);
+                _currentRoute = DataProvider.GetRouteForDriverShipDate(vendorId, RouteDate);
                 
                 if (_currentRoute != null)
                 {
@@ -468,7 +468,7 @@ namespace LaceupMigration.ViewModels
 
                 if (ordersToCheck.Count > 0)
                 {
-                    string result = DataAccess.CheckOrderChangesBeforeSaveRoute(ordersToCheck);
+                    string result = DataProvider.CheckOrderChangesBeforeSaveRoute(ordersToCheck);
                     if (!string.IsNullOrEmpty(result))
                     {
                         var parts = result.Split(',').ToList();
@@ -486,7 +486,7 @@ namespace LaceupMigration.ViewModels
                 }
 
                 // Save route to server
-                DataAccess.SaveRoute(_routeFileName);
+                DataProvider.SaveRoute(_routeFileName);
                 
                 await _dialogService.ShowAlertAsync("Route saved successfully.", "Success", "OK");
                 

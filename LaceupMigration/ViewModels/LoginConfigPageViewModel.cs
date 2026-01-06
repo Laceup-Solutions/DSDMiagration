@@ -105,12 +105,12 @@ namespace LaceupMigration.ViewModels
 
 			NetAccess.GetCommunicatorVersion();
 
-				if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "80.0.0"))
+				if (Config.CheckCommunicatorVersion("80.0.0"))
 				{
-					var field = DataAccess.GetFieldForLogin();
+					var field = DataProvider.GetFieldForLogin();
 					if (!string.IsNullOrEmpty(field))
 					{
-						DataAccess.GetSalesmanList();
+						DataProvider.GetSalesmanList();
 						var actualSalesman = GetSalesmanBasedOnField(field);
 						if (actualSalesman != null)
 						{
@@ -178,16 +178,16 @@ namespace LaceupMigration.ViewModels
 						Directory.CreateDirectory(Config.SessionPath);
 					}
 					
-					DataAccess.Initialize();
+					DataProvider.Initialize();
 
-					DataAccess.GetUserSettingLine();
-					DataAccess.CheckAuthorization();
+					DataProvider.GetUserSettingLine();
+					DataProvider.CheckAuthorization();
 
 					error = 1;
 
 					if (!Config.AuthorizationFailed)
 					{
-						DataAccess.GetSalesmanSettings(false);
+						DataProvider.GetSalesmanSettings(false);
 
 						error = 2;
 
@@ -198,7 +198,7 @@ namespace LaceupMigration.ViewModels
 							{
 								ProgressDialogHelper.SetMessage("Downloading data.");
 							});
-							DataAccessEx.DownloadStaticData();
+							DataProvider.DownloadStaticData();
 						}
 
 						error = 3;
@@ -519,7 +519,7 @@ namespace LaceupMigration.ViewModels
 					}
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() line 1612
-					DataAccess.CheckAuthorization();
+					DataProvider.CheckAuthorization();
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() lines 1614-1617
 					if (Config.AuthorizationFailed)
@@ -528,7 +528,7 @@ namespace LaceupMigration.ViewModels
 					}
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() lines 1619-1622
-					if (!DataAccess.CheckSyncAuthInfo())
+					if (!DataProvider.CheckSyncAuthInfo())
 					{
 						throw new Exception("Wait before sync");
 					}
@@ -537,7 +537,7 @@ namespace LaceupMigration.ViewModels
 					Logger.CreateLog("called MenuHandlerSyncData");
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() line 1626
-					responseMessage = DataAccessEx.DownloadData(true, !Config.TrackInventory || updateInventory);
+					responseMessage = DataProvider.DownloadData(true, !Config.TrackInventory || updateInventory);
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() lines 1628-1636
 					// When called automatically after login, save vendor name
@@ -581,7 +581,7 @@ namespace LaceupMigration.ViewModels
 
 				// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() lines 1671-1676
 				// Check for load on demand
-				if (Config.NewSyncLoadOnDemand && DataAccess.RouteOrdersCount > 0)
+				if (Config.NewSyncLoadOnDemand && Config.RouteOrdersCount > 0)
 				{
 					FinishDownloadDataAfterLogin(errorDownloadingData, updateInventory);
 					return;
@@ -621,7 +621,7 @@ namespace LaceupMigration.ViewModels
 				SalesmanSession.StartSession();
 
 			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1733-1738
-			if (!errorDownloadingData && Config.NewSyncLoadOnDemand && DataAccess.RouteOrdersCount > 0)
+			if (!errorDownloadingData && Config.NewSyncLoadOnDemand && Config.RouteOrdersCount > 0)
 			{
 				// needToEnterVehicle = true;
 				// GoToAcceptLoad(DateTime.Now, true); - navigate to accept load page
@@ -631,15 +631,15 @@ namespace LaceupMigration.ViewModels
 
 			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1740-1769
 			// Inventory load acceptance logic (simplified - full implementation would navigate to inventory page)
-			if (!errorDownloadingData && Config.TrackInventory && updateInventory && DataAccess.PendingLoadToAccept)
+			if (!errorDownloadingData && Config.TrackInventory && updateInventory && Config.PendingLoadToAccept)
 			{
 				if (Config.AutoAcceptLoad)
 				{
 					// Auto-accept load logic (Xamarin lines 1744-1758)
 					// Simplified for now - full implementation would update inventory
-					DataAccess.PendingLoadToAccept = false;
+					Config.PendingLoadToAccept = false;
 					Config.SaveAppStatus();
-					DataAccess.SaveInventory();
+					ProductInventory.Save();
 				}
 				else
 				{

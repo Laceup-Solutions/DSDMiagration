@@ -151,7 +151,7 @@ namespace LaceupMigration.ViewModels.SelfService
             {
                 // Send the credit order
                 _order.Save();
-                DataAccess.SendTheOrders(new System.Collections.Generic.List<Batch>(), new System.Collections.Generic.List<string> { _order.OrderId.ToString() });
+                DataProvider.SendTheOrders(new System.Collections.Generic.List<Batch>(), new System.Collections.Generic.List<string> { _order.OrderId.ToString() });
 
                 await _dialogService.ShowAlertAsync("Credit order sent successfully.", "Success", "OK");
                 await Shell.Current.GoToAsync("selfservice/checkout");

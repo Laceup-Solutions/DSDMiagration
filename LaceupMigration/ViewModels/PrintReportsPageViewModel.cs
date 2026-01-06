@@ -85,7 +85,7 @@ namespace LaceupMigration.ViewModels
                         
                         if (PrintInventoryReport)
                         {
-                            var map = DataAccess.ExtendedSendTheLeftOverInventory();
+                            var map = DataProvider.ExtendedSendTheLeftOverInventory();
                             if (map.Count > 0 || Config.PrintInveSettlementRegardless)
                             {
                                 if (!printer.InventorySettlement(index, count))

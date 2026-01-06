@@ -99,8 +99,8 @@ namespace LaceupMigration.ViewModels
             // Equivalent to OnStart - Set order location
             if (_order != null)
             {
-                _order.Latitude = DataAccess.LastLatitude;
-                _order.Longitude = DataAccess.LastLongitude;
+                _order.Latitude = Config.LastLatitude;
+                _order.Longitude = Config.LastLongitude;
             }
 
             // Equivalent to OnResume/OnNewIntent - Check if items were added
@@ -480,7 +480,7 @@ namespace LaceupMigration.ViewModels
                 // Check availability
                 if (!string.IsNullOrEmpty(product.NonVisibleExtraFieldsAsString))
                 {
-                    var available = DataAccess.GetSingleUDF("AvailableIn", product.NonVisibleExtraFieldsAsString);
+                    var available = UDFHelper.GetSingleUDF("AvailableIn", product.NonVisibleExtraFieldsAsString);
                     if (!string.IsNullOrEmpty(available))
                     {
                         if (available.ToLower() == "none" || !available.ToLower().Contains("credit"))
@@ -734,7 +734,7 @@ namespace LaceupMigration.ViewModels
                 if (Config.CheckIfShipdateLocked)
                 {
                     var lockedDates = new List<DateTime>();
-                    if (!DataAccess.CheckIfShipdateIsValid(new List<DateTime>() { _order.ShipDate }, ref lockedDates))
+                    if (!DataProvider.CheckIfShipdateIsValid(new List<DateTime>() { _order.ShipDate }, ref lockedDates))
                     {
                         var sb = string.Empty;
                         foreach (var l in lockedDates)
@@ -830,7 +830,7 @@ namespace LaceupMigration.ViewModels
                 }
 
                 // Send the orders
-                DataAccess.SendTheOrders(new Batch[] { batch });
+                DataProvider.SendTheOrders(new Batch[] { batch });
 
                 await _dialogService.ShowAlertAsync("Credit sent successfully.", "Info");
 

@@ -55,7 +55,7 @@ namespace LaceupMigration.ViewModels
 		private void RefreshMenuVisibility()
 		{
 			ShowNotificationIcon = Config.DidCloseAlert;
-			ShowAcceptLoadMenuItem = DataAccess.ReceivedData && (Config.SyncLoadOnDemand || Config.NewSyncLoadOnDemand) && !Config.OnlyPresale;
+			ShowAcceptLoadMenuItem = Config.ReceivedData && (Config.SyncLoadOnDemand || Config.NewSyncLoadOnDemand) && !Config.OnlyPresale;
 		}
 
 		#region Menu Commands
@@ -65,7 +65,7 @@ namespace LaceupMigration.ViewModels
 		{
 			_appService.RecordEvent("mainMenuSyncData menu");
 			
-			if (DataAccess.MustEndOfDay())
+			if (DataProvider.MustEndOfDay())
 			{
 				await _dialogService.ShowAlertAsync("Do end of day.", "Warning", "OK");
 				return;
@@ -79,7 +79,7 @@ namespace LaceupMigration.ViewModels
 		{
 			_appService.RecordEvent("mainMenuAddClient menu");
 			
-			if (!DataAccess.CanUseApplication())
+			if (!DataProvider.CanUseApplication())
 			{
 				await _dialogService.ShowAlertAsync("Must sync data before continuing.", "Warning", "OK");
 				return;
@@ -106,7 +106,7 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task Reports()
 		{
-			if (!DataAccess.ReceivedData)
+			if (!Config.ReceivedData)
 			{
 				await _dialogService.ShowAlertAsync("Must sync data.", "Warning", "OK");
 				return;
@@ -187,7 +187,7 @@ namespace LaceupMigration.ViewModels
 		{
 			_appService.RecordEvent("mainMenuProductCatalog menu");
 			
-			if (!DataAccess.CanUseApplication())
+			if (!DataProvider.CanUseApplication())
 			{
 				await _dialogService.ShowAlertAsync("Must sync data before continuing.", "Warning", "OK");
 				return;
@@ -202,7 +202,7 @@ namespace LaceupMigration.ViewModels
 		{
 			_appService.RecordEvent("mainMenuViewOrderStatus menu");
 			
-			if (!DataAccess.CanUseApplication())
+			if (!DataProvider.CanUseApplication())
 			{
 				await _dialogService.ShowAlertAsync("Must sync data before continuing.", "Warning", "OK");
 				return;
@@ -214,7 +214,7 @@ namespace LaceupMigration.ViewModels
 		[RelayCommand]
 		private async Task Inventory()
 		{
-			if (!DataAccess.CanUseApplication() || !DataAccess.ReceivedData)
+			if (!DataProvider.CanUseApplication() || !Config.ReceivedData)
 			{
 				await _dialogService.ShowAlertAsync("Must sync data before continuing.", "Warning", "OK");
 				return;
@@ -258,7 +258,7 @@ namespace LaceupMigration.ViewModels
 		{
 			_appService.RecordEvent("mainMenuAcceptLoad menu");
 			
-			if (!DataAccess.CanUseApplication())
+			if (!DataProvider.CanUseApplication())
 			{
 				await _dialogService.ShowAlertAsync("Must sync data before continuing.", "Warning", "OK");
 				return;
@@ -525,16 +525,16 @@ namespace LaceupMigration.ViewModels
 							access.CloseConnection();
 						}
 
-						DataAccess.CheckAuthorization();
+						DataProvider.CheckAuthorization();
 						if (Config.AuthorizationFailed)
 							throw new Exception("Not authorized");
 
-						if (!DataAccess.CheckSyncAuthInfo())
+						if (!DataProvider.CheckSyncAuthInfo())
 							throw new Exception("Wait before sync");
 
 						Logger.CreateLog("called MenuHandlerSyncData");
 
-						responseMessage = DataAccessEx.DownloadData(true, !Config.TrackInventory || updateInventory);
+						responseMessage = DataProvider.DownloadData(true, !Config.TrackInventory || updateInventory);
 
 						// [MIGRATION]: Auto sync logic from Xamarin
 						// Matches Xamarin MainActivity.DownloadData() lines 1628-1636
@@ -594,7 +594,7 @@ namespace LaceupMigration.ViewModels
 				{
 					if (order.Client != null && !processedClientIds.Contains(order.Client.ClientId))
 					{
-						DataAccess.AddDeliveryClient(order.Client);
+						DataProvider.AddDeliveryClient(order.Client);
 						processedClientIds.Add(order.Client.ClientId);
 					}
 				}
@@ -602,7 +602,7 @@ namespace LaceupMigration.ViewModels
 
 			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1733-1738
 			// Check for NewSyncLoadOnDemand and RouteOrdersCount
-			if (!errorDownloadingData && Config.NewSyncLoadOnDemand && DataAccess.RouteOrdersCount > 0)
+			if (!errorDownloadingData && Config.NewSyncLoadOnDemand && Config.RouteOrdersCount > 0)
 			{
 				// Match Xamarin GoToAcceptLoad(DateTime.Now, true) - download load orders before navigating
 				// When fromDownloadData=true, it skips DownloadProducts/DownloadClients but still calls GetPendingLoadOrders
@@ -617,7 +617,7 @@ namespace LaceupMigration.ViewModels
 						{
 							// Products and clients already downloaded in sync, just get pending load orders
 							// Match Xamarin: DataAccess.GetPendingLoadOrders(date, Config.ShowAllAvailableLoads)
-							DataAccess.GetPendingLoadOrders(DateTime.Now, Config.ShowAllAvailableLoads);
+							DataProvider.GetPendingLoadOrders(DateTime.Now, Config.ShowAllAvailableLoads);
 						}
 						catch (Exception e)
 						{
@@ -645,7 +645,7 @@ namespace LaceupMigration.ViewModels
 
 			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1740-1769
 			// Check for pending load to accept after sync
-			if (!errorDownloadingData && Config.TrackInventory && updateInventory && DataAccess.PendingLoadToAccept)
+			if (!errorDownloadingData && Config.TrackInventory && updateInventory && Config.PendingLoadToAccept)
 			{
 			if (Config.AutoAcceptLoad)
 			{
@@ -668,14 +668,14 @@ namespace LaceupMigration.ViewModels
 				{
 					if (order.Client != null && !processedClientIds.Contains(order.Client.ClientId))
 					{
-						DataAccess.AddDeliveryClient(order.Client);
+						DataProvider.AddDeliveryClient(order.Client);
 						processedClientIds.Add(order.Client.ClientId);
 					}
 				}
 
-				DataAccess.PendingLoadToAccept = false;
+				Config.PendingLoadToAccept = false;
 				Config.SaveAppStatus();
-				DataAccess.SaveInventory();
+				ProductInventory.Save();
 			}
 				else
 				{
@@ -687,7 +687,7 @@ namespace LaceupMigration.ViewModels
 
 			// Check for deliveries after sync and navigate to accept load if AutoAcceptLoad is OFF
 			// Only check if PendingLoadToAccept flag was set during DownloadData (prevents checking every sync)
-			if (!errorDownloadingData && !Config.AutoAcceptLoad && DataAccess.PendingLoadToAccept)
+			if (!errorDownloadingData && !Config.AutoAcceptLoad && Config.PendingLoadToAccept)
 			{
 				await _dialogService.ShowLoadingAsync("Checking for deliveries...");
 				string loadOrdersResponseMessage = null;
@@ -700,7 +700,7 @@ namespace LaceupMigration.ViewModels
 						try
 						{
 							// Get pending load orders for today
-							DataAccess.GetPendingLoadOrders(DateTime.Now, Config.ShowAllAvailableLoads);
+							DataProvider.GetPendingLoadOrders(DateTime.Now, Config.ShowAllAvailableLoads);
 							
 							// Check if there are any pending load orders
 							var pendingOrders = Order.Orders.Where(x => (x.OrderType == OrderType.Load || x.IsDelivery) && x.PendingLoad).ToList();
@@ -735,15 +735,15 @@ namespace LaceupMigration.ViewModels
 		// Matches Xamarin MainActivity.SubscribeToNotifications() method (line 1709-1722)
 		private void SubscribeToNotifications()
 		{
-			if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "29.94"))
+			if (Config.CheckCommunicatorVersion("29.94"))
 			{
 				if (Config.EnableLiveData || Config.AllowWorkOrder || Config.AllowNotifications)
 				{
-					DataAccessEx.GetTopic();
+					DataProvider.GetTopic();
 				}
 				else
 				{
-					DataAccessEx.Unsubscribe();
+					DataProvider.Unsubscribe();
 				}
 			}
 		}
@@ -797,7 +797,7 @@ namespace LaceupMigration.ViewModels
 					try
 					{
 						var batches = Batch.List.Where(x => orders.Any(y => y.BatchId == x.Id));
-						DataAccess.SendTheOrders(batches, orders.Select(x => x.OrderId.ToString()).ToList());
+						DataProvider.SendTheOrders(batches, orders.Select(x => x.OrderId.ToString()).ToList());
 
 						if (Session.session != null)
 							Session.ClockOutCurrentSession();
@@ -837,12 +837,12 @@ namespace LaceupMigration.ViewModels
 				{
 					try
 					{
-						DataAccess.SendAll();
+						DataProvider.SendAll();
 
 						if (Session.session != null)
 							Session.ClockOutCurrentSession();
 
-						DataAccess.LastEndOfDay = DateTime.Now;
+						Config.LastEndOfDay = DateTime.Now;
 						Config.SaveAppStatus();
 					}
 					catch (Exception ee)
@@ -867,9 +867,9 @@ namespace LaceupMigration.ViewModels
 			{
 				// Set ReceivedData = false to lock the app until sync happens
 				// This matches Xamarin behavior where SetDefaultsAfterSendAll() sets ReceivedData = false
-				DataAccess.PendingLoadToAccept = false;
-				DataAccess.ReceivedData = false;
-				DataAccess.LastEndOfDay = DateTime.Now;
+				Config.PendingLoadToAccept = false;
+				Config.ReceivedData = false;
+				Config.LastEndOfDay = DateTime.Now;
 				Config.SaveAppStatus();
 
 				// Navigate to MainPage (Clients tab)
@@ -954,7 +954,7 @@ namespace LaceupMigration.ViewModels
 				{
 					try
 					{
-						DataAccess.UpdateProductImagesMap();
+						DataProvider.UpdateProductImagesMap();
 					}
 					catch (Exception ee)
 					{
@@ -1027,11 +1027,11 @@ namespace LaceupMigration.ViewModels
 						Config.ClearSettings();
 
 						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() line 508
-						DataAccess.ClearData();
+						DataProvider.ClearData();
 
 						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 509-510
 						Config.Initialize();
-						DataAccess.Initialize();
+						DataProvider.Initialize();
 
 						// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 512-520
 						// Restore saved configuration values (must restore before SaveSettings)
@@ -1183,10 +1183,10 @@ namespace LaceupMigration.ViewModels
 					try
 					{
 						// Download products first
-						DataAccess.DownloadProducts();
+						DataProvider.DownloadProducts();
 
 						// Get pending load orders for the selected date
-						DataAccess.GetPendingLoadOrders(date);
+						DataProvider.GetPendingLoadOrders(date);
 					}
 					catch (Exception e)
 					{

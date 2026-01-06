@@ -604,8 +604,8 @@ namespace LaceupMigration.ViewModels
                         {
                             stop.Closed = true;
                             stop.When = DateTime.Now;
-                            stop.Latitude = DataAccess.LastLatitude;
-                            stop.Longitude = DataAccess.LastLongitude;
+                            stop.Latitude = Config.LastLatitude;
+                            stop.Longitude = Config.LastLongitude;
                             break;
                         }
                     }
@@ -1188,7 +1188,7 @@ namespace LaceupMigration.ViewModels
             }
 
             // Attach Photo
-            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "37.0"))
+            if (Config.CheckCommunicatorVersion("37.0"))
             {
                 options.Add(new MenuOption("Attach Photo", async () =>
                 {
@@ -1281,25 +1281,25 @@ namespace LaceupMigration.ViewModels
                 order.OrderType = OrderType.Consignment;
 
                 if (Config.ConsignmentBeta)
-                    order.ExtraFields = DataAccess.SyncSingleUDF("cosignmentOrder", "1", order.ExtraFields);
+                    order.ExtraFields = UDFHelper.SyncSingleUDF("cosignmentOrder", "1", order.ExtraFields);
 
                 if (Config.UseFullConsignment)
                 {
-                    order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
-                    order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
+                    order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
+                    order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
                 }
                 else
                 {
                     if (isCounting)
-                        order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
+                        order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
                     else
-                        order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
+                        order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
                 }
 
                 order.Save();
 
                 if (Config.TrackInventory)
-                    DataAccess.SaveInventory();
+                    ProductInventory.Save();
             }
 
             await Shell.Current.GoToAsync($"consignment?orderId={order.OrderId}&counting={(isCounting ? "1" : "0")}");

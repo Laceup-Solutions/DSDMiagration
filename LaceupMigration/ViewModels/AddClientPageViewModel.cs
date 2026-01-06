@@ -194,34 +194,34 @@ namespace LaceupMigration.ViewModels
                 // Handle email in extra properties
                 if (!string.IsNullOrEmpty(Email))
                 {
-                    client.ExtraPropertiesAsString = DataAccess.SyncSingleUDF("email", Email, client.ExtraPropertiesAsString);
+                    client.ExtraPropertiesAsString = UDFHelper.SyncSingleUDF("email", Email, client.ExtraPropertiesAsString);
                 }
 
                 // Handle can change prices
                 if (CanChangePrices)
                 {
-                    client.NonvisibleExtraPropertiesAsString = DataAccess.SyncSingleUDF("pricechangeable", "yes", client.NonvisibleExtraPropertiesAsString);
+                    client.NonvisibleExtraPropertiesAsString = UDFHelper.SyncSingleUDF("pricechangeable", "yes", client.NonvisibleExtraPropertiesAsString);
                 }
 
                 // Handle use LSP
-                client.NonvisibleExtraPropertiesAsString = DataAccess.SyncSingleUDF("uselsp", "yes", client.NonvisibleExtraPropertiesAsString);
+                client.NonvisibleExtraPropertiesAsString = UDFHelper.SyncSingleUDF("uselsp", "yes", client.NonvisibleExtraPropertiesAsString);
 
                 // Handle license number
                 if (!string.IsNullOrEmpty(License))
                 {
-                    client.NonvisibleExtraPropertiesAsString = DataAccess.SyncSingleUDF("EIN #", License, client.NonvisibleExtraPropertiesAsString);
+                    client.NonvisibleExtraPropertiesAsString = UDFHelper.SyncSingleUDF("EIN #", License, client.NonvisibleExtraPropertiesAsString);
                 }
 
                 // Handle new client discount if configured
                 if (Config.NewClientCanHaveDiscount)
                 {
-                    client.ExtraPropertiesAsString = DataAccess.SyncSingleUDF("allowDiscount", "1", client.ExtraPropertiesAsString);
+                    client.ExtraPropertiesAsString = UDFHelper.SyncSingleUDF("allowDiscount", "1", client.ExtraPropertiesAsString);
                 }
 
                 // Handle CoolerCo customization
                 if (Config.CoolerCoCustomization && !State.ToLower().Contains("ca"))
                 {
-                    client.ExtraPropertiesAsString = DataAccess.SyncSingleUDF("userelated", "no", client.ExtraPropertiesAsString);
+                    client.ExtraPropertiesAsString = UDFHelper.SyncSingleUDF("userelated", "no", client.ExtraPropertiesAsString);
                 }
 
                 // Set default OneDoc based on customization

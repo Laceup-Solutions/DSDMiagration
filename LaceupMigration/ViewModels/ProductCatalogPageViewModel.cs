@@ -957,7 +957,7 @@ namespace LaceupMigration.ViewModels
             }
 
             _order.Save();
-            DataAccess.SaveInventory();
+            ProductInventory.Save();
 
             // Navigate to load order template
             var route = $"loadordertemplate?orderId={_order.OrderId}";
@@ -1078,7 +1078,7 @@ namespace LaceupMigration.ViewModels
                 int priceLevel = _order?.Client != null ? _order.Client.PriceLevel : 0;
 
                 // First try to get PDF from server (matches Xamarin: DataAccess.GetCatalogPdf)
-                if (DataAccess.GetCatalogPdf(priceLevel, showPrice, showUPC, showUoM, categoriesids))
+                if (DataProvider.GetCatalogPdf(priceLevel, showPrice, showUPC, showUoM, categoriesids))
                 {
                     pdfFile = Config.CatalogPDFPath;
                 }

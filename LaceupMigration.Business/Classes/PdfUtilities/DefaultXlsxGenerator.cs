@@ -49,7 +49,7 @@ namespace LaceupMigration
 
             try
             {
-                DataAccess.GetExcelFile(tempFile, fullPath);
+                DataProvider.GetExcelFile(tempFile, fullPath);
             }
             catch(Exception ex)
             {

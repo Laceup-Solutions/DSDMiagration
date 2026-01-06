@@ -127,19 +127,19 @@ namespace LaceupMigration.ViewModels
 
 			await RefreshAsync(true, true);
 
-			if (Config.Delivery && DataAccess.PendingLoadToAccept && Config.TrackInventory)
+			if (Config.Delivery && Config.PendingLoadToAccept && Config.TrackInventory)
 			{
 				await _dialogService.ShowAlertAsync("Please accept the pending load before continuing.", "Warning");
 				DisableInteractions();
 				return;
 			}
 
-			if (DataAccess.MustEndOfDay())
+			if (DataProvider.MustEndOfDay())
 			{
 				await _dialogService.ShowAlertAsync("End of Day process is required before continuing.", "Warning");
 				ClearClientListAndLock();
 			}
-			else if (!DataAccess.CanUseApplication())
+			else if (!DataProvider.CanUseApplication())
 			{
 				await _dialogService.ShowAlertAsync("You must sync data before continuing.", "Warning");
 				ClearClientListAndLock();
@@ -313,7 +313,7 @@ namespace LaceupMigration.ViewModels
 					_messageDisplayed = true;
 				}
 
-				if (!DataAccess.ReceivedData)
+				if (!Config.ReceivedData)
 				{
 					if (displayMessage && !_messageDisplayed)
 					{
@@ -644,12 +644,12 @@ namespace LaceupMigration.ViewModels
 			ShowSelectDayButton = differentDates;
 			ShowMapRouteButton = Config.CanChangeRoutesOrder && hasRouteEntries;
 			ShowEditButton = Config.CanChangeRoutesOrder && hasRouteEntries;
-			ShowSearchButton = DataAccess.ReceivedData;
-			SearchButtonEnabled = DataAccess.ReceivedData;
+			ShowSearchButton = Config.ReceivedData;
+			SearchButtonEnabled = Config.ReceivedData;
 			ShowButtonsLayout = ShowMapRouteButton || ShowViewButton || ShowSelectDayButton || ShowEditButton || ShowSearchButton;
 			InfoMessage = string.Empty;
 
-			if (!DataAccess.ReceivedData)
+			if (!Config.ReceivedData)
 			{
 				InfoMessage = "Data has not been synced.";
 			}
@@ -658,7 +658,7 @@ namespace LaceupMigration.ViewModels
 		private void UpdateSearchVisibility()
 		{
 			// Show search bar when data is loaded and there are entries to search
-			IsSearchVisible = DataAccess.ReceivedData && _allEntries.Count > 0;
+			IsSearchVisible = Config.ReceivedData && _allEntries.Count > 0;
 		}
 
 		private void UpdateEditingState()

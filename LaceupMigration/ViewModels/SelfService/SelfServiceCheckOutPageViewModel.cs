@@ -143,7 +143,7 @@ namespace LaceupMigration.ViewModels.SelfService
                 _order.Save();
 
                 var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
-                DataAccess.SendTheOrders(new[] { batch }, new List<string>() { _order.OrderId.ToString() });
+                DataProvider.SendTheOrders(new[] { batch }, new List<string>() { _order.OrderId.ToString() });
 
                 await _dialogService.ShowAlertAsync("Order sent successfully.", "Success", "OK");
 

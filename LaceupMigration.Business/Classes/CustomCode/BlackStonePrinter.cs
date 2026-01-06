@@ -452,7 +452,7 @@ namespace LaceupMigration
         {
             List<string> lines = new List<string>();
 
-            var payments = DataAccess.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
+            var payments = PaymentSplit.SplitPayment(InvoicePayment.List.FirstOrDefault(x => !string.IsNullOrEmpty(x.OrderId) && x.OrderId.Contains(order.UniqueId))).Where(x => x.UniqueId == order.UniqueId).ToList();
             if (payments != null && payments.Count > 0)
             {
                 lines.Add(string.Format(CultureInfo.InvariantCulture, linesTemplates[BlackStoneSectionName], startIndex, "PAYMENTS"));
@@ -492,7 +492,7 @@ namespace LaceupMigration
             double paid = 0;
             if (payment != null)
             {
-                var parts = DataAccess.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
+                var parts = PaymentSplit.SplitPayment(payment).Where(x => x.UniqueId == order.UniqueId);
                 paid = parts.Sum(x => x.Amount);
             }
 

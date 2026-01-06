@@ -105,7 +105,7 @@ namespace LaceupMigration.ViewModels
 
         public async Task OnAppearingAsync()
         {
-            if (!DataAccess.CanUseApplication() || !DataAccess.ReceivedData)
+            if (!DataProvider.CanUseApplication() || !Config.ReceivedData)
             {
                 IsSearchVisible = false;
                 ShowButtonsLayout = false;
@@ -572,7 +572,7 @@ namespace LaceupMigration.ViewModels
         {
             get
             {
-                var statusEx = DataAccess.GetSingleUDF("status", _order.ExtraFields);
+                var statusEx = UDFHelper.GetSingleUDF("status", _order.ExtraFields);
                 if (!string.IsNullOrEmpty(statusEx))
                     return $"Status: {statusEx}";
                 return $"Status: {_order.OrderStatus.ToString().Replace("_", " ")}";

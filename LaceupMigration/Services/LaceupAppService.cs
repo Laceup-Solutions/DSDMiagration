@@ -28,7 +28,7 @@ namespace LaceupMigration.Services
 					PlatformAppCenter.InitializeAndHookCrash();
 
 					Logger.CreateLog("Initialized in MAUI");
-					DataAccessEx.Initialize();
+					DataProvider.Initialize();
 					ActivityState.Load();
 					
 					// Note: Empty orders and batches are no longer deleted on initialization
@@ -93,7 +93,7 @@ namespace LaceupMigration.Services
 				try
 				{
 					// Reuse existing business-layer export - pass subject parameter to match Xamarin behavior
-					DataAccessEx.ExportData(subject);
+					DataProvider.ExportData(subject);
 				}
 				catch (Exception ex)
 				{
@@ -250,7 +250,7 @@ namespace LaceupMigration.Services
 
 					// EXACTLY matches Xamarin RestoreData3() - step by step:
 					// Step 1: ClearData(false, true) - clears data and settings
-					DataAccess.ClearData();
+					DataProvider.ClearData();
 					Config.ClearSettings();
 
 					// Step 2: Config.Initialize() - creates all directories
@@ -259,7 +259,7 @@ namespace LaceupMigration.Services
 					// Step 3: Download static data (products, clients) from server
 					// In Xamarin this happens after SaveConfiguration() and downloading backup,
 					// but we already have the backup file, so we do this now
-					var responseMessage = DataAccessEx.DownloadStaticData();
+					var responseMessage = DataProvider.DownloadStaticData();
 					if (!string.IsNullOrEmpty(responseMessage))
 					{
 						throw new Exception(responseMessage);
@@ -276,12 +276,12 @@ namespace LaceupMigration.Services
 					Config.Initialize();
 
 					// Step 6: Set ReceivedData and save app status - EXACTLY as Xamarin
-					DataAccess.ReceivedData = true;
+					Config.ReceivedData = true;
 					Config.SaveAppStatus();
 
 					// Step 7: DataAccess.Initialize() - EXACTLY as Xamarin (not DataAccessEx)
 					// This will call CompanyInfo.Load() which now handles missing files gracefully
-					DataAccess.Initialize();
+					DataProvider.Initialize();
 
 					// Step 8: Delete temp file - EXACTLY as Xamarin
 					if (File.Exists(zipFilePath) && zipFilePath.Contains(Path.GetTempPath()))
@@ -312,7 +312,7 @@ namespace LaceupMigration.Services
 			{
 				try
 				{
-					DataAccess.GetSalesmanSettings(false);
+					DataProvider.GetSalesmanSettings(false);
 				}
 				catch (Exception ex)
 				{
@@ -360,12 +360,12 @@ namespace LaceupMigration.Services
 						MainThread.BeginInvokeOnMainThread(async () =>
 						{
 							await Application.Current!.MainPage!.DisplayAlert("Warning", message, "OK");
-							DataAccess.SendEmailSequenceNotification(message);
+							DataProvider.SendEmailSequenceNotification(message);
 						});
 					}
 					else
 					{
-						DataAccess.SendEmailSequenceNotification(message);
+						DataProvider.SendEmailSequenceNotification(message);
 					}
 				}
 				catch (Exception ex)

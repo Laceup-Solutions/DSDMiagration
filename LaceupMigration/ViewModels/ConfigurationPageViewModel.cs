@@ -495,7 +495,7 @@ namespace LaceupMigration.ViewModels
                 if (oldScanner != Config.ScannerToUse)
                 {
                     Config.SaveSettings();
-                    DataAccess.SendScannerToUse();
+                    DataProvider.SendScannerToUse();
                     
                     // Update scanner button visibility
                     ShowScannerButton = Config.ScannerToUse == 3;
@@ -1338,11 +1338,11 @@ namespace LaceupMigration.ViewModels
                             Config.ClearSettings();
 
                         // Clear data - match Xamarin line 834
-                        DataAccess.ClearData();
+                        DataProvider.ClearData();
 
                         // Reinitialize - match Xamarin line 835-836
                         Config.Initialize();
-                        DataAccess.Initialize();
+                        DataProvider.Initialize();
 
                         // Restore saved config values - match Xamarin line 838-840
                         Config.AcceptedTermsAndConditions = acceptedTerms;

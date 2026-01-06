@@ -360,7 +360,7 @@ namespace LaceupMigration
 
             if (!string.IsNullOrEmpty(company.ExtraFields))
             {
-                var extra = DataAccess.GetSingleUDF("TIN", company.ExtraFields);
+                var extra = UDFHelper.GetSingleUDF("TIN", company.ExtraFields);
                 if (!string.IsNullOrEmpty(extra))
                 {
                     textToAdd += "TIN:" + extra + "\n";
@@ -528,8 +528,8 @@ namespace LaceupMigration
 
             if (!string.IsNullOrEmpty(order.ExtraFields))
             {
-                shipVia = DataAccess.GetSingleUDF("ShipVia", order.ExtraFields);
-                customerPO = DataAccess.GetSingleUDF("CustomerPONo", order.ExtraFields);
+                shipVia = UDFHelper.GetSingleUDF("ShipVia", order.ExtraFields);
+                customerPO = UDFHelper.GetSingleUDF("CustomerPONo", order.ExtraFields);
             }
 
 

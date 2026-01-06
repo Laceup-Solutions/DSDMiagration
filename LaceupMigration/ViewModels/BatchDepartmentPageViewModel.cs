@@ -355,10 +355,10 @@ namespace LaceupMigration.ViewModels
 
                 // Send client departments if updated
                 if (ClientDepartment.Departments.Any(x => x.Updated == true))
-                    DataAccess.SendClientDepartments(false);
+                    DataProvider.SendClientDepartments(false);
 
                 // Send the orders
-                DataAccess.SendTheOrders(new Batch[] { _batch }, ordersIds, true, true);
+                DataProvider.SendTheOrders(new Batch[] { _batch }, ordersIds, true, true);
 
                 await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Orders sent successfully.", "Success");

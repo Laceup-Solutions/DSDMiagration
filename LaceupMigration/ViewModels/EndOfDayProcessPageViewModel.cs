@@ -181,12 +181,12 @@ namespace LaceupMigration.ViewModels
                 await Task.Run(() =>
                 {
                     // Execute SendAll which handles all end of day operations
-                    DataAccess.SendAll();
+                    DataProvider.SendAll();
                     
                     // Update status
-                    DataAccess.PendingLoadToAccept = false;
-                    DataAccess.ReceivedData = false;
-                    DataAccess.LastEndOfDay = DateTime.Now;
+                    Config.PendingLoadToAccept = false;
+                    Config.ReceivedData = false;
+                    Config.LastEndOfDay = DateTime.Now;
                     
                     // Clear session
                     Config.SessionId = string.Empty;
