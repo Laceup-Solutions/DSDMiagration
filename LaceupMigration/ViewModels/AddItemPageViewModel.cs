@@ -105,7 +105,7 @@ namespace LaceupMigration.ViewModels
             _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId);
             if (_order == null)
             {
-                await _dialogService.ShowAlertAsync("Order not found.", "Error");
+                // await _dialogService.ShowAlertAsync("Order not found.", "Error");
                 return;
             }
 
