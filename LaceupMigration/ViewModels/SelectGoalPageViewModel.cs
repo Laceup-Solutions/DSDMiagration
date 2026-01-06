@@ -30,8 +30,8 @@ namespace LaceupMigration.ViewModels
             {
                 await Task.Run(() =>
                 {
-                    DataAccessEx.LoadGoalProgress();
-                    DataAccessEx.LoadGoalProgressDetail();
+                    DataAccess.LoadGoalProgress();
+                    DataAccess.LoadGoalProgressDetail();
                 });
 
                 Goals.Clear();

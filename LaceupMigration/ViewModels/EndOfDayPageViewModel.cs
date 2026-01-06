@@ -1010,7 +1010,7 @@ namespace LaceupMigration.ViewModels
                         if (!DataAccess.CheckSyncAuthInfo())
                             throw new Exception("Wait before sync");
 
-                        responseMessage = DataAccessEx.DownloadData(true, !Config.TrackInventory || true);
+                        responseMessage = DataAccess.DownloadData(true, !Config.TrackInventory || true);
                     }
                     catch (Exception ee)
                     {

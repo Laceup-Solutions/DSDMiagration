@@ -144,7 +144,7 @@ namespace LaceupMigration.ViewModels.SelfService
 
                     if (Config.EnableSelfServiceModule)
                     {
-                        DataAccessEx.DownloadStaticData();
+                        DataAccess.DownloadStaticData();
                     }
 
                     error = 3;

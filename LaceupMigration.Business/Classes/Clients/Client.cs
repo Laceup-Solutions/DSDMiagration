@@ -1543,7 +1543,7 @@ namespace LaceupMigration
 
                 if (!string.IsNullOrEmpty(tempPathFile) && File.Exists(tempPathFile))
                 {
-                    DataAccessEx.SendClientPictures(tempPathFile, ClientId);
+                    DataAccess.SendClientPictures(tempPathFile, ClientId);
                     File.Delete(tempPathFile);
                 }
 

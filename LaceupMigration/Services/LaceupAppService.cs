@@ -28,7 +28,7 @@ namespace LaceupMigration.Services
 					PlatformAppCenter.InitializeAndHookCrash();
 
 					Logger.CreateLog("Initialized in MAUI");
-					DataAccessEx.Initialize();
+					DataAccess.Initialize();
 					ActivityState.Load();
 					
 					// Note: Empty orders and batches are no longer deleted on initialization
@@ -93,7 +93,7 @@ namespace LaceupMigration.Services
 				try
 				{
 					// Reuse existing business-layer export - pass subject parameter to match Xamarin behavior
-					DataAccessEx.ExportData(subject);
+					DataAccess.ExportData(subject);
 				}
 				catch (Exception ex)
 				{
@@ -259,7 +259,7 @@ namespace LaceupMigration.Services
 					// Step 3: Download static data (products, clients) from server
 					// In Xamarin this happens after SaveConfiguration() and downloading backup,
 					// but we already have the backup file, so we do this now
-					var responseMessage = DataAccessEx.DownloadStaticData();
+					var responseMessage = DataAccess.DownloadStaticData();
 					if (!string.IsNullOrEmpty(responseMessage))
 					{
 						throw new Exception(responseMessage);

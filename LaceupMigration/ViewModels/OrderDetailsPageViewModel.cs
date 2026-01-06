@@ -1234,7 +1234,7 @@ namespace LaceupMigration.ViewModels
                 // Check inventory if needed
                 if (Config.CheckAvailableBeforeSending && !Config.CanGoBelow0 && Config.CheckInventoryInPreSale)
                 {
-                    DataAccessEx.GetInventoryInBackground(true);
+                    DataAccess.GetInventoryInBackground(true);
 
                     List<Order> validOrders = new List<Order>();
                     if (_order.AsPresale && _order.OrderType == OrderType.Order)

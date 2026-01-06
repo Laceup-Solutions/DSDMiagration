@@ -534,7 +534,7 @@ namespace LaceupMigration.ViewModels
 
 						Logger.CreateLog("called MenuHandlerSyncData");
 
-						responseMessage = DataAccessEx.DownloadData(true, !Config.TrackInventory || updateInventory);
+						responseMessage = DataAccess.DownloadData(true, !Config.TrackInventory || updateInventory);
 
 						// [MIGRATION]: Auto sync logic from Xamarin
 						// Matches Xamarin MainActivity.DownloadData() lines 1628-1636
@@ -739,11 +739,11 @@ namespace LaceupMigration.ViewModels
 			{
 				if (Config.EnableLiveData || Config.AllowWorkOrder || Config.AllowNotifications)
 				{
-					DataAccessEx.GetTopic();
+					DataAccess.GetTopic();
 				}
 				else
 				{
-					DataAccessEx.Unsubscribe();
+					DataAccess.Unsubscribe();
 				}
 			}
 		}

@@ -20,7 +20,7 @@ using SkiaSharp;
 
 namespace LaceupMigration
 {
-    public class DataAccess : DataAccessEx
+    public partial class DataAccess
     {
         public const int EntitiesToReadInTestMode = 100;
 
@@ -203,7 +203,7 @@ namespace LaceupMigration
         {
             try
             {
-                DataAccessEx.SendSession(file);
+                DataAccess.SendSession(file);
                 return true;
             }
             catch
@@ -3844,7 +3844,7 @@ namespace LaceupMigration
                                 var paymentZip = SerializePaymentImages();
                                 if (!string.IsNullOrEmpty(paymentZip) && File.Exists(paymentZip))
                                 {
-                                    DataAccessEx.SendPaymentImages(paymentZip);
+                                    DataAccess.SendPaymentImages(paymentZip);
                                     File.Delete(paymentZip);
                                 }
 
@@ -3981,7 +3981,7 @@ namespace LaceupMigration
                         var paymentZip = SerializePaymentImages();
                         if (!string.IsNullOrEmpty(paymentZip) && File.Exists(paymentZip))
                         {
-                            DataAccessEx.SendPaymentImages(paymentZip);
+                            DataAccess.SendPaymentImages(paymentZip);
                             File.Delete(paymentZip);
                         }
 
@@ -4086,7 +4086,7 @@ namespace LaceupMigration
                             var paymentZip = SerializePaymentImages();
                             if (!string.IsNullOrEmpty(paymentZip) && File.Exists(paymentZip))
                             {
-                                DataAccessEx.SendPaymentImages(paymentZip);
+                                DataAccess.SendPaymentImages(paymentZip);
                                 File.Delete(paymentZip);
                             }
 
@@ -4230,12 +4230,12 @@ namespace LaceupMigration
                     writer.WriteLine(item.Serialize());
             }
 
-            DataAccessEx.SaveClientDepartments(tempFile, delete);
+            DataAccess.SaveClientDepartments(tempFile, delete);
         }
 
         public static void SendDayReport()
         {
-            DataAccessEx.SendDayReport(Config.SessionId);
+            DataAccess.SendDayReport(Config.SessionId);
         }
 
         public static void SendLoadOrder()
@@ -4324,7 +4324,7 @@ namespace LaceupMigration
                         }
                     }
 
-                    DataAccessEx.SendTheLoadOrder(dstFile, LoadOrder.SalesmanId);
+                    DataAccess.SendTheLoadOrder(dstFile, LoadOrder.SalesmanId);
 
                     LoadOrder.Date = DateTime.MinValue;
                     LoadOrder.List.Clear();
@@ -4381,7 +4381,7 @@ namespace LaceupMigration
                         return;
                     }
                     //network access
-                    DataAccessEx.SendTheBuildQty(dstFile);
+                    DataAccess.SendTheBuildQty(dstFile);
 
                     File.Delete(dstFile);
                 }
@@ -4569,7 +4569,7 @@ namespace LaceupMigration
                         return;
                     }
                     //network access
-                    DataAccessEx.SendTheLeftOverInventory(dstFile);
+                    DataAccess.SendTheLeftOverInventory(dstFile);
 
                     File.Delete(dstFile);
                 }
@@ -4718,7 +4718,7 @@ namespace LaceupMigration
 
                 ZipFile(dstFile, dstFileZipped);
 
-                DataAccessEx.SendTheOrders(dstFileZipped);
+                DataAccess.SendTheOrders(dstFileZipped);
 
                 File.Delete(dstFileZipped);
 
@@ -4740,7 +4740,7 @@ namespace LaceupMigration
                 {
                     ZipFile(dstFile, dstFileZipped);
 
-                    DataAccessEx.SendTheSignatures(dstFileZipped);
+                    DataAccess.SendTheSignatures(dstFileZipped);
 
                     File.Delete(dstFileZipped);
                 }
@@ -4758,7 +4758,7 @@ namespace LaceupMigration
                         if (anyPZLOrders)
                         {
                             ZipFile(dstFile, dstFileZipped);
-                            DataAccessEx.SendZPLPrinter(dstFileZipped);
+                            DataAccess.SendZPLPrinter(dstFileZipped);
                             File.Delete(dstFileZipped);
                         }
 
@@ -4790,7 +4790,7 @@ namespace LaceupMigration
                 var imageZipFile = SerializeOrderImages(source, ordersId);
                 if (!string.IsNullOrEmpty(imageZipFile) && File.Exists(imageZipFile))
                 {
-                    DataAccessEx.SendOrdersImages(imageZipFile);
+                    DataAccess.SendOrdersImages(imageZipFile);
                     File.Delete(imageZipFile);
                 }
 
@@ -4798,7 +4798,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccessEx.SendOrderHistory(historyFile);
+                        DataAccess.SendOrderHistory(historyFile);
                         File.Delete(historyFile);
                     }
                     catch (Exception ex)
@@ -4834,7 +4834,7 @@ namespace LaceupMigration
                     // send the client notes
                     if (File.Exists(Config.ClientNotesStoreFile))
                     {
-                        DataAccessEx.SendClientNotes(Config.ClientNotesStoreFile);
+                        DataAccess.SendClientNotes(Config.ClientNotesStoreFile);
                         File.Delete(Config.ClientNotesStoreFile);
                     }
                 }
@@ -5306,7 +5306,7 @@ namespace LaceupMigration
 
                     //network access
                     //if (LoadOrder.List.Count > 0)
-                    DataAccessEx.SendTheParLevel(dstFile);
+                    DataAccess.SendTheParLevel(dstFile);
                     ParLevel.List.Clear();
                     if (File.Exists(Config.ParLevelFile))
                         File.Delete(Config.ParLevelFile);
@@ -6833,7 +6833,7 @@ namespace LaceupMigration
                 {
                     //FileOperationsLocker.InUse = true;
 
-                    DataAccessEx.SendClientDailyParLevel();
+                    DataAccess.SendClientDailyParLevel();
 
                     if (delete)
                     {
@@ -7154,7 +7154,7 @@ namespace LaceupMigration
                 {
                     //FileOperationsLocker.InUse = true;
 
-                    DataAccessEx.SendClientProdSort(Config.ClientProdSortFile);
+                    DataAccess.SendClientProdSort(Config.ClientProdSortFile);
 
                     ClientProdSort.Clear();
 
@@ -7213,7 +7213,7 @@ namespace LaceupMigration
                 {
                     //FileOperationsLocker.InUse = true;
 
-                    DataAccessEx.SendNewConsignment(Config.ConsignmentParFile);
+                    DataAccess.SendNewConsignment(Config.ConsignmentParFile);
 
                     ConsignmentValues.Clear();
 
@@ -8504,9 +8504,7 @@ namespace LaceupMigration
                 if (File.Exists(Config.AssetTrackingFile))
                     try
                     {
-                        //FileOperationsLocker.InUse = true;
-
-                        DataAccessEx.SendAssetTracking();
+                        DataAccess.ContinueSendAssetTracking();
 
                         AssetTracking.Clear();
                     }
@@ -8516,10 +8514,36 @@ namespace LaceupMigration
 
                         throw;
                     }
-                    finally
-                    {
-                        //FileOperationsLocker.InUse = false;
-                    }
+            }
+        }
+
+        static void ContinueSendAssetTracking()
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("ReceiveAssetTrackingCommand");
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
+                    access.SendFile(Config.AssetTrackingFile);
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                    throw;
+                }
             }
         }
 

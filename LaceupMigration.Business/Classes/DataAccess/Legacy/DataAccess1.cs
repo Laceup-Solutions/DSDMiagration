@@ -14,7 +14,7 @@ using Microsoft.Maui.Devices;
 
 namespace LaceupMigration
 {
-    public class DataAccessEx
+    public partial class DataAccess
     {
         #region Product Index
 
@@ -3986,7 +3986,6 @@ namespace LaceupMigration
         }
         #endregion
 
-
         private static void GetSites()
         {
             try
@@ -4019,8 +4018,6 @@ namespace LaceupMigration
             }
         }
 
-        public static char[] DataLineSplitter1 = new char[] { (char)20 };
-
         private static void LoadSites()
         {
             SiteEx.Clear();
@@ -4033,7 +4030,7 @@ namespace LaceupMigration
 
                     while ((currentline = reader.ReadLine()) != null)
                     {
-                        string[] currentrow = currentline.Split(DataLineSplitter1);
+                        string[] currentrow = currentline.Split(DataLineSplitter);
 
                         bool createdLocally = Convert.ToBoolean(currentrow[3], CultureInfo.InvariantCulture);
 
@@ -4199,7 +4196,6 @@ namespace LaceupMigration
                 Logger.CreateLog(ex);
             }
         }
-
 
         #region get quotes
 
@@ -4596,7 +4592,6 @@ namespace LaceupMigration
             }
         }
 
-        public static char[] DataLineSplitter = new char[] { (char)20 };
         private static void LoadProgress(string tempPath)
         {
             GoalProgressDTO.List.Clear();
@@ -4645,7 +4640,6 @@ namespace LaceupMigration
 
             File.Delete(tempPath);
         }
-
 
         public static void LoadGoalProgressDetail()
         {
@@ -4848,7 +4842,6 @@ namespace LaceupMigration
             }
         }
 
-
         public static bool DeletePayment(string uniqueId)
         {
             try
@@ -4877,8 +4870,6 @@ namespace LaceupMigration
                 return false;
             }
         }
-
-
 
         static Product CreateProductInactive(string[] currentrow)
         {
@@ -5127,7 +5118,6 @@ namespace LaceupMigration
                 //Logger.CreateLog("Error getting => " + ex.ToString());
             }
         }
-        
         
         public static void ExportData(string subject = "")
         {
@@ -5964,35 +5954,7 @@ namespace LaceupMigration
             }
         }
 
-        public static void SendAssetTracking()
-        {
-            using (var access = new NetAccess())
-            {
-                try
-                {
-                    access.OpenConnection();
-
-                    access.WriteStringToNetwork("HELO");
-                    access.WriteStringToNetwork(Config.GetAuthString());
-                    access.WriteStringToNetwork("ReceiveAssetTrackingCommand");
-                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
-                    access.SendFile(Config.AssetTrackingFile);
-
-                    access.WriteStringToNetwork("Goodbye");
-                    Thread.Sleep(1000);
-                    access.CloseConnection();
-                }
-                catch (AuthorizationException)
-                {
-                    throw;
-                }
-                catch (Exception e)
-                {
-                    Logger.CreateLog(e);
-                    throw;
-                }
-            }
-        }
+        
 
         public static string GetLoadOrderDetailsInDate(DateTime fromDate, DateTime toDate)
         {

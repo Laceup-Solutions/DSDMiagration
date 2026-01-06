@@ -1466,7 +1466,7 @@ namespace LaceupMigration.ViewModels
 
                 if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "29.91"))
                 {
-                    DataAccessEx.UpdateClientNote(_client);
+                    DataAccess.UpdateClientNote(_client);
                 }
 
                 BuildClientDetails();

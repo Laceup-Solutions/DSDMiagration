@@ -198,7 +198,7 @@ namespace LaceupMigration.ViewModels
 							{
 								ProgressDialogHelper.SetMessage("Downloading data.");
 							});
-							DataAccessEx.DownloadStaticData();
+							DataAccess.DownloadStaticData();
 						}
 
 						error = 3;
@@ -537,7 +537,7 @@ namespace LaceupMigration.ViewModels
 					Logger.CreateLog("called MenuHandlerSyncData");
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() line 1626
-					responseMessage = DataAccessEx.DownloadData(true, !Config.TrackInventory || updateInventory);
+					responseMessage = DataAccess.DownloadData(true, !Config.TrackInventory || updateInventory);
 
 					// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() lines 1628-1636
 					// When called automatically after login, save vendor name
