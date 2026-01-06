@@ -105,7 +105,7 @@ namespace LaceupMigration.ViewModels
 
         public async Task OnAppearingAsync()
         {
-            if (!DataAccess.CanUseApplication() || !DataAccess.ReceivedData)
+            if (!DataAccess.CanUseApplication() || !Config.ReceivedData)
             {
                 IsSearchVisible = false;
                 ShowButtonsLayout = false;

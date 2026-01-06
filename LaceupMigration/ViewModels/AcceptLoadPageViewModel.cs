@@ -342,11 +342,11 @@ namespace LaceupMigration.ViewModels
                     RefreshOrders();
 
                     // Update RouteOrdersCount and save app status (matching Xamarin)
-                    DataAccess.RouteOrdersCount = _sourceOrders.Count;
+                    Config.RouteOrdersCount = _sourceOrders.Count;
                     Config.SaveAppStatus();
 
                     // If RouteOrdersCount is 0 and exit is true, go back to main (matching Xamarin)
-                    if (DataAccess.RouteOrdersCount == 0 && exit)
+                    if (Config.RouteOrdersCount == 0 && exit)
                     {
                         await _appService.GoBackToMainAsync();
                     }

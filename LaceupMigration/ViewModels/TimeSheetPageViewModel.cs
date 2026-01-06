@@ -281,8 +281,8 @@ namespace LaceupMigration.ViewModels
                 var session = new Session((int)Config.SalesmanId, DateTime.Now);
                 Session.session = session;
 
-                Session.session.StartLatitude = DataAccess.LastLatitude;
-                Session.session.StartLongitude = DataAccess.LastLongitude;
+                Session.session.StartLatitude = Config.LastLatitude;
+                Session.session.StartLongitude = Config.LastLongitude;
 
                 Session.session.Save();
 
@@ -302,8 +302,8 @@ namespace LaceupMigration.ViewModels
                 if (!result)
                     return;
 
-                Session.session.EndLatitude = DataAccess.LastLatitude;
-                Session.session.EndLongitude = DataAccess.LastLongitude;
+                Session.session.EndLatitude = Config.LastLatitude;
+                Session.session.EndLongitude = Config.LastLongitude;
                 Session.session.ClockOut = DateTime.Now;
 
                 Session.session.Save();
@@ -360,7 +360,7 @@ namespace LaceupMigration.ViewModels
                 {
                     // End Break
                     var clockout = DateTime.Now;
-                    Session.session.EditDetail(selectedDetail, clockout, DataAccess.LastLatitude, DataAccess.LastLongitude);
+                    Session.session.EditDetail(selectedDetail, clockout, Config.LastLatitude, Config.LastLongitude);
                     Session.selectedDetail = null;
                     Session.session.Save();
 
@@ -371,8 +371,8 @@ namespace LaceupMigration.ViewModels
                     // Start Break
                     var sessionDetail = new SessionDetails(0, LaceupMigration.SessionDetails.SessionDetailType.Break);
                     sessionDetail.startTime = DateTime.Now;
-                    sessionDetail.startLatitude = DataAccess.LastLatitude;
-                    sessionDetail.startLongitude = DataAccess.LastLongitude;
+                    sessionDetail.startLatitude = Config.LastLatitude;
+                    sessionDetail.startLongitude = Config.LastLongitude;
 
                     Session.session.AddDetail(sessionDetail);
                     Session.selectedDetail = sessionDetail;

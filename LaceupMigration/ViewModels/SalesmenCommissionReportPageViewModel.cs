@@ -22,7 +22,7 @@ namespace LaceupMigration.ViewModels
         {
             InitializeSalesmanSelection();
             
-            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "30.0.0.0") && !Config.ShowOldReportsRegardless)
+            if (Config.CheckCommunicatorVersion("30.0.0.0") && !Config.ShowOldReportsRegardless)
             {
                 ShowExcludeTax = false;
             }

@@ -433,8 +433,8 @@ namespace LaceupMigration
 
         public static bool ClockOutCurrentSession()
         {
-            Session.session.EndLatitude = DataAccess.LastLatitude;
-            Session.session.EndLongitude = DataAccess.LastLongitude;
+            Session.session.EndLatitude = Config.LastLatitude;
+            Session.session.EndLongitude = Config.LastLongitude;
 
             Session.session.ClockOut = DateTime.Now;
 
@@ -478,8 +478,8 @@ namespace LaceupMigration
             Session.session = session;
 
             //locationhere and add it
-            Session.session.StartLatitude = DataAccess.LastLatitude;
-            Session.session.StartLongitude = DataAccess.LastLongitude;
+            Session.session.StartLatitude = Config.LastLatitude;
+            Session.session.StartLongitude = Config.LastLongitude;
 
             Session.session.Save();
         }

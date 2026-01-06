@@ -1140,7 +1140,7 @@ public class DialogService : IDialogService
         };
 
         // Check if filters should be visible (matches Xamarin: DataAccess.CheckCommunicatorVersion >= "46.2.0")
-        bool filtersVisible = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.2.0");
+        bool filtersVisible = Config.CheckCommunicatorVersion("46.2.0");
 
         // Handle price checkbox visibility/state (matches Xamarin logic)
         if (Config.DisableSendCatalogWithPrices || Config.HidePriceInTransaction)

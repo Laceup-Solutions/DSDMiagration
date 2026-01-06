@@ -324,7 +324,7 @@ namespace LaceupMigration.ViewModels
 		{
 			_payments = new Dictionary<Client, List<InvoicePayment>>();
 
-			if (!DataAccess.CanUseApplication() || !DataAccess.ReceivedData)
+			if (!DataAccess.CanUseApplication() || !Config.ReceivedData)
 			{
 				IsSearchVisible = false;
 				ShowButtonsLayout = false;
@@ -341,10 +341,10 @@ namespace LaceupMigration.ViewModels
 			ShowDeleteButton = Config.DeletePaymentsInTab;
 			DeleteButtonText = Config.VoidPayments ? "Void" : "Delete";
 
-			if (string.IsNullOrEmpty(DataAccess.CommunicatorVersion))
+			if (Config.CommunicatorVersion == null)
 				NetAccess.GetCommunicatorVersion();
 
-			var showDeposit = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.0.0");
+			var showDeposit = Config.CheckCommunicatorVersion("46.0.0");
 			ShowDepositButton = showDeposit && Config.ShowInvoicesCreditsInPayments;
 
 			foreach (var item in InvoicePayment.List)

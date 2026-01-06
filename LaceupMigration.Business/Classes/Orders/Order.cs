@@ -54,7 +54,7 @@ namespace LaceupMigration
 
     public class Order 
     {
-        bool _oldOffers = !DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "29.94");
+        bool _oldOffers = !Config.CheckCommunicatorVersion("29.94");
 
         private volatile object syslock = new object();
 

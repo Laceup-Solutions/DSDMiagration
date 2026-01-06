@@ -735,7 +735,7 @@ namespace LaceupMigration.ViewModels
 		// Matches Xamarin MainActivity.SubscribeToNotifications() method (line 1709-1722)
 		private void SubscribeToNotifications()
 		{
-			if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "29.94"))
+			if (Config.CheckCommunicatorVersion("29.94"))
 			{
 				if (Config.EnableLiveData || Config.AllowWorkOrder || Config.AllowNotifications)
 				{
@@ -842,7 +842,7 @@ namespace LaceupMigration.ViewModels
 						if (Session.session != null)
 							Session.ClockOutCurrentSession();
 
-						DataAccess.LastEndOfDay = DateTime.Now;
+						Config.LastEndOfDay = DateTime.Now;
 						Config.SaveAppStatus();
 					}
 					catch (Exception ee)
@@ -867,9 +867,9 @@ namespace LaceupMigration.ViewModels
 			{
 				// Set ReceivedData = false to lock the app until sync happens
 				// This matches Xamarin behavior where SetDefaultsAfterSendAll() sets ReceivedData = false
-				DataAccess.PendingLoadToAccept = false;
-				DataAccess.ReceivedData = false;
-				DataAccess.LastEndOfDay = DateTime.Now;
+				Config.PendingLoadToAccept = false;
+				Config.ReceivedData = false;
+				Config.LastEndOfDay = DateTime.Now;
 				Config.SaveAppStatus();
 
 				// Navigate to MainPage (Clients tab)

@@ -623,8 +623,8 @@ namespace LaceupMigration.ViewModels
             if (detail != null)
             {
                 // End visit
-                detail.endLatitude = DataAccess.LastLatitude;
-                detail.endLongitude = DataAccess.LastLongitude;
+                detail.endLatitude = Config.LastLatitude;
+                detail.endLongitude = Config.LastLongitude;
                 detail.endTime = DateTime.Now;
                 Session.session.Save();
                 UpdateClockInText();
@@ -642,8 +642,8 @@ namespace LaceupMigration.ViewModels
                 detail = new SessionDetails(_client.ClientId, SessionDetails.SessionDetailType.CustomerVisit)
                 {
                     startTime = DateTime.Now,
-                    startLatitude = DataAccess.LastLatitude,
-                    startLongitude = DataAccess.LastLongitude,
+                    startLatitude = Config.LastLatitude,
+                    startLongitude = Config.LastLongitude,
                 };
 
                 Session.session.AddDetail(detail);
@@ -1016,8 +1016,8 @@ namespace LaceupMigration.ViewModels
                 order.BatchId = batch.Id;
                 order.Finished = true;
                 order.AsPresale = true;
-                order.Latitude = DataAccess.LastLatitude;
-                order.Longitude = DataAccess.LastLongitude;
+                order.Latitude = Config.LastLatitude;
+                order.Longitude = Config.LastLongitude;
                 order.Save();
 
                 await Shell.Current.GoToAsync($"noservice?orderId={order.OrderId}");
@@ -1071,8 +1071,8 @@ namespace LaceupMigration.ViewModels
             order.Comments = comment;
             order.Finished = true;
             order.AsPresale = true;
-            order.Latitude = DataAccess.LastLatitude;
-            order.Longitude = DataAccess.LastLongitude;
+            order.Latitude = Config.LastLatitude;
+            order.Longitude = Config.LastLongitude;
             order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
             order.ReasonId = reasonId;
             order.Save();
@@ -1464,7 +1464,7 @@ namespace LaceupMigration.ViewModels
                 _client.NotesChanged = true;
                 Client.SaveNotes();
 
-                if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "29.91"))
+                if (Config.CheckCommunicatorVersion("29.91"))
                 {
                     DataAccess.UpdateClientNote(_client);
                 }
@@ -1966,7 +1966,7 @@ namespace LaceupMigration.ViewModels
                 }
             }));
 
-            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "37.0"))
+            if (Config.CheckCommunicatorVersion("37.0"))
             {
                 options.Add(new MenuOption("Attach Photo", () => NavigateToClientImagesAsync()));
             }

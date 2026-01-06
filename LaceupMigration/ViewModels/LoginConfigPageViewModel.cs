@@ -105,7 +105,7 @@ namespace LaceupMigration.ViewModels
 
 			NetAccess.GetCommunicatorVersion();
 
-				if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "80.0.0"))
+				if (Config.CheckCommunicatorVersion("80.0.0"))
 				{
 					var field = DataAccess.GetFieldForLogin();
 					if (!string.IsNullOrEmpty(field))
@@ -581,7 +581,7 @@ namespace LaceupMigration.ViewModels
 
 				// [MIGRATION]: Matches Xamarin MainActivity.DownloadData() lines 1671-1676
 				// Check for load on demand
-				if (Config.NewSyncLoadOnDemand && DataAccess.RouteOrdersCount > 0)
+				if (Config.NewSyncLoadOnDemand && Config.RouteOrdersCount > 0)
 				{
 					FinishDownloadDataAfterLogin(errorDownloadingData, updateInventory);
 					return;
@@ -621,7 +621,7 @@ namespace LaceupMigration.ViewModels
 				SalesmanSession.StartSession();
 
 			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1733-1738
-			if (!errorDownloadingData && Config.NewSyncLoadOnDemand && DataAccess.RouteOrdersCount > 0)
+			if (!errorDownloadingData && Config.NewSyncLoadOnDemand && Config.RouteOrdersCount > 0)
 			{
 				// needToEnterVehicle = true;
 				// GoToAcceptLoad(DateTime.Now, true); - navigate to accept load page
@@ -631,13 +631,13 @@ namespace LaceupMigration.ViewModels
 
 			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1740-1769
 			// Inventory load acceptance logic (simplified - full implementation would navigate to inventory page)
-			if (!errorDownloadingData && Config.TrackInventory && updateInventory && DataAccess.PendingLoadToAccept)
+			if (!errorDownloadingData && Config.TrackInventory && updateInventory && Config.PendingLoadToAccept)
 			{
 				if (Config.AutoAcceptLoad)
 				{
 					// Auto-accept load logic (Xamarin lines 1744-1758)
 					// Simplified for now - full implementation would update inventory
-					DataAccess.PendingLoadToAccept = false;
+					Config.PendingLoadToAccept = false;
 					Config.SaveAppStatus();
 					DataAccess.SaveInventory();
 				}

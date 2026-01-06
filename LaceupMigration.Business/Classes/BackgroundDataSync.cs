@@ -135,7 +135,7 @@ namespace LaceupMigration
                     var currentInventoryTotal = Product.Products.Sum(x => x.CurrentInventory);
                     SendInventory(currentInventoryTotal);
 
-                    if (DataAccess.LastLatitude != lastLatitude || DataAccess.LastLongitude != lastLongitude)
+                    if (Config.LastLatitude != lastLatitude || Config.LastLongitude != lastLongitude)
                         SenndLastKnowLocation();
 
                     if (LastSentOrderPayment.Ticks < ModifiedOrderPayments.Ticks)
@@ -210,8 +210,8 @@ namespace LaceupMigration
                     if (s.clientId == 0)
                     {
                         s.endTime = DateTime.Now;
-                        s.endLatitude = DataAccess.LastLatitude;
-                        s.endLongitude = DataAccess.LastLongitude;
+                        s.endLatitude = Config.LastLatitude;
+                        s.endLongitude = Config.LastLongitude;
                         s.extraFields = DataAccess.SyncSingleUDF("comment",
                             $"Automtically Closed after {Config.AutomaticClockOutTime} minutes", s.extraFields);
 
@@ -227,8 +227,8 @@ namespace LaceupMigration
                             {
                                 changesMade = true;
                                 s.endTime = DateTime.Now;
-                                s.endLatitude = DataAccess.LastLatitude;
-                                s.endLongitude = DataAccess.LastLongitude;
+                                s.endLatitude = Config.LastLatitude;
+                                s.endLongitude = Config.LastLongitude;
                                 s.extraFields = DataAccess.SyncSingleUDF("comment",
                                     $"Automtically Closed after {Config.AutomaticClockOutTime} minutes", s.extraFields);
 
@@ -738,7 +738,7 @@ namespace LaceupMigration
                     netaccess.WriteStringToNetwork("BackgroundLastPositionCommand");
                     netaccess.WriteStringToNetwork(Config.SalesmanId.ToString());
 
-                    string s = DataAccess.LastLatitude.ToString(CultureInfo.InvariantCulture) + "," + DataAccess.LastLongitude.ToString(CultureInfo.InvariantCulture) + "," +
+                    string s = Config.LastLatitude.ToString(CultureInfo.InvariantCulture) + "," + Config.LastLongitude.ToString(CultureInfo.InvariantCulture) + "," +
                         DateTime.Now.Ticks.ToString();
 
                     if (Shipment.CurrentShipment != null)
@@ -746,8 +746,8 @@ namespace LaceupMigration
 
                     netaccess.WriteStringToNetwork(s);
                     netaccess.WriteStringToNetwork("Goodbye");
-                    lastLongitude = DataAccess.LastLongitude;
-                    lastLatitude = DataAccess.LastLatitude;
+                    lastLongitude = Config.LastLongitude;
+                    lastLatitude = Config.LastLatitude;
                     Thread.Sleep(1000);
                     netaccess.CloseConnection();
                 }
@@ -859,9 +859,9 @@ namespace LaceupMigration
                 currentInventoryCommandData.Append((char)20);
                 currentInventoryCommandData.Append(product.BeginigInventory);
                 currentInventoryCommandData.Append((char)20);
-                currentInventoryCommandData.Append(DataAccess.LastLatitude);
+                currentInventoryCommandData.Append(Config.LastLatitude);
                 currentInventoryCommandData.Append((char)20);
-                currentInventoryCommandData.Append(DataAccess.LastLongitude);
+                currentInventoryCommandData.Append(Config.LastLongitude);
 
                 if (Shipment.CurrentShipment != null)
                 {

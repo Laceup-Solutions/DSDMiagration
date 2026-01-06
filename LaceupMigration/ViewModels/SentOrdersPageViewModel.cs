@@ -100,7 +100,7 @@ namespace LaceupMigration.ViewModels
 
         public async Task OnAppearingAsync()
         {
-            if (!DataAccess.CanUseApplication() || !DataAccess.ReceivedData)
+            if (!DataAccess.CanUseApplication() || !Config.ReceivedData)
             {
                 ShowButtonsLayout = false;
                 SentOrders.Clear();

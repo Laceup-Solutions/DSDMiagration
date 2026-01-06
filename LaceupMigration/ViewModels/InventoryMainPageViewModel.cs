@@ -51,11 +51,11 @@ namespace LaceupMigration.ViewModels
             ShowLoadOrder = Config.LoadRequest;
 
             // Pending Load to Accept label - visible if DataAccess.PendingLoadToAccept (lines 70-73)
-            ShowPendingLoad = DataAccess.PendingLoadToAccept;
+            ShowPendingLoad = Config.PendingLoadToAccept;
 
             // Accept Load - visible if Config.Delivery (line 67)
             ShowAcceptLoad = Config.Delivery;
-            AcceptLoadEnabled = Config.SyncLoadOnDemand || Config.NewSyncLoadOnDemand || DataAccess.PendingLoadToAccept;
+            AcceptLoadEnabled = Config.SyncLoadOnDemand || Config.NewSyncLoadOnDemand || Config.PendingLoadToAccept;
 
             // Transfer On/Off - hidden if Config.HideTransfers (lines 64-65)
             ShowTransfers = !Config.HideTransfers;

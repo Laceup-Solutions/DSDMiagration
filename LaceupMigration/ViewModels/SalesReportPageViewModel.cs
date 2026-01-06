@@ -37,7 +37,7 @@ namespace LaceupMigration.ViewModels
                 SelectedSalesman = "All Salesmen";
             }
 
-            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "28.3"))
+            if (Config.CheckCommunicatorVersion("28.3"))
             {
                 ShowDetails = false;
                 ShowWithDetailsButton = false;

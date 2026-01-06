@@ -276,7 +276,7 @@ namespace LaceupMigration.Services
 					Config.Initialize();
 
 					// Step 6: Set ReceivedData and save app status - EXACTLY as Xamarin
-					DataAccess.ReceivedData = true;
+					Config.ReceivedData = true;
 					Config.SaveAppStatus();
 
 					// Step 7: DataAccess.Initialize() - EXACTLY as Xamarin (not DataAccessEx)

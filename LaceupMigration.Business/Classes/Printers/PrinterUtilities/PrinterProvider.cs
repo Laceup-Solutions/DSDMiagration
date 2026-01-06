@@ -32,7 +32,7 @@ namespace LaceupMigration
 
                 if (string.IsNullOrEmpty(printerToUse))
                 {
-                    if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "28.2.0"))
+                    if (Config.CheckCommunicatorVersion("28.2.0"))
                         printerToUse = "LaceUPMobileClassesIOS.ZebraFourInchesPrinter1";
                     else
                         printerToUse = "LaceUPMobileClassesIOS.ZebraFourInchesPrinter";

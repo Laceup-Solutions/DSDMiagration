@@ -225,8 +225,8 @@ namespace LaceupMigration
                 if (!Closed)
                 {
                     When = DateTime.Now;
-                    Latitude = DataAccess.LastLatitude;
-                    Longitude = DataAccess.LastLongitude;
+                    Latitude = Config.LastLatitude;
+                    Longitude = Config.LastLongitude;
                 }
 
                 Closed = OrdersInStop.Count > 0; ;

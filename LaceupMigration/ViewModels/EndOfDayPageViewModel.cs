@@ -753,9 +753,9 @@ namespace LaceupMigration.ViewModels
                         _sentAll = true;
                         _canLeaveScreen = true;
 
-                        DataAccess.PendingLoadToAccept = false;
-                        DataAccess.ReceivedData = false;
-                        DataAccess.LastEndOfDay = DateTime.Now;
+                        Config.PendingLoadToAccept = false;
+                        Config.ReceivedData = false;
+                        Config.LastEndOfDay = DateTime.Now;
 
                         VehicleInformation.Clear();
 

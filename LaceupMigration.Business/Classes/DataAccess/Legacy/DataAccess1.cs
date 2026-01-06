@@ -162,7 +162,7 @@ namespace LaceupMigration
 
                 SelfServiceCompany.Load();
 
-                if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "45.0.0"))
+                if (Config.CheckCommunicatorVersion("45.0.0"))
                 {
                     BankDeposit.Load();
                 }
@@ -176,7 +176,7 @@ namespace LaceupMigration
                     LoadInventories();
                 }
 
-                if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.0.0") && Config.ViewGoals)
+                if (Config.CheckCommunicatorVersion("46.0.0") && Config.ViewGoals)
                 {
                     LoadGoalProgress();
                     LoadGoalProgressDetail();
@@ -184,7 +184,7 @@ namespace LaceupMigration
 
                 Session.InitializeSession();
 
-                if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.0.0"))
+                if (Config.CheckCommunicatorVersion("46.0.0"))
                     LoadTerms();
 
                 if (Config.SAPOrderStatusReport)
@@ -193,10 +193,10 @@ namespace LaceupMigration
                 if (Config.RequestVehicleInformation)
                     VehicleInformation.Load();
 
-                if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.2.0.0"))
+                if (Config.CheckCommunicatorVersion("46.2.0.0"))
                     DataAccess.AsignLogosToCompanies();
 
-                if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.2.0.0"))
+                if (Config.CheckCommunicatorVersion("46.2.0.0"))
                     LoadProductLabelDecoder();
                 
                 RouteExpenses.LoadExpenses();
@@ -259,7 +259,7 @@ namespace LaceupMigration
             {
                 DateTime now = DateTime.Now;
                 NetAccess.GetCommunicatorVersion();
-                Logger.CreateLog("Communicator version got " + DataAccess.CommunicatorVersion + " in " + DateTime.Now.Subtract(now).TotalSeconds);
+                Logger.CreateLog("Communicator version got " + Config.CommunicatorVersion + " in " + DateTime.Now.Subtract(now).TotalSeconds);
 
                 now = DateTime.Now;
                 DataAccess.GetSalesmanSettings();
@@ -268,7 +268,7 @@ namespace LaceupMigration
                 DataAccess.SendSalesmanDeviceInfo();
 
                 //syncloadondemand is always active for new versions
-                if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "26.0.0.0"))
+                if (Config.CheckCommunicatorVersion("26.0.0.0"))
                 {
                     Config.NewSyncLoadOnDemand = Config.Delivery;
                     Config.SaveSettings();
@@ -282,7 +282,7 @@ namespace LaceupMigration
                 if ((!Config.TimeSheetCustomization || (Config.TimeSheetCustomization && Config.TimeSheetAutomaticClockIn)) && Session.session == null)
                     Session.CreateSession();
 
-                DataAccess.AcceptInventoryReadOnly = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "31.0.0.0");
+                Config.AcceptInventoryReadOnly = Config.CheckCommunicatorVersion("31.0.0.0");
 
                 string basefileP = Path.Combine(Config.DataPath, "reading_fileP.zip");
                 string targetfileP = Config.ProductStoreFile;
@@ -312,7 +312,7 @@ namespace LaceupMigration
                     netaccess.WriteStringToNetwork("HELO");
                     netaccess.WriteStringToNetwork(Config.GetAuthString());
 
-                    if (updateInventory && Config.AutoAcceptLoad && DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "29.9.0.0"))
+                    if (updateInventory && Config.AutoAcceptLoad && Config.CheckCommunicatorVersion("29.9.0.0"))
                     {
                         try
                         {
@@ -340,7 +340,7 @@ namespace LaceupMigration
                         return "Error Downloading Customers";
                     Logger.CreateLog("Clients downloaded in " + DateTime.Now.Subtract(now).TotalSeconds);
 
-                    bool inventoryOnDemand = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "13.0.0.0");
+                    bool inventoryOnDemand = Config.CheckCommunicatorVersion("13.0.0.0");
 
                     now = DateTime.Now;
                     DataAccess.UnzipFile(basefileP, targetfileP);
@@ -398,9 +398,9 @@ namespace LaceupMigration
                         {
                             try
                             {
-                                if (!DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "12.7.0.0"))
+                                if (!Config.CheckCommunicatorVersion("12.7.0.0"))
                                 {
-                                    Logger.CreateLog("ClientDailyParLevel connection closed. Communicator Version " + DataAccess.CommunicatorVersion);
+                                    Logger.CreateLog("ClientDailyParLevel connection closed. Communicator Version " + Config.CommunicatorVersion);
                                 }
                                 else
                                 {
@@ -561,7 +561,7 @@ namespace LaceupMigration
                         string result = netaccess.ReadStringFromNetwork();
                         int routeCount = 0;
                         int.TryParse(result, out routeCount);
-                        DataAccess.RouteOrdersCount = routeCount;
+                        Config.RouteOrdersCount = routeCount;
 
                         try
                         {
@@ -582,7 +582,7 @@ namespace LaceupMigration
 
                     if (updateInventory)
                     {
-                        if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "13.0.0.0"))
+                        if (Config.CheckCommunicatorVersion("13.0.0.0"))
                         {
                             now = DateTime.Now;
 
@@ -628,7 +628,7 @@ namespace LaceupMigration
                         }
                     }
 
-                    if (DataAccess.CommunicatorVersion == "12.93")
+                    if (Config.CommunicatorVersion == new Version("12.93"))
                     {
                         try
                         {
@@ -662,7 +662,7 @@ namespace LaceupMigration
 
                                 LoadInventoryOnDemandForLot();
 
-                                DataAccess.PendingLoadToAccept = false;
+                                Config.PendingLoadToAccept = false;
                             }
                             catch (Exception ee)
                             {
@@ -717,7 +717,7 @@ namespace LaceupMigration
                         GetRouteRelations();
                     }
 
-                    if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "45.0.0"))
+                    if (Config.CheckCommunicatorVersion("45.0.0"))
                         GetBanks();
 
                     if (Config.ShowOrderStatus)
@@ -729,16 +729,16 @@ namespace LaceupMigration
                         GetInventoryForSite();
                     }
 
-                    if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "42.4.0") && Config.CanModifyQuotes)
+                    if (Config.CheckCommunicatorVersion("42.4.0") && Config.CanModifyQuotes)
                         GetQuotesCreated();
 
-                    if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.0.0") && Config.ViewGoals)
+                    if (Config.CheckCommunicatorVersion("46.0.0") && Config.ViewGoals)
                     {
                         LoadGoalProgress();
                         LoadGoalProgressDetail();
                     }
 
-                    if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.0.0"))
+                    if (Config.CheckCommunicatorVersion("46.0.0"))
                         GetTerms();
 
                     if (Order.Orders.Count > 0)
@@ -747,20 +747,20 @@ namespace LaceupMigration
                     if (Config.SAPOrderStatusReport)
                         GetSapOrderStatus();
 
-                    if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.2.0"))
+                    if (Config.CheckCommunicatorVersion("46.2.0"))
                     {
                         var deliveries = Order.Orders.Where(x => x.IsDelivery && (x.SignaturePoints == null || x.SignaturePoints.Count == 0));
                         foreach (var d in deliveries)
                             DataAccess.GetDeliverySignature(d);
                     }
 
-                    if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.2.0.0"))
+                    if (Config.CheckCommunicatorVersion("46.2.0.0"))
                         DataAccess.GetCompaniesInfo();
                     
-                    if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.2.0"))
+                    if (Config.CheckCommunicatorVersion("46.2.0"))
                         GetProductLabelDecoder();
                     
-                    DataAccess.ReceivedData = true;
+                    Config.ReceivedData = true;
                     Config.SaveAppStatus();
                 }
             }
@@ -1628,7 +1628,7 @@ namespace LaceupMigration
 
         public static void GetSessionId()
         {
-            if (!DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "35.0.0.0"))
+            if (!Config.CheckCommunicatorVersion("35.0.0.0"))
             {
                 Config.SessionId = Guid.NewGuid().ToString();
                 Config.SaveSessionId();
@@ -2642,7 +2642,7 @@ namespace LaceupMigration
             }
 
             if (qty > 0)
-                DataAccess.PendingLoadToAccept = true;
+                Config.PendingLoadToAccept = true;
         }
 
         private static void CreateProductLot(string[] currentrow)
@@ -2829,7 +2829,7 @@ namespace LaceupMigration
                 else
                     prod.Sku = string.Empty;
 
-                if (currentrow.Length > 33 && DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "30.0.0.0"))
+                if (currentrow.Length > 33 && Config.CheckCommunicatorVersion("30.0.0.0"))
                     prod.UseLot = Convert.ToInt32(currentrow[33]) > 0;
 
                 if (currentrow.Length > 37)
@@ -2996,7 +2996,7 @@ namespace LaceupMigration
                 Dictionary<int, Order> createdOrders = new Dictionary<int, Order>();
 
                 if (fromDownload && updateInventory)
-                    DataAccess.PendingLoadToAccept = false;
+                    Config.PendingLoadToAccept = false;
 
                 using (StreamReader reader = new StreamReader(file))
                 {
@@ -3208,7 +3208,7 @@ namespace LaceupMigration
                     {
                         string tempFile = Path.GetTempFileName();
 
-                        if (Config.WarehouseInventoryOnDemand || DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "29.1.0.0"))
+                        if (Config.WarehouseInventoryOnDemand || Config.CheckCommunicatorVersion("29.1.0.0"))
                         {
                             // bring the default inventory on demand
                             if (!isPresale)
@@ -3299,7 +3299,7 @@ namespace LaceupMigration
 
                     string tempFile = Path.GetTempFileName();
 
-                    if (Config.WarehouseInventoryOnDemand || DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "29.1.0.0"))
+                    if (Config.WarehouseInventoryOnDemand || Config.CheckCommunicatorVersion("29.1.0.0"))
                     {
                         // bring the default inventory on demand
                         netaccess.WriteStringToNetwork("GetPresaleInventoryForSiteCommand");
@@ -3578,7 +3578,7 @@ namespace LaceupMigration
                     {
                         string tempFile = Path.GetTempFileName();
 
-                        if (Config.WarehouseInventoryOnDemand || DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "29.1.0.0"))
+                        if (Config.WarehouseInventoryOnDemand || Config.CheckCommunicatorVersion("29.1.0.0"))
                         {
                             // bring the default inventory on demand
                             netaccess.WriteStringToNetwork("GetPresaleInventoryForSiteCommand");
@@ -3673,7 +3673,7 @@ namespace LaceupMigration
                     {
                         string tempFile = Path.GetTempFileName();
 
-                        if (Config.WarehouseInventoryOnDemand || DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "29.1.0.0"))
+                        if (Config.WarehouseInventoryOnDemand || Config.CheckCommunicatorVersion("29.1.0.0"))
                         {
                             // bring the default inventory on demand
                             netaccess.WriteStringToNetwork("DefaultSiteInventoryCommand");
@@ -3828,7 +3828,7 @@ namespace LaceupMigration
                         return "Error Downloading Products";
                     Logger.CreateLog("Products downloaded in " + DateTime.Now.Subtract(now).TotalSeconds);
 
-                    bool inventoryOnDemand = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "13.0.0.0");
+                    bool inventoryOnDemand = Config.CheckCommunicatorVersion("13.0.0.0");
 
                     now = DateTime.Now;
                     DataAccess.UnzipFile(basefileP, targetfileP);
@@ -3888,7 +3888,7 @@ namespace LaceupMigration
                         return "Error Downloading Customers";
                     Logger.CreateLog("Clients downloaded in " + DateTime.Now.Subtract(now).TotalSeconds);
 
-                    bool inventoryOnDemand = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "13.0.0.0");
+                    bool inventoryOnDemand = Config.CheckCommunicatorVersion("13.0.0.0");
 
                     now = DateTime.Now;
                     DataAccess.UnzipFile(basefileC, targetfileC);
@@ -5016,7 +5016,7 @@ namespace LaceupMigration
                 else
                     prod.Sku = string.Empty;
 
-                if (currentrow.Length > 33 && DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "30.0.0.0"))
+                if (currentrow.Length > 33 && Config.CheckCommunicatorVersion("30.0.0.0"))
                     prod.UseLot = Convert.ToInt32(currentrow[33]) > 0;
 
                 if (currentrow.Length > 37)

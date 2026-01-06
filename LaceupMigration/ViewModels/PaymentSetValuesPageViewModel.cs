@@ -741,7 +741,7 @@ namespace LaceupMigration.ViewModels
             foreach (var component in _invoicePayment.Components)
             {
                 component.ExtraFields = DataAccess.SyncSingleUDF("location", 
-                    $"{DataAccess.LastLatitude},{DataAccess.LastLongitude}", 
+                    $"{Config.LastLatitude},{Config.LastLongitude}", 
                     component.ExtraFields);
             }
 

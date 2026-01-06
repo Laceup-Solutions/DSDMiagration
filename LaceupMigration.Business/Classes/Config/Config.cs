@@ -89,10 +89,7 @@ namespace LaceupMigration
             }
             catch (Exception ex)
             {
-                //Log the exception
                 Logger.CreateLog(ex);
-                //if (Xamarin.Insights.IsInitialized)
-                //Xamarin.Insights.Report(ex);
             }
         }
 
@@ -676,8 +673,7 @@ namespace LaceupMigration
             UseLaceupDataInSalesReport = Preferences.Get(UseLaceupDataInSalesReportKey, false);
             ShowDescriptionInSelfServiceCatalog = Preferences.Get(ShowDescriptionInSelfServiceCatalogKey, false);
             CanChangeFinalizedInvoices = Preferences.Get(CanChangeFinalizedInvoicesKey, false);
-            AllowNotifications = Preferences.Get(AllowNotificationsKey,
-                DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "52.2.0"));
+            AllowNotifications = Preferences.Get(AllowNotificationsKey, Config.CheckCommunicatorVersion("52.2.0"));
             ShowLowestAcceptableOnWarning = Preferences.Get(ShowLowestAcceptableOnWarningKey, false);
             ShowPromoCheckbox = Preferences.Get(ShowPromoCheckboxKey, false);
             ShowImageInCatalog = Preferences.Get(ShowImageInCatalogKey, false);
@@ -951,26 +947,40 @@ namespace LaceupMigration
             return new DateTime(l);
         }
 
+        #region AppStatus Properties
+
+        public static bool PendingLoadToAccept { get; set; }
+        public static bool ReceivedData { get; set; }
+        public static int RouteOrdersCount { get; set; }
+        public static Version CommunicatorVersion { get; set; }
+        public static int WaitBeforeStart { get; set; } = 5;
+        public static DateTime LastEndOfDay { get; set; } = DateTime.MinValue;
+        public static bool AcceptInventoryReadOnly { get; set; }
+        public static double LastLongitude { get; set; }
+        public static double LastLatitude { get; set; }
+
+        #endregion
+
         public static void SaveAppStatus()
         {
-            Preferences.Set("PendingLoadToAccept", DataAccess.PendingLoadToAccept ? 1 : 0);
-            Preferences.Set("ReceivedData", DataAccess.ReceivedData ? 1 : 0);
-            Preferences.Set("RouteOrdersCount", DataAccess.RouteOrdersCount);
-            Preferences.Set("CommunicatorVersion", DataAccess.CommunicatorVersion);
-            Preferences.Set("WaitBeforeStart", DataAccess.WaitBeforeStart);
-            Preferences.Set("LastEndOfDay", DataAccess.LastEndOfDay.Ticks);
-            Preferences.Set("AcceptInventoryReadOnly", DataAccess.AcceptInventoryReadOnly ? 1 : 0);
+            Preferences.Set("PendingLoadToAccept", PendingLoadToAccept ? 1 : 0);
+            Preferences.Set("ReceivedData", ReceivedData ? 1 : 0);
+            Preferences.Set("RouteOrdersCount", RouteOrdersCount);
+            Preferences.Set("CommunicatorVersion", CommunicatorVersion.ToString());
+            Preferences.Set("WaitBeforeStart", WaitBeforeStart);
+            Preferences.Set("LastEndOfDay", LastEndOfDay.Ticks);
+            Preferences.Set("AcceptInventoryReadOnly", AcceptInventoryReadOnly ? 1 : 0);
         }
 
         private static void LoadAppStatus()
         {
-            DataAccess.PendingLoadToAccept = Preferences.Get("PendingLoadToAccept", 0) > 0;
-            DataAccess.ReceivedData = Preferences.Get("ReceivedData", 0) > 0;
-            DataAccess.RouteOrdersCount = Preferences.Get("RouteOrdersCount", 0);
-            DataAccess.CommunicatorVersion = Preferences.Get("CommunicatorVersion", string.Empty);
-            DataAccess.WaitBeforeStart = Preferences.Get("WaitBeforeStart", 5);
-            DataAccess.LastEndOfDay = new DateTime(Preferences.Get("LastEndOfDay", DateTime.MinValue.Ticks));
-            DataAccess.AcceptInventoryReadOnly = Preferences.Get("AcceptInventoryReadOnly", 0) > 0;
+            PendingLoadToAccept = Preferences.Get("PendingLoadToAccept", 0) > 0;
+            ReceivedData = Preferences.Get("ReceivedData", 0) > 0;
+            RouteOrdersCount = Preferences.Get("RouteOrdersCount", 0);
+            CommunicatorVersion = new Version(Preferences.Get("CommunicatorVersion", "0.0.0"));
+            WaitBeforeStart = Preferences.Get("WaitBeforeStart", 5);
+            LastEndOfDay = new DateTime(Preferences.Get("LastEndOfDay", DateTime.MinValue.Ticks));
+            AcceptInventoryReadOnly = Preferences.Get("AcceptInventoryReadOnly", 0) > 0;
         }
 
         public static void SavePresaleLastOrderId()
@@ -1882,7 +1892,7 @@ namespace LaceupMigration
             MustSelectDepartment = false;
             GoToMain = false;
             DollyReminder = false;
-            BetaFragments = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "26.1.0.0");
+            BetaFragments = CheckCommunicatorVersion("26.1.0.0");
             SelfService = false;
             ScanBasedTrading = false;
             SalesmanSeqValues = false;
@@ -1901,7 +1911,7 @@ namespace LaceupMigration
             OtherChargesVale = 0;
             FreightVale = 0;
             HiddenItemCustomization = false;
-            BetaConfigurationView = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "26.1.0.0");
+            BetaConfigurationView = CheckCommunicatorVersion("26.1.0.0");
             ConsignmentBeta = false;
             TruckTemperatureReq = false;
             ConsignmentPresaleOnly = false;
@@ -1963,7 +1973,7 @@ namespace LaceupMigration
             RouteReturnPassword = "";
             SelectReshipDate = false;
             ClientRtnNeededForQty = 0;
-            CaptureImages = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "26.1.0.0");
+            CaptureImages = CheckCommunicatorVersion("26.1.0.0");
             NewClientCanHaveDiscount = false;
             SendBackgroundPayments = false;
             DontAllowDecimalsInQty = false;
@@ -2280,7 +2290,7 @@ namespace LaceupMigration
             AllowOtherCharges = false;
             CheckIfShipdateLocked = false;
             UpdateInventoryInPresale = false;
-            AllowNotifications = DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "52.2.0");
+            AllowNotifications = CheckCommunicatorVersion("52.2.0");
             ShowLowestAcceptableOnWarning = false;
             ShowPromoCheckbox = false;
             ShowImageInCatalog = false;
@@ -6747,7 +6757,7 @@ namespace LaceupMigration
 
             sb.Append("Communicator Version");
             sb.Append("=");
-            sb.Append(DataAccess.CommunicatorVersion);
+            sb.Append(Config.CommunicatorVersion);
             sb.Append(Environment.NewLine);
 
             sb.Append("Companies");
@@ -9631,14 +9641,14 @@ namespace LaceupMigration
 
         public static void SaveLastPosition()
         {
-            Preferences.Set("LastLatitudeKey", Convert.ToSingle(DataAccess.LastLatitude));
-            Preferences.Set("LastLongitudeKey", Convert.ToSingle(DataAccess.LastLongitude));
+            Preferences.Set("LastLatitudeKey", Convert.ToSingle(Config.LastLatitude));
+            Preferences.Set("LastLongitudeKey", Convert.ToSingle(Config.LastLongitude));
         }
 
         public static void GetLastPosition()
         {
-            DataAccess.LastLatitude = Preferences.Get("LastLatitudeKey", 0L);
-            DataAccess.LastLongitude = Preferences.Get("LastLongitudeKey", 0L);
+            Config.LastLatitude = Preferences.Get("LastLatitudeKey", 0L);
+            Config.LastLongitude = Preferences.Get("LastLongitudeKey", 0L);
         }
 
         public static bool UseAllowanceForOrder(Order order, bool damaged = false)
@@ -9847,5 +9857,18 @@ namespace LaceupMigration
             ["8_1064"] = "Prida",
             ["9_64190"] = "Inca"
         };
+
+        public static bool CheckCommunicatorVersion(string min)
+        {
+            try
+            {
+                return Config.CommunicatorVersion > new Version(min);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
     }
 }

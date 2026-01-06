@@ -604,8 +604,8 @@ namespace LaceupMigration.ViewModels
                         {
                             stop.Closed = true;
                             stop.When = DateTime.Now;
-                            stop.Latitude = DataAccess.LastLatitude;
-                            stop.Longitude = DataAccess.LastLongitude;
+                            stop.Latitude = Config.LastLatitude;
+                            stop.Longitude = Config.LastLongitude;
                             break;
                         }
                     }
@@ -1188,7 +1188,7 @@ namespace LaceupMigration.ViewModels
             }
 
             // Attach Photo
-            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "37.0"))
+            if (Config.CheckCommunicatorVersion("37.0"))
             {
                 options.Add(new MenuOption("Attach Photo", async () =>
                 {

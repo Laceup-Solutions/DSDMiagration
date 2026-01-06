@@ -233,55 +233,36 @@ namespace LaceupMigration
             }
         }
 
-        public static void GetCommunicatorVersion()
+        public static Version GetCommunicatorVersion()
         {
             using (NetAccess netaccess = new NetAccess())
             {
-                //open the connection
                 try
                 {
                     netaccess.OpenConnection();
-                }
-                catch (Exception ee)
-                {
-                    Logger.CreateLog(ee);
-                    return;
-                }
-
-                try
-                {
                     netaccess.WriteStringToNetwork("systemversion");
                     var commVersion = netaccess.ReadStringFromNetwork();
 
-                    commVersion = commVersion.ToLowerInvariant();
+                    Version version = null;
 
-                    if (commVersion.StartsWith("invalid auth info") || commVersion.StartsWith("device authorization denied"))
+                    try
                     {
-                        try
-                        {
-                            netaccess.OpenConnection();
-                        }
-                        catch (Exception ee)
-                        {
-                            Logger.CreateLog(ee);
-                            return;
-                        }
-
-                        netaccess.WriteStringToNetwork("HELO");
-                        netaccess.WriteStringToNetwork(Config.GetAuthString());
-                        netaccess.WriteStringToNetwork("systemversion");
-                        commVersion = netaccess.ReadStringFromNetwork();
+                        version = new Version(commVersion);
+                    }
+                    catch
+                    {
+                        throw new Exception("Invalid communicator version received: " + commVersion);
                     }
 
-                    if (commVersion.StartsWith("Device Authorization Denied"))
-                        throw new Exception(commVersion);
-
-                    DataAccess.CommunicatorVersion = commVersion;
+                    Config.CommunicatorVersion = version;
                     Config.SaveAppStatus();
+
+                    return version;
                 }
                 catch (Exception ex)
                 {
                     Logger.CreateLog(ex);
+                    throw;
                 }
             }
         }

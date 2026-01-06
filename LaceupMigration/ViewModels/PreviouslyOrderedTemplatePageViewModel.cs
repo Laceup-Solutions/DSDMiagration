@@ -156,8 +156,8 @@ namespace LaceupMigration.ViewModels
             // Set order location
             if (_order != null)
             {
-                _order.Latitude = DataAccess.LastLatitude;
-                _order.Longitude = DataAccess.LastLongitude;
+                _order.Latitude = Config.LastLatitude;
+                _order.Longitude = Config.LastLongitude;
             }
 
             // Check if items were added

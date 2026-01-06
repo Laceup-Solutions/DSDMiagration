@@ -154,8 +154,8 @@ namespace LaceupMigration.ViewModels
             // Equivalent to OnStart - Set order location
             if (_order != null)
             {
-                _order.Latitude = DataAccess.LastLatitude;
-                _order.Longitude = DataAccess.LastLongitude;
+                _order.Latitude = Config.LastLatitude;
+                _order.Longitude = Config.LastLongitude;
             }
 
             // Equivalent to OnResume/OnNewIntent - Check if items were added

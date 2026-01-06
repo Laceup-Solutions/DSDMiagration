@@ -20,7 +20,7 @@ using SkiaSharp;
 
 namespace LaceupMigration
 {
-    public partial class DataAccess
+    public partial class DataAccess 
     {
         public const int EntitiesToReadInTestMode = 100;
 
@@ -40,32 +40,8 @@ namespace LaceupMigration
         public static char[] ExtraPropertiesSeparator = new char[] { '|' };
         public static char[] DataLineSplitter = new char[] { (char)20 };
         public static char[] ExtraPropertySeparator = new char[] { '=' };
-        
-        public static bool PendingLoadToAccept { get; set; }
-
-        public static bool ReceivedData { get; set; }
-
-        public static double LastLongitude { get; set; }
-
-        public static double LastLatitude { get; set; }
-
-        public static int RouteOrdersCount { get; set; }
-
-        public static string CommunicatorVersion { get; set; }
-
-        static DateTime lastEndOfDay = DateTime.MinValue;
-        public static DateTime LastEndOfDay { get { return lastEndOfDay; } set { lastEndOfDay = value; } }
-
-        static int waitBeforeStartSec = 5;
-        public static int WaitBeforeStart
-        {
-            get { return waitBeforeStartSec; }
-            set { waitBeforeStartSec = value; }
-        }
 
         public static bool DeliveryAccepted = false;
-
-        public static bool AcceptInventoryReadOnly { get; set; }
 
         static Dictionary<int, Product> notFoundProducts = new Dictionary<int, Product>();
 
@@ -2401,9 +2377,10 @@ namespace LaceupMigration
         {
             try
             {
-                PendingLoadToAccept = false;
-                ReceivedData = false;
-                LastEndOfDay = DateTime.MinValue;
+                Config.PendingLoadToAccept = false;
+                Config.ReceivedData = false;
+                Config.LastEndOfDay = DateTime.MinValue;
+
                 //solves duplicate session id
                 Config.ClearSessionId();
                 Config.SaveAppStatus();
@@ -2442,9 +2419,9 @@ namespace LaceupMigration
         {
             try
             {
-                PendingLoadToAccept = false;
-                ReceivedData = false;
-                LastEndOfDay = DateTime.MinValue;
+                Config.PendingLoadToAccept = false;
+                Config.ReceivedData = false;
+                Config.LastEndOfDay = DateTime.MinValue;
                 Config.SaveAppStatus();
 
                 DirectoryInfo di = new DirectoryInfo(Config.CodeBase);
@@ -3275,8 +3252,8 @@ namespace LaceupMigration
 
         static Dictionary<string, double> SerializeInvoicePaymentsToDataSet(DataSet ds, string sessionId, List<InvoicePayment> source = null, Dictionary<string, double> ordersTotals = null, bool inbackground = false)
         {
-            bool useNewSendPayment = CheckCommunicatorVersion(CommunicatorVersion, "45.0.0.0");
-            var useBankName = CheckCommunicatorVersion(CommunicatorVersion, "46.0.0");
+            bool useNewSendPayment = Config.CheckCommunicatorVersion("45.0.0.0");
+            var useBankName = Config.CheckCommunicatorVersion("46.0.0");
 
             var originalValues = new Dictionary<string, double>();
 
@@ -3836,7 +3813,7 @@ namespace LaceupMigration
                         netaccess.CloseConnection();
                         //finally remove the payments
 
-                        if (CheckCommunicatorVersion(CommunicatorVersion, "45.0.0"))
+                        if (Config.CheckCommunicatorVersion("45.0.0"))
                         {
                             //images
                             try
@@ -3973,7 +3950,7 @@ namespace LaceupMigration
                 }
 
 
-                if (CheckCommunicatorVersion(CommunicatorVersion, "45.0.0"))
+                if (Config.CheckCommunicatorVersion("45.0.0"))
                 {
                     //images
                     try
@@ -4078,7 +4055,7 @@ namespace LaceupMigration
                     }
 
 
-                    if (CheckCommunicatorVersion(CommunicatorVersion, "45.0.0"))
+                    if (Config.CheckCommunicatorVersion("45.0.0"))
                     {
                         //images
                         try
@@ -4260,7 +4237,7 @@ namespace LaceupMigration
                     {
                         writer.Write(LoadOrder.Date.ToString(CultureInfo.InvariantCulture));
 
-                        if (CheckCommunicatorVersion(CommunicatorVersion, "29.94"))
+                        if (Config.CheckCommunicatorVersion("29.94"))
                         {
                             writer.Write((char)20);
                             writer.Write(LoadOrder.Term ?? "");
@@ -4300,7 +4277,7 @@ namespace LaceupMigration
                                 writer.Write(Config.SessionId ?? "");       //4
                             }
 
-                            if (DataAccess.CheckCommunicatorVersion(CommunicatorVersion, "52.2.0"))
+                            if (Config.CheckCommunicatorVersion("52.2.0"))
                             {
                                 if (offset != 0)
                                 {
@@ -4724,10 +4701,10 @@ namespace LaceupMigration
 
                 NetAccess.GetCommunicatorVersion();
                 bool includeUniqueId = false;
-                if (!string.IsNullOrEmpty(DataAccess.CommunicatorVersion))
+
+                if (Config.CommunicatorVersion != null)
                 {
-                    var parts = DataAccess.CommunicatorVersion.Split('.');
-                    var i = Convert.ToInt32(parts[0]);
+                    var i = Config.CommunicatorVersion.Major;
 
                     includeUniqueId = (i > 13 && i < 20) || i > 21;
                 }
@@ -5352,7 +5329,7 @@ namespace LaceupMigration
                     netaccess.WriteStringToNetwork(Config.GetAuthString());
 
                     string communicatorCommand = "DailySalesReportCommand";
-                    if (CheckCommunicatorVersion(CommunicatorVersion, "28.3") && !Config.UseLaceupDataInSalesReport)
+                    if (Config.CheckCommunicatorVersion("28.3") && !Config.UseLaceupDataInSalesReport)
                         communicatorCommand = "SalesReportCommand";
 
                     // Get the orders
@@ -5495,7 +5472,7 @@ namespace LaceupMigration
                     netaccess.WriteStringToNetwork(Config.GetAuthString());
 
                     string reportCommand = "CommissionReportCommand";
-                    if (CheckCommunicatorVersion(CommunicatorVersion, "30.0.0.0") && !Config.ShowOldReportsRegardless)
+                    if (Config.CheckCommunicatorVersion("30.0.0.0") && !Config.ShowOldReportsRegardless)
                         reportCommand = "SalesmanCommByCustReportCommand";
 
                     // Get the orders
@@ -5544,7 +5521,7 @@ namespace LaceupMigration
                     netaccess.WriteStringToNetwork(Config.GetAuthString());
 
                     string reportCommand = "SalesmenCommReportCommand";
-                    if (CheckCommunicatorVersion(CommunicatorVersion, "30.0.0.0") && !Config.ShowOldReportsRegardless)
+                    if (Config.CheckCommunicatorVersion("30.0.0.0") && !Config.ShowOldReportsRegardless)
                         reportCommand = "SalesmanCommByCustReportCommand";
 
                     // Get the orders
@@ -6163,7 +6140,7 @@ namespace LaceupMigration
                     if (Config.Delivery)
                     {
                         string s = Config.SalesmanId.ToString(CultureInfo.InvariantCulture) + "," + date.ToString(CultureInfo.InvariantCulture) + "," + "no";
-                        if (CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "25.0.0.0"))
+                        if (Config.CheckCommunicatorVersion("25.0.0.0"))
                             s += ",no";
 
                         string command = "RouteInformation";
@@ -6693,7 +6670,8 @@ namespace LaceupMigration
                     netaccess.WriteStringToNetwork("AcceptLoadOrderCommand");
                     netaccess.WriteStringToNetwork(order.OriginalOrderId.ToString(CultureInfo.InvariantCulture));
 
-                    if (CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "23.2.0.0") || (CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "14.6.0.0") && !CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "20.0.0.0")))
+                    if (Config.CheckCommunicatorVersion("23.2.0.0") || (Config.CheckCommunicatorVersion("14.6.0.0") 
+                                                                        && !Config.CheckCommunicatorVersion("20.0.0.0")))
                     {
                         var ack = netaccess.ReadStringFromNetwork();
                         if (ack != "got it")
@@ -6702,7 +6680,7 @@ namespace LaceupMigration
 
                     Logger.CreateLog("load order accepted");
 
-                    if (CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "22.0.0.0"))
+                    if (Config.CheckCommunicatorVersion("22.0.0.0"))
                         netaccess.WriteStringToNetwork(valuesChanged);
 
                     //Close the connection and disconnect
@@ -6720,40 +6698,6 @@ namespace LaceupMigration
             }
             TimeSpan ts = DateTime.Now.Subtract(start);
             Logger.CreateLog("Total time accepting load: " + ts.TotalSeconds);
-        }
-
-        public static bool CheckCommunicatorVersion(string current, string min)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(current))
-                    return false;
-
-
-                if (!float.TryParse(current, out _))
-                {
-                    throw new ArgumentException($"Invalid version format: {current}");
-                }
-
-                var c_parts = current.Split('.');
-                var m_parts = min.Split('.');
-
-                int minLength = c_parts.Length > m_parts.Length ? m_parts.Length : c_parts.Length;
-
-                for (int i = 0; i < minLength; i++)
-                {
-                    if (int.Parse(c_parts[i]) > int.Parse(m_parts[i]))
-                        return true;
-                    else if (int.Parse(c_parts[i]) < int.Parse(m_parts[i]))
-                        return false;
-                }
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
         }
 
         public static void AcceptLoadOrders(List<int> ids, string valuesChanged)
@@ -6797,7 +6741,8 @@ namespace LaceupMigration
                     netaccess.WriteStringToNetwork("AcceptLoadOrderListCommand");
                     netaccess.WriteStringToNetwork(s);
 
-                    if (CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "23.2.0.0") || (CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "14.6.0.0") && !CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "20.0.0.0")))
+                    if (Config.CheckCommunicatorVersion("23.2.0.0") || (Config.CheckCommunicatorVersion("14.6.0.0") 
+                                                        && !Config.CheckCommunicatorVersion("20.0.0.0")))
                     {
                         var ack = netaccess.ReadStringFromNetwork();
                         if (ack != "got it")
@@ -6806,7 +6751,7 @@ namespace LaceupMigration
 
                     Logger.CreateLog("load orders accepted");
 
-                    if (CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "22.0.0.0"))
+                    if (Config.CheckCommunicatorVersion("22.0.0.0"))
                         netaccess.WriteStringToNetwork(valuesChanged);
 
                     //Close the connection and disconnect
@@ -8180,7 +8125,7 @@ namespace LaceupMigration
                     netaccess.WriteStringToNetwork("HELO");
                     netaccess.WriteStringToNetwork(Config.GetAuthString());
 
-                    if (CheckCommunicatorVersion(CommunicatorVersion, "29.0.0.0"))
+                    if (Config.CheckCommunicatorVersion("29.0.0.0"))
                     {
                         netaccess.WriteStringToNetwork("GetTransferForDSDCommand");
                         netaccess.WriteStringToNetwork(Config.SalesmanId.ToString());
@@ -8214,7 +8159,7 @@ namespace LaceupMigration
             {
                 NetAccess.GetCommunicatorVersion();
 
-                if (!CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "24.0.0.0"))
+                if (!Config.CheckCommunicatorVersion("24.0.0.0"))
                 {
                     Logger.CreateLog("Communicator to old to send SalesmanDeviceInfo");
                     return;
@@ -8452,11 +8397,11 @@ namespace LaceupMigration
             {
                 NetAccess.GetCommunicatorVersion();
 
-                if (!CheckCommunicatorVersion(CommunicatorVersion, "29.92.0.0"))
+                if (!Config.CheckCommunicatorVersion("29.92.0.0"))
                 {
                     Logger.CreateLog("Communicator to old to send SalesmanSyncAuthCommand");
 
-                    return LastEndOfDay == DateTime.MinValue || DateTime.Now.Subtract(LastEndOfDay).Minutes >= 1;
+                    return Config.LastEndOfDay == DateTime.MinValue || DateTime.Now.Subtract(Config.LastEndOfDay).Minutes >= 1;
                 }
 
                 using (NetAccess netaccess = new NetAccess())
