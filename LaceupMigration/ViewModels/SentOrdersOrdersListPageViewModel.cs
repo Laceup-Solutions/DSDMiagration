@@ -271,13 +271,13 @@ namespace LaceupMigration.ViewModels
 
                         string dstFileZipped = dstFile + ".zip";
                         DataAccess.ZipFile(dstFile, dstFileZipped);
-                        NetAccess.SendTheOrders(dstFileZipped);
+                        DataAccessEx.SendTheOrders(dstFileZipped);
                         System.IO.File.Delete(dstFileZipped);
 
                         var signatureFileZipped = dstFile + ".signature.zip";
                         if (System.IO.File.Exists(signatureFileZipped))
                         {
-                            NetAccess.SendTheSignatures(signatureFileZipped);
+                            DataAccessEx.SendTheSignatures(signatureFileZipped);
                         }
                     }
                     catch (Exception ex)

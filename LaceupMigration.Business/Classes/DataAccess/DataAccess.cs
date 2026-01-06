@@ -203,7 +203,7 @@ namespace LaceupMigration
         {
             try
             {
-                NetAccess.SendSession(file);
+                DataAccessEx.SendSession(file);
                 return true;
             }
             catch
@@ -3844,7 +3844,7 @@ namespace LaceupMigration
                                 var paymentZip = SerializePaymentImages();
                                 if (!string.IsNullOrEmpty(paymentZip) && File.Exists(paymentZip))
                                 {
-                                    NetAccess.SendPaymentImages(paymentZip);
+                                    DataAccessEx.SendPaymentImages(paymentZip);
                                     File.Delete(paymentZip);
                                 }
 
@@ -3981,7 +3981,7 @@ namespace LaceupMigration
                         var paymentZip = SerializePaymentImages();
                         if (!string.IsNullOrEmpty(paymentZip) && File.Exists(paymentZip))
                         {
-                            NetAccess.SendPaymentImages(paymentZip);
+                            DataAccessEx.SendPaymentImages(paymentZip);
                             File.Delete(paymentZip);
                         }
 
@@ -4086,7 +4086,7 @@ namespace LaceupMigration
                             var paymentZip = SerializePaymentImages();
                             if (!string.IsNullOrEmpty(paymentZip) && File.Exists(paymentZip))
                             {
-                                NetAccess.SendPaymentImages(paymentZip);
+                                DataAccessEx.SendPaymentImages(paymentZip);
                                 File.Delete(paymentZip);
                             }
 
@@ -4230,12 +4230,12 @@ namespace LaceupMigration
                     writer.WriteLine(item.Serialize());
             }
 
-            NetAccess.SaveClientDepartments(tempFile, delete);
+            DataAccessEx.SaveClientDepartments(tempFile, delete);
         }
 
         public static void SendDayReport()
         {
-            NetAccess.SendDayReport(Config.SessionId);
+            DataAccessEx.SendDayReport(Config.SessionId);
         }
 
         public static void SendLoadOrder()
@@ -4324,7 +4324,7 @@ namespace LaceupMigration
                         }
                     }
 
-                    NetAccess.SendTheLoadOrder(dstFile, LoadOrder.SalesmanId);
+                    DataAccessEx.SendTheLoadOrder(dstFile, LoadOrder.SalesmanId);
 
                     LoadOrder.Date = DateTime.MinValue;
                     LoadOrder.List.Clear();
@@ -4381,7 +4381,7 @@ namespace LaceupMigration
                         return;
                     }
                     //network access
-                    NetAccess.SendTheBuildQty(dstFile);
+                    DataAccessEx.SendTheBuildQty(dstFile);
 
                     File.Delete(dstFile);
                 }
@@ -4569,7 +4569,7 @@ namespace LaceupMigration
                         return;
                     }
                     //network access
-                    NetAccess.SendTheLeftOverInventory(dstFile);
+                    DataAccessEx.SendTheLeftOverInventory(dstFile);
 
                     File.Delete(dstFile);
                 }
@@ -4718,7 +4718,7 @@ namespace LaceupMigration
 
                 ZipFile(dstFile, dstFileZipped);
 
-                NetAccess.SendTheOrders(dstFileZipped);
+                DataAccessEx.SendTheOrders(dstFileZipped);
 
                 File.Delete(dstFileZipped);
 
@@ -4740,7 +4740,7 @@ namespace LaceupMigration
                 {
                     ZipFile(dstFile, dstFileZipped);
 
-                    NetAccess.SendTheSignatures(dstFileZipped);
+                    DataAccessEx.SendTheSignatures(dstFileZipped);
 
                     File.Delete(dstFileZipped);
                 }
@@ -4758,7 +4758,7 @@ namespace LaceupMigration
                         if (anyPZLOrders)
                         {
                             ZipFile(dstFile, dstFileZipped);
-                            NetAccess.SendZPLPrinter(dstFileZipped);
+                            DataAccessEx.SendZPLPrinter(dstFileZipped);
                             File.Delete(dstFileZipped);
                         }
 
@@ -4790,7 +4790,7 @@ namespace LaceupMigration
                 var imageZipFile = SerializeOrderImages(source, ordersId);
                 if (!string.IsNullOrEmpty(imageZipFile) && File.Exists(imageZipFile))
                 {
-                    NetAccess.SendOrdersImages(imageZipFile);
+                    DataAccessEx.SendOrdersImages(imageZipFile);
                     File.Delete(imageZipFile);
                 }
 
@@ -4798,7 +4798,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        NetAccess.SendOrderHistory(historyFile);
+                        DataAccessEx.SendOrderHistory(historyFile);
                         File.Delete(historyFile);
                     }
                     catch (Exception ex)
@@ -4834,7 +4834,7 @@ namespace LaceupMigration
                     // send the client notes
                     if (File.Exists(Config.ClientNotesStoreFile))
                     {
-                        NetAccess.SendClientNotes(Config.ClientNotesStoreFile);
+                        DataAccessEx.SendClientNotes(Config.ClientNotesStoreFile);
                         File.Delete(Config.ClientNotesStoreFile);
                     }
                 }
@@ -5306,7 +5306,7 @@ namespace LaceupMigration
 
                     //network access
                     //if (LoadOrder.List.Count > 0)
-                    NetAccess.SendTheParLevel(dstFile);
+                    DataAccessEx.SendTheParLevel(dstFile);
                     ParLevel.List.Clear();
                     if (File.Exists(Config.ParLevelFile))
                         File.Delete(Config.ParLevelFile);
@@ -6833,7 +6833,7 @@ namespace LaceupMigration
                 {
                     //FileOperationsLocker.InUse = true;
 
-                    NetAccess.SendClientDailyParLevel();
+                    DataAccessEx.SendClientDailyParLevel();
 
                     if (delete)
                     {
@@ -7154,7 +7154,7 @@ namespace LaceupMigration
                 {
                     //FileOperationsLocker.InUse = true;
 
-                    NetAccess.SendClientProdSort(Config.ClientProdSortFile);
+                    DataAccessEx.SendClientProdSort(Config.ClientProdSortFile);
 
                     ClientProdSort.Clear();
 
@@ -7213,7 +7213,7 @@ namespace LaceupMigration
                 {
                     //FileOperationsLocker.InUse = true;
 
-                    NetAccess.SendNewConsignment(Config.ConsignmentParFile);
+                    DataAccessEx.SendNewConsignment(Config.ConsignmentParFile);
 
                     ConsignmentValues.Clear();
 
@@ -8506,7 +8506,7 @@ namespace LaceupMigration
                     {
                         //FileOperationsLocker.InUse = true;
 
-                        NetAccess.SendAssetTracking();
+                        DataAccessEx.SendAssetTracking();
 
                         AssetTracking.Clear();
                     }
