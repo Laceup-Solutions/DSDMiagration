@@ -97,6 +97,7 @@ namespace LaceupMigration.ViewModels
 
         public void SelectSuggestion(SalesmanTruckDTO item)
         {
+            SelectedTruckSuggestion = item;
             Truck = item.Name.ToString();
             ShowSuggestions = false;
             FilteredTruckSuggestions.Clear();
@@ -317,11 +318,6 @@ namespace LaceupMigration.ViewModels
                     {
                         ProgressDialogHelper.Hide();
                     });
-
-                    // if (Config.EnableSelfServiceModule)
-                    // {
-                    // 	IconManager.ChangeIcon();
-                    // }
 
                     // Handle errors and navigation on main thread (matches Xamarin RunOnUiThread)
                     MainThread.BeginInvokeOnMainThread(async () =>
