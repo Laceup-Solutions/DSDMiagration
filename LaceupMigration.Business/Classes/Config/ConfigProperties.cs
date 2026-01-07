@@ -863,6 +863,7 @@ public partial class Config
     public static double LastLongitude { get; set; }
     public static double LastLatitude { get; set; }
     public static bool LoadingData { get; set; }
+    public static LoginType LoginType { get; set; }
 
     #endregion
 

@@ -14,7 +14,7 @@ namespace LaceupMigration
         void GetUserSettingLine();
         void GetSalesmanSettings(bool fromDownload = true);
         void GetSalesmanList();
-        string GetFieldForLogin();
+        void GetLoginType();
         void ClearData();
 
         #endregion
@@ -37,6 +37,8 @@ namespace LaceupMigration
         string GetClientImages(int clientId);
         void AddDeliveryClient(Client client);
         DriverRoute GetRouteForDriverShipDate(int driverId, DateTime date);
+        string GetSalesmanIdFromLogin(string login1, string login2);
+        List<SalesmanTruckDTO> GetSalesmanTrucks();
         #endregion
 
         #region Data Loading

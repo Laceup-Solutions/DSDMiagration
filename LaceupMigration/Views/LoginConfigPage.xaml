@@ -47,15 +47,18 @@
 					  HorizontalOptions="Center">
                     <Entry Grid.Row="0"
 						   Text="{Binding Field1}"
-						   Placeholder="Salesman ID"
+						   Placeholder="{Binding Field1Placeholder}"
 						   HorizontalTextAlignment="Center" />
 					<Entry Grid.Row="1"
 						   Text="{Binding Field2}"
+                           Placeholder="{Binding Field2Placeholder}"
+                           IsVisible="{Binding Field2Visible}"
 						   Keyboard="Numeric"
 						   HorizontalTextAlignment="Center" />
-					<Grid Grid.Row="2" RowDefinitions="Auto,Auto" IsVisible="False">
+                    <Grid Grid.Row="2" RowDefinitions="Auto,Auto" IsVisible="{Binding LoginWithTruck}">
 						<Entry Grid.Row="0"
 							   Text="{Binding Truck}"
+                               Placeholder="{Binding TruckPlaceholder}"
 							   HorizontalTextAlignment="Center"
 							   TextChanged="OnTruckTextChanged" />
 						<Border Grid.Row="1"

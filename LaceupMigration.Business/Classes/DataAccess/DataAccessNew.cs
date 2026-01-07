@@ -1,5 +1,7 @@
 ﻿using ICSharpCode.SharpZipLib.Zip;
+using iText.Kernel.Pdf.Canvas.Parser.ClipperLib;
 using Microsoft.Maui.Controls;
+using Newtonsoft.Json;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.PixelFormats;
@@ -54,11 +56,32 @@ namespace LaceupMigration
                 da.GetSalesmanList();
             }
         }
-        public string GetFieldForLogin()
+        public void GetLoginType()
         {
-            using (var da = new DataAccessLegacy())
+            try
             {
-                return da.GetFieldForLogin();
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    netaccess.OpenConnection();
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    netaccess.WriteStringToNetwork("GetFieldForLoginCommand");
+
+                    var field = Convert.ToInt32(netaccess.ReadStringFromNetwork());
+
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    Config.LoginType = (LoginType)field;
+                    Config.SaveAppStatus();
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                Config.LoginType = LoginType.UsernamePassword;
+                Config.SaveAppStatus();
             }
         }
         public void ClearData()
@@ -155,7 +178,84 @@ namespace LaceupMigration
                 return da.GetRouteForDriverShipDate(driverId, date);
             }
         }
-        
+        public string GetSalesmanIdFromLogin(string login1, string login2)
+        {
+            try
+            {
+                Logger.CreateLog("getting salesmanId from login");
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    netaccess.OpenConnection();
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    // Get the orders
+                    netaccess.WriteStringToNetwork("GetSalesmanIdFromLoginCommand");
+                    netaccess.WriteStringToNetwork(login1 + "|" + login2);
+
+                    var result = netaccess.ReadStringFromNetwork();
+
+                    if (result == "routeNotFound")
+                        return "No matching route.";
+
+                    if (result == "salesmanNotFound")
+                        return "The selected route has no salesman assigned.";
+
+                    if (result == "invalidTruck")
+                        return "The selected truck has orders in the route that are not yet finalized.";
+
+                    Config.SalesmanId = Convert.ToInt32(netaccess.ReadStringFromNetwork());
+
+                    //Close the connection and disconnect
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    return "";
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                return "Error processing request.";
+            }
+        }
+        public List<SalesmanTruckDTO> GetSalesmanTrucks()
+        {
+            try
+            {
+                using (var access = new NetAccess())
+                {
+                    access.OpenConnection();
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+
+                    access.WriteStringToNetwork("GetSalesmanTrucksCommand");
+
+                    var ack = access.ReadStringFromNetwork();
+
+                    if (ack == "error")
+                    {
+                        access.CloseConnection();
+                        throw new Exception("Error processing request");
+                    }
+
+                    string file = Path.GetTempFileName();
+
+                    access.ReceiveFile(file);
+
+                    access.CloseConnection();
+
+                    using (StreamReader reader = new StreamReader(file))
+                    {
+                        return JsonConvert.DeserializeObject<List<SalesmanTruckDTO>>(reader.ReadToEnd());
+                    }
+                }
+            }
+            catch
+            {
+                throw;
+            }
+        }
         #endregion
 
         #region Data Loading

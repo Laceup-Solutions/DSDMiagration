@@ -4248,34 +4248,9 @@ namespace LaceupMigration
             }
         }
 
-        public string GetFieldForLogin()
+        public void GetLoginType()
         {
-            string field = string.Empty;
-            StringBuilder sb = new StringBuilder();
-            DateTime start = DateTime.Now;
-            try
-            {
-                using (NetAccess netaccess = new NetAccess())
-                {
-                    netaccess.OpenConnection();
-                    netaccess.WriteStringToNetwork("HELO");
-                    netaccess.WriteStringToNetwork(Config.GetAuthString());
-
-                    netaccess.WriteStringToNetwork("GetFieldForLoginCommand");
-
-                    field = netaccess.ReadStringFromNetwork();
-
-                    netaccess.WriteStringToNetwork("Goodbye");
-                    netaccess.CloseConnection();
-
-                }
-            }
-            catch (Exception e)
-            {
-                Logger.CreateLog(e);
-            }
-
-            return field;
+            
         }
 
         public void ClearData()
@@ -7857,7 +7832,16 @@ namespace LaceupMigration
                 throw;
             }
         }
-
+        
+        public string GetSalesmanIdFromLogin(string login1, string login2)
+        {
+            return "";
+        }
+        
+        public List<SalesmanTruckDTO> GetSalesmanTrucks()
+        {
+            return new List<SalesmanTruckDTO>();
+        }
         #endregion
 
         #region Data Loading

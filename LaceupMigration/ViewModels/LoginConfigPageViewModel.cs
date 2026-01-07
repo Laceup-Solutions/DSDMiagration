@@ -10,9 +10,14 @@ namespace LaceupMigration.ViewModels
     {
         private readonly DialogService _dialogService;
         [ObservableProperty] private string _field1 = string.Empty;
+        [ObservableProperty] private string _field1Placeholder = string.Empty;
         [ObservableProperty] private string _field2 = string.Empty;
+        [ObservableProperty] private string _field2Placeholder = string.Empty;
         [ObservableProperty] private string _truck = string.Empty;
+        [ObservableProperty] private string _truckPlaceholder = string.Empty;
         [ObservableProperty] private bool _isBusy;
+        [ObservableProperty] private bool _loginWithTruck;
+        [ObservableProperty] private bool _field2Visible;
         [ObservableProperty] private ObservableCollection<SalesmanTruckDTO> _truckSuggestions = new();
         [ObservableProperty] private ObservableCollection<SalesmanTruckDTO> _filteredTruckSuggestions = new();
         [ObservableProperty] private bool _showSuggestions = false;
@@ -34,6 +39,9 @@ namespace LaceupMigration.ViewModels
         {
             _dialogService = dialogService;
 
+            LoginWithTruck = false;
+            Field1Placeholder = "Salesman ID";
+
             if (!Config.ApplicationIsInDemoMode)
             {
                 try
@@ -52,22 +60,6 @@ namespace LaceupMigration.ViewModels
             if (Config.SignedIn)
             {
                 MainThread.BeginInvokeOnMainThread(async () => await GoToAsyncOrMainAsync("///MainPage"));
-            }
-        }
-
-        private void LoadSalesmanSuggestions()
-        {
-            try
-            {
-                var trucks = DataProvider.GetSalesmanTrucks().OrderBy(x => x.Name).ToList();
-
-                TruckSuggestions.Clear();
-                foreach (var item in trucks)
-                    TruckSuggestions.Add(item);
-            }
-            catch (Exception ex)
-            {
-                Logger.CreateLog(ex);
             }
         }
 
@@ -141,14 +133,54 @@ namespace LaceupMigration.ViewModels
         {
             await _dialogService.ShowConfigDialogInLoginAsync();
 
-            //GetLoginType();
+            DataProvider.GetLoginType();
 
             await UpdateFieldsByLoginType();
         }
 
         private async Task UpdateFieldsByLoginType()
         {
-            
+            Field2Visible = LoginWithTruck = false;
+
+            switch (Config.LoginType)
+            {
+                case LoginType.SalesmanId:
+                    Field1Placeholder = "Salesman ID";
+                    break;
+                case LoginType.UsernamePassword:
+                    Field1Placeholder = "Username";
+                    Field2Placeholder = "Password";
+                    Field2Visible = true;
+                    break;
+                case LoginType.RouteNumber:
+                    Field1Placeholder = "Route Number";
+                    break;
+                case LoginType.RouteTruck:
+                    Field1Placeholder = "Route Number";
+                    TruckPlaceholder = "Truck";
+                    LoginWithTruck = true;
+                    LoadSalesmanSuggestions();
+
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void LoadSalesmanSuggestions()
+        {
+            try
+            {
+                var trucks = DataProvider.GetSalesmanTrucks().OrderBy(x => x.Name).ToList();
+
+                TruckSuggestions.Clear();
+                foreach (var item in trucks)
+                    TruckSuggestions.Add(item);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
         }
 
         [RelayCommand]
@@ -163,28 +195,7 @@ namespace LaceupMigration.ViewModels
 
             NetAccess.GetCommunicatorVersion();
 
-            if (Config.CheckCommunicatorVersion("80.0.0"))
-            {
-                var field = DataProvider.GetFieldForLogin();
-                if (!string.IsNullOrEmpty(field))
-                {
-                    DataProvider.GetSalesmanList();
-                    var actualSalesman = GetSalesmanBasedOnField(field);
-                    if (actualSalesman != null)
-                    {
-                        Config.SalesmanId = actualSalesman.Id;
-                        // [MIGRATION]: Save SalesmanId to preferences (matches Xamarin behavior)
-                        // Ensures the correct SalesmanId from server response is persisted
-                        Preferences.Set("VendorId", Config.SalesmanId);
-                    }
-                    else
-                    {
-                        var baseText = field.ToLower().Contains("auth") ? field : $"Please enter a valid {field.Replace('_', ' ')}. There is no {field.Replace('_', ' ')} matching: {Config.SalesmanId}";
-                        await DialogHelper._dialogService.ShowAlertAsync(baseText, "Alert", "OK");
-                        return;
-                    }
-                }
-            }
+            
 
             ContinueSignInAsync();
         }

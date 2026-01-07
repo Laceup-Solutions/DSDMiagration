@@ -956,6 +956,7 @@ namespace LaceupMigration
             Preferences.Set("WaitBeforeStart", WaitBeforeStart);
             Preferences.Set("LastEndOfDay", LastEndOfDay.Ticks);
             Preferences.Set("AcceptInventoryReadOnly", AcceptInventoryReadOnly ? 1 : 0);
+            Preferences.Set("LoginType", (int)LoginType);
         }
 
         private static void LoadAppStatus()
@@ -967,6 +968,7 @@ namespace LaceupMigration
             WaitBeforeStart = Preferences.Get("WaitBeforeStart", 5);
             LastEndOfDay = new DateTime(Preferences.Get("LastEndOfDay", DateTime.MinValue.Ticks));
             AcceptInventoryReadOnly = Preferences.Get("AcceptInventoryReadOnly", 0) > 0;
+            LoginType = (LoginType)Preferences.Get("LoginType", 0);
         }
 
         public static void SavePresaleLastOrderId()
