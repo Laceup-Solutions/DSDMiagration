@@ -72,7 +72,7 @@
 											BackgroundColor="Transparent"
 											SelectionMode="None">
 								<CollectionView.ItemTemplate>
-									<DataTemplate>
+                                    <DataTemplate>
 										<Grid Padding="10,8">
 											<Label Text="{Binding Name}"
 												   FontSize="14"
