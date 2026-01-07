@@ -17,16 +17,13 @@ namespace LaceupMigration
             if (dataAccessInstance == null)
             {
                 var version = NetAccess.GetCommunicatorVersion();
+                
+                if (version != null && version > new Version("80.0.0.0"))
+                    dataAccessInstance = new DataAccessLegacy();
+                else
+                    dataAccessInstance = new DataAccessNew();
 
-                dataAccessInstance = new DataAccessLegacy();
                 dataAccessInstance.Initialize();
-
-                //if (version != null && version > new Version("80.0.0.0"))
-                //{
-                //    dataAccessInstance = new DataAccess();
-                //}
-                //else
-                //    dataAccessInstance = new DataAccess();
             }
         }
 
@@ -362,6 +359,11 @@ namespace LaceupMigration
         public static void Unsubscribe()
         {
             dataAccessInstance.Unsubscribe();
+        }
+
+        public static List<SalesmanTruckDTO> GetSalesmanTrucks()
+        {
+            return new List<SalesmanTruckDTO>();
         }
 
         #endregion

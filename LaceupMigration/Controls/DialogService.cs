@@ -1439,6 +1439,237 @@ public class DialogService : IDialogService
         // Fallback to Application Windows
         return Application.Current?.Windows?.FirstOrDefault()?.Page;
     }
-    
-    
+
+    public async Task ShowConfigDialogInLoginAsync()
+    {
+        var page = GetCurrentPage();
+        if (page == null)
+            return;
+
+        // Create entry fields for configuration
+        var serverAddressEntry = new Entry
+        {
+            Text = ServerHelper.GetServerNumber(Config.IPAddressGateway),
+            //Placeholder = "Server Address",
+            FontSize = 16,
+            HeightRequest = 45,
+            BackgroundColor = Colors.White,
+            Margin = new Thickness(0, 5, 0, 0)
+        };
+
+        // Company Id is typically Port in this context
+        var companyIdEntry = new Entry
+        {
+            Text = Config.Port.ToString(),
+            //Placeholder = "Company Id",
+            Keyboard = Keyboard.Numeric,
+            FontSize = 16,
+            HeightRequest = 45,
+            BackgroundColor = Colors.White,
+            Margin = new Thickness(0, 5, 0, 0)
+        };
+
+        // Create content layout
+        var content = new VerticalStackLayout
+        {
+            Spacing = 12,
+            Padding = 20,
+            BackgroundColor = Colors.White,
+            Children =
+                    {
+                        new Label
+                        {
+                            Text = "Server Address:",
+                            FontSize = 15,
+                            FontAttributes = FontAttributes.Bold,
+                            TextColor = Colors.Black,
+                            Margin = new Thickness(0, 0, 0, 2)
+                        },
+                        serverAddressEntry,
+                        new Label
+                        {
+                            Text = "Company Id:",
+                            FontSize = 15,
+                            FontAttributes = FontAttributes.Bold,
+                            TextColor = Colors.Black,
+                            Margin = new Thickness(0, 8, 0, 2)
+                        },
+                        companyIdEntry
+                    }
+        };
+
+        // Create buttons row (Cancel on left, Add/Save on right)
+        var cancelButton = new Button
+        {
+            Text = "Cancel",
+            BackgroundColor = Colors.Transparent,
+            TextColor = Color.FromArgb("#017CBA"), // Primary blue color
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            Margin = new Thickness(0),
+            CornerRadius = 0
+        };
+
+        var addButton = new Button
+        {
+            Text = "Save",
+            BackgroundColor = Colors.Transparent,
+            TextColor = Color.FromArgb("#017CBA"), // Primary blue color
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            Margin = new Thickness(0),
+            CornerRadius = 0
+        };
+
+        // Create separator line between buttons
+        var buttonSeparator = new BoxView
+        {
+            WidthRequest = 1,
+            BackgroundColor = Color.FromArgb("#E0E0E0"),
+            VerticalOptions = LayoutOptions.Fill
+        };
+
+        var buttonRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = 1 },
+                new ColumnDefinition { Width = GridLength.Star }
+            },
+            ColumnSpacing = 0,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, 0, 0), // No margin right, left, or bottom
+            BackgroundColor = Colors.White
+        };
+
+        Grid.SetColumn(cancelButton, 0);
+        Grid.SetColumn(buttonSeparator, 1);
+        Grid.SetColumn(addButton, 2);
+        buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(buttonSeparator);
+        buttonRow.Children.Add(addButton);
+
+        // Create a popup-style dialog (centered overlay, not full page)
+        var scrollContent = new ScrollView
+        {
+            Content = content,
+            MaximumWidthRequest = 300,
+            MaximumHeightRequest = 500
+        };
+
+        var mainContainer = new VerticalStackLayout
+        {
+            Spacing = 0,
+            BackgroundColor = Colors.White,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, 0, 0),
+            Children =
+            {
+                new Label
+                {
+                    Text = "Configuration",
+                    FontSize = 18,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Color.FromArgb("#017CBA"), // Blue text matching image
+                    Padding = new Thickness(20, 20, 20, 15),
+                    BackgroundColor = Colors.White
+                },
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") },
+                scrollContent,
+                // Gray line on top of buttons with no margin or padding - outside scrollContent to avoid padding
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0) },
+                buttonRow
+            }
+        };
+
+        var dialogBorder = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 0,
+            Padding = 0,
+            Margin = new Thickness(20),
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(8) },
+            Content = mainContainer
+        };
+
+        // Create a grid with semi-transparent background and centered content
+        var overlayGrid = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"), // Semi-transparent black overlay
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            },
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        // Place dialog border in center of overlay
+        Grid.SetRow(dialogBorder, 1);
+        Grid.SetColumn(dialogBorder, 1);
+        overlayGrid.Children.Add(dialogBorder);
+
+        // Create modal page (full screen but styled as popup)
+        var dialog = new ContentPage
+        {
+            BackgroundColor = Colors.Transparent,
+            Content = overlayGrid
+        };
+
+        // Helper method to safely pop the modal
+        async Task SafePopModalAsync()
+        {
+            try
+            {
+                var currentPage = GetCurrentPage();
+                if (currentPage != null)
+                {
+                    if (currentPage == dialog && currentPage.Navigation.ModalStack.Count > 0)
+                    {
+                        await currentPage.Navigation.PopModalAsync();
+                    }
+                    else if (page != null && page.Navigation.ModalStack.Count > 0)
+                    {
+                        await page.Navigation.PopModalAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error popping modal: {ex.Message}");
+            }
+        }
+
+        int port = 0;
+        int.TryParse(companyIdEntry.Text, out port);
+
+        addButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+
+            var serverPortConfig = await ServerHelper.GetIdForServer(serverAddressEntry.Text, port);
+            Config.IPAddressGateway = serverPortConfig.Item1;
+            Config.Port = serverPortConfig.Item2;
+
+            Preferences.Set("IPAddressGateway", Config.IPAddressGateway);
+            Preferences.Set("Port", Config.Port);
+        };
+
+        cancelButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+        };
+
+        // Show as modal
+        await page.Navigation.PushModalAsync(dialog);
+
+    }
+
 }

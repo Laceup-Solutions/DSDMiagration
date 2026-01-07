@@ -20,7 +20,7 @@ using SkiaSharp;
 
 namespace LaceupMigration
 {
-    public class DataAccessLegacy : IDataAccess
+    public class DataAccessLegacy : IDataAccess, IDisposable
     {
         public static char[] DataLineSplitter = new char[] { (char)20 };
         static Dictionary<int, Product> notFoundProducts = new Dictionary<int, Product>();
@@ -14020,5 +14020,9 @@ namespace LaceupMigration
             return sb.ToString();
         }
 
+        public void Dispose()
+        {
+            
+        }
     }
 }

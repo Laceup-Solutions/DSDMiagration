@@ -850,4 +850,20 @@ public partial class Config
         get { return DateTime.FromBinary(Preferences.Get("DayClockOutKey", 0)); }
         set { Preferences.Set("DayClockOutKey", value.Ticks); }
     }
+
+    #region AppStatus Properties
+
+    public static bool PendingLoadToAccept { get; set; }
+    public static bool ReceivedData { get; set; }
+    public static int RouteOrdersCount { get; set; }
+    public static Version CommunicatorVersion { get; set; }
+    public static int WaitBeforeStart { get; set; } = 5;
+    public static DateTime LastEndOfDay { get; set; } = DateTime.MinValue;
+    public static bool AcceptInventoryReadOnly { get; set; }
+    public static double LastLongitude { get; set; }
+    public static double LastLatitude { get; set; }
+    public static bool LoadingData { get; set; }
+
+    #endregion
+
 }

@@ -20,7 +20,7 @@ using SkiaSharp;
 
 namespace LaceupMigration.DataAccess.Deprecated
 {
-    public partial class DataAccess 
+    public partial class DataAccess
     {
         public const int EntitiesToReadInTestMode = 100;
 
