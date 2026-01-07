@@ -74,7 +74,7 @@
 								<CollectionView.ItemTemplate>
 									<DataTemplate>
 										<Grid Padding="10,8">
-											<Label Text="{Binding DisplayText}"
+											<Label Text="{Binding Name}"
 												   FontSize="14"
 												   TextColor="Black">
 												<Label.GestureRecognizers>

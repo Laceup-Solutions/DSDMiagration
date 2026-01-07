@@ -20,6 +20,7 @@ public interface IDialogService
     Task<(string qty, UnitOfMeasure selectedUoM)> ShowTransferQtyDialogAsync(string productName, Product product, string initialQty = "1", UnitOfMeasure initialUoM = null, string buttonText = "Add");
     Task<(int? priceLevelId, string price, string comments)> ShowPriceLevelDialogAsync(string productName, Product product, Order order, UnitOfMeasure uom, int currentPriceLevelSelected, string initialPrice = "", string initialComments = "");
     Task<(List<int> selectedCategoryIds, bool selectAll, bool showPrice, bool showUPC, bool showUoM)?> ShowCatalogFilterDialogAsync(List<Category> categories);
+    Task<bool> ShowConfigDialogInLoginAsync();
 }
 
 public class DialogHelper

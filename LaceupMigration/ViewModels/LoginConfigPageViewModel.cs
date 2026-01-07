@@ -42,6 +42,14 @@ namespace LaceupMigration.ViewModels
             LoginWithTruck = false;
             Field1Placeholder = "Salesman ID";
 
+            if (Config.LoginType == LoginType.RouteTruck)
+            {
+                DataProvider.Instance();
+                LoadSalesmanSuggestions();
+            }
+
+            UpdateFieldsByLoginType();
+
             if (!Config.ApplicationIsInDemoMode)
             {
                 try
@@ -131,39 +139,85 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task Configuration()
         {
-            await _dialogService.ShowConfigDialogInLoginAsync();
+            try
+            {
+                // Show dialog and wait for result - only proceed if Save was clicked
+                var saved = await _dialogService.ShowConfigDialogInLoginAsync();
+                
+                // Only execute these functions if Save was clicked
+                if (!saved)
+                    return;
 
-            DataProvider.GetLoginType();
+                // Small delay to ensure the page is fully available after modal closes (Android timing issue)
+                await Task.Delay(100);
 
-            await UpdateFieldsByLoginType();
+                GetFieldsToLogin();
+
+                // Ensure we're on the main thread before updating UI properties
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    try
+                    {
+                        // Verify the page is still available before updating
+                        var currentPage = Shell.Current?.CurrentPage;
+                        if (currentPage == null)
+                            return;
+
+                        UpdateFieldsByLoginType();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog(ex);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
         }
 
-        private async Task UpdateFieldsByLoginType()
+        void GetFieldsToLogin()
         {
-            Field2Visible = LoginWithTruck = false;
+            DataProvider.Instance();
+            DataProvider.GetLoginType();
 
-            switch (Config.LoginType)
+            if(Config.LoginType == LoginType.RouteTruck)
+                LoadSalesmanSuggestions();
+        }
+
+        private void UpdateFieldsByLoginType()
+        {
+            try
             {
-                case LoginType.SalesmanId:
-                    Field1Placeholder = "Salesman ID";
-                    break;
-                case LoginType.UsernamePassword:
-                    Field1Placeholder = "Username";
-                    Field2Placeholder = "Password";
-                    Field2Visible = true;
-                    break;
-                case LoginType.RouteNumber:
-                    Field1Placeholder = "Route Number";
-                    break;
-                case LoginType.RouteTruck:
-                    Field1Placeholder = "Route Number";
-                    TruckPlaceholder = "Truck";
-                    LoginWithTruck = true;
-                    LoadSalesmanSuggestions();
+                Field2Visible = LoginWithTruck = false;
 
-                    break;
-                default:
-                    break;
+                switch (Config.LoginType)
+                {
+                    case LoginType.SalesmanId:
+                        Field1Placeholder = "Salesman ID";
+                        break;
+                    case LoginType.UsernamePassword:
+                        Field1Placeholder = "Username";
+                        Field2Placeholder = "Password";
+                        Field2Visible = true;
+                        break;
+                    case LoginType.RouteNumber:
+                        Field1Placeholder = "Route Number";
+                        break;
+                    case LoginType.RouteTruck:
+                        Field1Placeholder = "Route Number";
+                        TruckPlaceholder = "Truck";
+                        LoginWithTruck = true;
+
+                        break;
+                    default:
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
             }
         }
 
@@ -187,30 +241,9 @@ namespace LaceupMigration.ViewModels
         private async Task SignIn()
         {
             var saved = await SaveConfigurationAsync();
-            if (!saved)
-            {
-                await DialogHelper._dialogService.ShowAlertAsync("Please check the configuration.", "Alert", "OK");
-                return;
-            }
 
-            NetAccess.GetCommunicatorVersion();
-
-            
-
-            ContinueSignInAsync();
-        }
-
-        private Salesman? GetSalesmanBasedOnField(string field)
-        {
-            return field switch
-            {
-                "route_number" => Salesman.List.FirstOrDefault(x => x.RouteNumber == Config.SalesmanId.ToString()),
-                "id" => Salesman.List.FirstOrDefault(x => x.Id == Config.SalesmanId),
-                "original_id" => Salesman.List.FirstOrDefault(x => x.OriginalId == Config.SalesmanId.ToString()),
-                "name" => Salesman.List.FirstOrDefault(x => x.Name == Config.SalesmanId.ToString()),
-                "phone" => Salesman.List.FirstOrDefault(x => x.Phone == Config.SalesmanId.ToString()),
-                _ => Salesman.List.FirstOrDefault(x => x.Id == Config.SalesmanId),
-            };
+            if (saved)
+                ContinueSignInAsync();
         }
 
         private void ContinueSignInAsync()
@@ -461,39 +494,59 @@ namespace LaceupMigration.ViewModels
 
         private async Task<bool> SaveConfigurationAsync()
         {
-            if (string.IsNullOrWhiteSpace(Field1))
+            string result = string.Empty;
+
+            switch (Config.LoginType)
+            {
+                case LoginType.SalesmanId:
+                    if (string.IsNullOrEmpty(Field1))
+                    {
+                        await DialogHelper._dialogService.ShowAlertAsync("Please enter Salesman ID.", "Alert", "OK");
+                        return false;
+                    }
+                    result = DataProvider.GetSalesmanIdFromLogin(Field1, "");
+                    Config.RouteName = "";
+                    break;
+                case LoginType.UsernamePassword:
+                    if (string.IsNullOrEmpty(Field1) || string.IsNullOrEmpty(Field2))
+                    {
+                        await DialogHelper._dialogService.ShowAlertAsync("Please enter a valid username and password.", "Alert", "OK");
+                        return false;
+                    }
+                    result = DataProvider.GetSalesmanIdFromLogin(Field1, Field2);
+                    Config.RouteName = "";
+                    break;
+                case LoginType.RouteNumber:
+                    if (string.IsNullOrEmpty(Field1))
+                    {
+                        await DialogHelper._dialogService.ShowAlertAsync("Please enter the route number.", "Alert", "OK");
+                        return false;
+                    }
+                    result = DataProvider.GetSalesmanIdFromLogin(Field1, "");
+                    Config.RouteName = Field1;
+                    break;
+                case LoginType.RouteTruck:
+                    if (string.IsNullOrEmpty(Field1) || string.IsNullOrEmpty(Truck) || SelectedTruckSuggestion == null)
+                    {
+                        await DialogHelper._dialogService.ShowAlertAsync("Please enter a valid route number and truck.", "Alert", "OK");
+                        return false;
+                    }
+
+                    result = DataProvider.GetSalesmanIdFromLogin(Field1, SelectedTruckSuggestion.Id.ToString());
+                    Config.RouteName = Field1;
+                    break;
+                default:
+                    break;
+            }
+
+            if (!string.IsNullOrEmpty(result))
+            {
+                await DialogHelper._dialogService.ShowAlertAsync(result, "Alert", "OK");
                 return false;
-
-            Config.IPAddressGateway = Field1;
-
-            try
-            {
-                var p = Convert.ToInt32(Field2);
-                Config.Port = p;
-            }
-            catch (Exception ex)
-            {
-                Logger.CreateLog(ex);
-                return false;
             }
 
-            var serverPortConfig = await ServerHelper.GetIdForServer(Config.IPAddressGateway, Config.Port);
-            Config.IPAddressGateway = serverPortConfig.Item1;
-            Config.Port = serverPortConfig.Item2;
-
-            try
-            {
-                var id = Convert.ToInt32(1);
-                Config.SalesmanId = id;
-                // [MIGRATION]: Save SalesmanId to preferences (matches Xamarin behavior - saved at end via SaveSettings)
-                // We save immediately here to ensure persistence, matching Xamarin's SaveSettings() call after login
-                Preferences.Set("VendorId", Config.SalesmanId);
-            }
-            catch (Exception ee)
-            {
-                Logger.CreateLog(ee);
-                return false;
-            }
+            Preferences.Set("VendorId", Config.SalesmanId);
+            Preferences.Get("RouteNameKey", Config.RouteName);
 
             return true;
         }

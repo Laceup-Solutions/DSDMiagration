@@ -1,22 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Globalization;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Xml;
-using ICSharpCode.SharpZipLib.Zip;
-using System.Diagnostics;
-using System.Xml.Serialization;
-using System.Security.Policy;
+﻿using ICSharpCode.SharpZipLib.Zip;
+using Microsoft.Maui.Storage;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using SkiaSharp;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Security.Policy;
+using System.Text;
+using System.Threading;
+using System.Xml;
+using System.Xml.Serialization;
+using static iText.StyledXmlParser.Jsoup.Select.Evaluator;
 
 namespace LaceupMigration
 {
@@ -7835,6 +7837,11 @@ namespace LaceupMigration
         
         public string GetSalesmanIdFromLogin(string login1, string login2)
         {
+            int salesmanId = 0;
+            int.TryParse(login1, out salesmanId);
+
+            Config.SalesmanId = salesmanId;
+
             return "";
         }
         

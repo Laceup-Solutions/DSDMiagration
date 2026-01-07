@@ -12,19 +12,24 @@ namespace LaceupMigration
 
         #region Initialization and Setup
 
-        public static void Initialize()
+        public static void Instance()
         {
             if (dataAccessInstance == null)
             {
                 var version = NetAccess.GetCommunicatorVersion();
 
                 if (version != null && version > new Version("80.0.0.0"))
-                    dataAccessInstance = new DataAccessLegacy();
-                else
                     dataAccessInstance = new DataAccessNew();
-
-                dataAccessInstance.Initialize();
+                else
+                    dataAccessInstance = new DataAccessLegacy();
             }
+        }
+
+        public static void Initialize()
+        {
+            Instance();
+
+            dataAccessInstance.Initialize();
         }
 
         public static void GetUserSettingLine()
@@ -122,7 +127,7 @@ namespace LaceupMigration
 
         public static List<SalesmanTruckDTO> GetSalesmanTrucks()
         {
-            return new List<SalesmanTruckDTO>();
+            return dataAccessInstance.GetSalesmanTrucks();
         }
 
         #endregion

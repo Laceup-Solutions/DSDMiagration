@@ -1440,11 +1440,13 @@ public class DialogService : IDialogService
         return Application.Current?.Windows?.FirstOrDefault()?.Page;
     }
 
-    public async Task ShowConfigDialogInLoginAsync()
+    public async Task<bool> ShowConfigDialogInLoginAsync()
     {
         var page = GetCurrentPage();
-        if (page == null)
-            return;
+        if (page == null || page.Navigation == null)
+            return false;
+
+        var tcs = new TaskCompletionSource<bool>();
 
         // Create entry fields for configuration
         var serverAddressEntry = new Entry
@@ -1623,52 +1625,117 @@ public class DialogService : IDialogService
             Content = overlayGrid
         };
 
+        // Store reference to the original page's navigation for reliable modal closing
+        var originalPageNavigation = page.Navigation;
+        var dialogClosed = false;
+
         // Helper method to safely pop the modal
         async Task SafePopModalAsync()
         {
+            if (dialogClosed)
+                return;
+
+            dialogClosed = true;
+
             try
             {
-                var currentPage = GetCurrentPage();
-                if (currentPage != null)
+                // Use the dialog's navigation directly - this is the most reliable way
+                if (dialog?.Navigation != null && dialog.Navigation.ModalStack.Count > 0)
                 {
-                    if (currentPage == dialog && currentPage.Navigation.ModalStack.Count > 0)
+                    await MainThread.InvokeOnMainThreadAsync(async () =>
                     {
-                        await currentPage.Navigation.PopModalAsync();
-                    }
-                    else if (page != null && page.Navigation.ModalStack.Count > 0)
+                        try
+                        {
+                            await dialog.Navigation.PopModalAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error popping modal from dialog navigation: {ex.Message}");
+                        }
+                    });
+                }
+                // Fallback: use original page navigation
+                else if (originalPageNavigation != null && originalPageNavigation.ModalStack.Count > 0)
+                {
+                    await MainThread.InvokeOnMainThreadAsync(async () =>
                     {
-                        await page.Navigation.PopModalAsync();
-                    }
+                        try
+                        {
+                            await originalPageNavigation.PopModalAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error popping modal from original navigation: {ex.Message}");
+                        }
+                    });
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error popping modal: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error in SafePopModalAsync: {ex.Message}");
             }
         }
 
-        int port = 0;
-        int.TryParse(companyIdEntry.Text, out port);
-
         addButton.Clicked += async (s, e) =>
         {
-            await SafePopModalAsync();
+            try
+            {
+                int port = 0;
+                int.TryParse(companyIdEntry.Text, out port);
 
-            var serverPortConfig = await ServerHelper.GetIdForServer(serverAddressEntry.Text, port);
-            Config.IPAddressGateway = serverPortConfig.Item1;
-            Config.Port = serverPortConfig.Item2;
+                var serverPortConfig = await ServerHelper.GetIdForServer(serverAddressEntry.Text, port);
+                Config.IPAddressGateway = serverPortConfig.Item1;
+                Config.Port = serverPortConfig.Item2;
 
-            Preferences.Set("IPAddressGateway", Config.IPAddressGateway);
-            Preferences.Set("Port", Config.Port);
+                Preferences.Set("IPAddressGateway", Config.IPAddressGateway);
+                Preferences.Set("Port", Config.Port);
+                
+                if (!tcs.Task.IsCompleted)
+                    tcs.SetResult(true);
+
+                // Close dialog and return true (saved)
+                await SafePopModalAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving configuration: {ex.Message}");
+                
+                if (!tcs.Task.IsCompleted)
+                    tcs.SetResult(false);
+
+                // Close dialog even if save failed
+                await SafePopModalAsync();
+            }
         };
 
         cancelButton.Clicked += async (s, e) =>
         {
             await SafePopModalAsync();
+            if (!tcs.Task.IsCompleted)
+                tcs.SetResult(false);
+        };
+
+        // Handle dialog disappearing (user might close it via back button on Android)
+        dialog.Disappearing += (s, e) =>
+        {
+            if (!tcs.Task.IsCompleted)
+                tcs.SetResult(false);
         };
 
         // Show as modal
-        await page.Navigation.PushModalAsync(dialog);
+        try
+        {
+            await originalPageNavigation.PushModalAsync(dialog);
+            // Wait for dialog to close before returning
+            return await tcs.Task;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error showing config dialog: {ex.Message}");
+            if (!tcs.Task.IsCompleted)
+                tcs.SetResult(false);
+            return false;
+        }
 
     }
 
