@@ -8,7 +8,7 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
             <!-- Save Button at the top -->
-            <Button Text="Save"
+            <Button Text="Save Customer"
                     Command="{Binding SaveCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"

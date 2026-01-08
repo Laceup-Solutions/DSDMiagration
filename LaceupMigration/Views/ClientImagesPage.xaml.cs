@@ -20,7 +20,8 @@ namespace LaceupMigration.Views
             {
                 if (int.TryParse(value.ToString(), out var clientId))
                 {
-                    Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(clientId));
+                    // Initialize synchronously to avoid race condition with OnAppearing
+                    Task.Run(async () => await _viewModel.InitializeAsync(clientId));
                 }
             }
         }
@@ -28,6 +29,8 @@ namespace LaceupMigration.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            // Only call OnAppearingAsync if already initialized (to avoid duplicate loading)
+            // If not initialized yet, InitializeAsync will handle the loading
             await _viewModel.OnAppearingAsync();
         }
     }

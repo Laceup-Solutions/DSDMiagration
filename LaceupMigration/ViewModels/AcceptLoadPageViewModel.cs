@@ -499,25 +499,30 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task ShowMenuAsync()
         {
+            // Match Xamarin acceptOrdersMenu.xml order exactly:
+            // 1. Print
+            // 2. Edit Qty (if AcceptLoadEditable)
+            // 3. Advanced Options
             var options = new List<string>();
+
+            options.Add("Print");
 
             if (Config.AcceptLoadEditable)
             {
-                options.Add("Edit");
+                options.Add("Edit Qty");
             }
 
-            options.Add("Print");
             options.Add("Advanced Options");
 
             var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.ToArray());
 
             switch (choice)
             {
-                case "Edit":
-                    await EditDeliveryQtyAsync();
-                    break;
                 case "Print":
                     await PrintAsync();
+                    break;
+                case "Edit Qty":
+                    await EditDeliveryQtyAsync();
                     break;
                 case "Advanced Options":
                     await ShowAdvancedOptionsAsync();

@@ -24,6 +24,8 @@ namespace LaceupMigration.UtilDlls
         {
             InitializeComponent();
             Shell.SetTabBarIsVisible(this, false);
+            // Use custom menu to prevent base class from adding duplicate MENU button
+            UseCustomMenu = true;
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)

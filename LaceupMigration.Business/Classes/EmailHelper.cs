@@ -385,7 +385,7 @@ namespace LaceupMigration
             }
         }
 
-        static string GetLoadPdf(Order order)
+        public static string GetLoadPdf(Order order)
         {
             try
             {
@@ -1122,7 +1122,7 @@ namespace LaceupMigration
             return style;
         }
 
-        public virtual string GeneratePdfCatalog(Document doc, List<Product> products, Client client)
+        public virtual string GeneratePdfCatalog(Document doc, List<Product> products, Client client, bool showPrice = true, bool showUPC = true, bool showUoM = true)
         {
             //add companyinfo
 
@@ -1145,7 +1145,7 @@ namespace LaceupMigration
                         if (client != null)
                             AddOrderClientInfo(doc, client);
 
-                        AddCatalogDetails(doc, products, client);
+                        AddCatalogDetails(doc, products, client, showPrice, showUPC, showUoM);
                     }
                 }
 
@@ -1174,26 +1174,49 @@ namespace LaceupMigration
             doc.Add(new Paragraph("\n"));
         }
 
-        public void AddCatalogDetails(Document doc, List<Product> products, Client client)//Catalogs
+        public void AddCatalogDetails(Document doc, List<Product> products, Client client, bool showPrice = true, bool showUPC = true, bool showUoM = true)//Catalogs
         {
             //Create PDF Table
 
             bool useUoM = UnitOfMeasure.List.Count > 0;
 
+            // Build headers array dynamically based on what should be shown
             // Picture|Name|UPC|Precio|UoM|Packaging 
+            var headerList = new List<float> { 20, 25 }; // Image and Name are always shown
+            var headerLabels = new List<string> { "Image", "Product Name" };
+            
+            if (showUPC)
+            {
+                headerList.Add(15);
+                headerLabels.Add("UPC");
+            }
+            
+            if (showPrice)
+            {
+                headerList.Add(14);
+                headerLabels.Add("Precio");
+            }
+            
+            if (showUoM)
+            {
+                headerList.Add(13);
+                headerLabels.Add("UoM");
+            }
+            
+            headerList.Add(14); // Packaging is always shown
+            headerLabels.Add("Packaging");
 
-            float[] headers = { 20, 25, 15, 14, 13, 14 };  //Header Widths
+            // Normalize header widths to 100%
+            float total = headerList.Sum();
+            float[] headers = headerList.Select(h => (h / total) * 100).ToArray();
 
             Table tableLayout = new Table(UnitValue.CreatePercentArray(headers)).UseAllAvailableWidth();
 
             //Set the PDF File witdh percentage
-
-            AddCellToHeader(tableLayout, "Image");
-            AddCellToHeader(tableLayout, ("Product Name"));
-            AddCellToHeader(tableLayout, ("UPC"));
-            AddCellToHeader(tableLayout, ("Precio"));
-            AddCellToHeader(tableLayout, ("UoM"));
-            AddCellToHeader(tableLayout, ("Packaging"));
+            foreach (var label in headerLabels)
+            {
+                AddCellToHeader(tableLayout, label);
+            }
 
             foreach (var product in products)
             {
@@ -1250,9 +1273,22 @@ namespace LaceupMigration
                 }
 
                 AddCellToBody(tableLayout, product.Name);
-                AddCellToBody(tableLayout, product.Upc);
-                AddCellToBody(tableLayout, priceString);
-                AddCellToBody(tableLayout, uomString);
+                
+                if (showUPC)
+                {
+                    AddCellToBody(tableLayout, product.Upc);
+                }
+                
+                if (showPrice)
+                {
+                    AddCellToBody(tableLayout, priceString);
+                }
+                
+                if (showUoM)
+                {
+                    AddCellToBody(tableLayout, uomString);
+                }
+                
                 AddCellToBody(tableLayout, product.Package);
 
 

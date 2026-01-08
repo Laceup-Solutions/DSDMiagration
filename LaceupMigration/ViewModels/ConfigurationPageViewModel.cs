@@ -145,8 +145,7 @@ namespace LaceupMigration.ViewModels
 
                 var scrollContent = new ScrollView
                 {
-                    Content = content,
-                    MaximumWidthRequest = 400
+                    Content = content
                 };
 
                 var mainContainer = new VerticalStackLayout
@@ -169,12 +168,16 @@ namespace LaceupMigration.ViewModels
                     }
                 };
 
+                // Set width to 80% of screen width (regardless of screen size)
+                var screenWidth = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density;
                 var dialogBorder = new Border
                 {
                     BackgroundColor = Colors.White,
                     StrokeThickness = 0,
                     Padding = 0,
                     Margin = new Thickness(20),
+                    WidthRequest = screenWidth * 0.80,
+                    MaximumHeightRequest = DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density * 0.9,
                     StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(8) },
                     Content = mainContainer
                 };

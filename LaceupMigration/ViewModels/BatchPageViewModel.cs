@@ -994,13 +994,80 @@ namespace LaceupMigration.ViewModels
             var isLocked = _batch.Status == BatchStatus.Locked;
 
             var useFullTemplate = Config.UseFullTemplateForClient(_batch.Client);
-            
-            // Sales Invoice/Order
+
+            // 1. Generate Projection (if applicable - not implemented in MAUI yet)
+            // Note: This would be added here if implemented
+
+            // 2. Count (Consignment)
+            // 3. Consignment Set
+            var consignmentForClient = true;
+            if (!string.IsNullOrEmpty(_batch.Client.NonvisibleExtraPropertiesAsString))
+            {
+                var item = _batch.Client.NonVisibleExtraProperties.FirstOrDefault(x => x.Item1.ToLowerInvariant() == "consignmentenabled");
+                if (item != null && item.Item2 == "0")
+                    consignmentForClient = false;
+            }
+
+            if (consignmentForClient && Config.Consignment)
+            {
+                if (!Config.UseFullConsignment)
+                {
+                    var countVisible = !Config.MagnoliaSetConsignment &&
+                        ((_batch.Client.ConsignmentTemplate != null && _batch.Client.ConsignmentTemplate.Count > 0) || Config.UseBattery);
+                    if (countVisible)
+                    {
+                        options.Add(new MenuOption("Count", async () => 
+                        {
+                            // Check unpaid invoices (matches Xamarin BatchActivity CanCreateOrder)
+                            if (!await CanCreateOrderInBatchAsync(OrderType.Consignment))
+                                return;
+                            await CreateConsignmentOrderAsync(true);
+                        }));
+                    }
+
+                    var visible = !Config.HideSetConsignment || (Config.HideSetConsignment && _batch.Client.ConsignmentTemplate == null);
+                    if (visible)
+                    {
+                        options.Add(new MenuOption("Consignment Set", async () => 
+                        {
+                            // Check unpaid invoices (matches Xamarin BatchActivity CanCreateOrder)
+                            if (!await CanCreateOrderInBatchAsync(OrderType.Consignment))
+                                return;
+                            await CreateConsignmentOrderAsync(false);
+                        }));
+                    }
+                }
+                else
+                {
+                    var title = Config.ParInConsignment ? "Par and Consignment" : "Consignment";
+                    options.Add(new MenuOption(title, async () => 
+                    {
+                        // Check unpaid invoices (matches Xamarin BatchActivity CanCreateOrder)
+                        if (!await CanCreateOrderInBatchAsync(OrderType.Consignment))
+                            return;
+                        await CreateConsignmentOrderAsync(false);
+                    }));
+                }
+            }
+
+            // 4. Bill (not implemented in MAUI)
+            // 5. Sales Invoice/Order
             options.Add(new MenuOption(useFullTemplate ? "Create Invoice" : "Sales Invoice", async () =>
             {
                 if (isLocked)
                 {
                     await _dialogService.ShowAlertAsync("Batch is locked. Cannot create new orders.", "Alert");
+                    return;
+                }
+
+                // Check unpaid invoices (matches Xamarin BatchActivity CanCreateOrder method)
+                if (!await CanCreateOrderInBatchAsync(OrderType.Order))
+                    return;
+
+                // Check credit limit (matches Xamarin BatchActivity line 2769)
+                if (_batch.Client.IsOverCreditLimit())
+                {
+                    await _dialogService.ShowAlertAsync("This customer is over the credit limit. No new order is allowed", "Alert");
                     return;
                 }
 
@@ -1010,6 +1077,7 @@ namespace LaceupMigration.ViewModels
                 await NavigateToOrderAsync(order);
             }));
 
+            // 6. Credit Invoice (Note: Credit Invoice doesn't check credit limit - it's a credit that reduces balance)
             if (Config.AllowCreditOrders && !useFullTemplate)
             {
                 options.Add(new MenuOption("Credit Invoice", async () =>
@@ -1020,6 +1088,7 @@ namespace LaceupMigration.ViewModels
                         return;
                     }
 
+                    // Credit Invoice doesn't check credit limit (matches Xamarin BatchActivity line 2796)
                     var order = new Order(_batch.Client) { OrderType = OrderType.Credit };
                     order.BatchId = _batch.Id;
                     order.Save();
@@ -1027,7 +1096,7 @@ namespace LaceupMigration.ViewModels
                 }));
             }
             
-            // Return Invoice
+            // 7. Return Invoice (Note: Return Invoice doesn't check credit limit in Xamarin - it's a credit, so allowed)
             if (Config.UseReturnInvoice && !useFullTemplate)
             {
                 options.Add(new MenuOption("Return Invoice", async () =>
@@ -1038,6 +1107,7 @@ namespace LaceupMigration.ViewModels
                         return;
                     }
 
+                    // Return Invoice doesn't check credit limit (it reduces balance, so it's allowed)
                     var order = new Order(_batch.Client) { OrderType = OrderType.Return };
                     order.BatchId = _batch.Id;
                     order.Save();
@@ -1045,35 +1115,7 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // No Service
-            if (!Config.PreSale && orders.Count == 0)
-            {
-                options.Add(new MenuOption("No Service", async () =>
-                {
-                    if (orders.Count != 0)
-                    {
-                        await _dialogService.ShowAlertAsync("No service is only available when there are no orders in the batch.", "Alert");
-                        return;
-                    }
-
-                    var result = await _dialogService.ShowConfirmAsync(
-                        "Do you want to record no service for this client?",
-                        "Alert",
-                        "Yes",
-                        "No");
-
-                    if (result)
-                    {
-                        // Navigate to no service page
-                        var noServiceOrder = new Order(_batch.Client) { OrderType = OrderType.NoService };
-                        noServiceOrder.BatchId = _batch.Id;
-                        noServiceOrder.Save();
-                        await Shell.Current.GoToAsync($"noservice?orderId={noServiceOrder.OrderId}");
-                    }
-                }));
-            }
-            
-            // Work Order
+            // 8. Work Order
             if (Config.AllowWorkOrder)
             {
                 options.Add(new MenuOption("Work Order", async () =>
@@ -1091,44 +1133,18 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // Consignment
-            var consignmentForClient = true;
-            if (!string.IsNullOrEmpty(_batch.Client.NonvisibleExtraPropertiesAsString))
-            {
-                var item = _batch.Client.NonVisibleExtraProperties.FirstOrDefault(x => x.Item1.ToLowerInvariant() == "consignmentenabled");
-                if (item != null && item.Item2 == "0")
-                    consignmentForClient = false;
-            }
+            // 9. Exchange (not implemented in MAUI)
+            // 10. Presale Quote (not implemented in MAUI)
 
-            if (consignmentForClient && Config.Consignment)
-            {
-                if (!Config.UseFullConsignment)
-                {
-                    var countVisible = !Config.MagnoliaSetConsignment &&
-                        ((_batch.Client.ConsignmentTemplate != null && _batch.Client.ConsignmentTemplate.Count > 0) || Config.UseBattery);
-                    if (countVisible)
-                    {
-                        options.Add(new MenuOption("Count", async () => await CreateConsignmentOrderAsync(true)));
-                    }
-
-                    var visible = !Config.HideSetConsignment || (Config.HideSetConsignment && _batch.Client.ConsignmentTemplate == null);
-                    if (visible)
-                    {
-                        options.Add(new MenuOption("Consignment Set", async () => await CreateConsignmentOrderAsync(false)));
-                    }
-                }
-                else
-                {
-                    var title = Config.ParInConsignment ? "Par and Consignment" : "Consignment";
-                    options.Add(new MenuOption(title, async () => await CreateConsignmentOrderAsync(false)));
-                }
-            }
-
-            // Par Level Invoice
+            // 11. Par Level Invoice
             if (Config.ClientDailyPL && !Config.ParInConsignment)
             {
                 options.Add(new MenuOption("Par Level Invoice", async () =>
                 {
+                    // Check unpaid invoices (matches Xamarin BatchActivity CanCreateOrder)
+                    if (!await CanCreateOrderInBatchAsync(OrderType.Order))
+                        return;
+
                     var existingOrder = Order.Orders.FirstOrDefault(x => 
                         x.OrderType == OrderType.Order && 
                         x.IsParLevel && 
@@ -1153,63 +1169,38 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // View PDF
-            if (orders.Count > 0 && !(_batch.Client.SplitInvoices.Count > 0))
-            {
-                options.Add(new MenuOption("View PDF", async () =>
-                {
-                    await _dialogService.ShowAlertAsync("View PDF functionality is not yet fully implemented.", "Info");
-                    // TODO: Implement PDF viewing
-                }));
+            // 12. Scan Based Trading (not implemented in MAUI)
+            // 13. Asset Tracking (not implemented in MAUI)
 
-                options.Add(new MenuOption("Share PDF", async () =>
-                {
-                    await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.", "Info");
-                    // TODO: Implement PDF sharing
-                }));
-            }
-
-            // Send by Email
-            if (!(_batch.Client.SplitInvoices.Count > 0))
+            // 14. No Service
+            if (!Config.PreSale && orders.Count == 0)
             {
-                options.Add(new MenuOption("Send by Email", async () =>
+                options.Add(new MenuOption("No Service/Sales", async () =>
                 {
-                    await SendByEmailAsync();
-                }));
-            }
-
-            // Edit Client
-            if (_batch.Client.ClientId == 0 || _batch.Client.Editable)
-            {
-                options.Add(new MenuOption("Edit Customer Info", async () =>
-                {
-                    await Shell.Current.GoToAsync($"editclient?clientId={_batch.Client.ClientId}");
-                }));
-            }
-
-            // Attach Photo
-            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "37.0"))
-            {
-                options.Add(new MenuOption("Attach Photo", async () =>
-                {
-                    var selectedOrders = GetSelectedActiveOrders();
-                    if (selectedOrders.Count == 0)
+                    if (orders.Count != 0)
                     {
-                        await _dialogService.ShowAlertAsync("Please select an order to attach photos.", "Alert");
+                        await _dialogService.ShowAlertAsync("No service is only available when there are no orders in the batch.", "Alert");
                         return;
                     }
 
-                    if (selectedOrders.Count > 1)
-                    {
-                        await _dialogService.ShowAlertAsync("Please select only one order to attach photos.", "Alert");
-                        return;
-                    }
+                    var result = await _dialogService.ShowConfirmAsync(
+                        "Do you want to record no service for this client?",
+                        "Alert",
+                        "Yes",
+                        "No");
 
-                    await Shell.Current.GoToAsync($"clientimages?orderId={selectedOrders[0].OrderId}");
+                    if (result)
+                    {
+                        // Navigate to no service page
+                        var noServiceOrder = new Order(_batch.Client) { OrderType = OrderType.NoService };
+                        noServiceOrder.BatchId = _batch.Id;
+                        noServiceOrder.Save();
+                        await Shell.Current.GoToAsync($"noservice?orderId={noServiceOrder.OrderId}");
+                    }
                 }));
             }
 
-            // Payment
+            // 15. Receive Payment
             if (isLocked)
             {
                 double collected = 0;
@@ -1231,10 +1222,160 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            // Advanced Options
+            // 16. Set Par Level (not implemented in MAUI)
+            // 17. Load Order (not implemented in MAUI)
+
+            // 18. Edit Customer Info
+            if (_batch.Client.ClientId == 0 || _batch.Client.Editable)
+            {
+                options.Add(new MenuOption("Edit Customer Info", async () =>
+                {
+                    await Shell.Current.GoToAsync($"editclient?clientId={_batch.Client.ClientId}");
+                }));
+            }
+
+            // 19. Sample (not implemented in MAUI)
+
+            // 20. Attach Photo
+            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "37.0"))
+            {
+                options.Add(new MenuOption("Attach Photo", async () =>
+                {
+                    var selectedOrders = GetSelectedActiveOrders();
+                    if (selectedOrders.Count == 0)
+                    {
+                        await _dialogService.ShowAlertAsync("Please select an order to attach photos.", "Alert");
+                        return;
+                    }
+
+                    if (selectedOrders.Count > 1)
+                    {
+                        await _dialogService.ShowAlertAsync("Please select only one order to attach photos.", "Alert");
+                        return;
+                    }
+
+                    await Shell.Current.GoToAsync($"clientimages?orderId={selectedOrders[0].OrderId}");
+                }));
+            }
+
+            // 21. Send by Email
+            if (!(_batch.Client.SplitInvoices.Count > 0))
+            {
+                options.Add(new MenuOption("Send by Email", async () =>
+                {
+                    await SendByEmailAsync();
+                }));
+            }
+
+            // 22. View PDF
+            if (orders.Count > 0 && !(_batch.Client.SplitInvoices.Count > 0))
+            {
+                options.Add(new MenuOption("View PDF", async () =>
+                {
+                    await _dialogService.ShowAlertAsync("View PDF functionality is not yet fully implemented.", "Info");
+                    // TODO: Implement PDF viewing
+                }));
+
+                // 23. Share PDF
+                options.Add(new MenuOption("Share PDF", async () =>
+                {
+                    await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.", "Info");
+                    // TODO: Implement PDF sharing
+                }));
+            }
+
+            // 24. Locate Client (not implemented in MAUI)
+
+            // 25. Advanced Options
             options.Add(new MenuOption("Advanced Options", ShowAdvancedOptionsAsync));
 
             return options;
+        }
+
+        /// <summary>
+        /// Checks if an order can be created based on unpaid invoices.
+        /// Matches Xamarin BatchActivity.CanCreateOrder method.
+        /// Credit and Return orders skip this check (they reduce balance).
+        /// </summary>
+        private async Task<bool> CanCreateOrderInBatchAsync(OrderType orderType)
+        {
+            if (_batch == null || _batch.Client == null)
+                return true;
+
+            // Skip unpaid invoice checks for Credit and Return orders (they reduce balance, so allowed)
+            // This matches Xamarin behavior - Credit and Return orders don't check unpaid invoices
+            if (orderType == OrderType.Credit || orderType == OrderType.Return)
+                return true;
+
+            // Check due invoices
+            if (Config.CheckDueInvoicesInCreateOrder || Config.CheckDueInvoicesQtyInCreateOrder > 0)
+            {
+                var openInvoices = _batch.Client.Invoices?.Where(x => x.Balance > 0 && x.DueDate < DateTime.Today).ToList() ?? new List<Invoice>();
+                int count = 0;
+
+                foreach (var invoice in openInvoices)
+                {
+                    var payment = InvoicePayment.List.FirstOrDefault(x => string.IsNullOrEmpty(x.OrderId) &&
+                        x.Invoices().FirstOrDefault(y => y.InvoiceId == invoice.InvoiceId) != null);
+
+                    if (payment == null)
+                    {
+                        count++;
+                        continue;
+                    }
+
+                    var paid = payment.Components.Sum(x => x.Amount);
+                    if (paid < invoice.Balance)
+                    {
+                        count++;
+                    }
+                }
+
+                if (Config.CheckDueInvoicesQtyInCreateOrder == 0 && count > 0)
+                {
+                    await _dialogService.ShowAlertAsync("You must collect payment for due invoices before creating an order.", "Alert");
+                    return false;
+                }
+
+                if (Config.CheckDueInvoicesQtyInCreateOrder > 0 && count >= Config.CheckDueInvoicesQtyInCreateOrder)
+                {
+                    await _dialogService.ShowAlertAsync("You must collect payment for due invoices before creating an order.", "Alert");
+                    return false;
+                }
+            }
+
+            // Check unpaid invoices over 90 days
+            if (Config.CannotOrderWithUnpaidInvoices)
+            {
+                var unpaidInvoices = _batch.Client.Invoices?.Where(x => x.Balance > 0 && x.DueDate.AddDays(90) < DateTime.Now.Date).ToList() ?? new List<Invoice>();
+                int count = 0;
+
+                foreach (var invoice in unpaidInvoices)
+                {
+                    var payment = InvoicePayment.List.FirstOrDefault(x => string.IsNullOrEmpty(x.OrderId) &&
+                        x.Invoices().FirstOrDefault(y => y.InvoiceId == invoice.InvoiceId) != null);
+
+                    if (payment == null)
+                    {
+                        count++;
+                        continue;
+                    }
+
+                    var paid = payment.Components.Sum(x => x.Amount);
+                    if (paid < invoice.Balance)
+                    {
+                        count++;
+                    }
+                }
+
+                if (count > 0)
+                {
+                    await _dialogService.ShowAlertAsync("You cannot create an order until payments are collected for invoices over 90 days past due.", "Alert");
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private async Task CreateConsignmentOrderAsync(bool isCounting)

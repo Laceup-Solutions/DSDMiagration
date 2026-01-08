@@ -576,11 +576,48 @@ namespace LaceupMigration.ViewModels
                     return false; // Don't navigate
                 }
 
+                // Add to session
+                if (Session.session != null)
+                    Session.session.AddDetailFromOrder(_order);
+
+                // Show Action Options dialog if presale (matching Xamarin behavior)
+                if (_order.AsPresale)
+                {
+                    var options = new string[]
+                    {
+                        "Send Order",
+                        "Save Order To Send Later",
+                        "Stay In The Order"
+                    };
+
+                    var selectedIndex = await _dialogService.ShowSingleChoiceDialogAsync("Action Options", options, 1);
+                    
+                    if (selectedIndex == -1)
+                    {
+                        // Cancel button clicked - stay in order
+                        return false;
+                    }
+
+                    switch (selectedIndex)
+                    {
+                        case 0:
+                            // Send Order
+                            await ContinueSendingOrderAsync();
+                            return false; // ContinueSendingOrderAsync already navigates, don't navigate again
+                        case 1:
+                            // Save Order To Send Later
+                            await ContinueAfterAlertAsync();
+                            return false; // ContinueAfterAlertAsync already navigates, don't navigate again
+                        case 2:
+                            // Stay In The Order
+                            return false; // Don't navigate
+                    }
+                }
+
                 // Set end date
                 if (_order.EndDate == DateTime.MinValue)
                 {
                     _order.EndDate = DateTime.Now;
-                    _order.Save();
                 }
 
                 // Update route
@@ -595,6 +632,8 @@ namespace LaceupMigration.ViewModels
                     }
                 }
 
+                _order.Modified = true;
+                _order.Save();
                 return true; // Allow navigation
             }
         }
@@ -616,8 +655,41 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // Use the same validation logic as OrderDetailsPageViewModel
-            // For simplicity, we'll reuse the same validation pattern
+            var canSend = await FinalizeOrderAsync();
+            if (!canSend)
+                return;
+
+            await ContinueSendingOrderAsync();
+        }
+
+        private async Task ContinueSendingOrderAsync()
+        {
+            if (_order == null)
+                return;
+
+            // Show confirmation dialog (matching Xamarin ContinueSendingOrder)
+            var result = await _dialogService.ShowConfirmAsync(
+                "Continue sending order?",
+                "Warning",
+                "Yes",
+                "No");
+            if (!result)
+                return;
+
+            // Check ship date requirements
+            if (Config.PresaleShipDate && _order.ShipDate.Year == 1)
+            {
+                // TODO: Implement SendWithShipDate
+                await _dialogService.ShowAlertAsync("Please select ship date.", "Alert");
+                return;
+            }
+            else if (Config.ShipDateIsMandatory && _order.ShipDate.Year == 1)
+            {
+                await _dialogService.ShowAlertAsync("Please select ship date.", "Alert");
+                return;
+            }
+
+            // Validate order minimum
             bool valid = _order.ValidateOrderMinimum();
             if (!valid)
                 return;
@@ -652,23 +724,6 @@ namespace LaceupMigration.ViewModels
                         return;
                     }
                 }
-            }
-
-            // Show confirmation
-            var confirm = await _dialogService.ShowConfirmAsync("Continue sending order?", "Warning", "Yes", "No");
-            if (!confirm)
-                return;
-
-            // Handle ship date
-            if (Config.PresaleShipDate && _order.ShipDate.Year == 1)
-            {
-                await _dialogService.ShowAlertAsync("Please set ship date before sending.", "Alert");
-                return;
-            }
-            else if (Config.ShipDateIsMandatory && _order.ShipDate.Year == 1)
-            {
-                await _dialogService.ShowAlertAsync("Please select ship date.", "Alert");
-                return;
             }
 
             await SendItAsync();
@@ -735,6 +790,9 @@ namespace LaceupMigration.ViewModels
                 await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Order sent successfully.", "Success");
 
+                // [ACTIVITY STATE]: Remove state when properly exiting
+                Helpers.NavigationHelper.RemoveNavigationState("superordertemplate");
+
                 await Shell.Current.GoToAsync("..");
             }
             catch (Exception ex)
@@ -743,6 +801,54 @@ namespace LaceupMigration.ViewModels
                 Logger.CreateLog(ex);
                 await _dialogService.ShowAlertAsync("Error sending order.", "Alert");
             }
+        }
+
+        private async Task ContinueAfterAlertAsync()
+        {
+            if (_order == null)
+                return;
+
+            // Set end date if not set
+            if (_order.EndDate == DateTime.MinValue)
+            {
+                _order.EndDate = DateTime.Now;
+            }
+
+            // Update route if presale
+            if (_order.AsPresale)
+            {
+                UpdateRoute(true);
+
+                if (Config.GeneratePresaleNumber && string.IsNullOrEmpty(_order.PrintedOrderId))
+                {
+                    _order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(_order);
+                }
+            }
+
+            // Check lot mandatory
+            if (Config.LotIsMandatoryBeforeFinalize && _order.Details.Any(x => string.IsNullOrEmpty(x.Lot)))
+            {
+                await _dialogService.ShowAlertAsync("Lot is mandatory.", "Alert");
+                return;
+            }
+
+            _order.Modified = true;
+            _order.Save();
+
+            // [ACTIVITY STATE]: Remove state when properly exiting
+            // Remove the order page state so it doesn't get restored when navigating back
+            Helpers.NavigationHelper.RemoveNavigationState("superordertemplate");
+
+            // Also remove from ActivityState directly to ensure it's completely removed
+            var orderState = ActivityState.GetState("SuperOrderTemplateActivity");
+            if (orderState != null)
+            {
+                ActivityState.RemoveState(orderState);
+            }
+
+            // Navigate back - matches Xamarin's Finish() behavior which just closes the current Activity
+            // and returns to the previous one (ClientDetailsPage)
+            await Shell.Current.GoToAsync("..");
         }
 
         private void UpdateRoute(bool close)

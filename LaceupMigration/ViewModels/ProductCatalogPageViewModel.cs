@@ -1085,8 +1085,9 @@ namespace LaceupMigration.ViewModels
                 else
                 {
                     // Fall back to local generation (matches Xamarin: pdfHelper.GeneratePdfCatalog)
+                    // Pass the filter options to respect user selections
                     var pdfHelper = new PdfHelper();
-                    pdfFile = pdfHelper.GeneratePdfCatalog(null, filteredProducts, _order?.Client);
+                    pdfFile = pdfHelper.GeneratePdfCatalog(null, filteredProducts, _order?.Client, showPrice, showUPC, showUoM);
                 }
 
                 await _dialogService.HideLoadingAsync();

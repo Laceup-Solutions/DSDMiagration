@@ -1078,7 +1078,7 @@ public class DialogService : IDialogService
             FontSize = 16,
             FontAttributes = FontAttributes.Bold,
             TextColor = Colors.Black,
-            Margin = new Thickness(0, 0, 0, 8)
+            Margin = new Thickness(0, 10, 0, 8)
         };
 
         // Create checkboxes for categories
@@ -1111,7 +1111,7 @@ public class DialogService : IDialogService
         // Create "Show In PDF" checkboxes
         var showPriceCheckbox = new CheckBox
         {
-            IsChecked = false
+            IsChecked = true
         };
         var showPriceLabel = new Label
         {
@@ -1336,7 +1336,11 @@ public class DialogService : IDialogService
         buttonRow.Children.Add(okButton);
 
         // Gray line on top of buttons with no margin or padding
-        mainContainer.Children.Add(new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0) });
+        var buttonSeparatorLine = new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0) };
+        Grid.SetRow(buttonSeparatorLine, 3);
+        mainContainer.Children.Add(buttonSeparatorLine);
+        
+        Grid.SetRow(buttonRow, 4);
         mainContainer.Children.Add(buttonRow);
 
         var dialogBorder = new Border
@@ -1426,6 +1430,267 @@ public class DialogService : IDialogService
             tcs.SetResult(null);
         };
 
+        await page.Navigation.PushModalAsync(dialog);
+        return await tcs.Task;
+    }
+
+    /// <summary>
+    /// Shows a single-choice dialog with radio buttons, matching Xamarin's SetSingleChoiceItems behavior.
+    /// Returns the selected index, or -1 if canceled.
+    /// </summary>
+    public async Task<int> ShowSingleChoiceDialogAsync(string title, string[] options, int selectedIndex = 0)
+    {
+        var page = GetCurrentPage();
+        if (page == null || options == null || options.Length == 0)
+            return -1;
+
+        var tcs = new TaskCompletionSource<int>();
+
+        // Create main container
+        var mainContainer = new Grid
+        {
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new RowDefinition { Height = GridLength.Auto }, // Header
+                new RowDefinition { Height = GridLength.Auto }, // Separator
+                new RowDefinition { Height = GridLength.Auto }, // Options
+                new RowDefinition { Height = GridLength.Auto }, // Separator for buttons
+                new RowDefinition { Height = GridLength.Auto }  // Buttons
+            },
+            BackgroundColor = Colors.White,
+            Padding = new Thickness(0)
+        };
+
+        // Header
+        var headerLabel = new Label
+        {
+            Text = title,
+            FontSize = 18,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Color.FromArgb("#017CBA"), // Laceup blue
+            Padding = new Thickness(20, 20, 20, 15),
+            BackgroundColor = Colors.White
+        };
+        Grid.SetRow(headerLabel, 0);
+        mainContainer.Children.Add(headerLabel);
+
+        // Header separator
+        var headerSeparator = new BoxView { HeightRequest = 1, Color = Color.FromArgb("#017CBA") };
+        Grid.SetRow(headerSeparator, 1);
+        mainContainer.Children.Add(headerSeparator);
+
+        // Options container with radio buttons
+        var optionsContainer = new VerticalStackLayout
+        {
+            Spacing = 0,
+            Padding = new Thickness(0),
+            BackgroundColor = Colors.White
+        };
+
+        int currentSelectedIndex = selectedIndex;
+        var radioButtons = new List<RadioButton>();
+
+        for (int i = 0; i < options.Length; i++)
+        {
+            // Create a grid to hold radio button and label with spacing
+            var optionGrid = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitionCollection
+                {
+                    new ColumnDefinition { Width = GridLength.Auto }, // Radio button
+                    new ColumnDefinition { Width = 2 }, // Spacing
+                    new ColumnDefinition { Width = GridLength.Star } // Label
+                },
+                Padding = new Thickness(10, 5, 10, 5)
+            };
+
+            // Create radio button (without content, we'll add label separately)
+            var radioButton = new RadioButton
+            {
+                IsChecked = i == selectedIndex,
+                GroupName = "ActionOptions",
+                VerticalOptions = LayoutOptions.Center
+            };
+
+            // Create label for the text
+            var optionLabel = new Label
+            {
+                Text = options[i],
+                FontSize = 16,
+                TextColor = Colors.Black,
+                VerticalOptions = LayoutOptions.Center
+            };
+
+            // Add to grid
+            Grid.SetColumn(radioButton, 0);
+            Grid.SetColumn(optionLabel, 2);
+            optionGrid.Children.Add(radioButton);
+            optionGrid.Children.Add(optionLabel);
+
+            int index = i; // Capture for closure
+            radioButton.CheckedChanged += (s, e) =>
+            {
+                if (e.Value)
+                {
+                    currentSelectedIndex = index;
+                    // Uncheck other radio buttons
+                    foreach (var rb in radioButtons)
+                    {
+                        if (rb != radioButton)
+                            rb.IsChecked = false;
+                    }
+                }
+            };
+
+            radioButtons.Add(radioButton);
+            optionsContainer.Children.Add(optionGrid);
+
+            // Add separator line between options (except after last)
+            if (i < options.Length - 1)
+            {
+                var separator = new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(20, 0) };
+                optionsContainer.Children.Add(separator);
+            }
+        }
+
+        Grid.SetRow(optionsContainer, 2);
+        mainContainer.Children.Add(optionsContainer);
+
+        // Button separator
+        var buttonTopSeparator = new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0) };
+        Grid.SetRow(buttonTopSeparator, 3);
+        mainContainer.Children.Add(buttonTopSeparator);
+
+        // Buttons
+        var cancelButton = new Button
+        {
+            Text = "Cancel",
+            BackgroundColor = Colors.Transparent,
+            TextColor = Colors.Black,
+            FontSize = 16,
+            Margin = new Thickness(0),
+            CornerRadius = 0
+        };
+
+        var okButton = new Button
+        {
+            Text = "Ok",
+            BackgroundColor = Colors.Transparent,
+            TextColor = Color.FromArgb("#017CBA"),
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            Margin = new Thickness(0),
+            CornerRadius = 0
+        };
+
+        var buttonRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = 1 },
+                new ColumnDefinition { Width = GridLength.Star }
+            },
+            ColumnSpacing = 0,
+            Padding = new Thickness(0),
+            BackgroundColor = Colors.White
+        };
+
+        var buttonSeparator = new BoxView
+        {
+            WidthRequest = 1,
+            BackgroundColor = Color.FromArgb("#E0E0E0"),
+            VerticalOptions = LayoutOptions.Fill
+        };
+
+        Grid.SetColumn(cancelButton, 0);
+        Grid.SetColumn(buttonSeparator, 1);
+        Grid.SetColumn(okButton, 2);
+        buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(buttonSeparator);
+        buttonRow.Children.Add(okButton);
+
+        Grid.SetRow(buttonRow, 4);
+        mainContainer.Children.Add(buttonRow);
+
+        // Set width to 80% of screen width (regardless of screen size)
+        var screenWidth = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density;
+        var dialogBorder = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 0,
+            Padding = 0,
+            Margin = new Thickness(20),
+            WidthRequest = screenWidth * 0.80,
+            MaximumHeightRequest = DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density * 0.9,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(8) },
+            Content = mainContainer
+        };
+
+        // Overlay grid
+        var overlayGrid = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"),
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            },
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        Grid.SetRow(dialogBorder, 1);
+        Grid.SetColumn(dialogBorder, 1);
+        overlayGrid.Children.Add(dialogBorder);
+
+        var dialog = new ContentPage
+        {
+            BackgroundColor = Colors.Transparent,
+            Content = overlayGrid
+        };
+
+        async Task SafePopModalAsync()
+        {
+            try
+            {
+                var currentPage = GetCurrentPage();
+                if (currentPage != null)
+                {
+                    if (currentPage == dialog && currentPage.Navigation.ModalStack.Count > 0)
+                    {
+                        await currentPage.Navigation.PopModalAsync();
+                    }
+                    else if (page != null && page.Navigation.ModalStack.Count > 0)
+                    {
+                        await page.Navigation.PopModalAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error popping modal: {ex.Message}");
+            }
+        }
+
+        okButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult(currentSelectedIndex);
+        };
+
+        cancelButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult(-1);
+        };
+
+        // Don't allow canceling by tapping outside (matching Xamarin: SetCancelable(false))
         await page.Navigation.PushModalAsync(dialog);
         return await tcs.Task;
     }
