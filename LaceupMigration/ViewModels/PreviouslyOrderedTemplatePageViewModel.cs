@@ -679,8 +679,8 @@ namespace LaceupMigration.ViewModels
                 return;
 
             // Check if order has details
-            bool isEmpty = _order.Details.Count == 0 || 
-                (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
+            bool isEmpty = _order.Details.Count == 0 ||
+                           (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
             
             if (isEmpty)
             {
@@ -692,22 +692,216 @@ namespace LaceupMigration.ViewModels
             if (!canSend)
                 return;
 
+            await ConfirmationSendAsync();
+        }
+
+        private async Task ConfirmationSendAsync()
+        {
+            if (_order == null)
+                return;
+
+            if (_order.AsPresale)
+            {
+                // Check minimum weight
+                var totalWeight = _order.TotalWeight;
+                if (Config.MinimumWeight > 0 && totalWeight < Config.MinimumWeight)
+                {
+                    await _dialogService.ShowAlertAsync(
+                        $"Order minimum total weight is {Config.MinimumWeight}. Current weight is {totalWeight}.",
+                        "Alert");
+                    return;
+                }
+
+                // Check minimum amount
+                var orderCost = _order.OrderTotalCost();
+                if (!Config.Simone && Config.MinimumAmount > 0 && orderCost < Config.MinimumAmount)
+                {
+                    await _dialogService.ShowAlertAsync(
+                        $"Order minimum total amount is {Config.MinimumAmount.ToCustomString()}. Current amount is {orderCost.ToCustomString()}.",
+                        "Alert");
+                    return;
+                }
+
+                // Check mandatory comments
+                if (string.IsNullOrEmpty(_order.Comments) && Config.PresaleCommMandatory)
+                {
+                    await _dialogService.ShowAlertAsync("Please provide a comment.", "Alert");
+                    return;
+                }
+
+                // Check signature name
+                if (Config.SignatureNameRequired && string.IsNullOrEmpty(_order.SignatureName))
+                {
+                    await _dialogService.ShowAlertAsync("Signature name is required.", "Alert");
+                    return;
+                }
+
+                // Check ShipVia
+                if (Config.ShipViaMandatory)
+                {
+                    var shipVia = UDFHelper.GetSingleUDF("ShipVia", _order.ExtraFields);
+                    if (string.IsNullOrEmpty(shipVia))
+                    {
+                        await _dialogService.ShowAlertAsync("Must add ShipVia.", "Alert");
+                        return;
+                    }
+                }
+
+                // Check DisolSurvey
+                if (Config.UseDisolSurvey && _order.OrderType == OrderType.Order && !_order.HasDisolSurvey)
+                {
+                    string survey = UDFHelper.GetSingleUDF("Survey", _order.Client.ExtraPropertiesAsString);
+                    bool mustFillSurvey = survey == "1";
+                    if (mustFillSurvey)
+                    {
+                        var result = await _dialogService.ShowConfirmAsync(
+                            "Debe completar una encuesta antes de continuar. Desea realizar la encuesta ahora?",
+                            "Alert",
+                            "Yes",
+                            "No");
+                        if (result)
+                        {
+                            // TODO: Navigate to survey
+                            await _dialogService.ShowAlertAsync("Survey functionality is not yet fully implemented.", "Info");
+                        }
+                        return;
+                    }
+                }
+
+                // Check mandatory image
+                if (Config.CaptureImages && Config.ImageInOrderMandatory && _order.ImageList.Count <= 0)
+                {
+                    await _dialogService.ShowAlertAsync("Order image is mandatory to send presale.", "Warning");
+                    return;
+                }
+
+                // Check discounts
+                var shipdate = _order.ShipDate != DateTime.MinValue ? _order.ShipDate : DateTime.Now;
+                if (OrderDiscount.HasDiscounts && _order.DiscountAmount == 0 && 
+                    _order.Details.Any(x => OrderDiscount.ProductHasDiscount(x.Product, x.Qty, _order, shipdate, x.UnitOfMeasure, x.IsFreeItem)))
+                {
+                    var result = await _dialogService.ShowConfirmAsync(
+                        "This client has discounts available to apply. Are you sure you want to continue sending it?",
+                        "Alert",
+                        "Yes",
+                        "No");
+                    if (!result)
+                        return;
+                }
+
+                // Check if shipdate is locked
+                if (Config.CheckIfShipdateLocked)
+                {
+                    var lockedDates = new List<DateTime>();
+                    if (!DataProvider.CheckIfShipdateIsValid(new List<DateTime>() { _order.ShipDate }, ref lockedDates))
+                    {
+                        var sb = string.Empty;
+                        foreach (var l in lockedDates)
+                            sb += '\n' + l.Date.ToShortDateString();
+                        await _dialogService.ShowAlertAsync("The selected date is currently locked. Please select a different shipdate", "Alert");
+                        return;
+                    }
+                }
+
+                // Check suggested categories
+                if (SuggestedClientCategory.List.Count > 0)
+                {
+                    var suggestedForthisCLient = SuggestedClientCategory.List.FirstOrDefault(x => 
+                        x.SuggestedClientCategoryClients.Any(y => y.ClientId == _order.Client.ClientId));
+
+                    if (suggestedForthisCLient != null)
+                    {
+                        bool containedInOrder = true;
+                        var product_ = Product.GetProductListForOrder(_order, false, 0);
+
+                        foreach (var p in suggestedForthisCLient.SuggestedClientCategoryProducts)
+                        {
+                            if (!product_.Any(x => x.ProductId == p.ProductId))
+                                continue;
+
+                            if (!_order.Details.Any(x => x.Product.ProductId == p.ProductId))
+                            {
+                                containedInOrder = false;
+                                break;
+                            }
+                        }
+
+                        if (!containedInOrder)
+                        {
+                            var warning = "Continue sending suggested " + 
+                                (string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) ? "suggested" : Config.ProductCategoryNameIdentifier) + 
+                                " " + "continue sending suggested part 2";
+                            var result = await _dialogService.ShowConfirmAsync(warning, "Alert", "Yes", "No");
+                            if (!result)
+                            {
+                                // TODO: Navigate to suggested
+                                await _dialogService.ShowAlertAsync("Suggested functionality is not yet fully implemented.", "Info");
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Show confirmation dialog
+            var confirmResult = await _dialogService.ShowConfirmAsync(
+                "Are you sure you want to send the order?",
+                "Confirm Shipping",
+                "Yes",
+                "No");
+            if (!confirmResult)
+                return;
+
+            // Validate order minimum
+            bool validQty = _order.ValidateOrderMinimum();
+            if (!validQty)
+                return;
+
+            // Send the order
+            await SendItAsync();
+        }
+
+        private async Task SendItAsync()
+        {
+            if (_order == null)
+                return;
+
             try
             {
                 await _dialogService.ShowLoadingAsync("Sending order...");
-                
+
+                if (_order.EndDate == DateTime.MinValue)
+                    _order.EndDate = DateTime.Now;
+
+                if (_order.AsPresale && Config.GeneratePresaleNumber && string.IsNullOrEmpty(_order.PrintedOrderId))
+                    _order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(_order);
+
+                if (_order.AsPresale)
+                    UpdateRoute(true);
+
+                _order.Save();
+
                 var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
                 if (batch == null)
                 {
-                    await _dialogService.HideLoadingAsync();
-                    await _dialogService.ShowAlertAsync("Batch not found.", "Error");
-                    return;
+                    // Create batch if it doesn't exist
+                    batch = new Batch(_order.Client);
+                    batch.Client = _order.Client;
+                    batch.ClockedIn = DateTime.Now;
+                    batch.ClockedOut = DateTime.Now;
+                    batch.Save();
+
+                    _order.BatchId = batch.Id;
+                    _order.Save();
                 }
 
                 DataProvider.SendTheOrders(new Batch[] { batch });
 
                 await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Order sent successfully.", "Success");
+
+                // [ACTIVITY STATE]: Remove state when properly exiting
+                Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
 
                 await Shell.Current.GoToAsync("..");
             }
@@ -717,6 +911,73 @@ namespace LaceupMigration.ViewModels
                 Logger.CreateLog(ex);
                 await _dialogService.ShowAlertAsync("Error sending order.", "Alert");
             }
+        }
+
+        private async Task ContinueAfterAlertAsync()
+        {
+            if (_order == null)
+                return;
+
+            // Validate order minimum
+            bool validQty = _order.ValidateOrderMinimum();
+            if (!validQty)
+                return;
+
+            // Set end date if not set
+            if (_order.EndDate == DateTime.MinValue)
+            {
+                _order.EndDate = DateTime.Now;
+            }
+
+            // Update route if presale
+            if (_order.AsPresale)
+            {
+                UpdateRoute(true);
+
+                if (Config.GeneratePresaleNumber && string.IsNullOrEmpty(_order.PrintedOrderId))
+                {
+                    _order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(_order);
+                }
+
+                // Check DisolSurvey
+                if (Config.UseDisolSurvey && _order.OrderType == OrderType.Order && !_order.HasDisolSurvey)
+                {
+                    string survey = UDFHelper.GetSingleUDF("Survey", _order.Client.ExtraPropertiesAsString);
+                    bool mustFillSurvey = survey == "1";
+                    if (mustFillSurvey)
+                    {
+                        var result = await _dialogService.ShowConfirmAsync(
+                            "Debe completar una encuesta antes de continuar. Desea realizar la encuesta ahora?",
+                            "Alert",
+                            "Yes",
+                            "No");
+                        if (result)
+                        {
+                            // TODO: Navigate to survey
+                            await _dialogService.ShowAlertAsync("Survey functionality is not yet fully implemented.", "Info");
+                        }
+                        return;
+                    }
+                }
+            }
+
+            _order.Modified = true;
+            _order.Save();
+
+            // [ACTIVITY STATE]: Remove state when properly exiting
+            // Remove the order page state so it doesn't get restored when navigating back
+            Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
+
+            // Also remove from ActivityState directly to ensure it's completely removed
+            var orderState = ActivityState.GetState("PreviouslyOrderedTemplateActivity");
+            if (orderState != null)
+            {
+                ActivityState.RemoveState(orderState);
+            }
+
+            // Navigate back - matches Xamarin's Finish() behavior which just closes the current Activity
+            // and returns to the previous one (ClientDetailsPage)
+            await Shell.Current.GoToAsync("..");
         }
 
         private async Task<bool> FinalizeOrderAsync()
@@ -798,6 +1059,40 @@ namespace LaceupMigration.ViewModels
 
                 if (Session.session != null)
                     Session.session.AddDetailFromOrder(_order);
+
+                // Show Action Options dialog if presale (matching Xamarin behavior)
+                if (_order.AsPresale)
+                {
+                    var options = new string[]
+                    {
+                        "Send Order",
+                        "Save Order To Send Later",
+                        "Stay In The Order"
+                    };
+
+                    var selectedIndex = await _dialogService.ShowSingleChoiceDialogAsync("Action Options", options, 1);
+                    
+                    if (selectedIndex == -1)
+                    {
+                        // Cancel button clicked - stay in order
+                        return false;
+                    }
+
+                    switch (selectedIndex)
+                    {
+                        case 0:
+                            // Send Order
+                            await ConfirmationSendAsync();
+                            return false; // ConfirmationSendAsync already navigates, don't navigate again
+                        case 1:
+                            // Save Order To Send Later
+                            await ContinueAfterAlertAsync();
+                            return false; // ContinueAfterAlertAsync already navigates, don't navigate again
+                        case 2:
+                            // Stay In The Order
+                            return false; // Don't navigate
+                    }
+                }
 
                 // Set end date if not set
                 if (_order.EndDate == DateTime.MinValue)

@@ -14,11 +14,14 @@ namespace LaceupMigration.Views
             _viewModel = viewModel;
             BindingContext = _viewModel;
 
+            // Prevent LaceupContentPage from adding hamburger menu
+            UseCustomMenu = true;
+
             // Wire up menu toolbar item
             var menuItem = ToolbarItems.FirstOrDefault();
             if (menuItem != null)
             {
-                // Menu functionality can be added later if needed
+                menuItem.Command = _viewModel.ShowMenuCommand;
             }
         }
 

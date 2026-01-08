@@ -705,82 +705,94 @@ namespace LaceupMigration.ViewModels
             return false;
         }
 
-        private async Task<bool> CanCreateOrderAsync(string? message = null)
+        private async Task<bool> CanCreateOrderAsync(OrderType? orderType = null, string? message = null, bool skipUnpaidInvoiceCheck = false)
         {
             if (_client == null)
                 return false;
 
-            // Check due invoices
-            if (Config.CheckDueInvoicesInCreateOrder || Config.CheckDueInvoicesQtyInCreateOrder > 0)
+            // Skip unpaid invoice checks for Credit and Return orders (they reduce balance, so allowed)
+            // Also skip for Work Order and No Service (matches Xamarin - they don't go through CanCreateOrder check)
+            // This matches Xamarin behavior - Credit and Return orders don't check unpaid invoices
+            if (!skipUnpaidInvoiceCheck)
             {
-                var openInvoices = _client.Invoices?.Where(x => x.Balance > 0 && x.DueDate < DateTime.Today).ToList() ?? new List<Invoice>();
-                int count = 0;
-
-                foreach (var invoice in openInvoices)
-                {
-                    var payment = InvoicePayment.List.FirstOrDefault(x => string.IsNullOrEmpty(x.OrderId) &&
-                        x.Invoices().FirstOrDefault(y => y.InvoiceId == invoice.InvoiceId) != null);
-
-                    if (payment == null)
-                    {
-                        count++;
-                        continue;
-                    }
-
-                    var paid = payment.Components.Sum(x => x.Amount);
-                    if (paid < invoice.Balance)
-                    {
-                        count++;
-                    }
-                }
-
-                if (Config.CheckDueInvoicesQtyInCreateOrder == 0 && count > 0)
-                {
-                    message = "You must collect payment for due invoices before creating an order.";
-                    if (!string.IsNullOrEmpty(message))
-                        await _dialogService.ShowAlertAsync(message, "Alert");
-                    return false;
-                }
-
-                if (Config.CheckDueInvoicesQtyInCreateOrder > 0 && count >= Config.CheckDueInvoicesQtyInCreateOrder)
-                {
-                    message = "You must collect payment for due invoices before creating an order.";
-                    if (!string.IsNullOrEmpty(message))
-                        await _dialogService.ShowAlertAsync(message, "Alert");
-                    return false;
-                }
+                skipUnpaidInvoiceCheck = orderType == OrderType.Credit || orderType == OrderType.Return || 
+                                         orderType == OrderType.NoService;
             }
 
-            // Check unpaid invoices over 90 days
-            if (Config.CannotOrderWithUnpaidInvoices)
+            if (!skipUnpaidInvoiceCheck)
             {
-                var unpaidInvoices = _client.Invoices?.Where(x => x.Balance > 0 && x.DueDate.AddDays(90) < DateTime.Now.Date).ToList() ?? new List<Invoice>();
-                int count = 0;
-
-                foreach (var invoice in unpaidInvoices)
+                // Check due invoices
+                if (Config.CheckDueInvoicesInCreateOrder || Config.CheckDueInvoicesQtyInCreateOrder > 0)
                 {
-                    var payment = InvoicePayment.List.FirstOrDefault(x => string.IsNullOrEmpty(x.OrderId) &&
-                        x.Invoices().FirstOrDefault(y => y.InvoiceId == invoice.InvoiceId) != null);
+                    var openInvoices = _client.Invoices?.Where(x => x.Balance > 0 && x.DueDate < DateTime.Today).ToList() ?? new List<Invoice>();
+                    int count = 0;
 
-                    if (payment == null)
+                    foreach (var invoice in openInvoices)
                     {
-                        count++;
-                        continue;
+                        var payment = InvoicePayment.List.FirstOrDefault(x => string.IsNullOrEmpty(x.OrderId) &&
+                            x.Invoices().FirstOrDefault(y => y.InvoiceId == invoice.InvoiceId) != null);
+
+                        if (payment == null)
+                        {
+                            count++;
+                            continue;
+                        }
+
+                        var paid = payment.Components.Sum(x => x.Amount);
+                        if (paid < invoice.Balance)
+                        {
+                            count++;
+                        }
                     }
 
-                    var paid = payment.Components.Sum(x => x.Amount);
-                    if (paid < invoice.Balance)
+                    if (Config.CheckDueInvoicesQtyInCreateOrder == 0 && count > 0)
                     {
-                        count++;
+                        message = "You must collect payment for due invoices before creating an order.";
+                        if (!string.IsNullOrEmpty(message))
+                            await _dialogService.ShowAlertAsync(message, "Alert");
+                        return false;
+                    }
+
+                    if (Config.CheckDueInvoicesQtyInCreateOrder > 0 && count >= Config.CheckDueInvoicesQtyInCreateOrder)
+                    {
+                        message = "You must collect payment for due invoices before creating an order.";
+                        if (!string.IsNullOrEmpty(message))
+                            await _dialogService.ShowAlertAsync(message, "Alert");
+                        return false;
                     }
                 }
 
-                if (count > 0)
+                // Check unpaid invoices over 90 days
+                if (Config.CannotOrderWithUnpaidInvoices)
                 {
-                    message = "You cannot create an order until payments are collected for invoices over 90 days past due.";
-                    if (!string.IsNullOrEmpty(message))
-                        await _dialogService.ShowAlertAsync(message, "Alert");
-                    return false;
+                    var unpaidInvoices = _client.Invoices?.Where(x => x.Balance > 0 && x.DueDate.AddDays(90) < DateTime.Now.Date).ToList() ?? new List<Invoice>();
+                    int count = 0;
+
+                    foreach (var invoice in unpaidInvoices)
+                    {
+                        var payment = InvoicePayment.List.FirstOrDefault(x => string.IsNullOrEmpty(x.OrderId) &&
+                            x.Invoices().FirstOrDefault(y => y.InvoiceId == invoice.InvoiceId) != null);
+
+                        if (payment == null)
+                        {
+                            count++;
+                            continue;
+                        }
+
+                        var paid = payment.Components.Sum(x => x.Amount);
+                        if (paid < invoice.Balance)
+                        {
+                            count++;
+                        }
+                    }
+
+                    if (count > 0)
+                    {
+                        message = "You cannot create an order until payments are collected for invoices over 90 days past due.";
+                        if (!string.IsNullOrEmpty(message))
+                            await _dialogService.ShowAlertAsync(message, "Alert");
+                        return false;
+                    }
                 }
             }
 
@@ -825,13 +837,16 @@ namespace LaceupMigration.ViewModels
 
         private async Task CreateOrderAsync(OrderType orderType, bool isQuote = false)
         {
-            if (!await CanCreateOrderAsync())
+            // Pass orderType to CanCreateOrderAsync so it can skip checks for Credit/Return orders
+            if (!await CanCreateOrderAsync(orderType))
                 return;
 
             if (_client == null)
                 return;
 
-            if (_client.IsOverCreditLimit())
+            // Skip credit limit check for Credit and Return orders (they reduce balance, so allowed)
+            // This matches Xamarin behavior - Credit and Return orders don't check credit limit
+            if (orderType != OrderType.Credit && orderType != OrderType.Return && _client.IsOverCreditLimit())
             {
                 await _dialogService.ShowAlertAsync("Customer is over credit limit. Cannot create new order.", "Alert");
                 return;
@@ -912,7 +927,9 @@ namespace LaceupMigration.ViewModels
 
         private async Task CreateWorkOrderAsync()
         {
-            if (!await CanCreateOrderAsync())
+            // Work Order doesn't check unpaid invoices (matches Xamarin BatchActivity - doesn't go through CanCreateOrder)
+            // Only check timesheet and other non-invoice related checks
+            if (!await CanCreateOrderAsync(OrderType.Order, null, skipUnpaidInvoiceCheck: true))
                 return;
 
             if (_client == null)
@@ -933,7 +950,9 @@ namespace LaceupMigration.ViewModels
 
         private async Task CreateConsignmentOrderAsync(bool includePar)
         {
-            if (!await CanCreateOrderAsync())
+            // Consignment orders DO check unpaid invoices (matches Xamarin BatchActivity CanCreateOrder)
+            // Pass OrderType.Consignment so it checks unpaid invoices
+            if (!await CanCreateOrderAsync(OrderType.Consignment))
                 return;
 
             if (_client == null)
@@ -999,7 +1018,9 @@ namespace LaceupMigration.ViewModels
 
         private async Task CreateNoServiceAsync()
         {
-            if (!await CanCreateOrderAsync())
+            // No Service doesn't check unpaid invoices (matches Xamarin BatchActivity - doesn't go through CanCreateOrder)
+            // Only check timesheet and other non-invoice related checks
+            if (!await CanCreateOrderAsync(OrderType.NoService, null, skipUnpaidInvoiceCheck: true))
                 return;
 
             if (_client == null)
@@ -1093,8 +1114,11 @@ namespace LaceupMigration.ViewModels
                 return;
 
             var hasActiveDeliveries = HasActiveDeliveries();
-            var msg = hasActiveDeliveries ? "Clock in to delivery?" : "Clock in to stop?";
+            var message = hasActiveDeliveries ? "delivery" : "stop";
 
+            var msg =
+                $"Would you like to clock in to this {message}? You will not be able to clock out until you have finalized the transaction.";
+            
             if (!Config.RemoveWarnings)
             {
                 var result = await _dialogService.ShowConfirmAsync(msg, "Warning", "Yes", "No");

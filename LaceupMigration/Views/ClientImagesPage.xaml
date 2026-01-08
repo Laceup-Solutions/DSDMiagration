@@ -2,78 +2,98 @@
 <local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              x:Class="LaceupMigration.Views.ClientImagesPage"
              x:DataType="vm:ClientImagesPageViewModel"
              Shell.NavBarIsVisible="True"
              Shell.TabBarIsVisible="False"
              Title="Client Images">
     <ContentPage.Content>
-        <ScrollView>
-            <VerticalStackLayout Padding="16" Spacing="16">
-                <Label Text="{Binding ClientName}"
-                       FontSize="20"
-                       FontAttributes="Bold"
-                       TextColor="{StaticResource PrimaryDark}" />
+        <Grid RowDefinitions="Auto,*">
+            <!-- Done button at top left -->
+            <Button Grid.Row="0"
+                    Text="Done"
+                    Command="{Binding DoneCommand}"
+                    Style="{StaticResource PrimaryButton}"
+                    HorizontalOptions="Start"
+                    Margin="16,8,0,8" />
 
-                <Button Text="Take Photo"
-                        Command="{Binding TakePhotoCommand}"
-                        Style="{StaticResource PrimaryButton}"
-                        Margin="0,8,0,0" />
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Padding="16" Spacing="16">
+                    <!-- Take Picture section with camera icon -->
+                    <Border StrokeThickness="1"
+                            Stroke="{StaticResource Gray300}"
+                            BackgroundColor="{StaticResource White}"
+                            Padding="20"
+                            Margin="0,0,0,16">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding TakePhotoCommand}" />
+                        </Border.GestureRecognizers>
+                        <VerticalStackLayout HorizontalOptions="Center"
+                                             Spacing="8">
+                            <Image Source="{mi:MaterialOutlined Icon=CameraAlt, IconColor={StaticResource PrimaryDark}}"
+                                   Aspect="AspectFit"
+                                   HeightRequest="60"
+                                   WidthRequest="60"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                            <Label Text="Take Picture"
+                                   FontSize="14"
+                                   TextColor="{StaticResource PrimaryDark}"
+                                   HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Border>
 
-                <Label Text="Images:"
-                       FontSize="16"
-                       FontAttributes="Bold"
-                       TextColor="{StaticResource PrimaryDark}"
-                       Margin="0,16,0,0"
-                       IsVisible="{Binding ShowImages}" />
+                    <!-- Client Images heading -->
+                    <Label Text="Client Images"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource PrimaryDark}"
+                           Margin="0,8,0,8" />
 
-                <CollectionView ItemsSource="{Binding Images}"
-                                SelectionMode="None"
-                                IsVisible="{Binding ShowImages}">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:ClientImageViewModel">
-                            <Frame Padding="8" Margin="0,0,0,8" 
-                                   BackgroundColor="{StaticResource Gray100}"
-                                   HasShadow="False"
-                                   CornerRadius="8">
-                                <Grid RowDefinitions="Auto,*" RowSpacing="8">
-                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                                        <Button Grid.Column="1"
-                                                Text="Delete"
-                                                BackgroundColor="#DC3545"
-                                                TextColor="White"
-                                                FontSize="12"
-                                                Padding="12,6"
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ClientImagesPageViewModel}}, Path=DeleteImageCommand}"
-                                                CommandParameter="{Binding .}" />
-                                    </Grid>
-                                    <Image Grid.Row="1"
+                    <CollectionView ItemsSource="{Binding Images}"
+                                    SelectionMode="None"
+                                    IsVisible="{Binding ShowImages}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ClientImageViewModel">
+                                <Grid ColumnDefinitions="Auto,*,Auto" 
+                                      Margin="0,0,0,8"
+                                      Padding="2">
+                                    <Image Grid.Column="0"
                                            Source="{Binding ImagePath}"
                                            Aspect="AspectFill"
-                                           HeightRequest="200">
+                                           HeightRequest="100"
+                                           WidthRequest="100">
                                         <Image.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ClientImagesPageViewModel}}, Path=ViewImageCommand}"
                                                                    CommandParameter="{Binding .}" />
                                         </Image.GestureRecognizers>
                                     </Image>
+                                    <Button Grid.Column="2"
+                                            Text="Delete"
+                                            BackgroundColor="#DC3545"
+                                            TextColor="White"
+                                            FontSize="14"
+                                            Padding="12,6"
+                                            VerticalOptions="Center"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ClientImagesPageViewModel}}, Path=DeleteImageCommand}"
+                                            CommandParameter="{Binding .}" />
                                 </Grid>
-                            </Frame>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
 
-                <Label Text="No images found."
-                       IsVisible="{Binding ShowNoImages}"
-                       HorizontalOptions="Center"
-                       VerticalOptions="Center"
-                       Margin="0,20,0,20"
-                       TextColor="{StaticResource Gray500}" />
-
-                <Button Text="Done"
-                        Command="{Binding DoneCommand}"
-                        Style="{StaticResource PrimaryButton}"
-                        Margin="0,16,0,0" />
-            </VerticalStackLayout>
-        </ScrollView>
+                    <!-- <Label Text="No images found." -->
+                    <!--        IsVisible="{Binding ShowNoImages}" -->
+                    <!--        HorizontalOptions="Center" -->
+                    <!--        VerticalOptions="Center" -->
+                    <!--        Margin="0,20,0,20" -->
+                    <!--        TextColor="{StaticResource Gray500}" /> -->
+                </VerticalStackLayout>
+            </ScrollView>
+        </Grid>
     </ContentPage.Content>
 </local:LaceupContentPage>

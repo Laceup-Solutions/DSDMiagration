@@ -51,6 +51,7 @@ namespace LaceupMigration
 
         #region Data Sending/Upload
 
+        void SendLoadOrder();
         void SendTheOrders(string fileName);
         void SendTheOrders(IEnumerable<Batch> source, List<string> ordersId = null, bool deleteOrders = true, bool sendPayment = false);
         void SendTheSignatures(string file);

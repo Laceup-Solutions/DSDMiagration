@@ -18,6 +18,7 @@ namespace LaceupMigration.ViewModels
         private readonly ILaceupAppService _appService;
         private Client? _client;
         private bool _initialized;
+        private bool _isLoading;
         private bool _changed = false;
 
         public ObservableCollection<ClientImageViewModel> Images { get; } = new();
@@ -53,14 +54,26 @@ namespace LaceupMigration.ViewModels
             }
 
             _initialized = true;
-            await LoadImagesAsync();
+            _isLoading = true;
+            try
+            {
+                await LoadImagesAsync();
+            }
+            finally
+            {
+                _isLoading = false;
+            }
         }
 
         public async Task OnAppearingAsync()
         {
-            if (!_initialized)
+            // Don't refresh if we're already loading (e.g., during initialization)
+            // or if not initialized yet (InitializeAsync will handle it)
+            if (!_initialized || _isLoading)
                 return;
 
+            // Only refresh if already initialized and not currently loading
+            // This prevents duplicate loading when page appears right after initialization
             await RefreshAsync();
         }
 

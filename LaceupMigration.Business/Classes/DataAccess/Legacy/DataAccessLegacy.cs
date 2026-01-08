@@ -11962,7 +11962,7 @@ namespace LaceupMigration
             }
         }
 
-        void SendLoadOrder()
+        public void SendLoadOrder()
         {
             lock (FileOperationsLocker.lockFilesObject)
             {

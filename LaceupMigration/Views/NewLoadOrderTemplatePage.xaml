@@ -5,11 +5,10 @@
              x:Class="LaceupMigration.Views.NewLoadOrderTemplatePage"
              x:DataType="vm:NewLoadOrderTemplatePageViewModel"
              Shell.NavBarIsVisible="True"
-             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              Shell.TabBarIsVisible="False"
              Title="Load Order">
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
+        <ToolbarItem Text="MENU" Order="Primary" Priority="0" />
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Padding="5">
