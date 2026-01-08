@@ -404,7 +404,7 @@ namespace LaceupMigration.ViewModels
                 Config.SaveSettings();
             }
 
-            await GoToAsyncOrMainAsync("///MainPage");
+            await GoToAsyncOrMainAsync("///MainPage?shouldSyncData=true");
         }
 
         private static void UpdateOrderPrices()

@@ -31,12 +31,15 @@ namespace LaceupMigration.ViewModels
             RefreshMenuVisibility();
         }
 
-        public void OnAppearing()
+        public async Task OnAppearingAsync(bool shouldSyncData = false)
         {
             UpdateCompanyName();
             // [MIGRATION]: Refresh menu visibility on appearing to ensure it's up-to-date
             // This handles cases where user changes or sync happens between page navigations
             RefreshMenuVisibility();
+
+            if (shouldSyncData)
+                await MenuHandlerSyncDataAsync();
         }
 
         private void UpdateCompanyName()
