@@ -30,14 +30,17 @@ namespace LaceupMigration
                 var oldData = Path.Combine(codebase, "Data");
                 if (Directory.Exists(oldData))
                 {
-                    if (Directory.Exists(Config.DataPath)) Directory.Delete(Config.DataPath);
+                    if (Directory.Exists(Config.DataPath)) 
+                        Directory.Delete(Config.DataPath);
                     Directory.Move(oldData, Config.DataPath);
 
                     // move back the data files
                     var file = Path.Combine(Config.DataPath, "clients.cvs");
-                    if (File.Exists(file)) File.Move(file, Config.ClientStoreFile);
+                    if (File.Exists(file)) 
+                        File.Move(file, Config.ClientStoreFile);
                     file = Path.Combine(Config.DataPath, "products.cvs");
-                    if (File.Exists(file)) File.Move(file, Config.ProductStoreFile);
+                    if (File.Exists(file)) 
+                        File.Move(file, Config.ProductStoreFile);
                 }
 
                 oldData = Path.Combine(codebase, "BatchData");
@@ -2298,7 +2301,7 @@ namespace LaceupMigration
             companiesCount = CompanyInfo.Companies.Count(x => x.FromFile);
 
             if (companiesCount == 0) CompanyInfo.Companies.Add(CompanyInfo.CreateDefaultCompany());
-            
+
             #endregion
 
             string[] parts = configSettings.Split(new char[] { '|' });
@@ -6660,7 +6663,7 @@ namespace LaceupMigration
                 Config.UseLot = true;
                 Config.LotIsMandatory = true;
             }
-            
+
             if (Config.ParInConsignment) Config.PrinterToUse = "LaceUPMobileClassesIOS.AdvanceBatteryPrinter";
 
             if (MasterDevice) CanChangeSalesmanId = false;
@@ -9691,7 +9694,7 @@ namespace LaceupMigration
 
             CanChangeSalesmanId = !MasterDevice;
         }
-        
+
 
         #endregion
 
