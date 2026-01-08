@@ -64,6 +64,9 @@ namespace LaceupMigration.ViewModels
         private string _totalText = "Total: $0.00";
 
         [ObservableProperty]
+        private string _termsText = "Terms: ";
+
+        [ObservableProperty]
         private string _sortByText = "Sort By: Product Name";
 
         [ObservableProperty]
@@ -125,7 +128,7 @@ namespace LaceupMigration.ViewModels
             _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId);
             if (_order == null)
             {
-                await _dialogService.ShowAlertAsync("Order not found.", "Error");
+                // await _dialogService.ShowAlertAsync("Order not found.", "Error");
                 return;
             }
 
@@ -153,8 +156,8 @@ namespace LaceupMigration.ViewModels
             // Set order location
             if (_order != null)
             {
-                _order.Latitude = DataAccess.LastLatitude;
-                _order.Longitude = DataAccess.LastLongitude;
+                _order.Latitude = Config.LastLatitude;
+                _order.Longitude = Config.LastLongitude;
             }
 
             // Check if items were added
@@ -213,6 +216,7 @@ namespace LaceupMigration.ViewModels
 
             ClientName = _order.Client?.ClientName ?? "Unknown Client";
             OrderTypeText = GetOrderTypeText(_order);
+            TermsText = "Terms: " + _order.Term;
 
             // Company info
             if (!string.IsNullOrEmpty(_order.CompanyName))
@@ -891,7 +895,7 @@ namespace LaceupMigration.ViewModels
                     _order.Save();
                 }
 
-                DataAccess.SendTheOrders(new Batch[] { batch });
+                DataProvider.SendTheOrders(new Batch[] { batch });
 
                 await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Order sent successfully.", "Success");
@@ -1238,14 +1242,79 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         public async Task GoBackAsync()
         {
-            var canNavigate = await FinalizeOrderAsync();
-            if (canNavigate)
+            if (_order == null)
             {
-                // [ACTIVITY STATE]: Remove state when navigating away programmatically
-                // This handles cases where navigation happens via ViewModel (not just back button)
-                Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
-                
                 await Shell.Current.GoToAsync("..");
+                return;
+            }
+
+            // Check if order is empty - if so, handle it and return (matching Xamarin logic)
+            bool isEmpty = _order.Details.Count == 0 || 
+                (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
+
+            if (isEmpty)
+            {
+                // Handle empty order - this will either delete it or show void dialog
+                var canNavigate = await FinalizeOrderAsync();
+                if (canNavigate)
+                {
+                    // [ACTIVITY STATE]: Remove state when navigating away programmatically
+                    Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
+                    
+                    await Shell.Current.GoToAsync("..");
+                }
+                return; // Don't show the 3-option dialog for empty orders
+            }
+
+            // Check if order is presale and show dialog with 3 options (only for non-empty orders)
+            if (_order.AsPresale)
+            {
+                // Show action options dialog (matching Xamarin PreviouslyOrderedTemplateActivity logic)
+                var options = new[]
+                {
+                    "Send Order",
+                    "Save Order To Send Later",
+                    "Stay In The Order"
+                };
+
+                var choice = await _dialogService.ShowActionSheetAsync("Action Options", "Cancel", null, options);
+                
+                if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
+                    return; // User cancelled, stay in order
+
+                switch (choice)
+                {
+                    case "Send Order":
+                        // Call SendOrderAsync which handles validation and sending
+                        await SendOrderAsync();
+                        break;
+                    case "Save Order To Send Later":
+                        // Continue after alert - finalize order and navigate
+                        var canNavigate = await FinalizeOrderAsync();
+                        if (canNavigate)
+                        {
+                            // [ACTIVITY STATE]: Remove state when navigating away programmatically
+                            Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
+                            
+                            await Shell.Current.GoToAsync("..");
+                        }
+                        break;
+                    case "Stay In The Order":
+                        // Do nothing, stay in the order
+                        return;
+                }
+            }
+            else
+            {
+                // Non-presale order - use normal finalization logic
+                var canNavigate = await FinalizeOrderAsync();
+                if (canNavigate)
+                {
+                    // [ACTIVITY STATE]: Remove state when navigating away programmatically
+                    Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
+                    
+                    await Shell.Current.GoToAsync("..");
+                }
             }
         }
 

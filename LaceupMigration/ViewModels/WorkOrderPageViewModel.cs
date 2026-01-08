@@ -100,7 +100,7 @@ namespace LaceupMigration.ViewModels
 
             ClientName = _client.ClientName;
 
-            var assetSerialNumber = DataAccess.GetSingleUDF("workOrderAsset", _order.ExtraFields);
+            var assetSerialNumber = UDFHelper.GetSingleUDF("workOrderAsset", _order.ExtraFields);
             if (!string.IsNullOrEmpty(assetSerialNumber))
             {
                 _selectedAsset = Asset.Find(assetSerialNumber);
@@ -195,7 +195,7 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            _order.ExtraFields = DataAccess.SyncSingleUDF("workOrderAsset", serialNumber, _order.ExtraFields);
+            _order.ExtraFields = UDFHelper.SyncSingleUDF("workOrderAsset", serialNumber, _order.ExtraFields);
 
             var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
             if (batch == null)

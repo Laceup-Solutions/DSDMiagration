@@ -462,7 +462,7 @@ namespace LaceupMigration.ViewModels
 			if (Config.CheckIfShipdateLocked && presaleOrders.Count > 0)
 			{
 				var lockedDates = new List<DateTime>();
-				if (!DataAccess.CheckIfShipdateIsValid(presaleOrders.Select(x => x.ShipDate).ToList(), ref lockedDates))
+				if (!DataProvider.CheckIfShipdateIsValid(presaleOrders.Select(x => x.ShipDate).ToList(), ref lockedDates))
 				{
 					var sb = string.Empty;
 					foreach (var l in lockedDates)
@@ -498,7 +498,7 @@ namespace LaceupMigration.ViewModels
 				var batches = Batch.List.Where(x => orders.Any(y => y.BatchId == x.Id));
 
 				// Send orders to back office
-				DataAccess.SendTheOrders(batches, orders.Select(x => x.OrderId.ToString()).ToList());
+				DataProvider.SendTheOrders(batches, orders.Select(x => x.OrderId.ToString()).ToList());
 
 				SelectedOrders.Clear();
 				RefreshListHeader();
@@ -515,7 +515,7 @@ namespace LaceupMigration.ViewModels
 
 		private void RefreshUI()
 		{
-			if (!DataAccess.CanUseApplication() || !DataAccess.ReceivedData)
+			if (!DataProvider.CanUseApplication() || !Config.ReceivedData)
 			{
 				IsSearchVisible = false;
 				ShowButtonsLayout = false;

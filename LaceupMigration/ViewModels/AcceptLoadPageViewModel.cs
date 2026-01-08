@@ -311,13 +311,13 @@ namespace LaceupMigration.ViewModels
                     try
                     {
                         // Download products first
-                        DataAccess.DownloadProducts();
+                        DataProvider.DownloadProducts();
 
                         // Get pending load orders based on ViewAll flag
                         if (ViewAll)
-                            DataAccess.GetPendingLoadOrders(_currentDate, true);
+                            DataProvider.GetPendingLoadOrders(_currentDate, true);
                         else
-                            DataAccess.GetPendingLoadOrders(_currentDate);
+                            DataProvider.GetPendingLoadOrders(_currentDate);
                     }
                     catch (Exception e)
                     {
@@ -342,11 +342,11 @@ namespace LaceupMigration.ViewModels
                     RefreshOrders();
 
                     // Update RouteOrdersCount and save app status (matching Xamarin)
-                    DataAccess.RouteOrdersCount = _sourceOrders.Count;
+                    Config.RouteOrdersCount = _sourceOrders.Count;
                     Config.SaveAppStatus();
 
                     // If RouteOrdersCount is 0 and exit is true, go back to main (matching Xamarin)
-                    if (DataAccess.RouteOrdersCount == 0 && exit)
+                    if (Config.RouteOrdersCount == 0 && exit)
                     {
                         await _appService.GoBackToMainAsync();
                     }
@@ -482,7 +482,7 @@ namespace LaceupMigration.ViewModels
             // 2. Cancel button is clicked (Cancel_Click)
             // 3. Page is disappearing and not navigating forward to accept load
             // This deletes pending load orders that haven't been accepted yet
-            DataAccess.DeletePengingLoads();
+            DataProvider.DeletePengingLoads();
         }
 
         public void OnDisappearing()

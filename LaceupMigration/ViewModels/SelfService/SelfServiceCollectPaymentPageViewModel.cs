@@ -133,7 +133,7 @@ namespace LaceupMigration.ViewModels.SelfService
             try
             {
                 var payments = selectedPayments.Select(x => x.Payment).ToList();
-                DataAccess.SendInvoicePaymentsBySource(payments);
+                DataProvider.SendInvoicePaymentsBySource(payments);
 
                 await _dialogService.ShowAlertAsync("Payments sent successfully.", "Success", "OK");
                 LoadPayments();

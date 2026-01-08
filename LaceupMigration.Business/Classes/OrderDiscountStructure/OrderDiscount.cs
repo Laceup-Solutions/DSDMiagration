@@ -79,7 +79,7 @@ namespace LaceupMigration
                 return true;
 
             var productsDiscount = order.Details.Where(x => x.Product.IsDiscountItem).Select(x => x.ExtraFields).ToList();
-            var uniqueIdList = productsDiscount.Select(x => DataAccess.GetSingleUDF("UniqueId", x)).ToList();
+            var uniqueIdList = productsDiscount.Select(x => UDFHelper.GetSingleUDF("UniqueId", x)).ToList();
             return uniqueIdList.Contains(line?.OriginalId?.ToString());
 
         }
@@ -108,7 +108,7 @@ namespace LaceupMigration
                 }
             }
 
-            var exclude = DataAccess.GetSingleUDF("ExcludeDiscount", order.ExtraFields);
+            var exclude = UDFHelper.GetSingleUDF("ExcludeDiscount", order.ExtraFields);
 
             qty *= uomFactor;
 

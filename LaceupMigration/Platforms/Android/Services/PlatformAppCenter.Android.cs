@@ -35,7 +35,7 @@ namespace LaceupMigration.Services
 							Thread.Sleep(1000);
 							access.CloseConnection();
 
-							DataAccessEx.ExportData();
+							DataProvider.ExportData();
 						}
 						catch
 						{

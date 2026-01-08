@@ -136,7 +136,7 @@ namespace LaceupMigration.ViewModels
             _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId);
             if (_order == null)
             {
-                await _dialogService.ShowAlertAsync("Order not found.", "Error");
+                // await _dialogService.ShowAlertAsync("Order not found.", "Error");
                 return;
             }
 
@@ -154,8 +154,8 @@ namespace LaceupMigration.ViewModels
             // Equivalent to OnStart - Set order location
             if (_order != null)
             {
-                _order.Latitude = DataAccess.LastLatitude;
-                _order.Longitude = DataAccess.LastLongitude;
+                _order.Latitude = Config.LastLatitude;
+                _order.Longitude = Config.LastLongitude;
             }
 
             // Equivalent to OnResume/OnNewIntent - Check if items were added
@@ -562,7 +562,7 @@ namespace LaceupMigration.ViewModels
                     // Check availability
                     if (!string.IsNullOrEmpty(product.NonVisibleExtraFieldsAsString))
                     {
-                        var available = DataAccess.GetSingleUDF("AvailableIn", product.NonVisibleExtraFieldsAsString);
+                        var available = UDFHelper.GetSingleUDF("AvailableIn", product.NonVisibleExtraFieldsAsString);
                         if (!string.IsNullOrEmpty(available))
                         {
                             if (available.ToLower() == "none" || !available.ToLower().Contains("order"))
@@ -1060,7 +1060,7 @@ namespace LaceupMigration.ViewModels
                 // Check for ShipVia
                 if (Config.ShipViaMandatory)
                 {
-                    var shipVia = DataAccess.GetSingleUDF("ShipVia", _order.ExtraFields);
+                    var shipVia = UDFHelper.GetSingleUDF("ShipVia", _order.ExtraFields);
                     if (string.IsNullOrEmpty(shipVia))
                     {
                         await _dialogService.ShowAlertAsync("Must add Ship Via.", "Alert");
@@ -1071,7 +1071,7 @@ namespace LaceupMigration.ViewModels
                 // Check for Disol Survey
                 if (Config.UseDisolSurvey && _order.OrderType == OrderType.Order && !_order.HasDisolSurvey)
                 {
-                    string survey = DataAccess.GetSingleUDF("Survey", _order.Client.ExtraPropertiesAsString);
+                    string survey = UDFHelper.GetSingleUDF("Survey", _order.Client.ExtraPropertiesAsString);
                     bool mustFillSurvey = survey == "1";
                     if (mustFillSurvey)
                     {
@@ -1115,7 +1115,7 @@ namespace LaceupMigration.ViewModels
                 if (Config.CheckIfShipdateLocked)
                 {
                     var lockedDates = new List<DateTime>();
-                    if (!DataAccess.CheckIfShipdateIsValid(new List<DateTime>() { _order.ShipDate }, ref lockedDates))
+                    if (!DataProvider.CheckIfShipdateIsValid(new List<DateTime>() { _order.ShipDate }, ref lockedDates))
                     {
                         var sb = string.Empty;
                         foreach (var l in lockedDates)
@@ -1234,7 +1234,7 @@ namespace LaceupMigration.ViewModels
                 // Check inventory if needed
                 if (Config.CheckAvailableBeforeSending && !Config.CanGoBelow0 && Config.CheckInventoryInPreSale)
                 {
-                    DataAccessEx.GetInventoryInBackground(true);
+                    DataProvider.GetInventoryInBackground(true);
 
                     List<Order> validOrders = new List<Order>();
                     if (_order.AsPresale && _order.OrderType == OrderType.Order)
@@ -1308,7 +1308,7 @@ namespace LaceupMigration.ViewModels
                 }
 
                 // Send the orders
-                DataAccess.SendTheOrders(new Batch[] { batch });
+                DataProvider.SendTheOrders(new Batch[] { batch });
 
                 await _dialogService.HideLoadingAsync();
 

@@ -23,7 +23,7 @@ namespace LaceupMigration.ViewModels
         {
             InitializeSalesmanSelection();
             
-            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "30.0.0.0") && !Config.ShowOldReportsRegardless)
+            if (Config.CheckCommunicatorVersion("30.0.0.0") && !Config.ShowOldReportsRegardless)
             {
                 // This is the new version - title will be set by the page
             }
@@ -44,7 +44,7 @@ namespace LaceupMigration.ViewModels
             {
                 try
                 {
-                    DataAccess.GetSalesmanList();
+                    DataProvider.GetSalesmanList();
                 }
                 catch (Exception e)
                 {
@@ -108,7 +108,7 @@ namespace LaceupMigration.ViewModels
         {
             try
             {
-                return DataAccess.GetCommissionReport(command);
+                return DataProvider.GetCommissionReport(command);
             }
             catch
             {

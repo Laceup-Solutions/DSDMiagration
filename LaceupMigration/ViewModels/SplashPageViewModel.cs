@@ -155,7 +155,7 @@ namespace LaceupMigration.ViewModels
 									}
 								}
 								
-								DataAccess.WaitBeforeStart = 1;
+								Config.WaitBeforeStart = 1;
 								Config.SaveAppStatus();
 								return;
 							}
@@ -180,7 +180,7 @@ namespace LaceupMigration.ViewModels
 						await GoToAsyncOrMainAsync("///MainPage");
 					}
 
-					DataAccess.WaitBeforeStart = 1;
+					Config.WaitBeforeStart = 1;
 					Config.SaveAppStatus();
 					return;
 				}
@@ -222,7 +222,7 @@ namespace LaceupMigration.ViewModels
 				}
 			}
 
-			DataAccess.WaitBeforeStart = 1;
+			Config.WaitBeforeStart = 1;
 			Config.SaveAppStatus();
 		}
 

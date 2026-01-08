@@ -162,7 +162,7 @@ namespace LaceupMigration.ViewModels
                 }
 
                 // Indicate it was saved - match Xamarin line 182
-                DataAccess.SaveInventory();
+                ProductInventory.Save();
                 HasChanges = false;
 
                 // Delete temp file - match Xamarin line 185-186

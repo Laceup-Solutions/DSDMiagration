@@ -29,7 +29,7 @@ namespace LaceupMigration.ViewModels
             Reports.Add(new ReportItemViewModel("Sales Report", SalesReport));
             Reports.Add(new ReportItemViewModel("Received Payments Report", PaymentsReport));
 
-            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "30.0.0.0") && !Config.ShowOldReportsRegardless)
+            if (Config.CheckCommunicatorVersion("30.0.0.0") && !Config.ShowOldReportsRegardless)
             {
                 Reports.Add(new ReportItemViewModel("Salesman Commission Report By Product", CommissionReport));
                 Reports.Add(new ReportItemViewModel("Salesman Commission Report By Customer", SalesmenCommissionReport));

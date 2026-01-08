@@ -47,7 +47,7 @@
 
             <!-- Customer and Order Summary -->
             <Frame Grid.Row="1" Padding="16" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
-                <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,*,*" ColumnSpacing="12" RowSpacing="8">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*,*" ColumnSpacing="12" RowSpacing="8">
                     <!-- Customer Name -->
                     <Label Grid.Row="0" Grid.ColumnSpan="3"
                            Text="{Binding ClientName}"
@@ -62,8 +62,14 @@
                            TextColor="{StaticResource Gray600}"
                            IsVisible="{Binding ShowCompany}" />
                     
+                    <!-- Terms -->
+                    <Label Grid.Row="2" Grid.ColumnSpan="3"
+                           Text="{Binding TermsText}"
+                           FontSize="14"
+                           TextColor="{StaticResource Gray600}" />
+                    
                     <!-- Order Metrics (Left Column) -->
-                    <VerticalStackLayout Grid.Row="2" Grid.Column="0" Spacing="4">
+                    <VerticalStackLayout Grid.Row="3" Grid.Column="0" Spacing="4">
                         <Label Text="{Binding LinesText}"
                                FontSize="14"
                                TextColor="{StaticResource Gray900}" />
@@ -73,7 +79,7 @@
                     </VerticalStackLayout>
                     
                     <!-- Order Financials (Middle Column) -->
-                    <VerticalStackLayout Grid.Row="2" Grid.Column="1" Spacing="4">
+                    <VerticalStackLayout Grid.Row="3" Grid.Column="1" Spacing="4">
                         <Label Text="{Binding OrderAmountText}"
                                FontSize="14"
                                TextColor="{StaticResource Gray900}"
@@ -90,7 +96,7 @@
                     </VerticalStackLayout>
                     
                     <!-- Order Financials (Right Column) -->
-                    <VerticalStackLayout Grid.Row="2" Grid.Column="2" Spacing="4">
+                    <VerticalStackLayout Grid.Row="3" Grid.Column="2" Spacing="4">
                         <Label Text="{Binding TaxText}"
                                FontSize="14"
                                TextColor="{StaticResource Gray900}"

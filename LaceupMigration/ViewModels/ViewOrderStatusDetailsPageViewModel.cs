@@ -39,7 +39,7 @@ namespace LaceupMigration.ViewModels
 
             if (_order == null)
             {
-                await _dialogService.ShowAlertAsync("Order not found.", "Error", "OK");
+                // await _dialogService.ShowAlertAsync("Order not found.", "Error", "OK");
                 await Shell.Current.GoToAsync("..");
                 return;
             }
@@ -59,7 +59,7 @@ namespace LaceupMigration.ViewModels
             ShowTotal = !Config.HidePriceInTransaction;
 
             // Status
-            var statusEx = DataAccess.GetSingleUDF("status", _order.ExtraFields);
+            var statusEx = UDFHelper.GetSingleUDF("status", _order.ExtraFields);
             if (!string.IsNullOrEmpty(statusEx))
             {
                 StatusText = $"Status: {statusEx}";
@@ -143,7 +143,7 @@ namespace LaceupMigration.ViewModels
         {
             get
             {
-                var statusEx = DataAccess.GetSingleUDF("status", _detail.ExtraFields);
+                var statusEx = UDFHelper.GetSingleUDF("status", _detail.ExtraFields);
                 if (!string.IsNullOrEmpty(statusEx))
                     return $"Status: {statusEx}";
                 return string.Empty;

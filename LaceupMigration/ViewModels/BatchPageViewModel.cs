@@ -604,8 +604,8 @@ namespace LaceupMigration.ViewModels
                         {
                             stop.Closed = true;
                             stop.When = DateTime.Now;
-                            stop.Latitude = DataAccess.LastLatitude;
-                            stop.Longitude = DataAccess.LastLongitude;
+                            stop.Latitude = Config.LastLatitude;
+                            stop.Longitude = Config.LastLongitude;
                             break;
                         }
                     }
@@ -1115,7 +1115,35 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // 8. Work Order
+            // No Service
+            if (!Config.PreSale && orders.Count == 0)
+            {
+                options.Add(new MenuOption("No Service", async () =>
+                {
+                    if (orders.Count != 0)
+                    {
+                        await _dialogService.ShowAlertAsync("No service is only available when there are no orders in the batch.", "Alert");
+                        return;
+                    }
+
+                    var result = await _dialogService.ShowConfirmAsync(
+                        "Do you want to record no service for this client?",
+                        "Alert",
+                        "Yes",
+                        "No");
+
+                    if (result)
+                    {
+                        // Navigate to no service page
+                        var noServiceOrder = new Order(_batch.Client) { OrderType = OrderType.NoService };
+                        noServiceOrder.BatchId = _batch.Id;
+                        noServiceOrder.Save();
+                        await Shell.Current.GoToAsync($"noservice?orderId={noServiceOrder.OrderId}");
+                    }
+                }));
+            }
+            
+            // Work Order
             if (Config.AllowWorkOrder)
             {
                 options.Add(new MenuOption("Work Order", async () =>
@@ -1133,10 +1161,40 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // 9. Exchange (not implemented in MAUI)
-            // 10. Presale Quote (not implemented in MAUI)
+            // Consignment
+            var consignmentForClient = true;
+            if (!string.IsNullOrEmpty(_batch.Client.NonvisibleExtraPropertiesAsString))
+            {
+                var item = _batch.Client.NonVisibleExtraProperties.FirstOrDefault(x => x.Item1.ToLowerInvariant() == "consignmentenabled");
+                if (item != null && item.Item2 == "0")
+                    consignmentForClient = false;
+            }
 
-            // 11. Par Level Invoice
+            if (consignmentForClient && Config.Consignment)
+            {
+                if (!Config.UseFullConsignment)
+                {
+                    var countVisible = !Config.MagnoliaSetConsignment &&
+                        ((_batch.Client.ConsignmentTemplate != null && _batch.Client.ConsignmentTemplate.Count > 0) || Config.UseBattery);
+                    if (countVisible)
+                    {
+                        options.Add(new MenuOption("Count", async () => await CreateConsignmentOrderAsync(true)));
+                    }
+
+                    var visible = !Config.HideSetConsignment || (Config.HideSetConsignment && _batch.Client.ConsignmentTemplate == null);
+                    if (visible)
+                    {
+                        options.Add(new MenuOption("Consignment Set", async () => await CreateConsignmentOrderAsync(false)));
+                    }
+                }
+                else
+                {
+                    var title = Config.ParInConsignment ? "Par and Consignment" : "Consignment";
+                    options.Add(new MenuOption(title, async () => await CreateConsignmentOrderAsync(false)));
+                }
+            }
+
+            // Par Level Invoice
             if (Config.ClientDailyPL && !Config.ParInConsignment)
             {
                 options.Add(new MenuOption("Par Level Invoice", async () =>
@@ -1234,10 +1292,12 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
+            // Attach Photo
+            if (Config.CheckCommunicatorVersion("37.0"))
             // 19. Sample (not implemented in MAUI)
 
             // 20. Attach Photo
-            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "37.0"))
+            if (Config.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "37.0"))
             {
                 options.Add(new MenuOption("Attach Photo", async () =>
                 {
@@ -1256,6 +1316,28 @@ namespace LaceupMigration.ViewModels
 
                     await Shell.Current.GoToAsync($"clientimages?orderId={selectedOrders[0].OrderId}");
                 }));
+            }
+
+            // Payment
+            if (isLocked)
+            {
+                double collected = 0;
+                foreach (var order in orders)
+                {
+                    var payment = InvoicePayment.List.FirstOrDefault(x => 
+                        !string.IsNullOrEmpty(x.OrderId) && 
+                        x.OrderId.Contains(order.UniqueId));
+                    if (payment != null)
+                        collected += payment.Components.Sum(x => x.Amount);
+                }
+
+                if (collected < _batch.Total() && !Config.HidePriceInTransaction)
+                {
+                    options.Add(new MenuOption("Receive Payment", async () =>
+                    {
+                        await Shell.Current.GoToAsync($"selectinvoice?clientId={_batch.Client.ClientId}&fromClientDetails=false");
+                    }));
+                }
             }
 
             // 21. Send by Email
@@ -1283,10 +1365,7 @@ namespace LaceupMigration.ViewModels
                     // TODO: Implement PDF sharing
                 }));
             }
-
-            // 24. Locate Client (not implemented in MAUI)
-
-            // 25. Advanced Options
+            // Advanced Options
             options.Add(new MenuOption("Advanced Options", ShowAdvancedOptionsAsync));
 
             return options;
@@ -1422,25 +1501,25 @@ namespace LaceupMigration.ViewModels
                 order.OrderType = OrderType.Consignment;
 
                 if (Config.ConsignmentBeta)
-                    order.ExtraFields = DataAccess.SyncSingleUDF("cosignmentOrder", "1", order.ExtraFields);
+                    order.ExtraFields = UDFHelper.SyncSingleUDF("cosignmentOrder", "1", order.ExtraFields);
 
                 if (Config.UseFullConsignment)
                 {
-                    order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
-                    order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
+                    order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
+                    order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
                 }
                 else
                 {
                     if (isCounting)
-                        order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
+                        order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentCount", "1", order.ExtraFields);
                     else
-                        order.ExtraFields = DataAccess.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
+                        order.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentSet", "1", order.ExtraFields);
                 }
 
                 order.Save();
 
                 if (Config.TrackInventory)
-                    DataAccess.SaveInventory();
+                    ProductInventory.Save();
             }
 
             await Shell.Current.GoToAsync($"consignment?orderId={order.OrderId}&counting={(isCounting ? "1" : "0")}");

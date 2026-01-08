@@ -56,7 +56,7 @@ namespace LaceupMigration
             linesTemplates.Add(UnitedTableTotal, "^FO230,{0}^ADN,18,10^FDTotals:^FS^FO340,{0}^ADN,18,10^FD{1}^FS^FO400,{0}^ADN,18,10^FD{2}^FS^FO680,{0}^ADN,18,10^FD{3}^FS");
         }
 
-        protected override IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool preOrder, Order order, Client client, string invoiceId, IList<DataAccess.PaymentSplit> payments, bool paidInFull)
+        protected override IEnumerable<string> GetHeaderRowsInOneDoc(ref int startY, bool preOrder, Order order, Client client, string invoiceId, IList<PaymentSplit> payments, bool paidInFull)
         {
             List<string> lines = new List<string>();
             startY += 10;

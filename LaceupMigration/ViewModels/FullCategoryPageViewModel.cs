@@ -97,7 +97,7 @@ namespace LaceupMigration.ViewModels
                 _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId.Value);
                 if (_order == null)
                 {
-                    await _dialogService.ShowAlertAsync("Order not found.", "Error");
+                    // await _dialogService.ShowAlertAsync("Order not found.", "Error");
                     return;
                 }
                 _client = _order.Client;
@@ -972,7 +972,7 @@ namespace LaceupMigration.ViewModels
                 int priceLevel = _client != null ? _client.PriceLevel : 0;
 
                 // First try to get PDF from server (matches Xamarin: DataAccess.GetCatalogPdf)
-                if (DataAccess.GetCatalogPdf(priceLevel, showPrice, showUPC, showUoM, categoriesids))
+                if (DataProvider.GetCatalogPdf(priceLevel, showPrice, showUPC, showUoM, categoriesids))
                 {
                     pdfFile = Config.CatalogPDFPath;
                 }

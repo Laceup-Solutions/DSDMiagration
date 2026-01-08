@@ -259,7 +259,7 @@ namespace LaceupMigration.ViewModels
             }));
 
             // View Attached Photos
-            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "46.2.0"))
+            if (Config.CheckCommunicatorVersion("46.2.0"))
             {
                 options.Add(new MenuOption("View Attached Photos", async () =>
                 {

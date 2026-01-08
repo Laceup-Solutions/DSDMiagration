@@ -37,7 +37,7 @@ namespace LaceupMigration.ViewModels
                 SelectedSalesman = "All Salesmen";
             }
 
-            if (DataAccess.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "28.3"))
+            if (Config.CheckCommunicatorVersion("28.3"))
             {
                 ShowDetails = false;
                 ShowWithDetailsButton = false;
@@ -54,7 +54,7 @@ namespace LaceupMigration.ViewModels
             {
                 try
                 {
-                    DataAccess.GetSalesmanList();
+                    DataProvider.GetSalesmanList();
                 }
                 catch (Exception e)
                 {
@@ -128,7 +128,7 @@ namespace LaceupMigration.ViewModels
         {
             try
             {
-                return DataAccess.GetSalesReport(command);
+                return DataProvider.GetSalesReport(command);
             }
             catch
             {
@@ -140,7 +140,7 @@ namespace LaceupMigration.ViewModels
         {
             try
             {
-                return DataAccess.GetSalesReportWithDetails(command);
+                return DataProvider.GetSalesReportWithDetails(command);
             }
             catch
             {

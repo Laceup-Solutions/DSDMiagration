@@ -105,7 +105,7 @@ namespace LaceupMigration.ViewModels
 
                 if (_order == null)
                 {
-                    await _dialogService.ShowAlertAsync("Order not found.", "Error", "OK");
+                    // await _dialogService.ShowAlertAsync("Order not found.", "Error", "OK");
                     await Shell.Current.GoToAsync("..");
                     return;
                 }
@@ -270,14 +270,14 @@ namespace LaceupMigration.ViewModels
                         }
 
                         string dstFileZipped = dstFile + ".zip";
-                        DataAccess.ZipFile(dstFile, dstFileZipped);
-                        NetAccess.SendTheOrders(dstFileZipped);
+                        ZipMethods.ZipFile(dstFile, dstFileZipped);
+                        DataProvider.SendTheOrders(dstFileZipped);
                         System.IO.File.Delete(dstFileZipped);
 
                         var signatureFileZipped = dstFile + ".signature.zip";
                         if (System.IO.File.Exists(signatureFileZipped))
                         {
-                            NetAccess.SendTheSignatures(signatureFileZipped);
+                            DataProvider.SendTheSignatures(signatureFileZipped);
                         }
                     }
                     catch (Exception ex)

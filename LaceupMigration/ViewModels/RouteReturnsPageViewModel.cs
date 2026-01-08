@@ -910,7 +910,7 @@ namespace LaceupMigration.ViewModels
                 }
             }
             
-            DataAccess.SaveInventory();
+            ProductInventory.Save();
         }
         
         [RelayCommand]

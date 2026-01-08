@@ -63,7 +63,7 @@ namespace LaceupMigration.ViewModels
             _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId);
             if (_order == null)
             {
-                await _dialogService.ShowAlertAsync("Order not found.", "Error");
+                // await _dialogService.ShowAlertAsync("Order not found.", "Error");
                 return;
             }
 
@@ -285,8 +285,8 @@ namespace LaceupMigration.ViewModels
                 {
                     stop.Closed = true;
                     stop.When = DateTime.Now;
-                    stop.Latitude = DataAccess.LastLatitude;
-                    stop.Longitude = DataAccess.LastLongitude;
+                    stop.Latitude = Config.LastLatitude;
+                    stop.Longitude = Config.LastLongitude;
                 }
 
                 if (_order.UniqueId != null)

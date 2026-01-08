@@ -107,7 +107,7 @@ namespace LaceupMigration
 
         private static void WorkerMethod()
         {
-            if (DataAccess.LoadingData)
+            if (Config.LoadingData)
                 return;
 
             if (!Config.BackGroundSync)
@@ -135,7 +135,7 @@ namespace LaceupMigration
                     var currentInventoryTotal = Product.Products.Sum(x => x.CurrentInventory);
                     SendInventory(currentInventoryTotal);
 
-                    if (DataAccess.LastLatitude != lastLatitude || DataAccess.LastLongitude != lastLongitude)
+                    if (Config.LastLatitude != lastLatitude || Config.LastLongitude != lastLongitude)
                         SenndLastKnowLocation();
 
                     if (LastSentOrderPayment.Ticks < ModifiedOrderPayments.Ticks)
@@ -186,7 +186,7 @@ namespace LaceupMigration
                             Directory.CreateDirectory(Config.SessionPath);
                         }
 
-                        DataAccess.SendCurrentSession(Path.Combine(Config.SessionPath, "SessionFile.cvs"));
+                        DataProvider.SendCurrentSession(Path.Combine(Config.SessionPath, "SessionFile.cvs"));
                         LastSessionSent = DateTime.Now;
                     }
                 }
@@ -210,9 +210,9 @@ namespace LaceupMigration
                     if (s.clientId == 0)
                     {
                         s.endTime = DateTime.Now;
-                        s.endLatitude = DataAccess.LastLatitude;
-                        s.endLongitude = DataAccess.LastLongitude;
-                        s.extraFields = DataAccess.SyncSingleUDF("comment",
+                        s.endLatitude = Config.LastLatitude;
+                        s.endLongitude = Config.LastLongitude;
+                        s.extraFields = UDFHelper.SyncSingleUDF("comment",
                             $"Automtically Closed after {Config.AutomaticClockOutTime} minutes", s.extraFields);
 
                         changesMade = true;
@@ -227,9 +227,9 @@ namespace LaceupMigration
                             {
                                 changesMade = true;
                                 s.endTime = DateTime.Now;
-                                s.endLatitude = DataAccess.LastLatitude;
-                                s.endLongitude = DataAccess.LastLongitude;
-                                s.extraFields = DataAccess.SyncSingleUDF("comment",
+                                s.endLatitude = Config.LastLatitude;
+                                s.endLongitude = Config.LastLongitude;
+                                s.extraFields = UDFHelper.SyncSingleUDF("comment",
                                     $"Automtically Closed after {Config.AutomaticClockOutTime} minutes", s.extraFields);
 
                                 //close open batches
@@ -271,7 +271,7 @@ namespace LaceupMigration
 
             try
             {
-                DataAccess.SendInvoicePaymentsBySource(source, false, true);
+                DataProvider.SendInvoicePaymentsBySource(source, false, true);
                 LastSentCollectedPayments = DateTime.Now;
             }
             catch (Exception ex)
@@ -306,7 +306,7 @@ namespace LaceupMigration
 
                     try
                     {
-                        DataAccess.SendTheOrders(new Batch[] { batch }, item.Value, false);
+                        DataProvider.SendTheOrders(new Batch[] { batch }, item.Value, false);
                         LastSentFinalizedOrder = DateTime.Now;
                     }
                     catch (Exception ex)
@@ -738,7 +738,7 @@ namespace LaceupMigration
                     netaccess.WriteStringToNetwork("BackgroundLastPositionCommand");
                     netaccess.WriteStringToNetwork(Config.SalesmanId.ToString());
 
-                    string s = DataAccess.LastLatitude.ToString(CultureInfo.InvariantCulture) + "," + DataAccess.LastLongitude.ToString(CultureInfo.InvariantCulture) + "," +
+                    string s = Config.LastLatitude.ToString(CultureInfo.InvariantCulture) + "," + Config.LastLongitude.ToString(CultureInfo.InvariantCulture) + "," +
                         DateTime.Now.Ticks.ToString();
 
                     if (Shipment.CurrentShipment != null)
@@ -746,8 +746,8 @@ namespace LaceupMigration
 
                     netaccess.WriteStringToNetwork(s);
                     netaccess.WriteStringToNetwork("Goodbye");
-                    lastLongitude = DataAccess.LastLongitude;
-                    lastLatitude = DataAccess.LastLatitude;
+                    lastLongitude = Config.LastLongitude;
+                    lastLatitude = Config.LastLatitude;
                     Thread.Sleep(1000);
                     netaccess.CloseConnection();
                 }
@@ -859,9 +859,9 @@ namespace LaceupMigration
                 currentInventoryCommandData.Append((char)20);
                 currentInventoryCommandData.Append(product.BeginigInventory);
                 currentInventoryCommandData.Append((char)20);
-                currentInventoryCommandData.Append(DataAccess.LastLatitude);
+                currentInventoryCommandData.Append(Config.LastLatitude);
                 currentInventoryCommandData.Append((char)20);
-                currentInventoryCommandData.Append(DataAccess.LastLongitude);
+                currentInventoryCommandData.Append(Config.LastLongitude);
 
                 if (Shipment.CurrentShipment != null)
                 {
@@ -984,7 +984,7 @@ namespace LaceupMigration
                 {
                     try
                     {
-                        DataAccess.UpdateProductImagesMap();
+                        DataProvider.UpdateProductImagesMap();
                     }
                     catch (Exception ex)
                     {

@@ -35,7 +35,7 @@ namespace LaceupMigration
                 var salesman = Salesman.List.FirstOrDefault(x => x.Id == Config.SalesmanId);
                 if (salesman != null && !string.IsNullOrEmpty(salesman.ExtraProperties))
                 {
-                    var pre = DataAccess.GetSingleUDF(extrafield, salesman.ExtraProperties);
+                    var pre = UDFHelper.GetSingleUDF(extrafield, salesman.ExtraProperties);
 
                     if (!string.IsNullOrEmpty(pre))
                         qtyDigits = Convert.ToInt32(pre);

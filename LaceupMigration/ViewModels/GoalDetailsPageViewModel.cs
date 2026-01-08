@@ -59,7 +59,7 @@ namespace LaceupMigration.ViewModels
                     // Load goal progress detail if not already loaded
                     if (GoalDetailDTO.List.Count == 0)
                     {
-                        DataAccessEx.LoadGoalProgressDetail();
+                        DataProvider.GetGoalProgressDetail();
                     }
                 });
                 
@@ -151,7 +151,7 @@ namespace LaceupMigration.ViewModels
                 // Reload goal progress detail (it may have date filtering built in)
                 await Task.Run(() =>
                 {
-                    DataAccessEx.LoadGoalProgressDetail();
+                    DataProvider.GetGoalProgressDetail();
                 });
                 
                 // Filter details by date range
