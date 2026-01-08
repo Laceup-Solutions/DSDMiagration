@@ -315,7 +315,7 @@ namespace LaceupMigration.ViewModels
             var result = await _dialogService.ShowActionSheetAsync("Select Terms", "Cancel", null, new[] { "CIA", "Regular Order" });
             if (result == "CIA")
             {
-                _loadOrder.ExtraFields = DataAccess.SyncSingleUDF("cashTerm", "1", _loadOrder.ExtraFields);
+                _loadOrder.ExtraFields = UDFHelper.SyncSingleUDF("cashTerm", "1", _loadOrder.ExtraFields);
                 _loadOrder.Save();
                 UpdateSummaryText();
                 // After selecting term, continue with sending (matches Xamarin SelectLoadTerm(SendIt))
@@ -323,7 +323,7 @@ namespace LaceupMigration.ViewModels
             }
             else if (result == "Regular Order")
             {
-                _loadOrder.ExtraFields = DataAccess.SyncSingleUDF("cashTerm", "0", _loadOrder.ExtraFields);
+                _loadOrder.ExtraFields = UDFHelper.SyncSingleUDF("cashTerm", "0", _loadOrder.ExtraFields);
                 _loadOrder.Save();
                 UpdateSummaryText();
                 // After selecting term, continue with sending (matches Xamarin SelectLoadTerm(SendIt))
@@ -849,7 +849,7 @@ namespace LaceupMigration.ViewModels
                 hasTerm = false;
                 if (!string.IsNullOrEmpty(_loadOrder.ExtraFields))
                 {
-                    var term = DataAccess.GetSingleUDF("cashTerm", _loadOrder.ExtraFields);
+                    var term = UDFHelper.GetSingleUDF("cashTerm", _loadOrder.ExtraFields);
                     if (!string.IsNullOrEmpty(term))
                         hasTerm = true;
                 }
@@ -908,7 +908,7 @@ namespace LaceupMigration.ViewModels
                         LoadOrder.SaveListFromOrders();
 
                         // Send the load order (matches Xamarin DataAccess.SendLoadOrder())
-                        DataAccess.SendLoadOrder();
+                        DataProvider.SendLoadOrder();
                     }
                     catch (Exception ex)
                     {
@@ -938,7 +938,7 @@ namespace LaceupMigration.ViewModels
                     // Update inventory if sites exist
                     if (Sites.Count > 0)
                     {
-                        await Task.Run(() => DataAccess.UpdateInventory());
+                        await Task.Run(() => DataProvider.UpdateInventory());
                     }
 
                     // Disable editing (set read-only)

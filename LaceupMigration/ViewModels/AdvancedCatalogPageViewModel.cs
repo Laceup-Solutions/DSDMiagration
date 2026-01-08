@@ -2349,14 +2349,6 @@ namespace LaceupMigration.ViewModels
                 await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Order sent successfully.", "Success");
 
-                var route = "advancedcatalog";
-                if (_order != null)
-                {
-                    route += $"?orderId={_order.OrderId}";
-                }
-                
-                Helpers.NavigationHelper.RemoveNavigationState(route);
-
                 // [ACTIVITY STATE]: Remove state when properly exiting
                 var route = "advancedcatalog";
                 if (_order != null)

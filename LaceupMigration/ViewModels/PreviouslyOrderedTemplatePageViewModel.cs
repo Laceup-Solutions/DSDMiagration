@@ -739,7 +739,7 @@ namespace LaceupMigration.ViewModels
                 // Check ShipVia
                 if (Config.ShipViaMandatory)
                 {
-                    var shipVia = DataAccess.GetSingleUDF("ShipVia", _order.ExtraFields);
+                    var shipVia = UDFHelper.GetSingleUDF("ShipVia", _order.ExtraFields);
                     if (string.IsNullOrEmpty(shipVia))
                     {
                         await _dialogService.ShowAlertAsync("Must add ShipVia.", "Alert");
@@ -750,7 +750,7 @@ namespace LaceupMigration.ViewModels
                 // Check DisolSurvey
                 if (Config.UseDisolSurvey && _order.OrderType == OrderType.Order && !_order.HasDisolSurvey)
                 {
-                    string survey = DataAccess.GetSingleUDF("Survey", _order.Client.ExtraPropertiesAsString);
+                    string survey = UDFHelper.GetSingleUDF("Survey", _order.Client.ExtraPropertiesAsString);
                     bool mustFillSurvey = survey == "1";
                     if (mustFillSurvey)
                     {
@@ -793,7 +793,7 @@ namespace LaceupMigration.ViewModels
                 if (Config.CheckIfShipdateLocked)
                 {
                     var lockedDates = new List<DateTime>();
-                    if (!DataAccess.CheckIfShipdateIsValid(new List<DateTime>() { _order.ShipDate }, ref lockedDates))
+                    if (!DataProvider.CheckIfShipdateIsValid(new List<DateTime>() { _order.ShipDate }, ref lockedDates))
                     {
                         var sb = string.Empty;
                         foreach (var l in lockedDates)
@@ -942,7 +942,7 @@ namespace LaceupMigration.ViewModels
                 // Check DisolSurvey
                 if (Config.UseDisolSurvey && _order.OrderType == OrderType.Order && !_order.HasDisolSurvey)
                 {
-                    string survey = DataAccess.GetSingleUDF("Survey", _order.Client.ExtraPropertiesAsString);
+                    string survey = UDFHelper.GetSingleUDF("Survey", _order.Client.ExtraPropertiesAsString);
                     bool mustFillSurvey = survey == "1";
                     if (mustFillSurvey)
                     {

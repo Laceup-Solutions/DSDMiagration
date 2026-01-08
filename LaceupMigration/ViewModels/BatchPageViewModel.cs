@@ -1161,39 +1161,6 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // Consignment
-            var consignmentForClient = true;
-            if (!string.IsNullOrEmpty(_batch.Client.NonvisibleExtraPropertiesAsString))
-            {
-                var item = _batch.Client.NonVisibleExtraProperties.FirstOrDefault(x => x.Item1.ToLowerInvariant() == "consignmentenabled");
-                if (item != null && item.Item2 == "0")
-                    consignmentForClient = false;
-            }
-
-            if (consignmentForClient && Config.Consignment)
-            {
-                if (!Config.UseFullConsignment)
-                {
-                    var countVisible = !Config.MagnoliaSetConsignment &&
-                        ((_batch.Client.ConsignmentTemplate != null && _batch.Client.ConsignmentTemplate.Count > 0) || Config.UseBattery);
-                    if (countVisible)
-                    {
-                        options.Add(new MenuOption("Count", async () => await CreateConsignmentOrderAsync(true)));
-                    }
-
-                    var visible = !Config.HideSetConsignment || (Config.HideSetConsignment && _batch.Client.ConsignmentTemplate == null);
-                    if (visible)
-                    {
-                        options.Add(new MenuOption("Consignment Set", async () => await CreateConsignmentOrderAsync(false)));
-                    }
-                }
-                else
-                {
-                    var title = Config.ParInConsignment ? "Par and Consignment" : "Consignment";
-                    options.Add(new MenuOption(title, async () => await CreateConsignmentOrderAsync(false)));
-                }
-            }
-
             // Par Level Invoice
             if (Config.ClientDailyPL && !Config.ParInConsignment)
             {
@@ -1292,12 +1259,7 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // Attach Photo
             if (Config.CheckCommunicatorVersion("37.0"))
-            // 19. Sample (not implemented in MAUI)
-
-            // 20. Attach Photo
-            if (Config.CheckCommunicatorVersion(DataAccess.CommunicatorVersion, "37.0"))
             {
                 options.Add(new MenuOption("Attach Photo", async () =>
                 {
