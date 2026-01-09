@@ -133,7 +133,7 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty] private bool _showDiscount = true;
 
-        [ObservableProperty] private string _sortByText = "Sort: Product Name";
+        [ObservableProperty] private string _sortByText = "Sort By: Product Name";
 
         [ObservableProperty] private string _filterText = "Filter";
 

@@ -169,10 +169,10 @@
             </Frame>
 
             <!-- Search and Sort -->
-            <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Padding="16,8">
+            <Grid Grid.Row="2" RowDefinitions="*,Auto" RowSpacing="2" Padding="8,4">
                 <Frame Grid.Column="0" Padding="0" HasShadow="False" BorderColor="{StaticResource Gray300}" BackgroundColor="{StaticResource White}">
-                    <Grid ColumnDefinitions="*,Auto" Padding="0,0,5,0">
-                        <SearchBar Grid.Column="0"
+                    <Grid ColumnDefinitions="*,Auto" Padding="0,0,0,0">
+                        <SearchBar Grid.Row="0"
                                    Text="{Binding SearchQuery}"
                                    Placeholder="Search products..."
                                    BackgroundColor="Transparent"
@@ -187,11 +187,15 @@
                                      HorizontalOptions="Center" />
                     </Grid>
                 </Frame>
-                <Button Grid.Column="1"
+                <Button Grid.Row="1" Padding="2" 
                         Text="{Binding SortByText}"
-                        Command="{Binding SortCommand}"
-                        Style="{StaticResource SecondaryButton}"
-                        WidthRequest="120" />
+                        Command="{Binding SortCommand}" 
+                        BackgroundColor="Transparent" 
+                        FontAttributes="Bold" 
+                        HorizontalOptions="End" 
+                        TextColor="{StaticResource colorLaceupDark}"/>
+                        
+                        
             </Grid>
 
             <!-- Product List -->
