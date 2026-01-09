@@ -103,7 +103,9 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			NetAccess.GetCommunicatorVersion();
+			try
+			{
+				NetAccess.GetCommunicatorVersion();
 
 				if (Config.CheckCommunicatorVersion("80.0.0"))
 				{
@@ -128,7 +130,13 @@ namespace LaceupMigration.ViewModels
 					}
 				}
 
-			ContinueSignInAsync();
+				ContinueSignInAsync();
+			}
+			catch (Exception e)
+			{
+				await DialogHelper._dialogService.ShowAlertAsync(e.Message);
+			}
+
 		}
 
 		private Salesman? GetSalesmanBasedOnField(string field)
