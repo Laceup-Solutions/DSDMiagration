@@ -165,12 +165,12 @@ namespace LaceupMigration.ViewModels
 				await _dialogService.ShowAlertAsync("Customers highlighted in red are 90 days late on their payments. Please contact the customer prior to visiting them.", "Alert");
 			}
 
-			var clientId = item.Client.ClientId;
-			var parameters = new Dictionary<string, object>
-			{
-				{ "clientId", clientId }
-			};
-			await Shell.Current.GoToAsync("clientdetails", parameters);
+		var clientId = item.Client.ClientId;
+		var parameters = new Dictionary<string, object>
+		{
+			{ "clientId", clientId }
+		};
+		await NavigationHelper.GoToAsync("clientdetails", parameters);
 		}
 
 		[RelayCommand]

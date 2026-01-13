@@ -15,13 +15,22 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showNoImage = false;
 
-        public async Task InitializeAsync(int productId)
+        public async Task InitializeAsync(int? productId = null, string? imagePath = null)
         {
-            var imagePath = ProductImage.GetProductImage(productId);
+            string path = string.Empty;
             
-            if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+            if (!string.IsNullOrEmpty(imagePath))
             {
-                ImagePath = imagePath;
+                path = imagePath;
+            }
+            else if (productId.HasValue)
+            {
+                path = ProductImage.GetProductImage(productId.Value);
+            }
+            
+            if (!string.IsNullOrEmpty(path) && File.Exists(path))
+            {
+                ImagePath = path;
                 HasImage = true;
                 ShowNoImage = false;
             }

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Maui.Controls;
+using Category = LaceupMigration.Category;
 
 namespace LaceupMigration.Views
 {
@@ -194,9 +195,10 @@ namespace LaceupMigration.Views
 
         private async void Subcategory_Tapped(object sender, EventArgs e)
         {
-            if (sender is Grid grid && grid.BindingContext is Category subcategory)
+            // Get the Category from the Frame's BindingContext (matches Xamarin's view.Tag)
+            if (sender is Frame frame && frame.BindingContext is Category subcategory)
             {
-                // Navigate to products in this subcategory using ViewModel method
+                // Navigate to products in this subcategory using ViewModel method (matches Xamarin's View_Click)
                 var categoryViewModel = new CategoryViewModel
                 {
                     Category = subcategory,

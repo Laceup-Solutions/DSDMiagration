@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class InvoiceDetailsPage : IQueryAttributable
+    public partial class InvoiceDetailsPage : LaceupContentPage, IQueryAttributable
     {
         private readonly InvoiceDetailsPageViewModel _viewModel;
 
@@ -13,13 +13,16 @@ namespace LaceupMigration.Views
             InitializeComponent();
             _viewModel = viewModel;
             BindingContext = _viewModel;
+        }
 
-            // Wire up menu toolbar item
-            var menuItem = ToolbarItems.FirstOrDefault();
-            if (menuItem != null)
+        protected override List<MenuOption> GetPageSpecificMenuOptions()
+        {
+            if (_viewModel != null)
             {
-                menuItem.Command = _viewModel.ShowMenuCommand;
+                // Get menu options from ViewModel
+                return _viewModel.BuildMenuOptions();
             }
+            return new List<MenuOption>();
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)

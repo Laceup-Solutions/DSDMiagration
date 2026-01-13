@@ -21,7 +21,7 @@ namespace LaceupMigration.ViewModels
         private string _packagePath = string.Empty;
 
         [ObservableProperty] private string _clientName = string.Empty;
-        [ObservableProperty] private string _orderType = string.Empty;
+        [ObservableProperty] private string _propOrderType = string.Empty;
         [ObservableProperty] private string _totalText = string.Empty;
         [ObservableProperty] private string _shipDateText = string.Empty;
         [ObservableProperty] private bool _showShipDate;
@@ -137,7 +137,7 @@ namespace LaceupMigration.ViewModels
                 return;
 
             ClientName = _order.ClientName;
-            OrderType = GetTransactionType(_order);
+            PropOrderType = GetTransactionType(_order);
 
             if (_order.ShipDate != DateTime.MinValue)
             {
@@ -240,9 +240,475 @@ namespace LaceupMigration.ViewModels
             if (_order == null || _client == null)
                 return;
 
-            // TODO: Implement duplicate order creation logic
-            // This should create a new order from the sent order details
-            await _dialogService.ShowAlertAsync("Duplicate functionality to be implemented.", "Info", "OK");
+            var orderType = _order.OrderType;
+
+            if (!await CanCreateOrderAsync(orderType))
+                return;
+
+            await CreateOrderAsync(_order);
+        }
+
+        private async Task<bool> CanCreateOrderAsync(OrderType orderType)
+        {
+            if (_client == null)
+                return false;
+
+            // Skip unpaid invoice checks for Credit and Return orders (they reduce balance, so allowed)
+            // Also skip for NoService (matches Xamarin - they don't go through CanCreateOrder check)
+            bool skipUnpaidInvoiceCheck = orderType == OrderType.Credit || 
+                                         orderType == OrderType.Return || 
+                                         orderType == OrderType.NoService;
+
+            if (!skipUnpaidInvoiceCheck)
+            {
+                // Check due invoices
+                if (Config.CheckDueInvoicesInCreateOrder || Config.CheckDueInvoicesQtyInCreateOrder > 0)
+                {
+                    var openInvoices = _client.Invoices?.Where(x => x.Balance > 0 && x.DueDate < DateTime.Today).ToList() ?? new List<Invoice>();
+                    int count = 0;
+
+                    foreach (var invoice in openInvoices)
+                    {
+                        var payment = InvoicePayment.List.FirstOrDefault(x => string.IsNullOrEmpty(x.OrderId) &&
+                            x.Invoices().FirstOrDefault(y => y.InvoiceId == invoice.InvoiceId) != null);
+
+                        if (payment == null)
+                        {
+                            count++;
+                            continue;
+                        }
+
+                        var paid = payment.Components.Sum(x => x.Amount);
+                        if (paid < invoice.Balance)
+                        {
+                            count++;
+                        }
+                    }
+
+                    if (Config.CheckDueInvoicesQtyInCreateOrder == 0 && count > 0)
+                    {
+                        await _dialogService.ShowAlertAsync("You must collect payment for due invoices before creating an order.", "Alert");
+                        return false;
+                    }
+
+                    if (Config.CheckDueInvoicesQtyInCreateOrder > 0 && count >= Config.CheckDueInvoicesQtyInCreateOrder)
+                    {
+                        await _dialogService.ShowAlertAsync("You must collect payment for due invoices before creating an order.", "Alert");
+                        return false;
+                    }
+                }
+
+                // Check unpaid invoices over 90 days
+                if (Config.CannotOrderWithUnpaidInvoices)
+                {
+                    var unpaidInvoices = _client.Invoices?.Where(x => x.Balance > 0 && x.DueDate.AddDays(90) < DateTime.Now.Date).ToList() ?? new List<Invoice>();
+                    int count = 0;
+
+                    foreach (var invoice in unpaidInvoices)
+                    {
+                        var payment = InvoicePayment.List.FirstOrDefault(x => string.IsNullOrEmpty(x.OrderId) &&
+                            x.Invoices().FirstOrDefault(y => y.InvoiceId == invoice.InvoiceId) != null);
+
+                        if (payment == null)
+                        {
+                            count++;
+                            continue;
+                        }
+
+                        var paid = payment.Components.Sum(x => x.Amount);
+                        if (paid < invoice.Balance)
+                        {
+                            count++;
+                        }
+                    }
+
+                    if (count > 0)
+                    {
+                        await _dialogService.ShowAlertAsync("You cannot create an order until payments are collected for invoices over 90 days past due.", "Alert");
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        private async Task CreateOrderAsync(SentOrder sentOrder)
+        {
+            if (_client == null)
+                return;
+
+            var orderType = sentOrder.OrderType;
+
+            // Check credit limit for Order type (not for Credit/Return)
+            if (orderType == OrderType.Order && _client.IsOverCreditLimit())
+            {
+                await _dialogService.ShowAlertAsync("Customer is over credit limit. Cannot create new order.", "Alert");
+                return;
+            }
+
+            if (_client.OnCreditHold && Config.CustomerInCreditHold)
+            {
+                await _dialogService.ShowAlertAsync("This client is on Credit Hold, you cannot create an order", "Info");
+                return;
+            }
+
+            // Handle SalesByDepartment
+            if (Config.SalesByDepartment && orderType == OrderType.Order)
+            {
+                var batch = Batch.List.FirstOrDefault(x => 
+                    x.Client != null && 
+                    x.Client.ClientId == _client.ClientId && 
+                    !x.Orders().Any(o => o.Finished));
+
+                if (batch == null)
+                {
+                    batch = new Batch(_client);
+                    batch.Client = _client;
+                    batch.ClockedIn = DateTime.Now;
+                    batch.Save();
+                }
+
+                await Shell.Current.GoToAsync($"batchdepartment?clientId={_client.ClientId}&batchId={batch.Id}");
+                return;
+            }
+
+            // Create batch
+            var newBatch = new Batch(_client);
+            newBatch.Client = _client;
+            newBatch.ClockedIn = DateTime.Now;
+            newBatch.Save();
+
+            // Handle Consignment
+            if (orderType == OrderType.Consignment)
+            {
+                var consignment = Order.Orders.FirstOrDefault(x => x.OrderType == OrderType.Consignment && x.Client.ClientId == _client.ClientId && x.AsPresale);
+                if (consignment == null)
+                {
+                    consignment = new Order(_client);
+                    consignment.BatchId = newBatch.Id;
+                    consignment.OrderType = OrderType.Consignment;
+                    consignment.AsPresale = true;
+
+                    if (_client.ConsignmentTemplate != null)
+                    {
+                        foreach (var previous in _client.ConsignmentTemplate)
+                        {
+                            var detail = new OrderDetail(previous.Product, 0, consignment);
+                            consignment.AddDetail(detail);
+                            detail.ConsignmentOld = previous.Qty;
+                            detail.ConsignmentSet = false;
+
+                            detail.ExpectedPrice = detail.ConsignmentNewPrice;
+                            if (Config.ConsignmentKeepPrice)
+                            {
+                                detail.Price = previous.Price;
+                                detail.ConsignmentNewPrice = detail.Price;
+                            }
+                            else
+                            {
+                                detail.Price = Product.GetPriceForProduct(detail.Product, consignment.Client, true);
+                                detail.ConsignmentNewPrice = Product.GetPriceForProduct(detail.Product, consignment.Client, true);
+                            }
+                        }
+                    }
+
+                    if (Config.ConsignmentBeta)
+                        consignment.ExtraFields = UDFHelper.SyncSingleUDF("cosignmentOrder", "1", consignment.ExtraFields);
+
+                    if (Config.UseFullConsignment)
+                    {
+                        consignment.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentCount", "1", consignment.ExtraFields);
+                        consignment.ExtraFields = UDFHelper.SyncSingleUDF("ConsignmentSet", "1", consignment.ExtraFields);
+                    }
+
+                    if (Config.ParInConsignment || Config.ConsignmentBeta)
+                        consignment.AddParInConsignment();
+
+                    consignment.Save();
+                }
+                else
+                {
+                    newBatch.Delete();
+                }
+
+                await Shell.Current.GoToAsync($"consignment?orderId={consignment.OrderId}");
+                return;
+            }
+
+            // Handle NoService
+            if (orderType == OrderType.NoService)
+            {
+                // Navigate to NoService page - it will handle creation
+                await Shell.Current.GoToAsync($"noservice?clientId={_client.ClientId}&batchId={newBatch.Id}");
+                return;
+            }
+
+            // Create order based on type
+            Order? order = null;
+
+            switch (orderType)
+            {
+                case OrderType.Order:
+                    order = new Order(_client) { OrderType = OrderType.Order };
+                    // Add details
+                    foreach (var det in sentOrder.Details)
+                    {
+                        var p = det.GetProduct;
+                        if (p.IsDiscountItem)
+                            continue;
+
+                        var detail = new OrderDetail(det.GetProduct, det.Qty, order);
+                        detail.Price = det.Price;
+                        detail.ExpectedPrice = det.Price;
+                        detail.IsCredit = det.IsCredit;
+                        detail.Damaged = det.Damaged;
+                        detail.Discount = det.Discount;
+                        detail.DiscountType = det.DiscountType;
+                        detail.UnitOfMeasure = det.UoM;
+                        detail.Comments = det.Comments;
+
+                        CheckForOfferAndFreeItem(order, det, detail);
+                    }
+
+                    order.DiscountAmount = sentOrder.DiscountAmount;
+                    order.DiscountType = sentOrder.DiscountType;
+                    order.Freight = sentOrder.Freight;
+                    order.OtherCharges = sentOrder.OtherCharges;
+                    order.FreightType = sentOrder.FreightType;
+                    order.OtherChargesType = sentOrder.OtherChargesType;
+                    order.OtherChargesComment = sentOrder.OtherChargesComment;
+                    order.FreightComment = sentOrder.FreightComment;
+                    order.AsPresale = sentOrder.AsPresale;
+
+                    order.Save();
+                    Logger.CreateLog("1 Created order id" + order.OrderId);
+                    break;
+
+                case OrderType.Credit:
+                    order = new Order(_client) { OrderType = OrderType.Credit };
+                    // Add details
+                    foreach (var det in sentOrder.Details)
+                    {
+                        var p = det.GetProduct;
+                        if (p.IsDiscountItem)
+                            continue;
+
+                        var detail = new OrderDetail(det.GetProduct, det.Qty, order);
+                        detail.Price = det.Price;
+                        detail.ExpectedPrice = det.Price;
+                        detail.IsCredit = det.IsCredit;
+                        detail.Damaged = det.Damaged;
+                        detail.Discount = det.Discount;
+                        detail.DiscountType = det.DiscountType;
+                        detail.UnitOfMeasure = det.UoM;
+                        detail.Comments = det.Comments;
+
+                        CheckForOfferAndFreeItem(order, det, detail);
+                    }
+
+                    order.DiscountAmount = sentOrder.DiscountAmount;
+                    order.DiscountType = sentOrder.DiscountType;
+                    order.Freight = sentOrder.Freight;
+                    order.OtherCharges = sentOrder.OtherCharges;
+                    order.FreightType = sentOrder.FreightType;
+                    order.OtherChargesType = sentOrder.OtherChargesType;
+                    order.OtherChargesComment = sentOrder.OtherChargesComment;
+                    order.FreightComment = sentOrder.FreightComment;
+                    order.AsPresale = sentOrder.AsPresale;
+
+                    order.Save();
+                    Logger.CreateLog("2 Created order id" + order.OrderId);
+                    break;
+
+                case OrderType.Quote:
+                    order = new Order(_client) { OrderType = OrderType.Order, IsQuote = true };
+                    // Add details
+                    foreach (var det in sentOrder.Details)
+                    {
+                        var detail = new OrderDetail(det.GetProduct, det.Qty, order);
+                        detail.Price = det.Price;
+                        detail.ExpectedPrice = det.Price;
+                        detail.IsCredit = det.IsCredit;
+                        detail.Damaged = det.Damaged;
+                        detail.Discount = det.Discount;
+                        detail.DiscountType = det.DiscountType;
+                        detail.UnitOfMeasure = det.UoM;
+                        detail.Comments = det.Comments;
+
+                        CheckForOfferAndFreeItem(order, det, detail);
+                    }
+
+                    order.Save();
+                    Logger.CreateLog("1 Created order quote id" + order.OrderId);
+                    break;
+            }
+
+            if (order != null)
+            {
+                order.BatchId = newBatch.Id;
+
+                if (CompanyInfo.Companies.Count > 1)
+                {
+                    order.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
+                    order.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
+                }
+                else
+                    order.CompanyName = string.Empty;
+
+                order.SalesmanId = Config.SalesmanId;
+                order.Save();
+
+                // Navigate to order details page
+                await NavigateToOrderAsync(newBatch, order);
+            }
+        }
+
+        private void CheckForOfferAndFreeItem(Order order, SentOrderDetail det, OrderDetail detail)
+        {
+            if (!detail.IsCredit)
+            {
+                var myoffer = new Offer();
+                var hasOffer = myoffer.ProductHasOffer(det.GetProduct);
+
+                var priceToCompare = Product.GetPriceForProduct(detail.Product, order.Client, true);
+                if (det.Price != priceToCompare && det.Price != 0)
+                {
+                    if (hasOffer != null)
+                    {
+                        detail.FromOffer = true;
+                        order.AddDetail(detail);
+                    }
+                    else
+                    {
+                        detail.ExpectedPrice = det.Price;
+                        order.AddDetail(detail);
+                    }
+                }
+                else
+                {
+                    if (det.Price == 0)
+                    {
+                        if (hasOffer != null)
+                        {
+                            detail.FromOffer = true;
+                            order.AddDetail(detail);
+                        }
+                        else
+                        {
+                            detail.IsFreeItem = true;
+                            order.AddDetail(detail);
+                        }
+                    }
+                    else
+                    {
+                        order.AddDetail(detail);
+                    }
+                }
+            }
+            else
+            {
+                order.AddDetail(detail);
+            }
+        }
+
+        private async Task NavigateToOrderAsync(Batch batch, Order order)
+        {
+            if (_client == null)
+                return;
+
+            // Handle NoService orders
+            if (order.OrderType == OrderType.NoService)
+            {
+                if (Config.CaptureImages)
+                {
+                    await Shell.Current.GoToAsync($"noservice?orderId={order.OrderId}");
+                }
+                return;
+            }
+
+            // Handle Consignment orders
+            if (order.OrderType == OrderType.Consignment)
+            {
+                await Shell.Current.GoToAsync($"consignment?orderId={order.OrderId}");
+                return;
+            }
+
+            // Handle Quote orders
+            if (order.OrderType == OrderType.Quote || order.IsQuote)
+            {
+                // TODO: Navigate to QuotePage when implemented
+                await _dialogService.ShowAlertAsync("Quote viewing is not yet implemented in MAUI version.", "Info");
+                return;
+            }
+
+            // Handle finished orders (non-presale) - navigate to BatchPage
+            if (!order.AsPresale || order.Finished)
+            {
+                await Shell.Current.GoToAsync($"batch?batchId={batch.Id}");
+                return;
+            }
+
+            // Handle Credit or Return orders
+            if (order.OrderType == OrderType.Credit || order.OrderType == OrderType.Return)
+            {
+                if (Config.UseLaceupAdvancedCatalog)
+                {
+                    await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
+                }
+                else if (Config.UseCatalog)
+                {
+                    await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=1");
+                }
+                else
+                {
+                    await Shell.Current.GoToAsync($"orderdetails?orderId={order.OrderId}&asPresale=1");
+                }
+                return;
+            }
+
+            // Handle Full Template logic
+            if (Config.UseFullTemplateForClient(_client) && !_client.AllowOneDoc)
+            {
+                order.RelationUniqueId = Guid.NewGuid().ToString("N");
+
+                var credit = new Order(_client) { OrderType = OrderType.Credit };
+                credit.BatchId = batch.Id;
+                credit.RelationUniqueId = order.RelationUniqueId;
+
+                if (CompanyInfo.Companies.Count > 1)
+                {
+                    credit.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
+                    credit.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
+                }
+                else
+                    credit.CompanyName = string.Empty;
+                credit.Save();
+
+                await Shell.Current.GoToAsync($"superordertemplate?asPresale=1&orderId={order.OrderId}&creditId={credit.OrderId}");
+                return;
+            }
+
+            // Handle SalesByDepartment
+            if (Config.SalesByDepartment)
+            {
+                await Shell.Current.GoToAsync($"batchdepartment?clientId={_client.ClientId}&batchId={batch.Id}");
+                return;
+            }
+
+            // Default navigation
+            if (Config.UseLaceupAdvancedCatalog)
+            {
+                await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
+            }
+            else if (Config.UseCatalog)
+            {
+                await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=1");
+            }
+            else
+            {
+                await Shell.Current.GoToAsync($"orderdetails?orderId={order.OrderId}&asPresale=1");
+            }
         }
 
         [RelayCommand]

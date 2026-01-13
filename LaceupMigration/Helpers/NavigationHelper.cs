@@ -1,15 +1,37 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LaceupMigration.Helpers
 {
     /// <summary>
-    /// Helper class for navigation that automatically tracks ActivityState.
+    /// Helper class for navigation that automatically tracks ActivityState and prevents double-tap navigation.
+    /// 
+    /// IMPORTANT: Use NavigationHelper.GoToAsync instead of Shell.Current.GoToAsync throughout the app
+    /// to prevent double-tap issues that can cause multiple pages to open.
+    /// 
+    /// Examples:
+    ///   // Simple route
+    ///   await NavigationHelper.GoToAsync("clientdetails?clientId=123");
+    ///   
+    ///   // With parameters dictionary
+    ///   var parameters = new Dictionary&lt;string, object&gt; { { "clientId", 123 } };
+    ///   await NavigationHelper.GoToAsync("clientdetails", parameters);
+    /// 
+    /// This helper automatically:
+    ///   - Prevents duplicate navigations within 500ms (debouncing)
+    ///   - Uses a semaphore lock to prevent concurrent navigations
+    ///   - Tracks navigation state for restoration
     /// </summary>
     public static class NavigationHelper
     {
+        private static bool _isNavigating = false;
+        private static DateTime _lastNavigationTime = DateTime.MinValue;
+        private static string _lastNavigationRoute = string.Empty;
+        private static readonly SemaphoreSlim _navigationSemaphore = new SemaphoreSlim(1, 1);
+        private const int NavigationDebounceMs = 500; // Prevent navigation within 500ms of previous navigation
         /// <summary>
         /// Maps Shell routes to ActivityType names (reverse of ActivityStateRestorationService).
         /// </summary>
@@ -97,15 +119,88 @@ namespace LaceupMigration.Helpers
 
         /// <summary>
         /// Navigates to a route and saves ActivityState.
+        /// Prevents double-tap navigation by debouncing and using a semaphore lock.
         /// </summary>
         public static async Task GoToAsync(string route, bool saveState = true)
         {
-            if (saveState)
+            // Build route string from route
+            var routeString = route;
+            await GoToAsyncInternal(routeString, null, saveState);
+        }
+
+        /// <summary>
+        /// Navigates to a route with parameters and saves ActivityState.
+        /// Prevents double-tap navigation by debouncing and using a semaphore lock.
+        /// </summary>
+        public static async Task GoToAsync(string route, IDictionary<string, object> parameters, bool saveState = true)
+        {
+            // Build route string with query parameters
+            var routeString = route;
+            if (parameters != null && parameters.Count > 0)
             {
-                SaveNavigationState(route);
+                var queryParams = string.Join("&", parameters.Select(kvp => 
+                    $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value?.ToString() ?? string.Empty)}"));
+                routeString = $"{route}?{queryParams}";
+            }
+            
+            await GoToAsyncInternal(routeString, parameters, saveState);
+        }
+
+        /// <summary>
+        /// Internal method that handles the actual navigation with debouncing.
+        /// </summary>
+        private static async Task GoToAsyncInternal(string routeString, IDictionary<string, object> parameters, bool saveState)
+        {
+            // Normalize route for comparison (remove query parameters for duplicate check)
+            var routeForComparison = routeString.Split('?')[0].TrimStart('/');
+            if (routeForComparison.StartsWith("//"))
+            {
+                routeForComparison = routeForComparison.TrimStart('/');
             }
 
-            await Shell.Current.GoToAsync(route);
+            // Check if we're already navigating or if this is a duplicate navigation within debounce window
+            var timeSinceLastNavigation = (DateTime.Now - _lastNavigationTime).TotalMilliseconds;
+            if (_isNavigating || 
+                (timeSinceLastNavigation < NavigationDebounceMs && _lastNavigationRoute == routeForComparison))
+            {
+                // Skip duplicate navigation
+                return;
+            }
+
+            // Try to acquire the semaphore (non-blocking check first)
+            if (!await _navigationSemaphore.WaitAsync(0))
+            {
+                // Another navigation is in progress, skip this one
+                return;
+            }
+
+            try
+            {
+                _isNavigating = true;
+                _lastNavigationTime = DateTime.Now;
+                _lastNavigationRoute = routeForComparison;
+
+                if (saveState)
+                {
+                    SaveNavigationState(routeString);
+                }
+
+                if (parameters != null)
+                {
+                    await Shell.Current.GoToAsync(routeString, parameters);
+                }
+                else
+                {
+                    await Shell.Current.GoToAsync(routeString);
+                }
+            }
+            finally
+            {
+                // Release the semaphore after a short delay to prevent rapid successive navigations
+                await Task.Delay(NavigationDebounceMs);
+                _isNavigating = false;
+                _navigationSemaphore.Release();
+            }
         }
 
         /// <summary>

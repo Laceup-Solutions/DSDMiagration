@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.ViewInvoiceImagesPage"
+             x:DataType="vm:ViewInvoiceImagesPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Invoice Images">
+    <ContentPage.Content>
+        <Grid RowDefinitions="Auto,*">
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Padding="16" Spacing="16">
+                    <Label Text="{Binding InvoiceNumberText}"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource PrimaryDark}"
+                           Margin="0,8,0,16" />
+
+                    <Label Text="No images found."
+                           IsVisible="{Binding ShowNoImages}"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           Margin="0,20,0,20"
+                           TextColor="{StaticResource Gray500}"
+                           FontSize="16" />
+
+                    <CollectionView ItemsSource="{Binding Images}"
+                                    SelectionMode="None"
+                                    IsVisible="{Binding ShowImages}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:InvoiceImageViewModel">
+                                <Grid Padding="8" Margin="0,0,0,8" InputTransparent="True">
+                                    <Image Source="{Binding ImagePath}"
+                                           Aspect="AspectFill"
+                                           HeightRequest="200"
+                                           WidthRequest="200">
+                                        <Image.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ViewInvoiceImagesPageViewModel}}, Path=ViewImageCommand}"
+                                                                   CommandParameter="{Binding .}" />
+                                        </Image.GestureRecognizers>
+                                    </Image>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </ScrollView>
+        </Grid>
+    </ContentPage.Content>
+</local:LaceupContentPage>
+

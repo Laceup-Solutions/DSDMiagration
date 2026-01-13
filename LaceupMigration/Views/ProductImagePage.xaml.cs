@@ -17,12 +17,25 @@ namespace LaceupMigration.Views
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
-            if (query.TryGetValue("productId", out var value) && value != null)
+            int? productId = null;
+            string? imagePath = null;
+
+            if (query.TryGetValue("productId", out var productIdValue) && productIdValue != null)
             {
-                if (int.TryParse(value.ToString(), out var productId))
+                if (int.TryParse(productIdValue.ToString(), out var id))
                 {
-                    Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(productId));
+                    productId = id;
                 }
+            }
+
+            if (query.TryGetValue("imagePath", out var imagePathValue) && imagePathValue != null)
+            {
+                imagePath = Uri.UnescapeDataString(imagePathValue.ToString() ?? string.Empty);
+            }
+
+            if (productId.HasValue || !string.IsNullOrEmpty(imagePath))
+            {
+                Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(productId, imagePath));
             }
             
             // [ACTIVITY STATE]: Save navigation state with query parameters

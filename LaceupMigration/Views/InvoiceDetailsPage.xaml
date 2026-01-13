@@ -8,9 +8,6 @@
              Shell.NavBarIsVisible="True"
              Shell.TabBarIsVisible="False"
              Title="Invoice Details">
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
-    </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <ScrollView>
             <VerticalStackLayout Padding="10" Spacing="4">
