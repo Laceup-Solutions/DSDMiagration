@@ -24,17 +24,20 @@
                 StrokeShape="RoundRectangle 12">
             <Grid ColumnDefinitions="*,Auto">
                 <SearchBar Grid.Column="0"
-                           Placeholder="Search invoices"
+                           Placeholder="{Binding SearchPlaceholder}"
                            BackgroundColor="White"
                            FontSize="14"
                            Text="{Binding SearchQuery}"
                            SearchButtonPressed="SearchBar_SearchButtonPressed" />
                 <Button Grid.Column="1"
-                        Text="⚙"
+                        Text="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"
                         FontSize="18"
                         BackgroundColor="Transparent"
                         Command="{Binding SearchMenuCommand}"
-                        WidthRequest="40" />
+                        WidthRequest="40"
+                        HeightRequest="40"
+                        Padding="0"
+                        VerticalOptions="Center" />
             </Grid>
         </Border>
 

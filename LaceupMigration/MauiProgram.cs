@@ -126,6 +126,8 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.ManageDepartmentsPageViewModel>();
 		builder.Services.AddTransient<ClientImagesPage>();
 		builder.Services.AddTransient<ViewModels.ClientImagesPageViewModel>();
+		builder.Services.AddTransient<ViewInvoiceImagesPage>();
+		builder.Services.AddTransient<ViewModels.ViewInvoiceImagesPageViewModel>();
 		builder.Services.AddTransient<FullCategoryPage>();
 		builder.Services.AddTransient<ViewModels.FullCategoryPageViewModel>();
 		builder.Services.AddTransient<AddItemPage>();

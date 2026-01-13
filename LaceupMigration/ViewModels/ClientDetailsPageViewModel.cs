@@ -93,8 +93,7 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            _client.EnsureInvoicesAreLoaded();
-
+            // Set basic properties immediately so page can render (non-blocking)
             _initialized = true;
             ClientName = _client.ClientName;
             ShowOverCreditLimit = _client.OverCreditLimit;
@@ -102,10 +101,37 @@ namespace LaceupMigration.ViewModels
             ShowClockInButton = Config.TimeSheetCustomization;
             UpdateClockInText();
 
+            // Show loading indicator for invoices immediately
+            IsInvoiceLoading = true;
+            ShowNoInvoices = false;
+
+            // Build lightweight UI elements immediately (these are fast operations)
             BuildClientDetails();
             BuildGoal();
             BuildOrders();
-            await BuildInvoicesAsync();
+
+            // Load invoices asynchronously in the background (non-blocking)
+            // This allows the page to open immediately while data loads
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // Ensure invoices are loaded on background thread
+                    _client.EnsureInvoicesAreLoaded();
+
+                    // Build invoices on background thread
+                    await BuildInvoicesAsync();
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog($"Error loading invoices for client {clientId}: {ex.Message}");
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        ShowNoInvoices = true;
+                        IsInvoiceLoading = false;
+                    });
+                }
+            });
         }
 
         public async Task OnAppearingAsync()
@@ -339,27 +365,42 @@ namespace LaceupMigration.ViewModels
 
         private async Task BuildInvoicesAsync()
         {
+            // Clear collections on background thread (safe to do here)
             _allInvoices.Clear();
             _displayedInvoices.Clear();
-            FilteredInvoices.Clear();
             _currentInvoiceIndex = 0;
             _hasMoreInvoices = false;
-            ShowNoInvoices = false;
 
             if (_client == null || _client.Invoices == null)
             {
-                ShowNoInvoices = true;
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    ShowNoInvoices = true;
+                    IsInvoiceLoading = false;
+                    FilteredInvoices.Clear();
+                });
                 return;
             }
 
+            // Process invoices on background thread (this is the heavy work)
             var sortedInvoices = _client.Invoices.OrderByDescending(x => x.Date).ToList();
+            var invoiceViewModels = new List<ClientInvoiceViewModel>();
+            
             foreach (var invoice in sortedInvoices)
             {
-                _allInvoices.Add(CreateInvoiceViewModel(invoice, _client));
+                invoiceViewModels.Add(CreateInvoiceViewModel(invoice, _client));
             }
 
+            _allInvoices.AddRange(invoiceViewModels);
             _hasMoreInvoices = _allInvoices.Count > 0;
-            await LoadInvoicesPageAsync();
+
+            // Update UI on main thread - clear and populate filtered invoices
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                FilteredInvoices.Clear();
+                IsInvoiceLoading = false;
+                await LoadInvoicesPageAsync();
+            });
         }
 
         private ClientInvoiceViewModel CreateInvoiceViewModel(Invoice invoice, Client client)

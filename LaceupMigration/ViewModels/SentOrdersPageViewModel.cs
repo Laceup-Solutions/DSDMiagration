@@ -35,7 +35,6 @@ namespace LaceupMigration.ViewModels
         private List<SentOrderItemViewModel> _originalSentOrdersList = new();
         private SelectedOption _optionSelected = SelectedOption.All;
         private string _searchCriteria = string.Empty;
-        private bool _isUpdatingSelectAll;
 
         [ObservableProperty] private ObservableCollection<SentOrderItemViewModel> _sentOrders = new();
         [ObservableProperty] private ObservableCollection<string> _transactionTypeOptions = new();
@@ -48,7 +47,7 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private bool _isLoading;
         [ObservableProperty] private bool _showButtonsLayout;
 
-        public ObservableCollection<SentOrder> SelectedOrders { get; } = new();
+        public List<SentOrder> SelectedOrders = new List<SentOrder>();
 
         public SentOrdersPageViewModel(DialogService dialogService, ILaceupAppService appService)
         {
@@ -204,40 +203,42 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
+        private async Task SelectTransactionType()
+        {
+            var options = TransactionTypeOptions.ToArray();
+            var choice = await _dialogService.ShowActionSheetAsync("Select Transaction Type", "", "Cancel", options);
+
+            if (!string.IsNullOrEmpty(choice) && choice != "Cancel" && TransactionTypeOptions.Contains(choice))
+            {
+                SelectedTransactionType = choice;
+            }
+        }
+
+        private bool isUpdatingSelectAll = false;
+
+        [RelayCommand]
         private void SelectAll()
         {
-            if (_isUpdatingSelectAll) return;
+            isUpdatingSelectAll = true;
             
-            _isUpdatingSelectAll = true;
-            try
-            {
-                if (IsSelectAllChecked)
-                {
-                    SelectedOrders.Clear();
-                    foreach (var item in SentOrders)
-                    {
-                        item.IsChecked = false;
-                    }
-                }
-                else
-                {
-                    SelectedOrders.Clear();
-                    foreach (var item in SentOrders)
-                    {
-                        if (!SelectedOrders.Any(x => x.OrderUniqueId == item.Order.OrderUniqueId))
-                        {
-                            SelectedOrders.Add(item.Order);
-                            item.IsChecked = true;
-                        }
-                    }
-                }
+            SelectedOrders.Clear();
 
+            if (!IsSelectAllChecked)
+            {
+                foreach (var item in SentOrders)
+                    item.IsChecked = false;
                 RefreshListHeader();
             }
-            finally
+            else
             {
-                _isUpdatingSelectAll = false;
+                SelectedOrders = SentOrders.Select(x => x.Order).ToList();
+                RefreshListHeader();
+
+                foreach (var item in SentOrders)
+                    item.IsChecked = true;
             }
+
+            isUpdatingSelectAll = false;
         }
 
         [RelayCommand]
@@ -310,29 +311,20 @@ namespace LaceupMigration.ViewModels
             try
             {
                 // Convert SentOrder to Order for email sending
-                var orders = new List<Order>();
+                List<Order> tosendOrders = new List<Order>();
                 foreach (var sentOrder in SelectedOrders)
                 {
-                    var order = Order.Orders.FirstOrDefault(x => x.OrderId.ToString() == sentOrder.OrderUniqueId);
-                    if (order == null)
-                    {
-                        // Try to create temporal order from file if available
-                        // Note: CreateTemporalOrderFromFile requires a file path, so we skip this for now
-                        // The order should be found in Order.Orders if it was sent
-                        continue;
-                    }
-                    if (order != null)
-                        orders.Add(order);
+                    tosendOrders.Add(SentOrder.CreateTemporalOrderFromFile(sentOrder.PackagePath, sentOrder));
                 }
 
-                if (orders.Count == 0)
+                if (tosendOrders.Count == 0)
                 {
                     await _dialogService.ShowAlertAsync("Could not find orders to send.", "Alert", "OK");
                     return;
                 }
 
                 // Use PdfHelper to send orders by email (matches Xamarin SentOrdersPackagesActivity)
-                await PdfHelper.SendOrdersByEmail(orders);
+                await PdfHelper.SendOrdersByEmail(tosendOrders);
             }
             catch (Exception ex)
             {
@@ -356,6 +348,9 @@ namespace LaceupMigration.ViewModels
 
         public void ToggleOrderSelection(SentOrder order)
         {
+            if(isUpdatingSelectAll)
+                return;
+            
             var existing = SelectedOrders.FirstOrDefault(x => x.OrderUniqueId == order.OrderUniqueId);
             if (existing != null)
             {
@@ -434,33 +429,16 @@ namespace LaceupMigration.ViewModels
             {
                 var orderId = item.Order.OrderUniqueId ?? $"{item.Order.OrderId}_{item.Order.Date.Ticks}";
                 if (uniqueOrderIds.Add(orderId))
-                {
-                    item.IsChecked = SelectedOrders.Any(x => x.OrderUniqueId == item.Order.OrderUniqueId);
                     SentOrders.Add(item);
-                }
             }
+            
+            SelectAll();
 
             RefreshListHeader();
         }
 
         private void RefreshListHeader()
         {
-            if (!_isUpdatingSelectAll)
-            {
-                _isUpdatingSelectAll = true;
-                try
-                {
-                    IsSelectAllChecked = SelectedOrders.Count > 0;
-                }
-                finally
-                {
-                    _isUpdatingSelectAll = false;
-                }
-            }
-            else
-            {
-                IsSelectAllChecked = SelectedOrders.Count > 0;
-            }
             if (IsSelectAllChecked)
             {
                 SelectAllText = $"Selected: {SelectedOrders.Count}";

@@ -25,7 +25,6 @@ namespace LaceupMigration.ViewModels
         private readonly ILaceupAppService _appService;
 
         [ObservableProperty] private string _version = string.Empty;
-        [ObservableProperty] private string _companyId = string.Empty;
         [ObservableProperty] private string _internetServer = string.Empty;
         [ObservableProperty] private string _lanServer = string.Empty;
         [ObservableProperty] private string _port = string.Empty;
@@ -49,8 +48,6 @@ namespace LaceupMigration.ViewModels
         public async Task OnAppearingAsync()
         {
             Version = Config.Version;
-            // Company ID - matches Xamarin: shows Config.Port (the field labeled "Company ID" is actually bound to ConfigurationLayoutPort)
-            CompanyId = Config.Port.ToString(CultureInfo.InvariantCulture);
             InternetServer = ServerHelper.GetServerNumber(Config.IPAddressGateway);
             LanServer = Config.LanAddress;
             Port = Config.Port.ToString(CultureInfo.InvariantCulture);
@@ -316,7 +313,7 @@ namespace LaceupMigration.ViewModels
                     {
                         Config.SSID = Ssid;
                     }
-
+                    
                     int _port = 0;
                     
                     Int32.TryParse(Port, out _port);

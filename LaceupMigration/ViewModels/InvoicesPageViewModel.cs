@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -52,18 +53,20 @@ namespace LaceupMigration.ViewModels
 		private const int SearchDebounceMs = 300;
 		private readonly SemaphoreSlim _filterSemaphore = new SemaphoreSlim(1, 1);
 
-		[ObservableProperty] private ObservableCollection<InvoiceGroupItemViewModel> _flatInvoiceList = new();
-		[ObservableProperty] private ObservableCollection<string> _dateRangeOptions = new() { "All", "1-30", "31-60", "61-90", "90+" };
-		[ObservableProperty] private string _selectedDateRange = "All";
-		[ObservableProperty] private string _searchQuery = string.Empty;
-		[ObservableProperty] private bool _isSearchVisible;
-		[ObservableProperty] private bool _showButtonsLayout;
-		[ObservableProperty] private bool _showSelectAllLayout;
-		[ObservableProperty] private bool _isSelectAllChecked;
-		[ObservableProperty] private string _selectAllText = "Select All";
-		[ObservableProperty] private string _totalText = string.Empty;
-		[ObservableProperty] private bool _showTotal;
-		[ObservableProperty] private bool _showPaymentButton = true;
+	[ObservableProperty] private ObservableCollection<InvoiceGroupItemViewModel> _flatInvoiceList = new();
+	[ObservableProperty] private ObservableCollection<string> _dateRangeOptions = new() { "All", "1-30", "31-60", "61-90", "90+" };
+	[ObservableProperty] private string _selectedDateRange = "All";
+	[ObservableProperty] private string _searchQuery = string.Empty;
+	[ObservableProperty] private bool _isSearchVisible;
+	[ObservableProperty] private bool _showButtonsLayout;
+	[ObservableProperty] private bool _showSelectAllLayout;
+	[ObservableProperty] private bool _isSelectAllChecked;
+	[ObservableProperty] private string _selectAllText = "Select All";
+	[ObservableProperty] private string _totalText = string.Empty;
+	[ObservableProperty] private bool _showTotal;
+	[ObservableProperty] private bool _showPaymentButton = true;
+	[ObservableProperty] private string _searchByText = "Client Name";
+	[ObservableProperty] private string _searchPlaceholder = "Search by client name";
 
 		public InvoicesPageViewModel(DialogService dialogService, ILaceupAppService appService)
 		{
@@ -126,12 +129,21 @@ namespace LaceupMigration.ViewModels
 	private async Task SearchMenu()
 	{
 		var options = new[] { "Client Name", "Invoice Number" };
+		var currentSelection = _searchBy == SearchBy.ClientName ? 0 : 1;
 		var choice = await _dialogService.ShowActionSheetAsync("Search By", "", "Cancel", options);
 		
 		if (choice == "Client Name")
+		{
 			_searchBy = SearchBy.ClientName;
+			SearchByText = "Client Name";
+			SearchPlaceholder = "Search by client name";
+		}
 		else if (choice == "Invoice Number")
+		{
 			_searchBy = SearchBy.InvoiceNum;
+			SearchByText = "Invoice Number";
+			SearchPlaceholder = "Search by invoice number";
+		}
 
 		if (!string.IsNullOrEmpty(_searchCriteria))
 			Filter();
@@ -246,27 +258,20 @@ namespace LaceupMigration.ViewModels
 				}
 			}
 
-			if (SelectedInvoices.Any(x => x.Paid > 0))
-			{
-				await _dialogService.ShowAlertAsync("Cannot pay invoice twice.", "Alert", "OK");
-				return;
-			}
+		if (SelectedInvoices.Any(x => x.Paid > 0))
+		{
+			await _dialogService.ShowAlertAsync("Cannot pay invoice twice.", "Alert", "OK");
+			return;
+		}
 
-			var sb = new System.Text.StringBuilder();
-			for (int index = 0; index < SelectedInvoices.Count; index++)
-			{
-				if (sb.Length > 0)
-					sb.Append(",");
-				var value = Config.SavePaymentsByInvoiceNumber ? SelectedInvoices[index].InvoiceNumber.ToString() : SelectedInvoices[index].InvoiceId.ToString();
-				sb.Append(value);
-			}
+		var invoiceIdStrings = SelectedInvoices
+			.Select(x => Config.SavePaymentsByInvoiceNumber ? x.InvoiceNumber : x.InvoiceId.ToString())
+			.ToList();
 
-			if (sb.Length > 0)
-			{
-				// Navigate to payment page when created
-				var route = CompanyInfo.ShowNewPayments() ? "//paymentnew" : "//payment";
-				await Shell.Current.GoToAsync($"{route}?invoiceIds={sb}");
-			}
+		var invoiceIdsParam = string.Join(",", invoiceIdStrings);
+
+		// Navigate to payment set values page (matches SelectInvoicePageViewModel logic)
+		await NavigationHelper.GoToAsync($"paymentsetvalues?clientId={first.Client.ClientId}&invoiceIds={invoiceIdsParam}");
 		}
 
 		[RelayCommand]
@@ -533,9 +538,24 @@ namespace LaceupMigration.ViewModels
 						{
 							var searchLower = _searchCriteria.ToLowerInvariant();
 							if (_searchBy == SearchBy.ClientName)
+							{
+								// Filter by client name - show all invoices for matching clients
 								toShow = new Dictionary<Client, List<Invoice>>(toShow.Where(x => x.Key.ClientName.ToLowerInvariant().Contains(searchLower)));
+							}
 							else
-								toShow = new Dictionary<Client, List<Invoice>>(toShow.Where(x => x.Value.Any(y => y.InvoiceNumber.ToLowerInvariant().Contains(searchLower))));
+							{
+								// Filter by invoice number - only show matching invoices, grouped by client
+								var filtered = new Dictionary<Client, List<Invoice>>();
+								foreach (var kvp in toShow)
+								{
+									var matchingInvoices = kvp.Value.Where(y => y.InvoiceNumber.ToLowerInvariant().Contains(searchLower)).ToList();
+									if (matchingInvoices.Any())
+									{
+										filtered[kvp.Key] = matchingInvoices;
+									}
+								}
+								toShow = filtered;
+							}
 						}
 
 						// Update UI on main thread
@@ -854,11 +874,11 @@ namespace LaceupMigration.ViewModels
 			}
 		}
 
-		[RelayCommand]
-		private async Task ViewDetails()
-		{
-			await Shell.Current.GoToAsync($"invoicedetails?invoiceId={_invoice.InvoiceId}");
-		}
+	[RelayCommand]
+	private async Task ViewDetails()
+	{
+		await NavigationHelper.GoToAsync($"invoicedetails?invoiceId={_invoice.InvoiceId}");
+	}
 
 		public Invoice Invoice => _invoice;
 	}

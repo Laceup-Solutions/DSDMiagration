@@ -202,7 +202,7 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private List<MenuOption> BuildMenuOptions()
+        public List<MenuOption> BuildMenuOptions()
         {
             var options = new List<MenuOption>();
 
@@ -263,8 +263,7 @@ namespace LaceupMigration.ViewModels
             {
                 options.Add(new MenuOption("View Attached Photos", async () =>
                 {
-                    await _dialogService.ShowAlertAsync("View Attached Photos functionality is not yet fully implemented.", "Info");
-                    // TODO: Implement image viewing
+                    await ViewImagesAsync();
                 }));
             }
 
@@ -277,16 +276,8 @@ namespace LaceupMigration.ViewModels
                     // TODO: Implement getting invoice details from server
                 }));
             }
-
-            // Advanced Options
-            options.Add(new MenuOption("Advanced Options", ShowAdvancedOptionsAsync));
-
+            
             return options;
-        }
-
-        private async Task ShowAdvancedOptionsAsync()
-        {
-            await _advancedOptionsService.ShowAdvancedOptionsAsync();
         }
 
         private async Task SendByEmailAsync()
@@ -341,6 +332,17 @@ namespace LaceupMigration.ViewModels
                 await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
                 _appService.TrackError(ex);
             }
+        }
+
+        private async Task ViewImagesAsync()
+        {
+            if (_invoice == null)
+            {
+                await _dialogService.ShowAlertAsync("No invoice selected.", "Alert", "OK");
+                return;
+            }
+
+            await Shell.Current.GoToAsync($"viewinvoiceimages?invoiceNumber={Uri.EscapeDataString(_invoice.InvoiceNumber)}");
         }
     }
 

@@ -34,10 +34,9 @@
                            TextColor="Black"
                            VerticalOptions="Center"
                            Grid.Column="0" />
-                    <Entry Text="{Binding CompanyId}"
+                    <Entry Text="{Binding Port}"
                            FontSize="16"
                            BackgroundColor="#E3F2FD"
-                           IsReadOnly="True"
                            Grid.Column="1" />
                     <Button Text="+"
                            Command="{Binding ShowConnectionSettingsCommand}"

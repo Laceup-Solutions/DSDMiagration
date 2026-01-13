@@ -108,6 +108,11 @@ namespace LaceupMigration
             return dataAccessInstance.GetClientImages(clientId);
         }
 
+        public static string GetExternalInvoiceImages(string invoiceNumber)
+        {
+            return dataAccessInstance.GetExternalInvoiceImages(invoiceNumber);
+        }
+
         public static void AddDeliveryClient(Client client)
         {
             dataAccessInstance.AddDeliveryClient(client);

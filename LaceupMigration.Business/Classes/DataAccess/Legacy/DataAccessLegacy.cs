@@ -7768,6 +7768,46 @@ namespace LaceupMigration
 
         }
 
+        public string GetExternalInvoiceImages(string invoiceNumber)
+        {
+            string tempFile = null;
+
+            using (NetAccess netaccess = new NetAccess())
+            {
+                try
+                {
+                    tempFile = Path.GetTempFileName();
+
+                    bool error = false;
+
+                    netaccess.OpenConnection();
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    netaccess.WriteStringToNetwork("GetOrderImagesCommand");
+                    netaccess.WriteStringToNetwork(invoiceNumber);
+                    string message = netaccess.ReadStringFromNetwork();
+
+                    if (message == "emptyfolder")
+                        return string.Empty;
+
+                    error = netaccess.ReceiveFile(tempFile) == 0;
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    if (!error)
+                        return tempFile;
+                    else
+                        return string.Empty;
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex.ToString());
+                    return string.Empty;
+                }
+            }
+        }
+
         public void AddDeliveryClient(Client client)
         {
             string s = string.Format("{1}{0}{2}{0}{3}{0}{4}{0}{5}{0}{6}{0}{7}{0}{8}{0}{9}{0}{10}{0}{11}{0}{12}{0}{13}{0}{14}" +

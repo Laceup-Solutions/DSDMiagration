@@ -2,6 +2,7 @@
 <local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:business="clr-namespace:LaceupMigration;assembly=LaceupMigration.Business"
              x:Class="LaceupMigration.Views.FullCategoryPage"
              x:DataType="vm:FullCategoryPageViewModel"
              xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
@@ -78,22 +79,37 @@
                                 <!-- Subcategories (expandable) -->
                                 <VerticalStackLayout Grid.Row="1" 
                                                      IsVisible="{Binding IsExpanded}"
-                                                     Margin="20,0,0,0"
-                                                     Spacing="4">
+                                                     Margin="20,8,0,0"
+                                                     Spacing="0">
                                     <CollectionView ItemsSource="{Binding Subcategories}"
                                                     SelectionMode="Single"
                                                     SelectionChanged="Subcategory_SelectionChanged">
                                         <CollectionView.ItemTemplate>
-                                            <DataTemplate>
-                                                <Frame Padding="8" Margin="0,2" HasShadow="False" CornerRadius="4" BackgroundColor="{StaticResource Gray100}" BorderColor="{StaticResource Gray300}">
-                                                    <Frame.GestureRecognizers>
-                                                        <TapGestureRecognizer Tapped="Subcategory_Tapped" />
-                                                    </Frame.GestureRecognizers>
-                                                    <Label Text="{Binding Name}"
-                                                           FontSize="14"
-                                                           TextColor="{StaticResource Gray900}"
-                                                           VerticalOptions="Center" />
-                                                </Frame>
+                                            <DataTemplate x:DataType="business:Category">
+                                                <Grid RowDefinitions="Auto,Auto">
+                                                    <Frame Grid.Row="0" Padding="0" Margin="0" HasShadow="False" CornerRadius="0" BackgroundColor="{StaticResource White}" BorderColor="Transparent">
+                                                        <Frame.GestureRecognizers>
+                                                            <TapGestureRecognizer Tapped="Subcategory_Tapped" />
+                                                        </Frame.GestureRecognizers>
+                                                        <Grid ColumnDefinitions="*,Auto" Padding="12,10" ColumnSpacing="8">
+                                                            <Label Grid.Column="0"
+                                                                   Text="{Binding Name}"
+                                                                   FontSize="15"
+                                                                   TextColor="{StaticResource Gray900}"
+                                                                   VerticalOptions="Center" />
+                                                            <Image Grid.Column="1"
+                                                                   Source="{mi:MaterialOutlined Icon=ChevronRight, IconColor=Gray}"
+                                                                   WidthRequest="20"
+                                                                   HeightRequest="20"
+                                                                   VerticalOptions="Center"
+                                                                   HorizontalOptions="End" />
+                                                        </Grid>
+                                                    </Frame>
+                                                    <BoxView Grid.Row="1"
+                                                             HeightRequest="1"
+                                                             Color="{StaticResource Gray300}"
+                                                             Margin="12,0,0,0" />
+                                                </Grid>
                                             </DataTemplate>
                                         </CollectionView.ItemTemplate>
                                     </CollectionView>
