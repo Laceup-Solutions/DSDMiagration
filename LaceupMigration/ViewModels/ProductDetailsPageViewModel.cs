@@ -15,6 +15,7 @@ namespace LaceupMigration.ViewModels
     {
         private readonly DialogService _dialogService;
         private readonly AdvancedOptionsService _advancedOptionsService;
+        private bool _isInitialLoad = true;
         [ObservableProperty]
         private Product? _product;
 
@@ -168,6 +169,7 @@ namespace LaceupMigration.ViewModels
 
             CalculatePrices();
             LoadExtraProperties();
+            _isInitialLoad = false; // Mark initial load as complete
         }
 
         private void CalculatePrices()
@@ -225,11 +227,25 @@ namespace LaceupMigration.ViewModels
             UnitPrice = unitPrice.ToCustomString();
             LowestPrice = (_product.LowestAcceptablePrice * conversion).ToCustomString();
 
-            // Inventory (matches Xamarin RecalculatePrices method - lines 865, 868)
+            // Inventory - matches Xamarin behavior:
+            // Initial load (line 320): Truck Inventory = CurrentInventory (NO conversion)
+            // RecalculatePrices (line 868): Truck Inventory = CurrentInventory / uom.Conversion (WITH conversion)
             if (uom != null)
             {
                 OnHand = Math.Round((_product.CurrentWarehouseInventory / uom.Conversion), Config.Round).ToString();
-                TruckInventory = Math.Round((_product.CurrentInventory / uom.Conversion), Config.Round).ToString();
+                
+                // Apply conversion only if NOT initial load (matches Xamarin RecalculatePrices line 868)
+                if (!_isInitialLoad)
+                {
+                    TruckInventory = Math.Round((_product.CurrentInventory / uom.Conversion), Config.Round).ToString();
+                }
+                else
+                {
+                    // Initial load: no conversion (matches Xamarin line 320)
+                    // Xamarin: truckInventory.Text = product.CurrentInventory.ToString();
+                    // Product.CurrentInventory already applies rounding based on Config.Round
+                    TruckInventory = _product.CurrentInventory.ToString();
+                }
             }
             else
             {
