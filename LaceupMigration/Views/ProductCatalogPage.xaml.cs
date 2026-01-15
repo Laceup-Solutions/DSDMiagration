@@ -50,6 +50,14 @@ namespace LaceupMigration.Views
             Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
             return false; // Allow navigation
         }
+
+        private async void OnCellTapped(object sender, EventArgs e)
+        {
+            if (sender is Frame frame && frame.BindingContext is CatalogItemViewModel item)
+            {
+                await _viewModel.NavigateToAddItemAsync(item);
+            }
+        }
     }
 }
 

@@ -20,6 +20,7 @@ namespace LaceupMigration.Views
         {
             int? orderId = null;
             int? productId = null;
+            int? orderDetailId = null;
             bool asCreditItem = false;
             int type = 0;
             int reasonId = 0;
@@ -29,6 +30,12 @@ namespace LaceupMigration.Views
             {
                 if (int.TryParse(orderValue.ToString(), out var oId))
                     orderId = oId;
+            }
+
+            if (query.TryGetValue("orderDetail", out var orderDetailValue) && orderDetailValue != null)
+            {
+                if (int.TryParse(orderDetailValue.ToString(), out var odId))
+                    orderDetailId = odId;
             }
 
             if (query.TryGetValue("productId", out var productValue) && productValue != null)
@@ -59,15 +66,30 @@ namespace LaceupMigration.Views
                 consignmentCounting = countingValue.ToString() == "1" || countingValue.ToString().ToLowerInvariant() == "true";
             }
 
-            if (orderId.HasValue && productId.HasValue)
+            if (orderId.HasValue)
             {
-                Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(
-                    orderId.Value,
-                    productId.Value,
-                    asCreditItem,
-                    type,
-                    reasonId,
-                    consignmentCounting));
+                if (orderDetailId.HasValue)
+                {
+                    // Initialize with orderDetail (editing existing detail)
+                    Dispatcher.Dispatch(async () => await _viewModel.InitializeWithOrderDetailAsync(
+                        orderId.Value,
+                        orderDetailId.Value,
+                        asCreditItem,
+                        type,
+                        reasonId,
+                        consignmentCounting));
+                }
+                else if (productId.HasValue)
+                {
+                    // Initialize with productId (adding new item)
+                    Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(
+                        orderId.Value,
+                        productId.Value,
+                        asCreditItem,
+                        type,
+                        reasonId,
+                        consignmentCounting));
+                }
             }
             
             // [ACTIVITY STATE]: Save navigation state with query parameters

@@ -447,6 +447,28 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
+        public async Task NavigateToAddItemAsync(CatalogItemViewModel? item)
+        {
+            if (item?.Product == null || _order == null)
+                return;
+
+            // Find the first value with an OrderDetail (if editing existing item)
+            // Otherwise, use productId (adding new item)
+            var firstValueWithDetail = item.Values.FirstOrDefault(v => v.OrderDetail != null);
+            
+            if (firstValueWithDetail?.OrderDetail != null)
+            {
+                // Navigate with orderDetail (editing existing detail)
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&orderDetail={firstValueWithDetail.OrderDetail.OrderDetailId}&asCreditItem={(firstValueWithDetail.OrderDetail.IsCredit ? 1 : 0)}");
+            }
+            else
+            {
+                // Navigate with productId (adding new item)
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={item.Product.ProductId}");
+            }
+        }
+
+        [RelayCommand]
         private async Task AddButtonClickAsync(CatalogItemViewModel? item)
         {
             if (item == null)

@@ -4,6 +4,7 @@ using LaceupMigration.Controls;
 using LaceupMigration.Services;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Controls;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -21,9 +22,19 @@ namespace LaceupMigration.ViewModels
         private bool _initialized;
         private int _lastDetailCount = 0;
         private int? _lastDetailId = null;
-        private string _sortBy = "Product Name";
+        private SortDetails.SortCriteria _sortCriteria = SortDetails.SortCriteria.ProductName;
+        private bool _justOrdered = false;
         private int? _pendingOrderId = null;
         private bool _pendingAsPresale = false;
+        
+        // WhatToViewInList enum and field (matches TemplateActivity)
+        private enum WhatToViewInList
+        {
+            All,
+            Selected
+        }
+        
+        private WhatToViewInList _whatToViewInList = WhatToViewInList.All;
 
         public ObservableCollection<PreviouslyOrderedProductViewModel> PreviouslyOrderedProducts { get; } = new();
 
@@ -69,6 +80,23 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private string _sortByText = "Sort By: Product Name";
 
+        private string GetSortCriteriaName(SortDetails.SortCriteria criteria)
+        {
+            return criteria switch
+            {
+                SortDetails.SortCriteria.ProductName => "Product Name",
+                SortDetails.SortCriteria.ProductCode => "Product Code",
+                SortDetails.SortCriteria.Category => "By Category",
+                SortDetails.SortCriteria.InStock => "In Stock",
+                SortDetails.SortCriteria.Qty => "Qty",
+                SortDetails.SortCriteria.Descending => "Descending",
+                SortDetails.SortCriteria.OrderOfEntry => "Order of Entry",
+                SortDetails.SortCriteria.WarehouseLocation => "Warehouse Location",
+                SortDetails.SortCriteria.CategoryThenByCode => "Category then by Code",
+                _ => "Product Name"
+            };
+        }
+
         [ObservableProperty]
         private bool _showTotals = true;
 
@@ -97,6 +125,13 @@ namespace LaceupMigration.ViewModels
             _dialogService = dialogService;
             _appService = appService;
             ShowTotals = !Config.HidePriceInTransaction;
+            
+            // Subscribe to sort criteria messages
+            MessagingCenter.Subscribe<SortByDialogViewModel, Tuple<SortDetails.SortCriteria, bool>>(
+                this, "SortCriteriaApplied", (sender, args) =>
+                {
+                    ApplySortCriteria(args.Item1, args.Item2);
+                });
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -143,6 +178,18 @@ namespace LaceupMigration.ViewModels
             _asPresale = asPresale;
             _initialized = true;
             _lastDetailCount = _order.Details.Count;
+            
+            // Initialize sort criteria from Config (matches Xamarin behavior)
+            _sortCriteria = SortDetails.GetCriteriaFromName(Config.PrintInvoiceSort);
+            SortByText = $"Sort By: {GetSortCriteriaName(_sortCriteria)}";
+            
+            // Initialize Just Ordered filter based on whether order has details
+            if (_order.Details.Count > 0)
+            {
+                _whatToViewInList = WhatToViewInList.Selected; // Show only ordered items if order has details
+                _justOrdered = true; // Keep for backward compatibility with SortByDialog
+            }
+            
             LoadOrderData();
         }
 
@@ -404,11 +451,26 @@ namespace LaceupMigration.ViewModels
             // Add all products to the collection
             // Items from history that are NOT in the order will have Quantity = 0 and ExistingDetail = null
             // This is correct - they should still be shown
+            var itemsToAdd = new List<PreviouslyOrderedProductViewModel>();
             foreach (var viewModel in productDict.Values)
             {
+                // Apply "Just Ordered" filter (matches Xamarin whatToViewInList == WhatToViewInList.Selected)
+                if (_whatToViewInList == WhatToViewInList.Selected && viewModel.ExistingDetail == null)
+                {
+                    // Skip items not in the current order
+                    continue;
+                }
+                
                 // Set IsEnabled based on CanEdit (disable if order is read-only)
                 viewModel.IsEnabled = CanEdit;
-                PreviouslyOrderedProducts.Add(viewModel);
+                itemsToAdd.Add(viewModel);
+            }
+
+            // Add filtered items
+            PreviouslyOrderedProducts.Clear();
+            foreach (var item in itemsToAdd)
+            {
+                PreviouslyOrderedProducts.Add(item);
             }
 
             // Apply sorting
@@ -539,11 +601,37 @@ namespace LaceupMigration.ViewModels
 
         private void SortProducts()
         {
-            var sorted = _sortBy switch
+            if (_order == null)
+                return;
+
+            List<PreviouslyOrderedProductViewModel> sorted = _sortCriteria switch
             {
-                "Product Name" => PreviouslyOrderedProducts.OrderBy(x => x.ProductName).ToList(),
-                "Product Code" => PreviouslyOrderedProducts.OrderBy(x => x.Product?.Code ?? "").ToList(),
-                "Last Visit" => PreviouslyOrderedProducts.OrderByDescending(x => x.OrderedItem?.Last?.Date ?? DateTime.MinValue).ToList(),
+                SortDetails.SortCriteria.ProductName => PreviouslyOrderedProducts.OrderBy(x => x.ProductName).ToList(),
+                SortDetails.SortCriteria.ProductCode => PreviouslyOrderedProducts.OrderBy(x => x.Product?.Code ?? "").ToList(),
+                SortDetails.SortCriteria.Category => PreviouslyOrderedProducts
+                    .OrderBy(x => x.Product?.CategoryId ?? 0)
+                    .ThenBy(x => x.ProductName)
+                    .ToList(),
+                SortDetails.SortCriteria.InStock => PreviouslyOrderedProducts
+                    .OrderByDescending(x => x.Product?.GetInventory(_order.AsPresale) ?? 0)
+                    .ToList(),
+                SortDetails.SortCriteria.Qty => PreviouslyOrderedProducts
+                    .OrderByDescending(x => x.Quantity)
+                    .ToList(),
+                SortDetails.SortCriteria.Descending => PreviouslyOrderedProducts
+                    .OrderByDescending(x => x.ProductName)
+                    .ToList(),
+                SortDetails.SortCriteria.OrderOfEntry => PreviouslyOrderedProducts
+                    .OrderBy(x => x.ExistingDetail?.OrderDetailId ?? int.MaxValue)
+                    .ToList(),
+                SortDetails.SortCriteria.WarehouseLocation => PreviouslyOrderedProducts
+                    .OrderBy(x => string.IsNullOrEmpty(x.Product?.WarehouseLocation) ? 1 : 0)
+                    .ThenBy(x => x.Product?.WarehouseLocation ?? "")
+                    .ToList(),
+                SortDetails.SortCriteria.CategoryThenByCode => PreviouslyOrderedProducts
+                    .OrderBy(x => x.Product?.CategoryId ?? 0)
+                    .ThenBy(x => x.Product?.Code ?? "")
+                    .ToList(),
                 _ => PreviouslyOrderedProducts.ToList()
             };
 
@@ -668,16 +756,27 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SortByAsync()
         {
-            var sortOptions = new[] { "Product Name", "Product Code", "Last Visit" };
-            var choice = await _dialogService.ShowActionSheetAsync("Sort By", "Cancel", null, sortOptions);
+            // Get current sort criteria from Config (matches Xamarin behavior)
+            var currentCriteria = SortDetails.GetCriteriaFromName(Config.PrintInvoiceSort);
             
-            if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
-                return;
+            // Navigate to SortByDialogPage
+            await Shell.Current.GoToAsync($"sortbydialog?currentCriteria={(int)currentCriteria}&justOrdered={(_whatToViewInList == WhatToViewInList.Selected ? 1 : 0)}&callback=PreviouslyOrderedTemplate");
+        }
 
-            _sortBy = choice;
-            SortByText = $"Sort By: {choice}";
-            SortProducts();
-            await Task.CompletedTask;
+        public void ApplySortCriteria(SortDetails.SortCriteria criteria, bool justOrdered)
+        {
+            _sortCriteria = criteria;
+            _whatToViewInList = justOrdered ? WhatToViewInList.Selected : WhatToViewInList.All;
+            _justOrdered = justOrdered; // Keep for backward compatibility
+            
+            // Save to Config (matches Xamarin SaveSortCriteria)
+            SortDetails.SaveSortCriteria(criteria);
+            
+            // Update UI
+            SortByText = $"Sort By: {GetSortCriteriaName(criteria)}";
+            
+            // Reload and sort products
+            LoadPreviouslyOrderedProducts();
         }
 
         [RelayCommand]
@@ -1087,25 +1186,6 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private void UpdateRoute(bool close)
-        {
-            if (!Config.CloseRouteInPresale)
-                return;
-
-            var stop = RouteEx.Routes.FirstOrDefault(x => 
-                x.Date.Date == DateTime.Today && 
-                x.Client != null && 
-                x.Client.ClientId == _order?.Client.ClientId);
-            
-            if (stop != null && _order != null)
-            {
-                if (close)
-                    stop.AddOrderToStop(_order.UniqueId);
-                else
-                    stop.RemoveOrderFromStop(_order.UniqueId);
-            }
-        }
-
         [RelayCommand]
         private async Task ShowMenuAsync()
         {
@@ -1134,9 +1214,19 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return options;
 
+            var finalized = _order.Finished;
+            var voided = _order.Voided;
+            var canEdit = CanEdit;
+            var locked = _order.Locked();
+            var asset = UDFHelper.GetSingleUDF("workOrderAsset", _order.ExtraFields);
+            var isWorkOrder = _order != null && _order.IsWorkOrder;
+            var hasOrderDiscounts = OrderDiscount.List.Count > 0 && !isWorkOrder;
+            var allowDiscount = _order.Client.UseDiscount && !OrderDiscount.HasDiscounts;
+            var isSplitClient = _order.Client.SplitInvoices.Count > 0;
+
             // Xamarin PreviouslyOrderedTemplateActivity logic:
             // If !AsPresale && (Finished || Voided), only show Print option
-            bool isReadOnly = !_order.AsPresale && (_order.Finished || _order.Voided);
+            bool isReadOnly = !_order.AsPresale && (finalized || voided);
             
             if (isReadOnly)
             {
@@ -1148,70 +1238,847 @@ namespace LaceupMigration.ViewModels
                 return options;
             }
 
-            var finalized = _order.Finished;
-            var voided = _order.Voided;
-            var canEdit = CanEdit;
-
-            if (canEdit && !finalized && !voided)
+            // Scanner (only if Config.ScannerToUse == 4)
+            if (Config.ScannerToUse == 4)
             {
-                if (Config.AllowDiscount)
+                options.Add(new MenuOption("Scan", async () =>
+                {
+                    await GotoBarcodeReaderAsync();
+                }));
+            }
+
+            // Presale-specific menu items
+            if (_order.AsPresale)
+            {
+                // Discount (presale)
+                if (allowDiscount)
                 {
                     options.Add(new MenuOption("Add Discount", async () =>
                     {
-                        // TODO: Implement discount dialog
-                        await _dialogService.ShowAlertAsync("Add Discount functionality is not yet fully implemented.", "Info");
+                        await ApplyDiscountAsync();
                     }));
                 }
 
-                if (Config.SetPO)
+                // Set PO (presale)
+                options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO", async () =>
                 {
-                    options.Add(new MenuOption("Set PO", async () =>
+                    await GetPONumberAsync();
+                }));
+
+                // Print (presale)
+                if (Config.PrinterAvailable)
+                {
+                    options.Add(new MenuOption("Print", async () =>
                     {
-                        var po = await _dialogService.ShowPromptAsync("PO Number", "Enter PO Number:", initialValue: _order.PONumber ?? "");
-                        if (!string.IsNullOrWhiteSpace(po))
-                        {
-                            _order.PONumber = po;
-                            _order.Save();
-                            LoadOrderData();
-                        }
+                        await PrintAsync();
                     }));
                 }
 
-                if (_order.AsPresale && Config.ShipDateIsMandatory)
+                // Ship Via (presale)
+                if (Config.ShowShipVia)
+                {
+                    options.Add(new MenuOption("Ship Via", async () =>
+                    {
+                        await AddEditShipViaAsync();
+                    }));
+                }
+
+                // Set Ship Date (presale)
+                if (Config.SetShipDate)
                 {
                     options.Add(new MenuOption("Set Ship Date", async () =>
                     {
-                        // TODO: Implement date picker
-                        await _dialogService.ShowAlertAsync("Set Ship Date functionality is not yet fully implemented.", "Info");
+                        await SetShipDateAsync();
                     }));
                 }
 
+                // Offers vs Order Discount (presale)
+                if (!hasOrderDiscounts)
+                {
+                    options.Add(new MenuOption("Offers", async () =>
+                    {
+                        await ShowOffersAsync();
+                    }));
+                }
+                else
+                {
+                    options.Add(new MenuOption("Discount Offers", async () =>
+                    {
+                        await GoToOrderDiscountAsync();
+                    }));
+
+                    if (!Config.CalculateOffersAutomatically)
+                    {
+                        options.Add(new MenuOption("Calculate Offers", async () =>
+                        {
+                            await CalculateDiscountOffersAsync();
+                        }));
+                    }
+                }
+
+                // Convert Quote to Sales Order
+                if (Config.CanModifyQuotes && _order.IsQuote && !_order.IsDelivery)
+                {
+                    options.Add(new MenuOption("Convert to Order", async () =>
+                    {
+                        await ConvertQuoteToSalesOrderAsync();
+                    }));
+                }
+
+                // What To View (presale)
+                options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added All" : "Just Ordered", async () =>
+                {
+                    await WhatToViewClickedAsync();
+                }));
+
+                // Comments (presale)
                 options.Add(new MenuOption("Add Comments", async () =>
                 {
-                    var comments = await _dialogService.ShowPromptAsync("Comments", "Enter comments:", initialValue: _order.Comments ?? "", keyboard: Keyboard.Default);
-                    if (comments != null)
-                    {
-                        _order.Comments = comments;
-                        _order.Save();
-                        LoadOrderData();
-                    }
+                    await ShowCommentsDialogAsync();
                 }));
-            }
 
-            options.Add(new MenuOption("Print", async () =>
-            {
-                await PrintAsync();
-            }));
-
-            if (!(_order.Client.SplitInvoices.Count > 0))
-            {
-                options.Add(new MenuOption("Send by Email", async () =>
+                // Signature (presale)
+                options.Add(new MenuOption("Order By", async () =>
                 {
-                    await SendByEmailAsync();
+                    await SignAsync();
+                }));
+
+                // Send Order (presale)
+                options.Add(new MenuOption("Send", async () =>
+                {
+                    await SendOrderAsync();
+                }));
+
+                // Email/Share PDF (presale)
+                if (!isSplitClient)
+                {
+                    if (Config.ShowBillOfLadingPdf)
+                    {
+                        options.Add(new MenuOption("Share PDF", async () =>
+                        {
+                            await SharePdfAsync();
+                        }));
+                    }
+                    else
+                    {
+                        options.Add(new MenuOption("Send by Email", async () =>
+                        {
+                            await SendByEmailAsync();
+                        }));
+                    }
+                }
+
+                // Delete Order (presale)
+                options.Add(new MenuOption("Delete Order", async () =>
+                {
+                    await DeleteOrderAsync();
                 }));
             }
+            else
+            {
+                // Non-presale menu items
+
+                // Discount (non-presale)
+                if (!finalized && allowDiscount && !locked)
+                {
+                    options.Add(new MenuOption("Add Discount", async () =>
+                    {
+                        await ApplyDiscountAsync();
+                    }));
+                }
+
+                // Offers vs Order Discount (non-presale)
+                if (!finalized && !locked)
+                {
+                    if (!hasOrderDiscounts)
+                    {
+                        options.Add(new MenuOption("Offers", async () =>
+                        {
+                            await ShowOffersAsync();
+                        }));
+                    }
+                    else
+                    {
+                        options.Add(new MenuOption("Discount Offers", async () =>
+                        {
+                            await GoToOrderDiscountAsync();
+                        }));
+
+                        if (!Config.CalculateOffersAutomatically)
+                        {
+                            options.Add(new MenuOption("Calculate Offers", async () =>
+                            {
+                                await CalculateDiscountOffersAsync();
+                            }));
+                        }
+                    }
+                }
+
+                // Print (non-presale)
+                if (!Config.LockOrderAfterPrinted)
+                {
+                    options.Add(new MenuOption("Print", async () =>
+                    {
+                        await PrintAsync();
+                    }));
+                }
+
+                // Email/Share PDF (non-presale)
+                if (!isSplitClient)
+                {
+                    options.Add(new MenuOption("Send by Email", async () =>
+                    {
+                        await SendByEmailAsync();
+                    }));
+
+                    if (Config.ShowBillOfLadingPdf)
+                    {
+                        options.Add(new MenuOption("Share PDF", async () =>
+                        {
+                            await SharePdfAsync();
+                        }));
+                    }
+                }
+
+                // Set PO (non-presale)
+                if ((_order.OrderType == OrderType.Bill || Config.SetPO || Config.POIsMandatory) && !finalized)
+                {
+                    options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO", async () =>
+                    {
+                        await GetPONumberAsync();
+                    }));
+                }
+
+                // Payment (non-presale)
+                var hasPayment = InvoicePayment.List.FirstOrDefault(x => x.OrderId != null && x.OrderId.IndexOf(_order.UniqueId) >= 0) != null;
+                if (finalized && !hasPayment && !Config.HidePriceInTransaction)
+                {
+                    options.Add(new MenuOption("Add Payment", async () =>
+                    {
+                        await GetPaymentAsync();
+                    }));
+                }
+
+                // What To View (non-presale)
+                if (!finalized)
+                {
+                    options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added All" : "Just Ordered", async () =>
+                    {
+                        await WhatToViewClickedAsync();
+                    }));
+                }
+
+                // Service Report (non-presale)
+                if (!finalized && Config.ShowServiceReport)
+                {
+                    options.Add(new MenuOption("Service Report", async () =>
+                    {
+                        await GoToServiceReportAsync();
+                    }));
+                }
+
+                // Comments (non-presale)
+                options.Add(new MenuOption("Add Comments", async () =>
+                {
+                    await ShowCommentsDialogAsync();
+                }));
+            }
+
+            // Common menu items (both presale and non-presale)
+
+            // Company Selection
+            if (CompanyInfo.Companies.Count > 1)
+            {
+                options.Add(new MenuOption("Select Company", async () =>
+                {
+                    await SelectCompanyAsync();
+                }));
+            }
+
+            // Crate In/Out
+            var prods = Product.Products.Where(x => x.ExtraPropertiesAsString.Contains("caseInOut"));
+            var prodIn = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=1"));
+            var prodOut = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=0"));
+            if (Config.MustEnterCaseInOut && (_order.OrderType == OrderType.Order || _order.OrderType == OrderType.Credit) && (prodIn != null || prodOut != null))
+            {
+                options.Add(new MenuOption("Enter Crate In/Out", async () =>
+                {
+                    await EnterCasesInOutAsync(false);
+                }));
+            }
+
+            // Use LSP
+            if (Config.LspInAllLines)
+            {
+                options.Add(new MenuOption("Use LSP", async () =>
+                {
+                    await UseLspInAllLinesAsync();
+                }));
+            }
+
+            // View Captures
+            bool isVisible = true;
+            if (finalized && Config.MustAddImageToFinalized)
+                isVisible = false;
+            if (Config.CaptureImages && isVisible)
+            {
+                options.Add(new MenuOption("View Captures", async () =>
+                {
+                    await ViewCapturedImagesAsync();
+                }));
+            }
+
+            // Select Driver (presale only)
+            if (_order.AsPresale)
+            {
+                options.Add(new MenuOption("Select Driver", async () =>
+                {
+                    await SelectSalesmanAsync();
+                }));
+            }
+
+            // Select Price Level
+            if (Config.AllowSelectPriceLevel)
+            {
+                options.Add(new MenuOption("Select Price Level", async () =>
+                {
+                    await SelectPriceLevelAsync();
+                }));
+            }
+
+            // Take Survey
+            if (!string.IsNullOrEmpty(Config.SurveyQuestions))
+            {
+                options.Add(new MenuOption("Take Survey", async () =>
+                {
+                    await TakeSurveyAsync();
+                }));
+            }
+
+            // Disol Client Values
+            if (Config.DisolCrap)
+            {
+                options.Add(new MenuOption("Edit Client Values", async () =>
+                {
+                    await EnterEditDisolValuesAsync();
+                }));
+            }
+
+            // Suggested Products
+            bool suggestedVisible = false;
+            if (!string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier))
+            {
+                if (SuggestedClientCategory.List.Count > 0 && _order != null && _order.Client != null)
+                {
+                    var suggestedForThisClient = SuggestedClientCategory.List.FirstOrDefault(x => x.SuggestedClientCategoryClients.Any(y => y.ClientId == _order.Client.ClientId));
+                    if (suggestedForThisClient != null && suggestedForThisClient.SuggestedClientCategoryProducts.Count > 0)
+                        suggestedVisible = true;
+                }
+            }
+            if (suggestedVisible && !finalized && !locked)
+            {
+                var title = !string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) 
+                    ? $"{Config.ProductCategoryNameIdentifier} Products" 
+                    : "Suggested Products";
+                options.Add(new MenuOption(title, async () =>
+                {
+                    await ShowSuggestedProductsAsync();
+                }));
+            }
+
+            // Other Charges
+            if (!string.IsNullOrEmpty(asset) || Config.AllowOtherCharges)
+            {
+                options.Add(new MenuOption("Other Charges", async () =>
+                {
+                    await OtherChargesAsync();
+                }));
+            }
+
+            // Delete Weight Lines
+            if (Config.DeleteWeightItemsMenu)
+            {
+                options.Add(new MenuOption("Delete Weight Lines", async () =>
+                {
+                    await Delete0WeightItemsAsync();
+                }));
+            }
+
+            // Reset Order
+            if (Config.AllowReset)
+            {
+                var resetValue = UDFHelper.GetSingleUDF("reset", _order.ExtraFields);
+                var resetTitle = (!string.IsNullOrEmpty(resetValue) && resetValue == "1") ? "Undo Reset Order" : "Reset";
+                options.Add(new MenuOption(resetTitle, async () =>
+                {
+                    await ResetOrderAsync();
+                }));
+            }
+
+            // Edit Client (hidden by default in Xamarin, but available)
+            // options.Add(new MenuOption("Edit Client", async () => { await EditClientAsync(); }));
 
             return options;
+        }
+
+        [RelayCommand]
+        public async Task NavigateToAddItemAsync(PreviouslyOrderedProductViewModel? item)
+        {
+            if (item?.Product == null || _order == null || !CanEdit)
+                return;
+
+            // Match Xamarin PreviouslyOrderedTemplateActivity behavior:
+            // If line has OrderDetail, pass orderDetail and asCreditItem (from the detail itself)
+            // If line doesn't have OrderDetail, pass productId
+            if (item.ExistingDetail != null)
+            {
+                // Navigate with orderDetail (editing existing detail)
+                // Use the detail's IsCredit flag, not the order type
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&orderDetail={item.ExistingDetail.OrderDetailId}&asCreditItem={(item.ExistingDetail.IsCredit ? 1 : 0)}");
+            }
+            else
+            {
+                // Navigate with productId (adding new item)
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={item.Product.ProductId}");
+            }
+        }
+
+        // Menu action methods
+        private async Task GotoBarcodeReaderAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"barcodereader?orderId={_order.OrderId}");
+        }
+
+        private async Task ShowOffersAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"offers?orderId={_order.OrderId}");
+        }
+
+        private async Task GoToOrderDiscountAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"orderdiscount?orderId={_order.OrderId}");
+        }
+
+        private async Task CalculateDiscountOffersAsync()
+        {
+            if (_order == null)
+                return;
+            // TODO: Implement CalculateDiscountOffers logic
+            await _dialogService.ShowAlertAsync("Calculate Offers functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task ApplyDiscountAsync()
+        {
+            if (_order == null)
+                return;
+
+            if (_order.DiscountAmount > 0)
+            {
+                await AddEditDiscountAsync(_order.DiscountType);
+            }
+            else
+            {
+                _appService.RecordEvent("menu option Discount");
+                var choice = await _dialogService.ShowActionSheetAsync("Select Type Discount", "Cancel", null, new[] { "Amount", "Percentage" });
+                if (choice == "Amount")
+                    await AddEditDiscountAsync(DiscountType.Amount);
+                else if (choice == "Percentage")
+                    await AddEditDiscountAsync(DiscountType.Percent);
+            }
+        }
+
+        private async Task AddEditDiscountAsync(DiscountType discountType)
+        {
+            if (_order == null)
+                return;
+
+            var discountAmount = _order.DiscountAmount;
+            if (_order.DiscountType == DiscountType.Percent && discountAmount > 0)
+                discountAmount *= 100;
+
+            var discountValue = await _dialogService.ShowPromptAsync(
+                "Enter Discount",
+                $"Enter Discount ({discountType}):",
+                "OK",
+                "Cancel",
+                keyboard: Keyboard.Numeric,
+                initialValue: discountAmount > 0 ? discountAmount.ToString() : "");
+
+            if (string.IsNullOrWhiteSpace(discountValue))
+                return;
+
+            if (!float.TryParse(discountValue, out float discount))
+                return;
+
+            if (!_order.CanAddDiscount(discount, discountType))
+            {
+                await _dialogService.ShowAlertAsync($"Cannot give more than {Config.MaxDiscountPerOrder}% discount to the order.", "Alert");
+                return;
+            }
+
+            if (discountType == DiscountType.Percent)
+            {
+                if (_order.OrderTotalCost() <= 0)
+                {
+                    await _dialogService.ShowAlertAsync("Discount cannot be bigger than order total.", "Alert");
+                    return;
+                }
+                _order.DiscountAmount = discount / 100;
+                _order.DiscountType = DiscountType.Percent;
+            }
+            else
+            {
+                if (discount > _order.OrderTotalCost())
+                {
+                    await _dialogService.ShowAlertAsync("Discount cannot be bigger than order total.", "Alert");
+                    return;
+                }
+                _order.DiscountAmount = discount;
+                _order.DiscountType = DiscountType.Amount;
+            }
+
+            // Get comment
+            var comment = await _dialogService.ShowPromptAsync(
+                "Enter Comment",
+                "Enter Comment:",
+                "OK",
+                "Cancel",
+                keyboard: Keyboard.Default,
+                initialValue: _order.DiscountComment ?? "");
+
+            if (comment != null)
+            {
+                _order.DiscountComment = comment;
+            }
+
+            _order.Save();
+            LoadOrderData();
+        }
+
+        private async Task GetPONumberAsync()
+        {
+            if (_order == null)
+                return;
+
+            var title = _order.OrderType == OrderType.Bill ? "Set Bill Number" : "Enter PO Number";
+            var message = _order.OrderType == OrderType.Bill ? "Set Bill Number:" : "PO Number:";
+            
+            var po = await _dialogService.ShowPromptAsync(title, message, "OK", "Cancel", 
+                keyboard: Keyboard.Default, 
+                initialValue: _order.PONumber ?? "");
+
+            if (po != null)
+            {
+                if (Config.PONumberMaxLength > 0 && po.Length > Config.PONumberMaxLength)
+                {
+                    await _dialogService.ShowAlertAsync($"The PO Number allows only {Config.PONumberMaxLength} characters.", "Alert");
+                    return;
+                }
+
+                _order.PONumber = po;
+                _order.Save();
+                LoadOrderData();
+            }
+        }
+
+        private async Task SetShipDateAsync()
+        {
+            if (_order == null)
+                return;
+
+            var currentDate = _order.ShipDate == DateTime.MinValue ? DateTime.Today : _order.ShipDate;
+            // TODO: Implement date picker dialog
+            await _dialogService.ShowAlertAsync("Set Ship Date functionality is not yet fully implemented. Please use a date picker.", "Info");
+        }
+
+        private async Task ShowCommentsDialogAsync()
+        {
+            if (_order == null)
+                return;
+
+            var comments = await _dialogService.ShowPromptAsync(
+                "Add Comments",
+                "Enter comments:",
+                "OK",
+                "Cancel",
+                keyboard: Keyboard.Default,
+                initialValue: _order.Comments ?? "");
+
+            if (comments != null)
+            {
+                _order.Comments = comments;
+                _order.Save();
+            }
+        }
+
+        private async Task WhatToViewClickedAsync()
+        {
+            _whatToViewInList = _whatToViewInList == WhatToViewInList.All ? WhatToViewInList.Selected : WhatToViewInList.All;
+            LoadPreviouslyOrderedProducts();
+        }
+
+        private async Task SignAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"ordersignature?ordersId={_order.OrderId}");
+        }
+
+        private async Task DeleteOrderAsync()
+        {
+            if (_order == null)
+                return;
+
+            var confirmed = await _dialogService.ShowConfirmAsync(
+                "Are you sure you want to delete this order?",
+                "Alert",
+                "Yes",
+                "No");
+
+            if (!confirmed)
+                return;
+
+            if (_order.AsPresale)
+                UpdateRoute(false);
+
+            var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
+            if (batch != null)
+                batch.Delete();
+
+            _order.Delete();
+
+            // Remove state
+            Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
+
+            await Shell.Current.GoToAsync("..");
+        }
+
+        private async Task SelectCompanyAsync()
+        {
+            if (_order == null)
+                return;
+
+            // TODO: Implement company selection dialog
+            await _dialogService.ShowAlertAsync("Select Company functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task EnterCasesInOutAsync(bool exit)
+        {
+            if (_order == null)
+                return;
+
+            var prods = Product.Products.Where(x => x.ExtraPropertiesAsString.Contains("caseInOut"));
+            var prodIn = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=1"));
+            var prodOut = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=0"));
+
+            if (prodIn == null && prodOut == null)
+            {
+                if (exit)
+                    await Shell.Current.GoToAsync("..");
+                return;
+            }
+
+            var crateInLine = _order.Details.FirstOrDefault(x => x.Product.ProductId == prodIn?.ProductId);
+            var crateOutLine = _order.Details.FirstOrDefault(x => x.Product.ProductId == prodOut?.ProductId);
+
+            // TODO: Implement crate in/out dialog
+            await _dialogService.ShowAlertAsync("Enter Crate In/Out functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task UseLspInAllLinesAsync()
+        {
+            if (_order == null)
+                return;
+            // TODO: Implement UseLSP logic
+            await _dialogService.ShowAlertAsync("Use LSP functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task ViewCapturedImagesAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"viewinvoiceimages?orderId={_order.OrderId}");
+        }
+
+        private async Task SelectSalesmanAsync()
+        {
+            if (_order == null)
+                return;
+            // TODO: Implement salesman selection dialog
+            await _dialogService.ShowAlertAsync("Select Driver functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task SelectPriceLevelAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"selectpricelevel?orderId={_order.OrderId}");
+        }
+
+        private async Task TakeSurveyAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"survey?orderId={_order.OrderId}");
+        }
+
+        private async Task EnterEditDisolValuesAsync()
+        {
+            if (_order == null)
+                return;
+
+            var rtn = UDFHelper.GetSingleUDF("RTN", _order.ExtraFields);
+            var realName = UDFHelper.GetSingleUDF("RealName", _order.ExtraFields);
+
+            // TODO: Implement dialog with RTN and RealName fields
+            await _dialogService.ShowAlertAsync("Edit Client Values functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task ShowSuggestedProductsAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"suggestedproducts?orderId={_order.OrderId}");
+        }
+
+        private async Task OtherChargesAsync()
+        {
+            if (_order == null)
+                return;
+            // TODO: Implement other charges dialog
+            await _dialogService.ShowAlertAsync("Other Charges functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task Delete0WeightItemsAsync()
+        {
+            if (_order == null)
+                return;
+
+            var toDelete = _order.Details.Where(x => x.Product.SoldByWeight && x.Weight == 0).ToList();
+            if (toDelete.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("No weight items with 0 weight found.", "Info");
+                return;
+            }
+
+            var confirmed = await _dialogService.ShowConfirmAsync(
+                $"Are you sure you want to delete {toDelete.Count} weight item(s) with 0 weight?",
+                "Confirm",
+                "Yes",
+                "No");
+
+            if (!confirmed)
+                return;
+
+            foreach (var d in toDelete)
+            {
+                _order.UpdateInventory(d, 1);
+                _order.Details.Remove(d);
+            }
+
+            _order.Save();
+            LoadPreviouslyOrderedProducts();
+            LoadOrderData();
+        }
+
+        private async Task ResetOrderAsync()
+        {
+            if (_order == null)
+                return;
+
+            var resetValue = UDFHelper.GetSingleUDF("reset", _order.ExtraFields);
+
+            if (!string.IsNullOrEmpty(resetValue) && resetValue == "1")
+            {
+                _order.ExtraFields = UDFHelper.RemoveSingleUDF("reset", _order.ExtraFields);
+                _order.ExtraFields = UDFHelper.RemoveSingleUDF("resetdate", _order.ExtraFields);
+                _order.ExtraFields = UDFHelper.RemoveSingleUDF("delmode", _order.ExtraFields);
+                _order.Save();
+                await _dialogService.ShowAlertAsync("Order reset has been undone.", "Alert");
+                return;
+            }
+
+            // TODO: Implement date picker and delivery mode selection
+            await _dialogService.ShowAlertAsync("Reset Order functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task GoToServiceReportAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"servicereport?orderId={_order.OrderId}");
+        }
+
+        private async Task GetPaymentAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"paymentsetvalues?ordersId={_order.OrderId}&commingFromFinalize=1");
+        }
+
+        private async Task AddEditShipViaAsync()
+        {
+            if (_order == null)
+                return;
+
+            var shipVia = UDFHelper.GetSingleUDF("ShipVia", _order.ExtraFields);
+            var newShipVia = await _dialogService.ShowPromptAsync(
+                "Ship Via",
+                "Enter Ship Via:",
+                "OK",
+                "Cancel",
+                keyboard: Keyboard.Default,
+                initialValue: shipVia ?? "");
+
+            if (newShipVia != null)
+            {
+                _order.ExtraFields = UDFHelper.SyncSingleUDF("ShipVia", newShipVia, _order.ExtraFields);
+                _order.Save();
+            }
+        }
+
+        private async Task ConvertQuoteToSalesOrderAsync()
+        {
+            if (_order == null)
+                return;
+
+            var confirmed = await _dialogService.ShowConfirmAsync(
+                "Are you sure you want to convert this quote to a sales order?",
+                "Alert",
+                "Yes",
+                "No");
+
+            if (!confirmed)
+                return;
+
+            _order.IsQuote = false;
+            _order.Save();
+            LoadOrderData();
+        }
+
+        private void UpdateRoute(bool close)
+        {
+            if (!Config.CloseRouteInPresale || _order == null)
+                return;
+
+            var stop = RouteEx.Routes.FirstOrDefault(x => 
+                x.Date.Date == DateTime.Today && 
+                x.Client != null && 
+                x.Client.ClientId == _order.Client.ClientId);
+            
+            if (stop != null)
+            {
+                if (close)
+                    stop.AddOrderToStop(_order.UniqueId);
+                else
+                    stop.RemoveOrderFromStop(_order.UniqueId);
+            }
         }
 
         [RelayCommand]
@@ -1420,44 +2287,51 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // For Order type, just add as regular sales item
-            // Show popup to enter quantity
-            var defaultQty = item.Quantity > 0 ? item.Quantity.ToString() : (item.OrderedItem?.Last?.Quantity ?? 1).ToString();
-            var qtyInput = await _parent._dialogService.ShowPromptAsync(
-                $"Enter Quantity for {item.ProductName}",
-                "Quantity",
-                "OK",
-                "Cancel",
-                defaultQty,
-                keyboard: Keyboard.Numeric);
+            // Show RestOfTheAddDialog (matches Xamarin RestOfTheAddDialog1)
+            var existingDetail = order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && !x.IsCredit);
+            var result = await _parent._dialogService.ShowRestOfTheAddDialogAsync(
+                item.Product,
+                order,
+                existingDetail,
+                isCredit: false,
+                isDamaged: false,
+                isDelivery: order.IsDelivery);
 
-            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out var qty) || qty < 0)
+            if (result.Cancelled)
                 return;
 
-            var existingDetail = order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && !x.IsCredit);
-
-            // Handle qty == 0 - always delete the detail, never keep details with qty=0
-            if (qty == 0)
+            // Handle qty == 0 - always delete the detail
+            if (result.Qty == 0)
             {
                 if (existingDetail != null)
                 {
-                    // Always delete the detail when qty is set to 0
                     order.DeleteDetail(existingDetail);
                     order.Save();
                 }
-                
-                // Refresh the parent view
                 _parent.LoadOrderData();
                 _parent.RefreshProductList();
                 return;
             }
 
-            // qty > 0 - normal flow
+            // qty > 0 - normal flow (matches DoTheThing1 logic)
             OrderDetail? updatedDetail = null;
             if (existingDetail != null)
             {
                 // Update existing detail
-                existingDetail.Qty = (float)qty;
+                existingDetail.Qty = result.Qty;
+                existingDetail.Weight = result.Weight;
+                existingDetail.Lot = result.Lot;
+                if (result.LotExpiration.HasValue)
+                    existingDetail.LotExpiration = result.LotExpiration.Value;
+                existingDetail.Comments = result.Comments;
+                existingDetail.Price = result.Price;
+                existingDetail.UnitOfMeasure = result.SelectedUoM;
+                existingDetail.IsFreeItem = result.IsFreeItem;
+                existingDetail.ReasonId = result.ReasonId;
+                if (result.PriceLevelSelected > 0)
+                {
+                    existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
+                }
                 updatedDetail = existingDetail;
             }
             else
@@ -1465,20 +2339,54 @@ namespace LaceupMigration.ViewModels
                 // Create new detail
                 var detail = new OrderDetail(item.Product, 0, order);
                 double expectedPrice = Product.GetPriceForProduct(item.Product, order, false, false);
-                double price = 0;
-                if (Offer.ProductHasSpecialPriceForClient(item.Product, order.Client, out price))
+                double price = result.Price;
+                
+                // If UseLastSoldPrice, get from last invoice detail (from client history)
+                if (result.UseLastSoldPrice && order.Client != null)
                 {
-                    detail.Price = price;
-                    detail.FromOfferPrice = true;
+                    var clientHistory = InvoiceDetail.ClientProduct(order.Client.ClientId, item.Product.ProductId);
+                    if (clientHistory != null && clientHistory.Count > 0)
+                    {
+                        var lastInvoiceDetail = clientHistory.OrderByDescending(x => x.Date).FirstOrDefault();
+                        if (lastInvoiceDetail != null)
+                            price = lastInvoiceDetail.Price;
+                    }
+                }
+                else if (price == 0)
+                {
+                    // Get price from offers or default
+                    double offerPrice = 0;
+                    if (Offer.ProductHasSpecialPriceForClient(item.Product, order.Client, out offerPrice))
+                    {
+                        detail.Price = offerPrice;
+                        detail.FromOfferPrice = true;
+                    }
+                    else
+                    {
+                        detail.Price = expectedPrice;
+                        detail.FromOfferPrice = false;
+                    }
                 }
                 else
                 {
-                    detail.Price = expectedPrice;
+                    detail.Price = price;
                     detail.FromOfferPrice = false;
                 }
+
                 detail.ExpectedPrice = expectedPrice;
-                detail.UnitOfMeasure = item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
-                detail.Qty = (float)qty;
+                detail.UnitOfMeasure = result.SelectedUoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.Qty = result.Qty;
+                detail.Weight = result.Weight;
+                detail.Lot = result.Lot;
+                if (result.LotExpiration.HasValue)
+                    detail.LotExpiration = result.LotExpiration.Value;
+                detail.Comments = result.Comments;
+                detail.IsFreeItem = result.IsFreeItem;
+                detail.ReasonId = result.ReasonId;
+                if (result.PriceLevelSelected > 0)
+                {
+                    detail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), detail.ExtraFields);
+                }
                 detail.CalculateOfferDetail();
                 order.AddDetail(detail);
                 updatedDetail = detail;
@@ -1491,7 +2399,7 @@ namespace LaceupMigration.ViewModels
                 order.RecalculateDiscounts();
             }
 
-            // Save the order (this saves all details including the updated one)
+            // Save the order
             order.Save();
 
             // Refresh the parent view
@@ -1751,22 +2659,72 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-private async Task SharePdfAsync(string pdfFile)
-{
-    try
-    {
-        await Share.RequestAsync(new ShareFileRequest
+        private async Task SharePdfAsync()
         {
-            Title = "Share Order",
-            File = new ShareFile(pdfFile)
-        });
-    }
-    catch (Exception ex)
-    {
-        Logger.CreateLog(ex);
-        await _dialogService.ShowAlertAsync("Error sharing PDF.", "Alert", "OK");
-    }
-}
+            if (_order == null)
+            {
+                await _dialogService.ShowAlertAsync("No order to share.", "Alert", "OK");
+                return;
+            }
+
+            try
+            {
+                await _dialogService.ShowLoadingAsync("Generating PDF...");
+
+                string pdfFile;
+                if (Config.ShowBillOfLadingPdf)
+                {
+                    // Show dialog to select document type
+                    var choice = await _dialogService.ShowActionSheetAsync("Select Type Document", "Cancel", null, new[] { "Invoice", "Bill Of Lading" });
+                    if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
+                    {
+                        await _dialogService.HideLoadingAsync();
+                        return;
+                    }
+
+                    pdfFile = choice == "Invoice" 
+                        ? PdfHelper.GetOrderPdf(_order) 
+                        : PdfHelper.GetOrderPdfBillOfLadin(_order);
+                }
+                else
+                {
+                    pdfFile = PdfHelper.GetOrderPdf(_order);
+                }
+
+                await _dialogService.HideLoadingAsync();
+
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    await _dialogService.ShowAlertAsync("PDF could not be opened.", "Alert", "OK");
+                    return;
+                }
+
+                await SharePdfFileAsync(pdfFile);
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error sharing PDF.", "Alert", "OK");
+            }
+        }
+
+        private async Task SharePdfFileAsync(string pdfFile)
+        {
+            try
+            {
+                await Share.RequestAsync(new ShareFileRequest
+                {
+                    Title = "Share Order as Pdf",
+                    File = new ShareFile(pdfFile)
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error sharing PDF.", "Alert", "OK");
+            }
+        }
     }
 }
 
