@@ -1,6 +1,8 @@
 using LaceupMigration.ViewModels;
 using System.Collections.Generic;
 using System.Linq;
+using System.ComponentModel;
+using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.Views
 {
@@ -13,6 +15,71 @@ namespace LaceupMigration.Views
             InitializeComponent();
             _viewModel = viewModel;
             BindingContext = _viewModel;
+            
+            // Subscribe to property changes to update column definitions
+            _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            
+            // Initialize column definitions
+            UpdateColumnDefinitions();
+        }
+
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == "ActionButtonsColumnDefinitions" || 
+                e.PropertyName == "ShowAddCredit")
+            {
+                UpdateColumnDefinitions();
+            }
+        }
+
+        private void UpdateColumnDefinitions()
+        {
+            if (ActionButtonsGrid == null || _viewModel == null)
+                return;
+
+            // Parse the column definitions string and apply it
+            var columnDefs = _viewModel.ActionButtonsColumnDefinitions;
+            var columns = columnDefs.Split(',');
+            
+            ActionButtonsGrid.ColumnDefinitions.Clear();
+            foreach (var col in columns)
+            {
+                var colDef = new ColumnDefinition();
+                if (col.Trim() == "*")
+                {
+                    colDef.Width = new GridLength(1, GridUnitType.Star);
+                }
+                else
+                {
+                    if (double.TryParse(col.Trim(), out var value))
+                    {
+                        colDef.Width = new GridLength(value);
+                    }
+                    else
+                    {
+                        colDef.Width = new GridLength(1, GridUnitType.Star);
+                    }
+                }
+                ActionButtonsGrid.ColumnDefinitions.Add(colDef);
+            }
+
+            // Update button column positions based on ShowAddCredit
+            if (!_viewModel.ShowAddCredit)
+            {
+                // Shift buttons left: Prod->0, Cats->1, Search->2, Send->3
+                if (ProdButton != null) ProdButton.SetValue(Grid.ColumnProperty, 0);
+                if (CatsButton != null) CatsButton.SetValue(Grid.ColumnProperty, 1);
+                if (SearchButton != null) SearchButton.SetValue(Grid.ColumnProperty, 2);
+                if (SendButton != null) SendButton.SetValue(Grid.ColumnProperty, 3);
+            }
+            else
+            {
+                // Normal positions: Add Credit->0, Prod->1, Cats->2, Search->3, Send->4
+                if (ProdButton != null) ProdButton.SetValue(Grid.ColumnProperty, 1);
+                if (CatsButton != null) CatsButton.SetValue(Grid.ColumnProperty, 2);
+                if (SearchButton != null) SearchButton.SetValue(Grid.ColumnProperty, 3);
+                if (SendButton != null) SendButton.SetValue(Grid.ColumnProperty, 4);
+            }
         }
 
         // Override to integrate ViewModel menu with base menu
@@ -49,6 +116,9 @@ namespace LaceupMigration.Views
         {
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
+            
+            // Update column definitions after ViewModel is fully initialized
+            UpdateColumnDefinitions();
             
             // Update menu toolbar item after order is loaded (important for state restoration)
             // This ensures the menu appears even when loading from state

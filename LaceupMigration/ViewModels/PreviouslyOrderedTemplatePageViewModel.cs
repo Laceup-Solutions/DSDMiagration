@@ -84,6 +84,14 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showAddCredit = false;
 
+        [ObservableProperty]
+        private string _actionButtonsColumnDefinitions = "*,*,*,*";
+
+        partial void OnShowAddCreditChanged(bool value)
+        {
+            ActionButtonsColumnDefinitions = value ? "*,*,*,*,*" : "*,*,*,*";
+        }
+
         public PreviouslyOrderedTemplatePageViewModel(DialogService dialogService, ILaceupAppService appService)
         {
             _dialogService = dialogService;
@@ -1060,40 +1068,7 @@ namespace LaceupMigration.ViewModels
                 if (Session.session != null)
                     Session.session.AddDetailFromOrder(_order);
 
-                // Show Action Options dialog if presale (matching Xamarin behavior)
-                if (_order.AsPresale)
-                {
-                    var options = new string[]
-                    {
-                        "Send Order",
-                        "Save Order To Send Later",
-                        "Stay In The Order"
-                    };
-
-                    var selectedIndex = await _dialogService.ShowSingleChoiceDialogAsync("Action Options", options, 1);
-                    
-                    if (selectedIndex == -1)
-                    {
-                        // Cancel button clicked - stay in order
-                        return false;
-                    }
-
-                    switch (selectedIndex)
-                    {
-                        case 0:
-                            // Send Order
-                            await ConfirmationSendAsync();
-                            return false; // ConfirmationSendAsync already navigates, don't navigate again
-                        case 1:
-                            // Save Order To Send Later
-                            await ContinueAfterAlertAsync();
-                            return false; // ContinueAfterAlertAsync already navigates, don't navigate again
-                        case 2:
-                            // Stay In The Order
-                            return false; // Don't navigate
-                    }
-                }
-
+                
                 // Set end date if not set
                 if (_order.EndDate == DateTime.MinValue)
                 {
