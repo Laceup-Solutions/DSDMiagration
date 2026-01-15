@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.SortByDialogPage"
+             x:DataType="vm:SortByDialogViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Sort By:"
+             BackgroundColor="{StaticResource Gray100}">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <!-- Sort By Section -->
+                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                    <VerticalStackLayout Spacing="12">
+                        <Label Text="Sort By:"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource PrimaryDark}" />
+                        
+                        <RadioButton Content="Product Name"
+                                     IsChecked="{Binding IsProductNameSelected}"
+                                     GroupName="SortCriteria" />
+                        <RadioButton Content="Product Code"
+                                     IsChecked="{Binding IsProductCodeSelected}"
+                                     GroupName="SortCriteria" />
+                        <RadioButton Content="By Category"
+                                     IsChecked="{Binding IsCategorySelected}"
+                                     GroupName="SortCriteria" />
+                        <RadioButton Content="In Stock"
+                                     IsChecked="{Binding IsInStockSelected}"
+                                     GroupName="SortCriteria" />
+                        <RadioButton Content="Qty"
+                                     IsChecked="{Binding IsQtySelected}"
+                                     GroupName="SortCriteria" />
+                        <RadioButton Content="Descending"
+                                     IsChecked="{Binding IsDescendingSelected}"
+                                     GroupName="SortCriteria" />
+                        <RadioButton Content="Order of Entry"
+                                     IsChecked="{Binding IsOrderOfEntrySelected}"
+                                     GroupName="SortCriteria" />
+                        <RadioButton Content="Warehouse Location"
+                                     IsChecked="{Binding IsWarehouseLocationSelected}"
+                                     GroupName="SortCriteria" />
+                        <RadioButton Content="Category then by Code"
+                                     IsChecked="{Binding IsCategoryThenByCodeSelected}"
+                                     GroupName="SortCriteria" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Filter Section -->
+                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                    <VerticalStackLayout Spacing="12">
+                        <Label Text="Filter:"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource PrimaryDark}" />
+                        
+                        <CheckBox IsChecked="{Binding IsJustOrderedChecked}" />
+                        <Label Text="Just Ordered"
+                               VerticalOptions="Center"
+                               FontSize="14"
+                               TextColor="{StaticResource Gray900}">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnJustOrderedLabelTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Buttons -->
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                    <Button Text="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Grid.Column="0" />
+                    <Button Text="Apply"
+                            Command="{Binding ApplyCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Grid.Column="1" />
+                </Grid>
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>
+

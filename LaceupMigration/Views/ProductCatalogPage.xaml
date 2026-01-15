@@ -40,6 +40,9 @@
                     <DataTemplate x:DataType="vm:CatalogItemViewModel">
                         <Grid Style="{StaticResource CollectionViewItemStyle}">
                             <Frame Padding="12" Margin="8,2" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnCellTapped" />
+                                </Frame.GestureRecognizers>
                                 <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="4">
                                 <!-- Product Image (if available) -->
                                 <Image Source="dotnet_bot.png"
@@ -98,7 +101,7 @@
                                         Text="{Binding QuantityButtonText}"
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ProductCatalogPageViewModel}}, Path=AddButtonClickCommand}"
                                         CommandParameter="{Binding .}"
-                                        WidthRequest="50"
+                                        WidthRequest="90"
                                         HeightRequest="50"
                                         BackgroundColor="{StaticResource PrimaryDark}"
                                         TextColor="White"

@@ -118,6 +118,8 @@ namespace LaceupMigration
             Routing.RegisterRoute("selfservice/credittemplate",
                 typeof(Views.SelfService.SelfServiceCreditTemplatePage));
             
+            // Sort By Dialog
+            Routing.RegisterRoute("sortbydialog", typeof(SortByDialogPage));
             
             //PDF
             Routing.RegisterRoute("pdfviewer", typeof(PdfViewer));

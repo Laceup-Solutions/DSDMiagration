@@ -148,6 +148,14 @@ namespace LaceupMigration.Views
             // This is async, but GoBack() is synchronous, so we fire and forget
             _ = _viewModel.GoBackAsync();
         }
+
+        private async void OnCellTapped(object sender, EventArgs e)
+        {
+            if (sender is Frame frame && frame.BindingContext is PreviouslyOrderedProductViewModel item)
+            {
+                await _viewModel.NavigateToAddItemAsync(item);
+            }
+        }
     }
 }
 

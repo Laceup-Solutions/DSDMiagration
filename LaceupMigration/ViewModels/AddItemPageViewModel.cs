@@ -125,6 +125,46 @@ namespace LaceupMigration.ViewModels
             LoadProductData();
         }
 
+        public async Task InitializeWithOrderDetailAsync(int orderId, int orderDetailId, bool asCreditItem = false,
+            int type = 0, int reasonId = 0, bool consignmentCounting = false)
+        {
+            if (_initialized && _order?.OrderId == orderId && _existingDetail?.OrderDetailId == orderDetailId)
+            {
+                await RefreshAsync();
+                return;
+            }
+
+            _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId);
+            if (_order == null)
+            {
+                // await _dialogService.ShowAlertAsync("Order not found.", "Error");
+                return;
+            }
+
+            _existingDetail = _order.Details.FirstOrDefault(x => x.OrderDetailId == orderDetailId);
+            if (_existingDetail == null)
+            {
+                await _dialogService.ShowAlertAsync("Order detail not found.", "Error");
+                return;
+            }
+
+            // Get product from order detail (matches Xamarin AddItemActivity behavior)
+            _product = _existingDetail.Product;
+            if (_product == null)
+            {
+                await _dialogService.ShowAlertAsync("Product not found.", "Error");
+                return;
+            }
+
+            _asCreditItem = asCreditItem || _existingDetail.IsCredit;
+            _creditType = type;
+            _reasonId = reasonId;
+            _consignmentCounting = consignmentCounting;
+
+            _initialized = true;
+            LoadProductData();
+        }
+
         private void LoadProductData()
         {
             if (_product == null || _order == null)
@@ -146,18 +186,91 @@ namespace LaceupMigration.ViewModels
                         IsDefault = uom.IsDefault
                     });
                 }
-                SelectedUom = UnitOfMeasures.FirstOrDefault(x => x.IsDefault) ?? UnitOfMeasures.FirstOrDefault();
+                
+                // If editing existing detail, use its UOM, otherwise use default
+                if (_existingDetail != null && _existingDetail.UnitOfMeasure != null)
+                {
+                    SelectedUom = UnitOfMeasures.FirstOrDefault(x => x.UnitOfMeasure.Id == _existingDetail.UnitOfMeasure.Id) 
+                        ?? UnitOfMeasures.FirstOrDefault(x => x.IsDefault) 
+                        ?? UnitOfMeasures.FirstOrDefault();
+                }
+                else
+                {
+                    SelectedUom = UnitOfMeasures.FirstOrDefault(x => x.IsDefault) ?? UnitOfMeasures.FirstOrDefault();
+                }
             }
             else
             {
                 ShowUom = false;
             }
 
-            // Get price
-            bool cameFromOffer = false;
-            var price = Product.GetPriceForProduct(_product, _order, out cameFromOffer, _asCreditItem, _creditType == 1, SelectedUom?.UnitOfMeasure);
-            PriceText = price.ToString("F2");
-            ExpectedPrice = price;
+            // If editing existing detail, load values from it (matches Xamarin AddItemActivity behavior)
+            if (_existingDetail != null)
+            {
+                // Load quantity/weight from order detail
+                if (_product.SoldByWeight)
+                {
+                    WeightText = _existingDetail.Weight > 0 ? _existingDetail.Weight.ToString("F2") : _existingDetail.Qty.ToString("F2");
+                    ShowWeight = true;
+                    ShowQuantity = false;
+                }
+                else
+                {
+                    QuantityText = _existingDetail.Qty.ToString("F0");
+                    ShowWeight = false;
+                    ShowQuantity = true;
+                }
+
+                // Load price from order detail
+                PriceText = _existingDetail.Price.ToString("F2");
+                ExpectedPrice = _existingDetail.ExpectedPrice > 0 ? _existingDetail.ExpectedPrice : _existingDetail.Price;
+
+                // Load comments
+                CommentsText = _existingDetail.Comments ?? string.Empty;
+
+                // Load lot
+                LotText = _existingDetail.Lot ?? string.Empty;
+
+                // Load free item flag
+                IsFreeItem = _existingDetail.IsFreeItem;
+
+                // Set credit item flags from order detail
+                if (_existingDetail.IsCredit)
+                {
+                    IsDamaged = _existingDetail.Damaged;
+                    IsReturn = !_existingDetail.Damaged;
+                    _reasonId = _existingDetail.ReasonId;
+                }
+            }
+            else
+            {
+                // New item - get price
+                bool cameFromOffer = false;
+                var price = Product.GetPriceForProduct(_product, _order, out cameFromOffer, _asCreditItem, _creditType == 1, SelectedUom?.UnitOfMeasure);
+                PriceText = price.ToString("F2");
+                ExpectedPrice = price;
+
+                // Set default quantity
+                if (_product.SoldByWeight)
+                {
+                    ShowWeight = true;
+                    ShowQuantity = false;
+                    WeightText = "1";
+                }
+                else
+                {
+                    ShowWeight = false;
+                    ShowQuantity = true;
+                    QuantityText = "1";
+                }
+
+                // Set credit item flags
+                if (_asCreditItem)
+                {
+                    IsDamaged = _creditType == 1;
+                    IsReturn = _creditType == 2;
+                }
+            }
 
             // Get list price
             var listPrice = _product.PriceLevel0;
@@ -167,23 +280,9 @@ namespace LaceupMigration.ViewModels
             var onHand = _product.GetInventory(_order.AsPresale);
             OnHandText = $"On Hand: {onHand}";
 
-            // Check if product is sold by weight
-            if (_product.SoldByWeight)
-            {
-                ShowWeight = true;
-                ShowQuantity = false;
-            }
-
             ShowLot =!_order.AsPresale && !IsDamaged && (_product.UseLot || _product.UseLotAsReference);
 
             CanEditPrice = Config.CanChangePrice(_order, _product, _asCreditItem);
-
-            // Set credit item flags
-            if (_asCreditItem)
-            {
-                IsDamaged = _creditType == 1;
-                IsReturn = _creditType == 2;
-            }
 
             UpdateTotal();
         }
@@ -329,6 +428,7 @@ namespace LaceupMigration.ViewModels
             }
 
             // Create or update order detail
+            OrderDetail? updatedDetail = null;
             if (_existingDetail != null)
             {
                 // Update existing detail
@@ -341,6 +441,7 @@ namespace LaceupMigration.ViewModels
                 _existingDetail.IsCredit = _asCreditItem;
                 _existingDetail.Damaged = IsDamaged;
                 _existingDetail.ReasonId = _reasonId;
+                updatedDetail = _existingDetail;
             }
             else
             {
@@ -364,6 +465,14 @@ namespace LaceupMigration.ViewModels
                 }
 
                 _order.AddDetail(detail);
+                updatedDetail = detail;
+            }
+
+            // Update related details and recalculate discounts (matches Xamarin behavior)
+            if (updatedDetail != null)
+            {
+                OrderDetail.UpdateRelated(updatedDetail, _order);
+                _order.RecalculateDiscounts();
             }
 
             _order.Save();
