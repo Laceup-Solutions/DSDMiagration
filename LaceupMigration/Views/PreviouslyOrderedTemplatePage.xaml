@@ -10,7 +10,7 @@
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,Auto,Auto,*">
             <!-- Action Buttons -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*,*" ColumnSpacing="4" Padding="8,8,8,4">
+            <Grid x:Name="ActionButtonsGrid" Grid.Row="0" ColumnSpacing="4" Padding="8,8,8,4">
                 <Button Text="Add Credit"
                         Command="{Binding AddCreditCommand}"
                         IsEnabled="{Binding CanEdit}"
@@ -18,25 +18,25 @@
                         BackgroundColor="{StaticResource PrimaryDark}"
                         TextColor="White"
                         Grid.Column="0" />
-                <Button Text="Prod"
+                <Button x:Name="ProdButton" Text="Prod"
                         Command="{Binding ViewProductsCommand}"
                         IsEnabled="{Binding CanEdit}"
                         BackgroundColor="{StaticResource PrimaryDark}"
                         TextColor="White"
                         Grid.Column="1" />
-                <Button Text="Cats"
+                <Button x:Name="CatsButton" Text="Cats"
                         Command="{Binding ViewCategoriesCommand}"
                         IsEnabled="{Binding CanEdit}"
                         BackgroundColor="{StaticResource PrimaryDark}"
                         TextColor="White"
                         Grid.Column="2" />
-                <Button Text="Search"
+                <Button x:Name="SearchButton" Text="Search"
                         Command="{Binding SearchCommand}"
                         IsEnabled="{Binding CanEdit}"
                         BackgroundColor="{StaticResource PrimaryDark}"
                         TextColor="White"
                         Grid.Column="3" />
-                <Button Text="Send"
+                <Button x:Name="SendButton" Text="Send"
                         Command="{Binding SendOrderCommand}"
                         IsEnabled="{Binding CanEdit}"
                         IsVisible="{Binding ShowSendButton}"
