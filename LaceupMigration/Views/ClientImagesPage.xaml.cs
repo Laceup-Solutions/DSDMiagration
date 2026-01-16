@@ -20,8 +20,8 @@ namespace LaceupMigration.Views
             {
                 if (int.TryParse(value.ToString(), out var clientId))
                 {
-                    // Initialize synchronously to avoid race condition with OnAppearing
-                    Task.Run(async () => await _viewModel.InitializeAsync(clientId));
+                    // Initialize on main thread to ensure proper execution
+                    Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(clientId));
                 }
             }
         }

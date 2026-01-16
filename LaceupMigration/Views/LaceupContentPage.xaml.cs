@@ -115,7 +115,15 @@ namespace LaceupMigration.Views
         {
             base.OnAppearing();
             // Update menu toolbar item when page appears (in case options changed)
-            UpdateMenuToolbarItem();
+            // Ensure this runs on the main thread to avoid Android view hierarchy errors
+            if (Dispatcher.IsDispatchRequired)
+            {
+                Dispatcher.Dispatch(() => UpdateMenuToolbarItem());
+            }
+            else
+            {
+                UpdateMenuToolbarItem();
+            }
         }
 
         protected override void OnHandlerChanged()
@@ -135,7 +143,15 @@ namespace LaceupMigration.Views
             }
 
             // Update menu toolbar item visibility
-            UpdateMenuToolbarItem();
+            // Ensure this runs on the main thread
+            if (Dispatcher.IsDispatchRequired)
+            {
+                Dispatcher.Dispatch(() => UpdateMenuToolbarItem());
+            }
+            else
+            {
+                UpdateMenuToolbarItem();
+            }
         }
 
         protected void UpdateMenuToolbarItem()
