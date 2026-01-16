@@ -127,23 +127,34 @@ namespace LaceupMigration.ViewModels
 
 			await RefreshAsync(true, true);
 
-			if (Config.Delivery && Config.PendingLoadToAccept && Config.TrackInventory)
-			{
-				await _dialogService.ShowAlertAsync("Please accept the pending load before continuing.", "Warning");
-				DisableInteractions();
-				return;
-			}
+		if (Config.Delivery && Config.PendingLoadToAccept && Config.TrackInventory)
+		{
+			await _dialogService.ShowAlertAsync("Please accept the pending load before continuing.", "Warning");
+			DisableInteractions();
+			return;
+		}
 
+		// Only check DataProvider methods if DataProvider is initialized
+		// This prevents NullReferenceException if the page appears before initialization
+		try
+		{
 			if (DataProvider.MustEndOfDay())
 			{
 				await _dialogService.ShowAlertAsync("End of Day process is required before continuing.", "Warning");
 				ClearClientListAndLock();
+				return;
 			}
-			else if (!DataProvider.CanUseApplication())
+			
+			if (!DataProvider.CanUseApplication())
 			{
 				await _dialogService.ShowAlertAsync("You must sync data before continuing.", "Warning");
 				ClearClientListAndLock();
 			}
+		}
+		catch (NullReferenceException)
+		{
+			// DataProvider not initialized yet - skip these checks
+		}
 		}
 
 		public async Task OnRouteDateSelectedAsync(DateTime date)

@@ -212,19 +212,33 @@ namespace LaceupMigration.ViewModels
             // Receive Payment / View Payment
             if (Config.PaymentAvailable && !Config.HidePriceInTransaction)
             {
-                var existPayment = InvoicePayment.List.Any(x => 
+                var existPayment = InvoicePayment.List.FirstOrDefault(x => 
                     x != null && 
                     string.IsNullOrEmpty(x.OrderId) && 
                     (x.Invoices().FirstOrDefault(y => y.InvoiceId == _invoice.InvoiceId) != null));
 
-                var title = existPayment ? "View Payment" : "Receive Payment";
+                var title = existPayment != null ? "View Payment" : "Receive Payment";
                 var enabled = _invoice.Balance > 0;
 
                 if (enabled)
                 {
                     options.Add(new MenuOption(title, async () =>
                     {
-                        await Shell.Current.GoToAsync($"selectinvoice?clientId={_invoice.ClientId}&fromClientDetails=false");
+                        // Match Xamarin InvoiceDetailsActivity: navigate directly to PaymentSetValuesActivity
+                        // with the invoice ID already specified, not to SelectInvoice
+                        var invoiceIdParam = Config.SavePaymentsByInvoiceNumber 
+                            ? _invoice.InvoiceNumber 
+                            : _invoice.InvoiceId.ToString();
+                        
+                        var route = $"paymentsetvalues?clientId={_invoice.ClientId}&invoiceIds={Uri.EscapeDataString(invoiceIdParam)}&goBackToMain=0";
+                        
+                        // If payment already exists, include paymentId
+                        if (existPayment != null)
+                        {
+                            route += $"&paymentId={existPayment.Id}";
+                        }
+                        
+                        await Shell.Current.GoToAsync(route);
                     }));
                 }
             }

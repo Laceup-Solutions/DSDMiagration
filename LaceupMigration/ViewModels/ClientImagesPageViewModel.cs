@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using LaceupMigration.Views;
 
 namespace LaceupMigration.ViewModels
 {
@@ -20,6 +21,7 @@ namespace LaceupMigration.ViewModels
         private bool _initialized;
         private bool _isLoading;
         private bool _changed = false;
+        private bool _isRefreshing = false;
 
         public ObservableCollection<ClientImageViewModel> Images { get; } = new();
 
@@ -40,9 +42,10 @@ namespace LaceupMigration.ViewModels
 
         public async Task InitializeAsync(int clientId)
         {
+            // If already initialized with the same client, don't reload
+            // This prevents clearing the image list when navigating back from ViewImagePage
             if (_initialized && _client?.ClientId == clientId)
             {
-                await RefreshAsync();
                 return;
             }
 
@@ -69,12 +72,14 @@ namespace LaceupMigration.ViewModels
         {
             // Don't refresh if we're already loading (e.g., during initialization)
             // or if not initialized yet (InitializeAsync will handle it)
-            if (!_initialized || _isLoading)
+            // or if we're already refreshing (prevents duplicate calls)
+            // Also don't refresh when navigating back from ViewImagePage - images are already loaded
+            if (!_initialized || _isLoading || _isRefreshing)
                 return;
-
-            // Only refresh if already initialized and not currently loading
-            // This prevents duplicate loading when page appears right after initialization
-            await RefreshAsync();
+            
+            // Do nothing - images are already loaded and should remain visible
+            // This prevents clearing the list when navigating back from ViewImagePage
+            await Task.CompletedTask;
         }
 
         private async Task RefreshAsync()
@@ -119,7 +124,20 @@ namespace LaceupMigration.ViewModels
             try
             {
                 await _dialogService.ShowLoadingAsync("Loading images...");
+                
+                // Store current image count before reloading
+                var hadImages = _client.ImageList != null && _client.ImageList.Count > 0;
+                
                 _client.LoadClientImages();
+                
+                // If LoadClientImages cleared the list and didn't populate it, fall back to offline
+                if ((_client.ImageList == null || _client.ImageList.Count == 0) && hadImages)
+                {
+                    await _dialogService.HideLoadingAsync();
+                    LoadImagesOffline();
+                    return;
+                }
+                
                 await _dialogService.HideLoadingAsync();
 
                 LoadImagePaths();
@@ -175,6 +193,17 @@ namespace LaceupMigration.ViewModels
             if (_client == null)
                 return;
 
+            // Check if ImageList is null or empty before clearing
+            // This prevents clearing images when ImageList is empty (e.g., after failed online load)
+            if (_client.ImageList == null || _client.ImageList.Count == 0)
+            {
+                // Don't clear existing images if ImageList is empty - might be a temporary state
+                // Only update visibility flags
+                ShowImages = Images.Count > 0;
+                ShowNoImages = Images.Count == 0;
+                return;
+            }
+
             Images.Clear();
 
             var clientImageDir = Path.Combine(Config.ClientPicturesPath, _client.ClientId.ToString());
@@ -183,12 +212,20 @@ namespace LaceupMigration.ViewModels
                 Directory.CreateDirectory(clientImageDir);
             }
 
+            // Use a HashSet to track added image IDs to prevent duplicates
+            var addedImageIds = new HashSet<string>();
+
             foreach (var imageId in _client.ImageList)
             {
+                // Skip if we've already added this image ID
+                if (addedImageIds.Contains(imageId))
+                    continue;
+
                 var imagePath = Path.Combine(clientImageDir, $"{imageId}.png");
                 if (File.Exists(imagePath))
                 {
                     Images.Add(new ClientImageViewModel { ImagePath = imagePath, ImageId = imageId });
+                    addedImageIds.Add(imageId);
                 }
             }
 
@@ -250,9 +287,13 @@ namespace LaceupMigration.ViewModels
             if (image == null || string.IsNullOrEmpty(image.ImagePath))
                 return;
 
-            // Show image in a simple alert dialog with image preview
-            // For full screen view, we could navigate to a dedicated page, but for now show alert with path
-            await _dialogService.ShowAlertAsync($"Image: {Path.GetFileName(image.ImagePath)}", "Image");
+            var uniqueRoute = $"viewimage_{Guid.NewGuid():N}";
+            Routing.RegisterRoute(uniqueRoute, typeof(ViewImagePage));
+    
+            await Shell.Current.GoToAsync($"{uniqueRoute}?imagePath={Uri.EscapeDataString(image.ImagePath)}");
+            
+            // Navigate to view image page for full screen view
+            // await Shell.Current.GoToAsync($"viewimage?imagePath={Uri.EscapeDataString(image.ImagePath)}");
         }
 
         [RelayCommand]
