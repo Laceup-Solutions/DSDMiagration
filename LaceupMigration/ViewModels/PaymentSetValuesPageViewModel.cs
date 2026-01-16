@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Media;
 
 namespace LaceupMigration.ViewModels
 {
@@ -572,7 +573,7 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private void RefreshLabels()
+        public void RefreshLabels()
         {
             var currentPaymentAmount = PaymentComponents.Sum(x => x.Amount);
             var open = _amount - currentPaymentAmount;
@@ -627,9 +628,7 @@ namespace LaceupMigration.ViewModels
             if (component == null)
                 return;
 
-            var paymentMethods = Enum.GetNames(typeof(InvoicePaymentMethod))
-                .Select(x => x.Replace("_", " "))
-                .ToArray();
+            var paymentMethods = GetAvailablePaymentMethods();
 
             var methodChoice = await _dialogService.ShowActionSheetAsync("Select Payment Method", "", "Cancel", paymentMethods);
             if (string.IsNullOrEmpty(methodChoice) || methodChoice == "Cancel")
@@ -658,6 +657,390 @@ namespace LaceupMigration.ViewModels
 
             RefreshLabels();
             SaveState(); // Save state after editing payment
+        }
+
+        private string[] GetAvailablePaymentMethods()
+        {
+            // Match Xamarin GetInvoicePaymentMethodNames() method exactly (lines 2099-2117)
+            var availableMethods = new List<string>();
+
+            // Always include Cash and Check (matches Xamarin lines 2103-2104)
+            availableMethods.Add(InvoicePaymentMethod.Cash.ToString().Replace("_", " "));
+            availableMethods.Add(InvoicePaymentMethod.Check.ToString().Replace("_", " "));
+
+            // Extended payment methods only show if Config.ExtendedPaymentOptions is true
+            // Match Xamarin lines 2106-2114
+            if (Config.ExtendedPaymentOptions)
+            {
+                availableMethods.Add(InvoicePaymentMethod.Credit_Card.ToString().Replace("_", " "));
+                // ACH is commented out in Xamarin (line 2109), so never include it
+                // result.Add(InvoicePaymentMethod.Ach.ToString(activity)); // <-- Commented in Xamarin
+                availableMethods.Add(InvoicePaymentMethod.Money_Order.ToString().Replace("_", " "));
+                availableMethods.Add(InvoicePaymentMethod.Transfer.ToString().Replace("_", " "));
+                availableMethods.Add(InvoicePaymentMethod.Zelle_Transfer.ToString().Replace("_", " "));
+            }
+
+            return availableMethods.ToArray();
+        }
+
+        public async Task EditPaymentMethod(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            var paymentMethods = GetAvailablePaymentMethods();
+
+            var methodChoice = await _dialogService.ShowActionSheetAsync("Select Payment Method", "", "Cancel", paymentMethods);
+            if (string.IsNullOrEmpty(methodChoice) || methodChoice == "Cancel")
+                return;
+
+            var method = Enum.Parse<InvoicePaymentMethod>(methodChoice.Replace(" ", "_"));
+            component.PaymentMethod = method;
+
+            // If payment method changed to non-Cash, prompt for ref number if not set
+            if (method != InvoicePaymentMethod.Cash && string.IsNullOrEmpty(component.Ref))
+            {
+                if (method == InvoicePaymentMethod.Credit_Card)
+                {
+                    // Use separate credit card number popup
+                    await EditCreditCardNumber(component);
+                }
+                else
+                {
+                    // Use reference number or check number popup
+                    var label = method == InvoicePaymentMethod.Check ? "Check Number" : "Reference Number";
+                    var refNumber = await _dialogService.ShowPromptAsync($"Enter {label}", label, 
+                        "OK", "Cancel", placeholder: "", maxLength: -1, initialValue: component.Ref ?? string.Empty);
+                    if (!string.IsNullOrEmpty(refNumber))
+                        component.Ref = refNumber;
+                }
+            }
+
+            RefreshLabels();
+            SaveState();
+        }
+
+        public async Task EditAmount(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            var amountStr = await _dialogService.ShowPromptAsync("Enter Amount", "Amount", "OK", "Cancel", placeholder: "", maxLength: -1, initialValue: component.Amount.ToString("F2"), keyboard: Keyboard.Numeric);
+            if (string.IsNullOrEmpty(amountStr) || !double.TryParse(amountStr, out var amount))
+                return;
+
+            // Round amount to 2 decimal places (matches Xamarin line 2238)
+            amount = Math.Round(amount, 2);
+
+            // Match Xamarin CountedHandler logic (lines 2240-2246): remove component if amount is 0
+            if (amount == 0)
+            {
+                PaymentComponents.Remove(component);
+                SaveState();
+                RefreshLabels();
+                return;
+            }
+
+            component.Amount = amount;
+            RefreshLabels();
+            SaveState();
+        }
+
+        public async Task EditComments(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            var comments = await _dialogService.ShowPromptAsync("Enter Comments", "Comments", "OK", "Cancel", placeholder: "", maxLength: -1, initialValue: component.Comments ?? string.Empty);
+            if (comments == null)
+                return;
+
+            component.Comments = comments;
+            SaveState();
+        }
+
+        public async Task EditRefNumber(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            // For Credit Card, use separate "Credit Card Number" popup
+            if (component.PaymentMethod == InvoicePaymentMethod.Credit_Card)
+            {
+                await EditCreditCardNumber(component);
+                return;
+            }
+
+            // For other payment methods (Check, ACH, etc.), use "Reference Number" or "Check Number"
+            var label = component.PaymentMethod == InvoicePaymentMethod.Check ? "Check Number" : "Reference Number";
+            var refNumber = await _dialogService.ShowPromptAsync($"Enter {label}", label, 
+                "OK", "Cancel", placeholder: "", maxLength: -1, initialValue: component.Ref ?? string.Empty);
+            if (refNumber == null)
+                return;
+
+            component.Ref = refNumber;
+            SaveState();
+        }
+
+        public async Task EditCreditCardNumber(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            var cardNumber = await _dialogService.ShowPromptAsync("Enter Credit Card Number", "Credit Card Number", 
+                "OK", "Cancel", placeholder: "", maxLength: -1, initialValue: component.Ref ?? string.Empty);
+            if (cardNumber == null)
+                return;
+
+            component.Ref = cardNumber;
+            SaveState();
+        }
+
+        public async Task EditBankName(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            // Load banks if not already loaded
+            if (BankAccount.bankListInDevice.Count == 0)
+            {
+                BankAccount.LoadBanks();
+            }
+
+            // Ensure "None" is always in the list (at index 0)
+            if (!BankAccount.bankListInDevice.Contains("None"))
+            {
+                BankAccount.bankListInDevice.Insert(0, "None");
+            }
+
+            // Build list of options: "None" + saved banks + "Add New Bank"
+            var bankOptions = new List<string> { "None" };
+            
+            // Add saved banks (excluding "None" if it appears again)
+            foreach (var bank in BankAccount.bankListInDevice)
+            {
+                if (bank != "None" && !string.IsNullOrEmpty(bank))
+                {
+                    bankOptions.Add(bank);
+                }
+            }
+            
+            // Add "Add New Bank" option to allow custom entry
+            bankOptions.Add("Add New Bank");
+
+            // Always show action sheet with at least "None" and "Add New Bank"
+            var selectedBank = await _dialogService.ShowActionSheetAsync("Select Bank", "", "Cancel", bankOptions.ToArray());
+            if (string.IsNullOrEmpty(selectedBank) || selectedBank == "Cancel")
+                return;
+
+            // Handle "None" selection
+            if (selectedBank == "None")
+            {
+                component.BankName = string.Empty;
+            }
+            // Handle "Add New Bank" - show text input
+            else if (selectedBank == "Add New Bank")
+            {
+                var bankName = await _dialogService.ShowPromptAsync("Enter Bank Name", "Bank Name", "OK", "Cancel", placeholder: "", maxLength: -1, initialValue: string.Empty);
+                if (string.IsNullOrEmpty(bankName))
+                    return;
+
+                component.BankName = bankName;
+                
+                // Add to saved banks if not already there
+                if (!BankAccount.bankListInDevice.Contains(bankName))
+                {
+                    BankAccount.AddSavedBank(bankName);
+                }
+            }
+            // Handle selection of existing bank
+            else
+            {
+                component.BankName = selectedBank;
+            }
+
+            SaveState();
+        }
+
+        public async Task EditPostedDate(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            // For date picker, we'll use a prompt with date format
+            var dateStr = await _dialogService.ShowPromptAsync("Enter Posted Date", "Posted Date (MM/DD/YYYY)", "OK", "Cancel", 
+                placeholder: "", maxLength: -1, initialValue: component.PostedDate != DateTime.MinValue ? component.PostedDate.ToString("MM/dd/yyyy") : string.Empty);
+            if (string.IsNullOrEmpty(dateStr))
+                return;
+
+            if (DateTime.TryParse(dateStr, out var postedDate))
+            {
+                component.PostedDate = postedDate;
+                SaveState();
+            }
+            else
+            {
+                await _dialogService.ShowAlertAsync("Invalid date format. Please use MM/DD/YYYY.", "Error", "OK");
+            }
+        }
+
+        // Match Xamarin ShowImageSourceDialog (lines 1889-1907)
+        public async Task ShowImageSourceDialog(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            var options = new[] { "Take Photo", "Choose from Gallery" };
+            var choice = await _dialogService.ShowActionSheetAsync("Select Image Source", "", "Cancel", options);
+            
+            if (string.IsNullOrEmpty(choice) || choice == "Cancel")
+                return;
+
+            switch (choice)
+            {
+                case "Take Photo":
+                    await TakePhotoAsync(component);
+                    break;
+                case "Choose from Gallery":
+                    await PickFromGalleryAsync(component);
+                    break;
+            }
+        }
+
+        // Match Xamarin TakePhoto (lines 1909-1923)
+        private async Task TakePhotoAsync(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            try
+            {
+                if (!MediaPicker.IsCaptureSupported)
+                {
+                    await _dialogService.ShowAlertAsync("Camera is not available on this device.", "Error");
+                    return;
+                }
+
+                var photo = await MediaPicker.CapturePhotoAsync();
+                if (photo == null)
+                    return;
+
+                await ProcessImageAsync(photo.FullPath, component);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync($"Error taking photo: {ex.Message}", "Error");
+            }
+        }
+
+        // Match Xamarin PickFromGallery (lines 1925-1936)
+        private async Task PickFromGalleryAsync(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            try
+            {
+                var photo = await MediaPicker.PickPhotoAsync();
+                if (photo == null)
+                    return;
+
+                await ProcessImageAsync(photo.FullPath, component);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync($"Error picking photo: {ex.Message}", "Error");
+            }
+        }
+
+        // Match Xamarin ProcessImage (lines 1938-1960)
+        private async Task ProcessImageAsync(string filePath, PaymentComponentViewModel component)
+        {
+            if (component == null || string.IsNullOrEmpty(filePath))
+                return;
+
+            try
+            {
+                // Generate unique ID (matches Xamarin line 1943)
+                var imageId = Guid.NewGuid().ToString("N");
+
+                // Target path in PaymentImagesPath (matches Xamarin line 1945)
+                var targetPath = Path.Combine(Config.PaymentImagesPath, imageId);
+
+                // Ensure directory exists
+                var directory = Path.GetDirectoryName(targetPath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                // Copy file to target location (matches Xamarin lines 1947-1950)
+                File.Copy(filePath, targetPath, true);
+
+                // Store imageId in ExtraFields (matches Xamarin lines 1952-1953)
+                var updatedExtraFields = UDFHelper.SyncSingleUDF("Image", imageId, component.ExtraFields);
+                component.ExtraFields = updatedExtraFields;
+                component.Component.ExtraFields = updatedExtraFields;
+
+                // Update component properties to refresh image display
+                component.UpdateProperties();
+
+                // Delete source file if it exists (matches Xamarin line 1955)
+                if (File.Exists(filePath))
+                {
+                    try
+                    {
+                        File.Delete(filePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog($"Error deleting temp file: {ex.Message}");
+                    }
+                }
+
+                // Refresh UI (matches Xamarin lines 1957-1959)
+                RefreshLabels();
+                SaveState();
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync($"Error processing image: {ex.Message}", "Error");
+            }
+        }
+
+        // Match Xamarin PaymentImageView_Click (lines 1962-1973)
+        public async Task ViewPaymentImageAsync(PaymentComponentViewModel component)
+        {
+            if (component == null)
+                return;
+
+            try
+            {
+                // Get image ID from ExtraFields (matches Xamarin line 1967)
+                var uniqueId = UDFHelper.GetSingleUDF("Image", component.ExtraFields);
+                if (string.IsNullOrEmpty(uniqueId))
+                    return;
+
+                var imagePath = Path.Combine(Config.PaymentImagesPath, uniqueId);
+                if (!File.Exists(imagePath))
+                {
+                    await _dialogService.ShowAlertAsync("Image file not found.", "Error");
+                    return;
+                }
+
+                // Navigate to view image page (matches Xamarin ViewImageActivity)
+                var uniqueRoute = $"viewimage_{Guid.NewGuid():N}";
+                Routing.RegisterRoute(uniqueRoute, typeof(Views.ViewImagePage));
+                await Shell.Current.GoToAsync($"{uniqueRoute}?imagePath={Uri.EscapeDataString(imagePath)}");
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync($"Error viewing image: {ex.Message}", "Error");
+            }
         }
 
         [RelayCommand]
@@ -1176,6 +1559,18 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showBank;
 
+        [ObservableProperty]
+        private string _refNumberLabel = "Ref Number:";
+
+        [ObservableProperty]
+        private string _imagePath = string.Empty;
+
+        [ObservableProperty]
+        private bool _hasImage = false;
+
+        [ObservableProperty]
+        private string _extraFields = string.Empty;
+
         public PaymentComponentViewModel(PaymentComponent component, PaymentSetValuesPageViewModel parent)
         {
             _component = component;
@@ -1186,6 +1581,7 @@ namespace LaceupMigration.ViewModels
             Comments = component.Comments ?? string.Empty;
             BankName = component.BankName ?? string.Empty;
             PostedDate = component.PostedDate;
+            ExtraFields = component.ExtraFields ?? string.Empty;
             UpdateProperties();
         }
 
@@ -1199,6 +1595,16 @@ namespace LaceupMigration.ViewModels
         {
             _component.Amount = value;
             AmountText = value.ToCustomString();
+            
+            // Match Xamarin CountedHandler logic (lines 2240-2246): remove component if amount is 0
+            if (value == 0)
+            {
+                _parent.PaymentComponents.Remove(this);
+                _parent.SaveState();
+                _parent.RefreshLabels();
+                return;
+            }
+            
             _parent.OnComponentAmountChanged();
         }
 
@@ -1215,9 +1621,21 @@ namespace LaceupMigration.ViewModels
         partial void OnBankNameChanged(string value)
         {
             if (!string.IsNullOrEmpty(value))
+            {
                 _component.ExtraFields = UDFHelper.SyncSingleUDF("BankName", value, _component.ExtraFields);
+                ExtraFields = _component.ExtraFields;
+            }
             else
+            {
                 _component.ExtraFields = UDFHelper.RemoveSingleUDF("BankName", _component.ExtraFields);
+                ExtraFields = _component.ExtraFields;
+            }
+        }
+
+        partial void OnExtraFieldsChanged(string value)
+        {
+            if (_component != null)
+                _component.ExtraFields = value ?? string.Empty;
         }
 
         partial void OnPostedDateChanged(DateTime value)
@@ -1225,13 +1643,42 @@ namespace LaceupMigration.ViewModels
             _component.PostedDate = value;
         }
 
-        private void UpdateProperties()
+        public void UpdateProperties()
         {
             PaymentMethodText = PaymentMethod.ToString().Replace("_", " ");
             AmountText = Amount.ToCustomString();
             ShowRef = PaymentMethod != InvoicePaymentMethod.Cash;
             ShowPostedDate = PaymentMethod == InvoicePaymentMethod.Check;
             ShowBank = PaymentMethod == InvoicePaymentMethod.Check || PaymentMethod == InvoicePaymentMethod.Credit_Card;
+            
+            // Set the label text based on payment method
+            RefNumberLabel = PaymentMethod switch
+            {
+                InvoicePaymentMethod.Credit_Card => "Credit Card Number:",
+                InvoicePaymentMethod.Check => "Check Number:",
+                _ => "Reference Number:"
+            };
+
+            // Update image properties (matches Xamarin lines 1717-1740)
+            HasImage = false;
+            ImagePath = string.Empty;
+
+            // Sync ExtraFields from component
+            ExtraFields = _component.ExtraFields ?? string.Empty;
+
+            if (!string.IsNullOrEmpty(ExtraFields) && ExtraFields.Contains("Image"))
+            {
+                var uniqueId = UDFHelper.GetSingleUDF("Image", ExtraFields);
+                if (!string.IsNullOrEmpty(uniqueId))
+                {
+                    var imagePath = Path.Combine(Config.PaymentImagesPath, uniqueId);
+                    if (File.Exists(imagePath))
+                    {
+                        ImagePath = imagePath;
+                        HasImage = true;
+                    }
+                }
+            }
         }
     }
 }

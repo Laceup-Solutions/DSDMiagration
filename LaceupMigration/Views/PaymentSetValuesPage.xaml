@@ -165,7 +165,8 @@
                                                    VerticalOptions="Center" />
                                             <Button Grid.Column="1"
                                                     Text="{Binding PaymentMethodText}" 
-                                                    Clicked="EditPayment_Clicked"
+                                                    Clicked="EditField_Clicked"
+                                                    CommandParameter="PaymentMethod"
                                                     BackgroundColor="#F5F5F5"
                                                     TextColor="Gray"
                                                     FontSize="14"
@@ -179,7 +180,8 @@
                                             <VerticalStackLayout Grid.Column="0" Spacing="2">
                                                 <Label Text="Amount:" FontSize="14" />
                                                 <Button Text="{Binding AmountText}" 
-                                                        Clicked="EditPayment_Clicked"
+                                                        Clicked="EditField_Clicked"
+                                                        CommandParameter="Amount"
                                                         BackgroundColor="#F5F5F5"
                                                         TextColor="Gray"
                                                         FontSize="14"
@@ -191,7 +193,8 @@
                                             <VerticalStackLayout Grid.Column="1" Spacing="2">
                                                 <Label Text="Comments:" FontSize="14" />
                                                 <Button Text="{Binding Comments}" 
-                                                        Clicked="EditPayment_Clicked"
+                                                        Clicked="EditField_Clicked"
+                                                        CommandParameter="Comments"
                                                         BackgroundColor="#F5F5F5"
                                                         TextColor="Gray"
                                                         FontSize="14"
@@ -200,7 +203,7 @@
                                                         HorizontalOptions="Fill" />
                                             </VerticalStackLayout>
 
-                                            <!-- Add Image -->
+                                            <!-- Add Image / View Image -->
                                             <VerticalStackLayout Grid.Column="2" Spacing="2">
                                                 <Label Text="Add Image:" FontSize="14" />
                                                 <Frame BackgroundColor="#F5F5F5"
@@ -212,12 +215,24 @@
                                                     <Frame.GestureRecognizers>
                                                         <TapGestureRecognizer Tapped="OnImageTapped" />
                                                     </Frame.GestureRecognizers>
-                                                    <Image Source="{mi:MaterialOutlined Icon=AddPhotoAlternate, IconColor=Gray}"
-                                                           Aspect="AspectFit"
-                                                           HeightRequest="24"
-                                                           WidthRequest="24"
-                                                           HorizontalOptions="Center"
-                                                           VerticalOptions="Center" />
+                                                    <Grid>
+                                                        <!-- Show actual image if exists (matches Xamarin lines 1728-1729) -->
+                                                        <Image Source="{Binding ImagePath}"
+                                                               Aspect="AspectFit"
+                                                               HeightRequest="35"
+                                                               WidthRequest="60"
+                                                               HorizontalOptions="Fill"
+                                                               VerticalOptions="Fill"
+                                                               IsVisible="{Binding HasImage}" />
+                                                        <!-- Show add icon when no image (matches Xamarin line 1743) -->
+                                                        <Image Source="{mi:MaterialOutlined Icon=AddPhotoAlternate, IconColor=Gray}"
+                                                               Aspect="AspectFit"
+                                                               HeightRequest="24"
+                                                               WidthRequest="24"
+                                                               HorizontalOptions="Center"
+                                                               VerticalOptions="Center"
+                                                               IsVisible="{Binding HasImage, Converter={StaticResource InvertedBoolConverter}}" />
+                                                    </Grid>
                                                 </Frame>
                                             </VerticalStackLayout>
                                         </Grid>
@@ -228,9 +243,10 @@
                                               IsVisible="{Binding ShowRef}">
                                             <!-- Ref Number -->
                                             <VerticalStackLayout Grid.Column="0" Spacing="2">
-                                                <Label Text="Ref Number:" FontSize="14" />
+                                                <Label Text="{Binding RefNumberLabel}" FontSize="14" />
                                                 <Button Text="{Binding Ref}" 
-                                                        Clicked="EditPayment_Clicked"
+                                                        Clicked="EditField_Clicked"
+                                                        CommandParameter="RefNumber"
                                                         BackgroundColor="#F5F5F5"
                                                         TextColor="Gray"
                                                         FontSize="14"
@@ -242,7 +258,8 @@
                                             <VerticalStackLayout Grid.Column="1" Spacing="2" IsVisible="{Binding ShowPostedDate}">
                                                 <Label Text="Posted Date:" FontSize="14" />
                                                 <Button Text="{Binding PostedDate, StringFormat='{0:d}'}" 
-                                                        Clicked="EditPayment_Clicked"
+                                                        Clicked="EditField_Clicked"
+                                                        CommandParameter="PostedDate"
                                                         BackgroundColor="#F5F5F5"
                                                         TextColor="Gray"
                                                         FontSize="14"
@@ -261,7 +278,8 @@
                                                    VerticalOptions="Center" />
                                             <Button Grid.Column="1"
                                                     Text="{Binding BankName}" 
-                                                    Clicked="EditPayment_Clicked"
+                                                    Clicked="EditField_Clicked"
+                                                    CommandParameter="BankName"
                                                     BackgroundColor="#F5F5F5"
                                                     TextColor="Gray"
                                                     FontSize="14"

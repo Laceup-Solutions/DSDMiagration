@@ -227,28 +227,36 @@ namespace LaceupMigration.ViewModels
             UnitPrice = unitPrice.ToCustomString();
             LowestPrice = (_product.LowestAcceptablePrice * conversion).ToCustomString();
 
-            // Inventory - matches Xamarin behavior:
+            // Inventory - matches Xamarin behavior exactly:
+            // Xamarin uses product.CurrentWarehouseInventory which already applies Config.Round rounding
+            // Then divides by uom.Conversion and rounds again
+            // Initial load (line 310): OH = CurrentWarehouseInventory / uom.Conversion with rounding 2 (NOT Config.Round)
             // Initial load (line 320): Truck Inventory = CurrentInventory (NO conversion)
-            // RecalculatePrices (line 868): Truck Inventory = CurrentInventory / uom.Conversion (WITH conversion)
+            // RecalculatePrices (line 865): OH = CurrentWarehouseInventory / uom.Conversion with Config.Round
+            // RecalculatePrices (line 868): Truck Inventory = CurrentInventory / uom.Conversion with Config.Round
             if (uom != null)
             {
-                OnHand = Math.Round((_product.CurrentWarehouseInventory / uom.Conversion), Config.Round).ToString();
-                
-                // Apply conversion only if NOT initial load (matches Xamarin RecalculatePrices line 868)
+                // Match Xamarin exactly - use CurrentWarehouseInventory (which already has Config.Round applied)
+                // Then divide and round again
                 if (!_isInitialLoad)
                 {
+                    // RecalculatePrices: use Config.Round (matches Xamarin line 865)
+                    // Xamarin: Math.Round((product.CurrentWarehouseInventory / (uom != null ? uom.Conversion : 1)), Config.Round)
+                    OnHand = Math.Round((_product.CurrentWarehouseInventory / uom.Conversion), Config.Round).ToString();
                     TruckInventory = Math.Round((_product.CurrentInventory / uom.Conversion), Config.Round).ToString();
                 }
                 else
                 {
-                    // Initial load: no conversion (matches Xamarin line 320)
-                    // Xamarin: truckInventory.Text = product.CurrentInventory.ToString();
-                    // Product.CurrentInventory already applies rounding based on Config.Round
+                    // Initial load: OH uses 2 (matches Xamarin line 310), Truck uses no conversion (matches Xamarin line 320)
+                    // Xamarin: Math.Round((product.CurrentWarehouseInventory / uom.Conversion), 2)
+                    OnHand = Math.Round((_product.CurrentWarehouseInventory / uom.Conversion), 2).ToString();
                     TruckInventory = _product.CurrentInventory.ToString();
                 }
             }
             else
             {
+                // No UoM: no rounding (matches Xamarin lines 315, 416)
+                // Xamarin: product.CurrentWarehouseInventory.ToString()
                 OnHand = _product.CurrentWarehouseInventory.ToString();
                 TruckInventory = _product.CurrentInventory.ToString();
             }

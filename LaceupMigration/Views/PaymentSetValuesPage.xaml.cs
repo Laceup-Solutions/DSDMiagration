@@ -102,6 +102,55 @@ namespace LaceupMigration.Views
             return false; // Allow navigation
         }
 
+        private async void EditField_Clicked(object sender, EventArgs e)
+        {
+            PaymentComponentViewModel? component = null;
+            string? fieldName = null;
+            
+            if (sender is Button button)
+            {
+                component = button.BindingContext as PaymentComponentViewModel;
+                fieldName = button.CommandParameter?.ToString();
+            }
+            else if (sender is Frame frame)
+            {
+                component = frame.BindingContext as PaymentComponentViewModel;
+            }
+            
+            if (component == null)
+                return;
+
+            // Route to the appropriate method based on the field name
+            switch (fieldName)
+            {
+                case "PaymentMethod":
+                    await _viewModel.EditPaymentMethod(component);
+                    break;
+                case "Amount":
+                    await _viewModel.EditAmount(component);
+                    break;
+                case "Comments":
+                    await _viewModel.EditComments(component);
+                    break;
+                case "RefNumber":
+                    await _viewModel.EditRefNumber(component);
+                    break;
+                case "CreditCardNumber":
+                    await _viewModel.EditCreditCardNumber(component);
+                    break;
+                case "BankName":
+                    await _viewModel.EditBankName(component);
+                    break;
+                case "PostedDate":
+                    await _viewModel.EditPostedDate(component);
+                    break;
+                default:
+                    // Fallback to full edit if no parameter specified
+                    await _viewModel.EditPayment(component);
+                    break;
+            }
+        }
+
         private async void EditPayment_Clicked(object sender, EventArgs e)
         {
             PaymentComponentViewModel? component = null;
@@ -123,17 +172,36 @@ namespace LaceupMigration.Views
 
         private async void OnImageTapped(object sender, EventArgs e)
         {
-            if (sender is TapGestureRecognizer recognizer)
+            PaymentComponentViewModel? component = null;
+
+            if (sender is Frame frame)
             {
-                var frame = recognizer.Parent as Frame;
-                if (frame != null)
+                component = frame.BindingContext as PaymentComponentViewModel;
+            }
+            else if (sender is Image image)
+            {
+                component = image.BindingContext as PaymentComponentViewModel;
+            }
+            else if (sender is TapGestureRecognizer recognizer)
+            {
+                var frameParent = recognizer.Parent as Frame;
+                if (frameParent != null)
                 {
-                    var component = frame.BindingContext as PaymentComponentViewModel;
-                    if (component != null)
-                    {
-                        await _viewModel.EditPayment(component);
-                    }
+                    component = frameParent.BindingContext as PaymentComponentViewModel;
                 }
+            }
+
+            if (component == null)
+                return;
+
+            // If image exists, view it; otherwise, show image source dialog (matches Xamarin behavior)
+            if (component.HasImage && !string.IsNullOrEmpty(component.ImagePath))
+            {
+                await _viewModel.ViewPaymentImageAsync(component);
+            }
+            else
+            {
+                await _viewModel.ShowImageSourceDialog(component);
             }
         }
     }
