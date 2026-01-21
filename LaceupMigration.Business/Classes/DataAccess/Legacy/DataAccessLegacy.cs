@@ -2844,8 +2844,15 @@ namespace LaceupMigration
             var qty = Convert.ToSingle(currentrow[3]);
 
             var inv = ProductInventory.GetInventoryForProduct(productId);
-            if (inv != null)
+            if (inv == null)
+            {
+                inv = new ProductInventory() { ProductId = productId, WarehouseInventory = qty };
+                ProductInventory.CurrentInventories.Add(productId, inv);
+            }
+            else
+            {
                 inv.WarehouseInventory = qty;
+            }
         }
 
         void LoadInventorySite(string[] currentrow)

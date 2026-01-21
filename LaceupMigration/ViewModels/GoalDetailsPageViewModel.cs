@@ -15,6 +15,8 @@ namespace LaceupMigration.ViewModels
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
         private List<GoalDetailItemViewModel> _allDetails = new();
+        private List<GoalDetailDTO> _allGoalDetails = new(); // Store original GoalDetailDTO list for filtering
+        private GoalProgressDTO? _goal; // Store the goal object to access Criteria
         private int _goalId;
 
         [ObservableProperty] private string _goalName = string.Empty;
@@ -64,22 +66,25 @@ namespace LaceupMigration.ViewModels
                 });
                 
                 // Get the goal
-                var goal = GoalProgressDTO.List.FirstOrDefault(x => x.Id == _goalId);
-                if (goal != null)
+                _goal = GoalProgressDTO.List.FirstOrDefault(x => x.Id == _goalId);
+                if (_goal != null)
                 {
-                    GoalName = goal.Name ?? "Goal";
-                    GoalDescription = $"{goal.Type} Goal - {goal.Criteria}";
-                    StartDate = goal.StartDate;
-                    EndDate = goal.EndDate;
+                    GoalName = _goal.Name ?? "Goal";
+                    GoalDescription = $"{_goal.Type} Goal - {_goal.Criteria}";
+                    StartDate = _goal.StartDate;
+                    EndDate = _goal.EndDate;
                     
-                    // Load goal details
+                    // Load goal details - store both GoalDetailDTO and ViewModel items
                     _allDetails.Clear();
+                    _allGoalDetails.Clear();
                     var goalDetails = GoalDetailDTO.List.Where(x => x.GoalId == _goalId).ToList();
+                    _allGoalDetails = goalDetails;
                     
                     foreach (var detail in goalDetails)
                     {
                         var item = new GoalDetailItemViewModel
                         {
+                            Detail = detail, // Store reference to original DTO for filtering
                             ItemName = detail.Name ?? (detail.Product != null ? detail.Product.Name : "Item"),
                             Progress = detail.Sold ?? 0,
                             Target = detail.QuantityOrAmount ?? 0,
@@ -130,10 +135,71 @@ namespace LaceupMigration.ViewModels
         {
             GoalDetails.Clear();
 
-            var filtered = string.IsNullOrWhiteSpace(searchText)
-                ? _allDetails
-                : _allDetails.Where(x => 
-                    x.ItemName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true).ToList();
+            // Match Xamarin's search logic from GoalsActivity.Refresh() (lines 120-135)
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                // No search - show all
+                foreach (var detail in _allDetails)
+                {
+                    GoalDetails.Add(detail);
+                }
+                return;
+            }
+
+            var searchCriteria = searchText.ToLowerInvariant();
+            List<GoalDetailDTO> filteredDetails;
+
+            if (_goal != null)
+            {
+                // Filter based on goal criteria (matching Xamarin logic)
+                if (_goal.Criteria == GoalCriteria.Product || _goal.Criteria == GoalCriteria.ProductsByCustomer)
+                {
+                    // For Product/ProductsByCustomer: search in Product.Name, Upc, Code, Description, Sku
+                    var productsIds = Product.Products
+                        .Where(x => 
+                            (x.Name != null && x.Name.ToLower().Contains(searchCriteria)) ||
+                            (x.Upc != null && x.Upc.Contains(searchCriteria)) ||
+                            (x.Code != null && x.Code.Contains(searchCriteria)) ||
+                            (x.Description != null && x.Description.Contains(searchCriteria)) ||
+                            (x.Sku != null && x.Sku.Contains(searchCriteria)))
+                        .Select(x => x.ProductId)
+                        .ToList();
+                    
+                    filteredDetails = _allGoalDetails
+                        .Where(x => x.ProductId.HasValue && productsIds.Contains(x.ProductId.Value))
+                        .ToList();
+                }
+                else if (_goal.Criteria == GoalCriteria.Customer || _goal.Criteria == GoalCriteria.Route)
+                {
+                    // For Customer/Route: search in Client.ClientName
+                    var clientsId = Client.Clients
+                        .Where(x => x.ClientName != null && x.ClientName.ToLower().Contains(searchCriteria))
+                        .Select(x => x.ClientId)
+                        .ToList();
+                    
+                    filteredDetails = _allGoalDetails
+                        .Where(x => clientsId.Contains(x.ClientId))
+                        .ToList();
+                }
+                else
+                {
+                    // For other criteria (e.g., Payment): no filtering or show all
+                    filteredDetails = _allGoalDetails.ToList();
+                }
+            }
+            else
+            {
+                // Fallback: simple name search if goal is not available
+                filteredDetails = _allGoalDetails
+                    .Where(x => 
+                        (x.Name != null && x.Name.ToLower().Contains(searchCriteria)) ||
+                        (x.Product != null && x.Product.Name != null && x.Product.Name.ToLower().Contains(searchCriteria)))
+                    .ToList();
+            }
+
+            // Convert filtered GoalDetailDTO to ViewModel items
+            var filteredItemIds = filteredDetails.Select(x => x.Id).ToHashSet();
+            var filtered = _allDetails.Where(x => x.Detail != null && filteredItemIds.Contains(x.Detail.Id)).ToList();
 
             foreach (var detail in filtered)
             {
@@ -161,10 +227,14 @@ namespace LaceupMigration.ViewModels
                     .ToList();
                 
                 _allDetails.Clear();
+                _allGoalDetails.Clear();
+                _allGoalDetails = goalDetails;
+                
                 foreach (var detail in goalDetails)
                 {
                     var item = new GoalDetailItemViewModel
                     {
+                        Detail = detail, // Store reference to original DTO for filtering
                         ItemName = detail.Name ?? (detail.Product != null ? detail.Product.Name : "Item"),
                         Progress = detail.Sold ?? 0,
                         Target = detail.QuantityOrAmount ?? 0,
@@ -195,6 +265,8 @@ namespace LaceupMigration.ViewModels
 
     public partial class GoalDetailItemViewModel : ObservableObject
     {
+        public GoalDetailDTO? Detail { get; set; } // Store reference to original DTO for filtering
+        
         [ObservableProperty] private string _itemName = string.Empty;
         [ObservableProperty] private double _progress;
         [ObservableProperty] private double _target;

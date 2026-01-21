@@ -351,7 +351,7 @@ namespace LaceupMigration.ViewModels
 			
 			// 11. Goals
 			if (Config.ViewGoals)
-				menuItems.Add("Goals");
+				menuItems.Add("View Goals");
 			
 			// 12. View Order Status
 			if (Config.ShowOrderStatus)
@@ -428,7 +428,7 @@ namespace LaceupMigration.ViewModels
 				case "Product Catalog":
 					await ProductCatalog();
 					break;
-				case "Goals":
+				case "View Goals":
 					await Goals();
 					break;
 				case "View Order Status":
