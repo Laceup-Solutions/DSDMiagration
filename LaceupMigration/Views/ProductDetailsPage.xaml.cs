@@ -52,6 +52,15 @@ namespace LaceupMigration.Views
             Helpers.NavigationHelper.SaveNavigationState(route);
         }
 
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+            // Refresh product data when appearing to ensure warehouse inventory (OH) is up-to-date
+            // This is especially important after accepting loads, as warehouse inventory is updated on the server
+            // and needs to be refreshed from the server
+            await _viewModel.RefreshProductDataAsync();
+        }
+
         protected override bool OnBackButtonPressed()
         {
             // [ACTIVITY STATE]: Remove state when navigating away via back button

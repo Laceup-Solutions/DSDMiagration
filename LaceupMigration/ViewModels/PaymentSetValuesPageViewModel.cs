@@ -199,6 +199,11 @@ namespace LaceupMigration.ViewModels
                     CanSavePayment = false;
                     CanDeletePayment = false;
                 }
+                else
+                {
+                    // Only set CanDeletePayment if payment is not printed
+                    CanDeletePayment = _paymentId > 0;
+                }
             }
             else if (!string.IsNullOrEmpty(_invoicesId) || !string.IsNullOrEmpty(_ordersId))
             {
@@ -245,8 +250,13 @@ namespace LaceupMigration.ViewModels
                 PaymentComponents.Add(new PaymentComponentViewModel(new PaymentComponent { Amount = _amount }, this));
             }
 
-            // Set CanDeletePayment based on whether there's a payment to delete
-            CanDeletePayment = _paymentId > 0 && (_invoicePayment == null || !_invoicePayment.Printed);
+            // Set CanDeletePayment only if not already set above (for existing payments)
+            // For new payments or when _invoicePayment is null, set it here
+            if (_paymentId == 0 || (_paymentId > 0 && _invoicePayment == null))
+            {
+                CanDeletePayment = false; // Can't delete a payment that doesn't exist yet
+            }
+            // If _paymentId > 0 and _invoicePayment exists, CanDeletePayment was already set above based on Printed status
 
             RefreshLabels();
         }
@@ -874,24 +884,42 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
-        private async Task DeleteEntirePayment()
+        internal async Task DeleteEntirePayment()
         {
-            if (_invoicePayment == null)
+            System.Diagnostics.Debug.WriteLine("DeleteEntirePayment: Method called!");
+            try
             {
-                await _dialogService.ShowAlertAsync("No payment to delete.", "Alert", "OK");
-                return;
+                // Match Xamarin DeletePaymentButton_Click: Always show confirmation dialog
+                System.Diagnostics.Debug.WriteLine("DeleteEntirePayment: Showing confirmation dialog");
+                var confirmed = await _dialogService.ShowConfirmationAsync("Alert", 
+                    "Are you sure you want to delete this payment?", "Yes", "No");
+                System.Diagnostics.Debug.WriteLine($"DeleteEntirePayment: User confirmed: {confirmed}");
+                if (confirmed)
+                {
+                    if (_invoicePayment != null)
+                    {
+                        if (Config.VoidPayments)
+                            _invoicePayment.Void();
+                        else
+                        {
+                            if (Config.SendBackgroundPayments && Config.SendTempPaymentsInBackground)
+                            {
+                                // TODO: Implement DeleteTempPaymentFromOS if needed
+                                _invoicePayment.Delete();
+                            }
+                            else
+                                _invoicePayment.Delete();
+                        }
+                    }
+                    // Always finish the process, even if there's no payment (new payment scenario)
+                    await FinishProcessAsync();
+                }
             }
-
-            var confirmed = await _dialogService.ShowConfirmationAsync("Delete Payment", 
-                "Are you sure you want to delete this payment?", "Yes", "No");
-            if (confirmed)
+            catch (Exception ex)
             {
-                if (Config.VoidPayments)
-                    _invoicePayment.Void();
-                else
-                    _invoicePayment.Delete();
-
-                await FinishProcessAsync();
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync($"Error deleting payment: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
             }
         }
 

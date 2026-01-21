@@ -18,6 +18,11 @@ namespace LaceupMigration.Views
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
         }
+
+        private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+        {
+            _viewModel.FilterGoals(e.NewTextValue);
+        }
     }
 }
 

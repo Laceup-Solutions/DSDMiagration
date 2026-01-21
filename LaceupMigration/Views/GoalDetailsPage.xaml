@@ -5,8 +5,15 @@
              x:Class="LaceupMigration.Views.GoalDetailsPage"
              Shell.TabBarIsVisible="False"
              Title="Goal Details">
-    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
-        <Frame Grid.Row="0"
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
+        <!-- Search Bar at the top (matching Xamarin layout) -->
+        <SearchBar Grid.Row="0"
+                   Text="{Binding SearchText}"
+                   Placeholder="Search Product Name"
+                   Margin="8,8,8,0"
+                   TextChanged="OnSearchTextChanged" />
+
+        <Frame Grid.Row="1"
                Padding="16"
                Margin="8"
                BackgroundColor="{StaticResource Gray100}"
@@ -28,7 +35,7 @@
             </VerticalStackLayout>
         </Frame>
 
-        <HorizontalStackLayout Grid.Row="1"
+        <HorizontalStackLayout Grid.Row="2"
                                Spacing="8"
                                Margin="8,0">
             <DatePicker Date="{Binding StartDate}"
@@ -44,13 +51,7 @@
                     HorizontalOptions="FillAndExpand" />
         </HorizontalStackLayout>
 
-        <SearchBar Grid.Row="2"
-                   Text="{Binding SearchText}"
-                   Placeholder="Search..."
-                   Margin="8,0"
-                   TextChanged="OnSearchTextChanged" />
-
-        <CollectionView Grid.Row="3"
+        <CollectionView Grid.Row="4"
                         ItemsSource="{Binding GoalDetails}"
                         Margin="8">
             <CollectionView.ItemTemplate>

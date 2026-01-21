@@ -657,7 +657,8 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            CanAddPayment = selected.Count > 0 && total >= 0; // Can't add payment if total is negative
+            // Match Xamarin: Button is enabled if items are selected, error message shown on click if total < 0
+            CanAddPayment = selected.Count > 0;
             CanCreditAccount = CanAddPayment;
             CanPaymentCard = CanAddPayment;
             
@@ -677,7 +678,7 @@ namespace LaceupMigration.ViewModels
             var total = selectedItems.Sum(x => x.OpenAmount);
             if (total < 0)
             {
-                await _dialogService.ShowAlertAsync("El monto de pago recibido debe superar $0.", "Alert");
+                await _dialogService.ShowAlertAsync("The amount of the received payment must be over $0.", "Alert");
                 return;
             }
 

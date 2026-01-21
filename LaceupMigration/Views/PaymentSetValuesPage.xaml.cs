@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CommunityToolkit.Mvvm.Input;
 
 namespace LaceupMigration.Views
 {
@@ -48,6 +49,17 @@ namespace LaceupMigration.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            
+            // Debug: Check button state
+            if (DeleteButton != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"OnAppearing: DeleteButton.IsEnabled = {DeleteButton.IsEnabled}");
+                System.Diagnostics.Debug.WriteLine($"OnAppearing: CanDeletePayment = {_viewModel?.CanDeletePayment}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("OnAppearing: DeleteButton is null!");
+            }
             
             // [ACTIVITY STATE]: Save state periodically to preserve progress
             // Match Xamarin PaymentSetValuesActivity: saves state on OnResume/OnPause
@@ -134,6 +146,35 @@ namespace LaceupMigration.Views
                         await _viewModel.EditPayment(component);
                     }
                 }
+            }
+        }
+
+        private async void DeleteButton_Clicked(object sender, EventArgs e)
+        {
+            // Fallback handler: manually invoke the method if command binding doesn't work
+            // This ensures the delete functionality works even if command binding fails
+            System.Diagnostics.Debug.WriteLine("DeleteButton_Clicked: Event fired!");
+            System.Diagnostics.Debug.WriteLine($"DeleteButton_Clicked: sender = {sender?.GetType().Name}");
+            System.Diagnostics.Debug.WriteLine($"DeleteButton_Clicked: Button.IsEnabled = {(sender as Button)?.IsEnabled}");
+            
+            if (_viewModel != null)
+            {
+                System.Diagnostics.Debug.WriteLine("DeleteButton_Clicked: ViewModel is not null, calling DeleteEntirePayment");
+                System.Diagnostics.Debug.WriteLine($"DeleteButton_Clicked: CanDeletePayment = {_viewModel.CanDeletePayment}");
+                try
+                {
+                    await _viewModel.DeleteEntirePayment();
+                    System.Diagnostics.Debug.WriteLine("DeleteButton_Clicked: DeleteEntirePayment completed");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"DeleteButton_Clicked: Exception: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"DeleteButton_Clicked: StackTrace: {ex.StackTrace}");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("DeleteButton_Clicked: ViewModel is null!");
             }
         }
     }

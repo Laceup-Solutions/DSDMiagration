@@ -43,9 +43,10 @@
                             Style="{StaticResource PrimaryButton}"
                             Padding="12,0"
                             FontSize="14" />
-                    <Button Grid.Column="4"
+                    <Button x:Name="DeleteButton"
+                            Grid.Column="4"
                             Text="Delete" 
-                            Command="{Binding DeleteEntirePaymentCommand}" 
+                            Clicked="DeleteButton_Clicked"
                             IsEnabled="{Binding CanDeletePayment}"
                             Style="{StaticResource DeleteButton}"
                             Padding="8,0"

@@ -172,6 +172,23 @@ namespace LaceupMigration.ViewModels
             _isInitialLoad = false; // Mark initial load as complete
         }
 
+        public async Task RefreshProductDataAsync()
+        {
+            // Refresh product data when appearing to ensure warehouse inventory (OH) is up-to-date
+            // This is especially important after accepting loads, as warehouse inventory is updated on the server
+            // Re-read the product from the collection (in case it was updated)
+            if (_product != null)
+            {
+                var productId = _product.ProductId;
+                _product = Product.Products.FirstOrDefault(x => x.ProductId == productId);
+                if (_product != null)
+                {
+                    // Recalculate prices and inventory to reflect any updates
+                    CalculatePrices();
+                }
+            }
+        }
+
         private void CalculatePrices()
         {
             if (_product == null)
