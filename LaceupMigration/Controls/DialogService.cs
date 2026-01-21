@@ -361,16 +361,17 @@ public class DialogService : IDialogService
         {
             Text = initialQty,
             Keyboard = Keyboard.Numeric,
-            FontSize = 16,
-            BackgroundColor = Colors.White
+            FontSize = 14,
+            BackgroundColor = Colors.White,
+            HeightRequest = 36
         };
 
-        // Comments input
+        // Comments input (no label, just editor with placeholder)
         var commentsEntry = new Editor
         {
             Text = initialComments,
             Placeholder = "Enter comments",
-            HeightRequest = 80,
+            HeightRequest = 50,
             FontSize = 14,
             BackgroundColor = Colors.White
         };
@@ -386,10 +387,11 @@ public class DialogService : IDialogService
             {
                 uomPicker = new Picker
                 {
-                    FontSize = 16,
+                    FontSize = 14,
                     BackgroundColor = Colors.White,
                     ItemsSource = familyItems,
-                    ItemDisplayBinding = new Binding("Name")
+                    ItemDisplayBinding = new Binding("Name"),
+                    HeightRequest = 36
                 };
 
                 if (initialUoM != null)
@@ -424,7 +426,8 @@ public class DialogService : IDialogService
                 new ColumnDefinition { Width = GridLength.Auto },
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             },
-            Padding = new Thickness(20, 15, 20, 10)
+            Margin = new Thickness(0, 4, 0, 2),
+            ColumnSpacing = 8
         };
 
         var qtyLabel = new Label
@@ -434,27 +437,21 @@ public class DialogService : IDialogService
             TextColor = Colors.Black,
             VerticalOptions = LayoutOptions.Center
         };
+        qtyEntry.VerticalOptions = LayoutOptions.Center;
         Grid.SetColumn(qtyLabel, 0);
         Grid.SetColumn(qtyEntry, 1);
         qtyRow.Children.Add(qtyLabel);
         qtyRow.Children.Add(qtyEntry);
 
+        // Comments (no label, just editor)
         var commentsRow = new VerticalStackLayout
         {
-            Spacing = 5,
-            Padding = new Thickness(20, 10, 20, 5)
+            Spacing = 0,
+            Margin = new Thickness(0, 4, 0, 2)
         };
-
-        var commentsLabel = new Label
-        {
-            Text = "Comments:",
-            FontSize = 14,
-            TextColor = Colors.Black
-        };
-        commentsRow.Children.Add(commentsLabel);
         commentsRow.Children.Add(commentsEntry);
 
-        // UoM row (if applicable)
+        // UoM row (if applicable) - label and picker in same row
         Grid uomRow = null;
         if (uomPicker != null)
         {
@@ -465,16 +462,18 @@ public class DialogService : IDialogService
                     new ColumnDefinition { Width = GridLength.Auto },
                     new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
                 },
-                Padding = new Thickness(20, 5, 20, 5)
+                Margin = new Thickness(0, 4, 0, 2),
+                ColumnSpacing = 8
             };
 
             var uomLabel = new Label
             {
-                Text = "Unit of Measure:",
+                Text = "UoM:",
                 FontSize = 14,
                 TextColor = Colors.Black,
                 VerticalOptions = LayoutOptions.Center
             };
+            uomPicker.VerticalOptions = LayoutOptions.Center;
             Grid.SetColumn(uomLabel, 0);
             Grid.SetColumn(uomPicker, 1);
             uomRow.Children.Add(uomLabel);
@@ -487,10 +486,11 @@ public class DialogService : IDialogService
             Text = "Cancel",
             BackgroundColor = Colors.Transparent,
             TextColor = Color.FromArgb("#017CBA"), // Primary blue color
-            FontSize = 16,
+            FontSize = 14,
             FontAttributes = FontAttributes.Bold,
             Margin = new Thickness(0),
-            CornerRadius = 0
+            CornerRadius = 0,
+            HeightRequest = 40
         };
 
         var addButton = new Button
@@ -498,10 +498,11 @@ public class DialogService : IDialogService
             Text = "Add",
             BackgroundColor = Colors.Transparent,
             TextColor = Color.FromArgb("#017CBA"), // Primary blue color
-            FontSize = 16,
+            FontSize = 14,
             FontAttributes = FontAttributes.Bold,
             Margin = new Thickness(0),
-            CornerRadius = 0
+            CornerRadius = 0,
+            HeightRequest = 40
         };
 
         // Create separator line between buttons
@@ -523,7 +524,8 @@ public class DialogService : IDialogService
             ColumnSpacing = 0,
             Padding = new Thickness(0),
             Margin = new Thickness(0, 0, 0, 0), // No margin right, left, or bottom
-            BackgroundColor = Colors.White
+            BackgroundColor = Colors.White,
+            HeightRequest = 40
         };
 
         Grid.SetColumn(cancelButton, 0);
@@ -533,11 +535,12 @@ public class DialogService : IDialogService
         buttonRow.Children.Add(buttonSeparator);
         buttonRow.Children.Add(addButton);
 
-        // Main content - simple vertical stack
+        // Main content - simple vertical stack with compact spacing
         var content = new VerticalStackLayout
         {
             Spacing = 0,
             BackgroundColor = Colors.White,
+            Padding = new Thickness(12, 8, 12, 8),
             Children = { qtyRow }
         };
 
@@ -550,8 +553,32 @@ public class DialogService : IDialogService
         var scrollContent = new ScrollView
         {
             Content = content,
-            MaximumWidthRequest = 300, // Limit width for tablet/desktop
+            MaximumWidthRequest = 320, // Compact width
             MaximumHeightRequest = 500 // Limit height
+        };
+
+        // Title in light blue header bar (matching RestOfTheAddDialog)
+        var titleHeader = new BoxView
+        {
+            BackgroundColor = Color.FromArgb("#E3F2FD"), // Light blue
+            HeightRequest = 40,
+            VerticalOptions = LayoutOptions.Start
+        };
+        
+        var titleLabel = new Label
+        {
+            Text = productName,
+            FontSize = 14,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Colors.Black,
+            VerticalOptions = LayoutOptions.Center,
+            Padding = new Thickness(12, 0, 12, 0),
+            LineBreakMode = LineBreakMode.WordWrap // Show full product name
+        };
+        
+        var titleContainer = new Grid
+        {
+            Children = { titleHeader, titleLabel }
         };
 
         // Main container with header and content
@@ -563,19 +590,11 @@ public class DialogService : IDialogService
             Margin = new Thickness(0,0,0,0),
             Children =
             {
-                new Label
-                {
-                    Text = productName,
-                    FontSize = 18,
-                    FontAttributes = FontAttributes.Bold,
-                    TextColor = Colors.Black,
-                    Padding = new Thickness(20, 20, 20, 15),
-                    BackgroundColor = Colors.White
-                },
+                titleContainer,
                 new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") },
                 scrollContent,
                 // Gray line on top of buttons with no margin or padding - outside scrollContent to avoid padding
-                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0) },
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0, 4, 0, 0) },
                 buttonRow
             }
         };
@@ -583,10 +602,13 @@ public class DialogService : IDialogService
         var dialogBorder = new Border
         {
             BackgroundColor = Colors.White,
-            StrokeThickness = 0,
+            StrokeThickness = 1,
+            Stroke = Color.FromArgb("#E0E0E0"),
             Padding = 0,
-            Margin = new Thickness(20),
-            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(8) },
+            Margin = new Thickness(20, 20, 20, 20), // Compact margins
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            WidthRequest = 320,
+            MaximumWidthRequest = 400,
             Content = mainContainer
         };
 
@@ -605,7 +627,8 @@ public class DialogService : IDialogService
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
                 new ColumnDefinition { Width = GridLength.Auto },
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-            }
+            },
+            Padding = new Thickness(8)
         };
 
         // Place dialog border in center of overlay
@@ -1759,30 +1782,43 @@ public class DialogService : IDialogService
         var initialPriceLevelSelected = existingDetail != null ? (existingDetail.ExtraFields != null ? 
             int.TryParse(UDFHelper.GetSingleUDF("priceLevelSelected", existingDetail.ExtraFields), out var pl) ? pl : 0 : 0) : 0;
 
-        // Create dialog content - this is a simplified version, full implementation would need all fields
-        // For now, I'll create the essential fields and you can expand as needed
+        // Create dialog content - compact layout matching the "before" image
         var scrollView = new ScrollView
         {
             Content = new VerticalStackLayout
             {
-                Spacing = 8,
-                Padding = new Thickness(16, 12, 16, 12)
+                Spacing = 0,
+                Padding = new Thickness(12, 8, 12, 8)
             },
-            MaximumHeightRequest = 600 // Limit height so it can scroll if needed
+            MaximumHeightRequest = 500 // Limit height so it can scroll if needed
         };
 
         var content = (VerticalStackLayout)scrollView.Content;
 
-        // Title
+        // Title in light blue header bar (matching "before" image)
+        var titleHeader = new BoxView
+        {
+            BackgroundColor = Color.FromArgb("#E3F2FD"), // Light blue
+            HeightRequest = 40,
+            VerticalOptions = LayoutOptions.Start
+        };
+        
         var titleLabel = new Label
         {
             Text = product.Name,
-            FontSize = 16,
+            FontSize = 14,
             FontAttributes = FontAttributes.Bold,
             TextColor = Colors.Black,
-            Margin = new Thickness(0, 0, 0, 8)
+            VerticalOptions = LayoutOptions.Center,
+            Padding = new Thickness(12, 0, 12, 0),
+            LineBreakMode = LineBreakMode.WordWrap // Show full product name
         };
-        content.Children.Add(titleLabel);
+        
+        var titleContainer = new Grid
+        {
+            Children = { titleHeader, titleLabel }
+        };
+        content.Children.Add(titleContainer);
 
         // Quantity/Weight Entry
         Entry qtyEntry = null;
@@ -1794,7 +1830,8 @@ public class DialogService : IDialogService
             {
                 Text = initialWeight.ToString("F2"),
                 Keyboard = Keyboard.Numeric,
-                FontSize = 16
+                FontSize = 14,
+                HeightRequest = 36
             };
         }
         else
@@ -1804,7 +1841,8 @@ public class DialogService : IDialogService
             {
                 Text = initialQty.ToString("F0"),
                 Keyboard = Config.DontAllowDecimalsInQty ? Keyboard.Numeric : Keyboard.Numeric,
-                FontSize = 16
+                FontSize = 14,
+                HeightRequest = 36
             };
         }
 
@@ -1815,8 +1853,12 @@ public class DialogService : IDialogService
                 new ColumnDefinition { Width = GridLength.Auto },
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             },
-            Margin = new Thickness(0, 0, 0, 4)
+            Margin = new Thickness(0, 4, 0, 2),
+            ColumnSpacing = 8,
+            RowDefinitions = new RowDefinitionCollection { new RowDefinition { Height = GridLength.Auto } }
         };
+        qtyLabel.VerticalOptions = LayoutOptions.Center;
+        qtyEntry.VerticalOptions = LayoutOptions.Center;
         Grid.SetColumn(qtyLabel, 0);
         Grid.SetColumn(qtyEntry, 1);
         qtyRow.Children.Add(qtyLabel);
@@ -1832,7 +1874,8 @@ public class DialogService : IDialogService
             {
                 Text = initialWeight.ToString("F2"),
                 Keyboard = Keyboard.Numeric,
-                FontSize = 16
+                FontSize = 14,
+                HeightRequest = 36
             };
             qtyEntry.IsEnabled = false;
             qtyEntry.Text = "1";
@@ -1844,8 +1887,11 @@ public class DialogService : IDialogService
                     new ColumnDefinition { Width = GridLength.Auto },
                     new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
                 },
-                Margin = new Thickness(0, 0, 0, 4)
+                Margin = new Thickness(0, 4, 0, 2),
+                ColumnSpacing = 8
             };
+            weightLabel.VerticalOptions = LayoutOptions.Center;
+            weightEntry.VerticalOptions = LayoutOptions.Center;
             Grid.SetColumn(weightLabel, 0);
             Grid.SetColumn(weightEntry, 1);
             weightRow.Children.Add(weightLabel);
@@ -1865,13 +1911,30 @@ public class DialogService : IDialogService
                 lotButton = new Button
                 {
                     Text = initialLot,
-                    FontSize = 16,
-                    BackgroundColor = Colors.LightGray
+                    FontSize = 14,
+                    BackgroundColor = Colors.LightGray,
+                    HeightRequest = 36
                 };
                 // TODO: Add lot selection logic
-                content.Children.Add(new Label { Text = "Lot:", FontSize = 14, TextColor = Colors.Black, Margin = new Thickness(0, 4, 0, 2) });
-                lotButton.Margin = new Thickness(0, 0, 0, 4);
-                content.Children.Add(lotButton);
+                var lotLabel = new Label { Text = "Lot:", FontSize = 14, TextColor = Colors.Black };
+                lotButton.HeightRequest = 36;
+                var lotButtonRow = new Grid
+                {
+                    ColumnDefinitions = new ColumnDefinitionCollection
+                    {
+                        new ColumnDefinition { Width = GridLength.Auto },
+                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+                    },
+                    Margin = new Thickness(0, 4, 0, 2),
+                    ColumnSpacing = 8
+                };
+                lotLabel.VerticalOptions = LayoutOptions.Center;
+                lotButton.VerticalOptions = LayoutOptions.Center;
+                Grid.SetColumn(lotLabel, 0);
+                Grid.SetColumn(lotButton, 1);
+                lotButtonRow.Children.Add(lotLabel);
+                lotButtonRow.Children.Add(lotButton);
+                content.Children.Add(lotButtonRow);
 
                 if (Config.UseLotExpiration)
                 {
@@ -1880,13 +1943,30 @@ public class DialogService : IDialogService
                         Text = existingDetail?.LotExpiration != null && existingDetail.LotExpiration != DateTime.MinValue 
                             ? existingDetail.LotExpiration.ToShortDateString() 
                             : "",
-                        FontSize = 16,
-                        BackgroundColor = Colors.LightGray
+                        FontSize = 14,
+                        BackgroundColor = Colors.LightGray,
+                        HeightRequest = 36
                     };
                     // TODO: Add date picker logic
-                    content.Children.Add(new Label { Text = "Expiration:", FontSize = 14, TextColor = Colors.Black, Margin = new Thickness(0, 4, 0, 2) });
-                    expButton.Margin = new Thickness(0, 0, 0, 4);
-                    content.Children.Add(expButton);
+                    var expLabel = new Label { Text = "Expiration:", FontSize = 14, TextColor = Colors.Black };
+                    expButton.HeightRequest = 36;
+                    var expButtonRow = new Grid
+                    {
+                        ColumnDefinitions = new ColumnDefinitionCollection
+                        {
+                            new ColumnDefinition { Width = GridLength.Auto },
+                            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+                        },
+                        Margin = new Thickness(0, 4, 0, 2),
+                        ColumnSpacing = 8
+                    };
+                    expLabel.VerticalOptions = LayoutOptions.Center;
+                    expButton.VerticalOptions = LayoutOptions.Center;
+                    Grid.SetColumn(expLabel, 0);
+                    Grid.SetColumn(expButton, 1);
+                    expButtonRow.Children.Add(expLabel);
+                    expButtonRow.Children.Add(expButton);
+                    content.Children.Add(expButtonRow);
                 }
             }
             else
@@ -1896,7 +1976,8 @@ public class DialogService : IDialogService
                 lotEntry = new Entry
                 {
                     Text = initialLot,
-                    FontSize = 16
+                    FontSize = 14,
+                    HeightRequest = 36
                 };
                 var lotRow = new Grid
                 {
@@ -1905,8 +1986,11 @@ public class DialogService : IDialogService
                         new ColumnDefinition { Width = GridLength.Auto },
                         new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
                     },
-                    Margin = new Thickness(0, 0, 0, 4)
+                    Margin = new Thickness(0, 4, 0, 2),
+                    ColumnSpacing = 8
                 };
+                lotLabel.VerticalOptions = LayoutOptions.Center;
+                lotEntry.VerticalOptions = LayoutOptions.Center;
                 Grid.SetColumn(lotLabel, 0);
                 Grid.SetColumn(lotEntry, 1);
                 lotRow.Children.Add(lotLabel);
@@ -1915,20 +1999,18 @@ public class DialogService : IDialogService
             }
         }
 
-        // Comments
+        // Comments (no label, just the editor with placeholder)
         Editor commentEntry = null;
         if (!Config.HideItemComment || (order.OrderType != OrderType.Order && order.OrderType != OrderType.Credit))
         {
-            var commentLabel = new Label { Text = "Comments:", FontSize = 14, TextColor = Colors.Black, Margin = new Thickness(0, 4, 0, 2) };
             commentEntry = new Editor
             {
                 Text = initialComments,
                 Placeholder = "Enter comments",
-                HeightRequest = 60,
+                HeightRequest = 50,
                 FontSize = 14,
-                Margin = new Thickness(0, 0, 0, 4)
+                Margin = new Thickness(0, 4, 0, 2)
             };
-            content.Children.Add(commentLabel);
             content.Children.Add(commentEntry);
         }
 
@@ -1944,7 +2026,8 @@ public class DialogService : IDialogService
                 {
                     Text = initialPrice.ToString("F2"),
                     Keyboard = Keyboard.Numeric,
-                    FontSize = 16
+                    FontSize = 14,
+                    HeightRequest = 36
                 };
                 var priceRow = new Grid
                 {
@@ -1953,8 +2036,11 @@ public class DialogService : IDialogService
                         new ColumnDefinition { Width = GridLength.Auto },
                         new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
                     },
-                    Margin = new Thickness(0, 0, 0, 4)
+                    Margin = new Thickness(0, 4, 0, 2),
+                    ColumnSpacing = 8
                 };
+                priceLabel.VerticalOptions = LayoutOptions.Center;
+                priceEntry.VerticalOptions = LayoutOptions.Center;
                 Grid.SetColumn(priceLabel, 0);
                 Grid.SetColumn(priceEntry, 1);
                 priceRow.Children.Add(priceLabel);
@@ -1962,7 +2048,7 @@ public class DialogService : IDialogService
                 content.Children.Add(priceRow);
             }
 
-        // UoM Spinner
+        // UoM Spinner (in same row as label)
             Picker uomPicker = null;
             UnitOfMeasure selectedUoM = initialUoM;
             if (!product.SoldByWeight && !string.IsNullOrEmpty(product.UoMFamily))
@@ -1970,13 +2056,13 @@ public class DialogService : IDialogService
                 var familyItems = UnitOfMeasure.List.Where(x => x.FamilyId == product.UoMFamily).ToList();
                 if (familyItems.Count > 0)
                 {
-                    var uomLabel = new Label { Text = "Unit of Measure:", FontSize = 14, TextColor = Colors.Black, Margin = new Thickness(0, 4, 0, 2) };
+                    var uomLabel = new Label { Text = "UoM:", FontSize = 14, TextColor = Colors.Black };
                     uomPicker = new Picker
                     {
-                        FontSize = 16,
+                        FontSize = 14,
                         ItemsSource = familyItems,
                         ItemDisplayBinding = new Binding("Name"),
-                        Margin = new Thickness(0, 0, 0, 4)
+                        HeightRequest = 36
                     };
 
                     if (initialUoM != null)
@@ -1992,8 +2078,115 @@ public class DialogService : IDialogService
                             selectedUoM = familyItems[uomPicker.SelectedIndex];
                     };
 
-                    content.Children.Add(uomLabel);
-                    content.Children.Add(uomPicker);
+                    var uomRow = new Grid
+                    {
+                        ColumnDefinitions = new ColumnDefinitionCollection
+                        {
+                            new ColumnDefinition { Width = GridLength.Auto },
+                            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+                        },
+                        Margin = new Thickness(0, 4, 0, 2),
+                        ColumnSpacing = 8
+                    };
+                    uomLabel.VerticalOptions = LayoutOptions.Center;
+                    uomPicker.VerticalOptions = LayoutOptions.Center;
+                    Grid.SetColumn(uomLabel, 0);
+                    Grid.SetColumn(uomPicker, 1);
+                    uomRow.Children.Add(uomLabel);
+                    uomRow.Children.Add(uomPicker);
+                    content.Children.Add(uomRow);
+                }
+            }
+
+        // Price Level Picker
+        Picker priceLevelPicker = null;
+        int selectedPriceLevelId = initialPriceLevelSelected;
+        if (canChangePrice)
+        {
+            // Get ProductPrice entries for this product
+            var productPrices = ProductPrice.Pricelist.Where(x => x.ProductId == product.ProductId).ToList();
+            if (productPrices.Any())
+            {
+                var priceLevelOptions = new List<string> { "Select a Price Level" };
+                var priceLevelIds = new List<int> { 0 };
+                var productPriceList = new List<ProductPrice>();
+                var conversion = selectedUoM != null ? selectedUoM.Conversion : 1.0;
+
+                // Build price level list from ProductPrice entries
+                foreach (var pp in productPrices)
+                {
+                    var priceLevel = PriceLevel.List.FirstOrDefault(x => x.Id == pp.PriceLevelId);
+                    if (priceLevel != null)
+                    {
+                        var convertedPrice = Math.Round(pp.Price * conversion, Config.Round);
+                        priceLevelOptions.Add($"{priceLevel.Name}: {convertedPrice.ToCustomString()}");
+                        priceLevelIds.Add(pp.PriceLevelId);
+                        productPriceList.Add(pp);
+                    }
+                }
+
+                if (priceLevelOptions.Count > 1) // More than just "Select a Price Level"
+                {
+                    var priceLevelLabel = new Label { Text = "Price Level:", FontSize = 14, TextColor = Colors.Black };
+                    priceLevelPicker = new Picker
+                    {
+                        FontSize = 14,
+                        ItemsSource = priceLevelOptions,
+                        HeightRequest = 36
+                    };
+
+                    // Set initial selection
+                    if (initialPriceLevelSelected > 0)
+                    {
+                        var index = priceLevelIds.IndexOf(initialPriceLevelSelected);
+                        if (index > 0) // index 0 is "Select a Price Level"
+                            priceLevelPicker.SelectedIndex = index;
+                        else
+                            priceLevelPicker.SelectedIndex = 0;
+                    }
+                    else
+                    {
+                        priceLevelPicker.SelectedIndex = 0; // "Select a Price Level"
+                    }
+
+                    priceLevelPicker.SelectedIndexChanged += (s, e) =>
+                    {
+                        if (priceLevelPicker.SelectedIndex > 0 && priceLevelPicker.SelectedIndex <= priceLevelIds.Count)
+                        {
+                            selectedPriceLevelId = priceLevelIds[priceLevelPicker.SelectedIndex];
+                            // Update price when price level changes
+                            if (priceEntry != null && productPriceList.Count > priceLevelPicker.SelectedIndex - 1)
+                            {
+                                var selectedPP = productPriceList[priceLevelPicker.SelectedIndex - 1];
+                                var currentConversion = selectedUoM != null ? selectedUoM.Conversion : 1.0;
+                                var newPrice = Math.Round(selectedPP.Price * currentConversion, Config.Round);
+                                priceEntry.Text = newPrice.ToString("F2");
+                            }
+                        }
+                        else
+                        {
+                            selectedPriceLevelId = 0;
+                        }
+                    };
+
+                    var priceLevelRow = new Grid
+                    {
+                        ColumnDefinitions = new ColumnDefinitionCollection
+                        {
+                            new ColumnDefinition { Width = GridLength.Auto },
+                            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+                        },
+                        Margin = new Thickness(0, 4, 0, 2),
+                        ColumnSpacing = 8
+                    };
+                    priceLevelLabel.VerticalOptions = LayoutOptions.Center;
+                    priceLevelPicker.VerticalOptions = LayoutOptions.Center;
+                    Grid.SetColumn(priceLevelLabel, 0);
+                    Grid.SetColumn(priceLevelPicker, 1);
+                    priceLevelRow.Children.Add(priceLevelLabel);
+                    priceLevelRow.Children.Add(priceLevelPicker);
+                    content.Children.Add(priceLevelRow);
+                }
                 }
             }
 
@@ -2005,7 +2198,7 @@ public class DialogService : IDialogService
                 {
                     IsChecked = initialFreeItem
                 };
-                var freeItemRow = new HorizontalStackLayout { Spacing = 8, Margin = new Thickness(0, 4, 0, 4) };
+                var freeItemRow = new HorizontalStackLayout { Spacing = 6, Margin = new Thickness(0, 2, 0, 2) };
                 freeItemRow.Children.Add(freeItemCheckbox);
                 freeItemRow.Children.Add(new Label { Text = "Free Item", FontSize = 14, TextColor = Colors.Black, VerticalOptions = LayoutOptions.Center });
                 content.Children.Add(freeItemRow);
@@ -2029,7 +2222,7 @@ public class DialogService : IDialogService
             {
                 IsChecked = initialUseLSP
             };
-            var useLspRow = new HorizontalStackLayout { Spacing = 8, Margin = new Thickness(0, 4, 0, 4) };
+            var useLspRow = new HorizontalStackLayout { Spacing = 6, Margin = new Thickness(0, 2, 0, 2) };
             useLspRow.Children.Add(useLspCheckbox);
             useLspRow.Children.Add(new Label { Text = "Use Last Sold Price", FontSize = 14, TextColor = Colors.Black, VerticalOptions = LayoutOptions.Center });
             content.Children.Add(useLspRow);
@@ -2051,7 +2244,7 @@ public class DialogService : IDialogService
             HeightRequest = 1,
             BackgroundColor = Color.FromArgb("#E0E0E0"),
             HorizontalOptions = LayoutOptions.Fill,
-            Margin = new Thickness(0, 8, 0, 0)
+            Margin = new Thickness(0, 4, 0, 0)
         };
         content.Children.Add(topSeparator);
 
@@ -2060,9 +2253,9 @@ public class DialogService : IDialogService
             Text = "Cancel",
             BackgroundColor = Colors.Transparent,
             TextColor = Color.FromArgb("#017CBA"),
-            FontSize = 16,
+            FontSize = 14,
             FontAttributes = FontAttributes.Bold,
-            HeightRequest = 44,
+            HeightRequest = 40,
             Margin = new Thickness(0)
         };
 
@@ -2071,9 +2264,9 @@ public class DialogService : IDialogService
             Text = "Add",
             BackgroundColor = Colors.Transparent,
             TextColor = Color.FromArgb("#017CBA"),
-            FontSize = 16,
+            FontSize = 14,
             FontAttributes = FontAttributes.Bold,
-            HeightRequest = 44,
+            HeightRequest = 40,
             Margin = new Thickness(0)
         };
 
@@ -2087,7 +2280,7 @@ public class DialogService : IDialogService
             },
             ColumnSpacing = 0,
             Margin = new Thickness(0, 0, 0, 0),
-            HeightRequest = 44
+            HeightRequest = 40
         };
 
         var verticalSeparator = new BoxView
@@ -2105,17 +2298,17 @@ public class DialogService : IDialogService
         buttonRow.Children.Add(addButton);
         content.Children.Add(buttonRow);
 
-            // Create dialog
+            // Create dialog - compact size
             var dialogBorder = new Border
             {
                 BackgroundColor = Colors.White,
                 StrokeThickness = 1,
                 Stroke = Color.FromArgb("#E0E0E0"),
-                StrokeShape = new RoundRectangle { CornerRadius = 16 },
-                WidthRequest = 360,
-                MaximumWidthRequest = 460,
+                StrokeShape = new RoundRectangle { CornerRadius = 8 },
+                WidthRequest = 320,
+                MaximumWidthRequest = 400,
                 Padding = new Thickness(0),
-                Margin = new Thickness(30, 20, 30, 20), // More left/right margin for separation
+                Margin = new Thickness(20, 20, 20, 20), // Reduced margins
                 Content = scrollView
             };
 
@@ -2134,7 +2327,7 @@ public class DialogService : IDialogService
                     new ColumnDefinition { Width = GridLength.Auto },
                     new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
                 },
-                Padding = new Thickness(10)
+                Padding = new Thickness(8)
             };
 
             Grid.SetRow(dialogBorder, 1);
@@ -2185,9 +2378,11 @@ public class DialogService : IDialogService
                 result.IsFreeItem = freeItemCheckbox?.IsChecked ?? false;
                 result.UseLastSoldPrice = useLspCheckbox?.IsChecked ?? false;
 
-                // TODO: Add reason and price level logic
+                // Get price level
+                result.PriceLevelSelected = selectedPriceLevelId;
+                
+                // TODO: Add reason logic
                 result.ReasonId = initialReasonId;
-                result.PriceLevelSelected = initialPriceLevelSelected;
 
                 result.Cancelled = false;
 

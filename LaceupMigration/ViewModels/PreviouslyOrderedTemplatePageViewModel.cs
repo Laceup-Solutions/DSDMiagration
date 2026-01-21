@@ -511,6 +511,16 @@ namespace LaceupMigration.ViewModels
             var typeText = string.Empty;
             var showTypeText = false;
 
+            // Check if product is suggested
+            var isSuggested = _order != null && _order.Client != null && Product.IsSuggestedForClient(_order.Client, product);
+            string suggestedLabelText = string.Empty;
+            if (isSuggested)
+            {
+                suggestedLabelText = string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) 
+                    ? "Suggested Products" 
+                    : $"{Config.ProductCategoryNameIdentifier} Products";
+            }
+
             return new PreviouslyOrderedProductViewModel(this)
             {
                 Product = product,
@@ -529,7 +539,9 @@ namespace LaceupMigration.ViewModels
                 Quantity = qty,
                 ProductNameColor = productNameColor,
                 TypeText = typeText,
-                ShowTypeText = showTypeText
+                ShowTypeText = showTypeText,
+                IsSuggested = isSuggested,
+                SuggestedLabelText = suggestedLabelText
             };
         }
 
@@ -577,6 +589,16 @@ namespace LaceupMigration.ViewModels
                 showTypeText = true;
             }
 
+            // Check if product is suggested
+            var isSuggested = _order != null && _order.Client != null && Product.IsSuggestedForClient(_order.Client, product);
+            string suggestedLabelText = string.Empty;
+            if (isSuggested)
+            {
+                suggestedLabelText = string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) 
+                    ? "Suggested Products" 
+                    : $"{Config.ProductCategoryNameIdentifier} Products";
+            }
+
             return new PreviouslyOrderedProductViewModel(this)
             {
                 Product = product,
@@ -595,7 +617,9 @@ namespace LaceupMigration.ViewModels
                 Quantity = qty,
                 ProductNameColor = productNameColor,
                 TypeText = typeText,
-                ShowTypeText = showTypeText
+                ShowTypeText = showTypeText,
+                IsSuggested = isSuggested,
+                SuggestedLabelText = suggestedLabelText
             };
         }
 
@@ -1643,6 +1667,81 @@ namespace LaceupMigration.ViewModels
             }
         }
 
+        /// <summary>
+        /// Handles scanned barcode data (non-QR codes)
+        /// Similar to ScannerActivity.OnDecodeData implementation
+        /// </summary>
+        public async Task HandleScannedBarcodeAsync(string data)
+        {
+            if (string.IsNullOrEmpty(data) || _order == null || !CanEdit)
+                return;
+
+            // Find product using the same logic as other pages
+            var product = ActivityExtensionMethods.GetProduct(_order, data);
+
+            if (product == null)
+            {
+                await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
+                return;
+            }
+
+            // Check if product is in previously ordered products list
+            var previouslyOrderedItem = PreviouslyOrderedProducts.FirstOrDefault(x => x.Product?.ProductId == product.ProductId);
+            
+            if (previouslyOrderedItem != null)
+            {
+                // Product is in the list, navigate to add item page
+                await NavigateToAddItemAsync(previouslyOrderedItem);
+            }
+            else
+            {
+                // Product not in previously ordered list, but we can still add it
+                // Navigate directly to add item page with the product
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={product.ProductId}");
+            }
+        }
+
+        /// <summary>
+        /// Handles scanned QR code data
+        /// Similar to ScannerActivity.OnDecodeDataQR implementation
+        /// </summary>
+        public async Task HandleScannedQRCodeAsync(BarcodeDecoder decoder)
+        {
+            if (decoder == null || _order == null || !CanEdit)
+                return;
+
+            // QR codes can contain product information directly
+            if (decoder.Product != null)
+            {
+                var product = decoder.Product;
+                
+                // Check if product is in previously ordered products list
+                var previouslyOrderedItem = PreviouslyOrderedProducts.FirstOrDefault(x => x.Product?.ProductId == product.ProductId);
+                
+                if (previouslyOrderedItem != null)
+                {
+                    // Product is in the list, navigate to add item page
+                    await NavigateToAddItemAsync(previouslyOrderedItem);
+                }
+                else
+                {
+                    // Product not in previously ordered list, but we can still add it
+                    // Navigate directly to add item page with the product
+                    await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={product.ProductId}");
+                }
+            }
+            else if (!string.IsNullOrEmpty(decoder.UPC))
+            {
+                // Try to find product by UPC from QR code
+                await HandleScannedBarcodeAsync(decoder.UPC);
+            }
+            else if (!string.IsNullOrEmpty(decoder.Data))
+            {
+                // Fallback to using the raw data
+                await HandleScannedBarcodeAsync(decoder.Data);
+            }
+        }
+
         // Menu action methods
         private async Task GotoBarcodeReaderAsync()
         {
@@ -1944,7 +2043,10 @@ namespace LaceupMigration.ViewModels
         {
             if (_order == null)
                 return;
-            await Shell.Current.GoToAsync($"suggestedproducts?orderId={_order.OrderId}");
+
+            // Navigate to ProductCatalogPage with isShowingSuggested flag
+            // Pass comingFrom=PreviouslyOrdered so ProductCatalog knows to add as sales (no credit prompt)
+            await Shell.Current.GoToAsync($"productcatalog?orderId={_order.OrderId}&isShowingSuggested=1&comingFrom=PreviouslyOrdered");
         }
 
         private async Task OtherChargesAsync()
@@ -2215,6 +2317,12 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private bool _isEnabled = true;
+
+        [ObservableProperty]
+        private bool _isSuggested = false;
+
+        [ObservableProperty]
+        private string _suggestedLabelText = string.Empty;
 
         public PreviouslyOrderedProductViewModel(PreviouslyOrderedTemplatePageViewModel parent)
         {

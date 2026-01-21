@@ -80,7 +80,7 @@ namespace LaceupMigration.ViewModels
 
             _invoice.Client.EnsureInvoicesAreLoaded();
 
-            LoadInvoiceDetails();
+            await LoadInvoiceDetailsAsync();
             _initialized = true;
         }
 
@@ -89,14 +89,32 @@ namespace LaceupMigration.ViewModels
             if (!_initialized)
                 return;
 
-            LoadInvoiceDetails();
-            await Task.CompletedTask;
+            await LoadInvoiceDetailsAsync();
         }
 
-        private void LoadInvoiceDetails()
+        private async Task LoadInvoiceDetailsAsync()
         {
             if (_invoice == null)
                 return;
+
+            // If invoice has no details, fetch them from server
+            if (_invoice.Details.Count == 0)
+            {
+                try
+                {
+                    var fileToProcess = DataProvider.GetInvoiceDetails(_invoice.InvoiceId, _invoice.ClientId);
+                    
+                    if (!string.IsNullOrEmpty(fileToProcess))
+                    {
+                        _invoice.Details = Invoice.DeserializeInvoiceDetails(fileToProcess, _invoice);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog($"Error loading invoice details: {ex.Message}");
+                    // Continue to load UI even if details fetch fails
+                }
+            }
 
             ClientName = $"Customer: {_invoice.Client.ClientName}";
 
@@ -147,9 +165,7 @@ namespace LaceupMigration.ViewModels
             InvoiceDetails.Clear();
             foreach (var detail in details)
             {
-                if (detail.Product.Name == "PRODUCT NOT FOUND")
-                    continue;
-
+                // Show all details, even if product is inactive or not found
                 string uomText = string.Empty;
                 bool hasUoM = false;
                 if (detail.UnitOfMeasureId > 0)
@@ -164,7 +180,7 @@ namespace LaceupMigration.ViewModels
 
                 InvoiceDetails.Add(new InvoiceDetailItemViewModel
                 {
-                    ProductName = detail.Product.Name,
+                    ProductName = detail.Product?.Name ?? $"PRODUCT NOT FOUND",
                     QuantityText = $"Qty: {detail.Quantity}",
                     PriceText = $"Price: {detail.Price.ToCustomString()}",
                     TotalText = $"Total: {(detail.Quantity * detail.Price).ToCustomString()}",
@@ -281,13 +297,12 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // Get Invoice Details
-            if (!(_invoice.Details.Count > 0))
+            // Get Invoice Details (only show if details are still empty after auto-load attempt)
+            if (_invoice.Details.Count == 0)
             {
                 options.Add(new MenuOption("Get Details", async () =>
                 {
-                    await _dialogService.ShowAlertAsync("Get Details functionality is not yet fully implemented.", "Info");
-                    // TODO: Implement getting invoice details from server
+                    await LoadInvoiceDetailsFromServerAsync();
                 }));
             }
             
@@ -302,6 +317,13 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
+            if (_invoice.Details.Count == 0)
+            {
+                var fileToProcess = DataProvider.GetInvoiceDetails(_invoice.InvoiceId, _invoice.ClientId);
+
+                _invoice.Details = Invoice.DeserializeInvoiceDetails(fileToProcess, _invoice);
+            }
+            
             try
             {
                 // Use PdfHelper to send invoice by email (matches Xamarin InvoiceDetailsActivity)
@@ -329,13 +351,33 @@ namespace LaceupMigration.ViewModels
                     CompanyInfo.SelectedCompany = CompanyInfo.Companies.Count > 0 ? CompanyInfo.Companies[0] : null;
                     IPrinter printer = PrinterProvider.CurrentPrinter();
                     bool allWent = true;
-
-                    for (int i = 0; i < number; i++)
+                    
+                    if (_invoice.Details.Count == 0)
                     {
-                        if (!printer.PrintOpenInvoice(_invoice))
-                            allWent = false;
+                        var fileToProcess = DataProvider.GetInvoiceDetails(_invoice.InvoiceId, _invoice.ClientId);
+
+                        _invoice.Details = Invoice.DeserializeInvoiceDetails(fileToProcess, _invoice);
                     }
 
+                    if (Config.PrintExternalInvoiceAsOrder)
+                    {
+                        var order = Order.ConvertInvoiceToOrder(_invoice);
+
+                        for (int i = 0; i < number; i++)
+                        {
+                            if (!printer.PrintOrder(order, false, false))
+                                allWent = false;
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < number; i++)
+                        {
+                            if (!printer.PrintOpenInvoice(_invoice))
+                                allWent = false;
+                        }
+                    }
+                    
                     if (!allWent)
                         return "Error printing invoice.";
                     return string.Empty;
@@ -345,6 +387,38 @@ namespace LaceupMigration.ViewModels
             {
                 await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
                 _appService.TrackError(ex);
+            }
+        }
+
+        private async Task LoadInvoiceDetailsFromServerAsync()
+        {
+            if (_invoice == null)
+                return;
+
+            try
+            {
+                var fileToProcess = DataProvider.GetInvoiceDetails(_invoice.InvoiceId, _invoice.ClientId);
+                
+                if (string.IsNullOrEmpty(fileToProcess))
+                {
+                    await _dialogService.ShowAlertAsync("Could not retrieve invoice details from server.", "Error", "OK");
+                    return;
+                }
+
+                _invoice.Details = Invoice.DeserializeInvoiceDetails(fileToProcess, _invoice);
+                
+                // Reload the UI with the new details
+                await LoadInvoiceDetailsAsync();
+                
+                if (_invoice.Details.Count > 0)
+                {
+                    await _dialogService.ShowAlertAsync($"Loaded {_invoice.Details.Count} invoice detail(s).", "Success", "OK");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog($"Error loading invoice details from server: {ex.Message}");
+                await _dialogService.ShowAlertAsync($"Error loading invoice details: {ex.Message}", "Error", "OK");
             }
         }
 

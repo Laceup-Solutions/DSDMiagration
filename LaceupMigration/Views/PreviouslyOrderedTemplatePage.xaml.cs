@@ -9,11 +9,13 @@ namespace LaceupMigration.Views
     public partial class PreviouslyOrderedTemplatePage : LaceupContentPage, IQueryAttributable
     {
         private readonly PreviouslyOrderedTemplatePageViewModel _viewModel;
+        private readonly IScannerService _scannerService;
 
-        public PreviouslyOrderedTemplatePage(PreviouslyOrderedTemplatePageViewModel viewModel)
+        public PreviouslyOrderedTemplatePage(PreviouslyOrderedTemplatePageViewModel viewModel, IScannerService scannerService)
         {
             InitializeComponent();
             _viewModel = viewModel;
+            _scannerService = scannerService;
             BindingContext = _viewModel;
             
             // Subscribe to property changes to update column definitions
@@ -123,6 +125,28 @@ namespace LaceupMigration.Views
             // Update menu toolbar item after order is loaded (important for state restoration)
             // This ensures the menu appears even when loading from state
             UpdateMenuToolbarItem();
+            
+            // Initialize and start scanner (similar to ScannerActivity.OnStart)
+            if (_scannerService != null && Config.ScannerToUse != 4) // 4 is camera scanner
+            {
+                _scannerService.InitScanner();
+                _scannerService.StartScanning();
+                _scannerService.OnDataScanned += OnDecodeData;
+                _scannerService.OnDataScannedQR += OnDecodeDataQR;
+            }
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            
+            // Stop scanner (similar to ScannerActivity.OnPause)
+            if (_scannerService != null && Config.ScannerToUse != 4)
+            {
+                _scannerService.OnDataScanned -= OnDecodeData;
+                _scannerService.OnDataScannedQR -= OnDecodeDataQR;
+                _scannerService.StopScanning();
+            }
         }
 
         /// <summary>
@@ -154,6 +178,52 @@ namespace LaceupMigration.Views
             if (sender is Frame frame && frame.BindingContext is PreviouslyOrderedProductViewModel item)
             {
                 await _viewModel.NavigateToAddItemAsync(item);
+            }
+        }
+
+        /// <summary>
+        /// Handles barcode scan data (non-QR codes)
+        /// Similar to ScannerActivity.OnDecodeData
+        /// </summary>
+        public async void OnDecodeData(object sender, string data)
+        {
+            if (string.IsNullOrEmpty(data) || _viewModel == null)
+                return;
+
+            // Set scanner as working to prevent duplicate scans
+            _scannerService?.SetScannerWorking();
+
+            try
+            {
+                await _viewModel.HandleScannedBarcodeAsync(data);
+            }
+            finally
+            {
+                // Release scanner after processing
+                _scannerService?.ReleaseScanner();
+            }
+        }
+
+        /// <summary>
+        /// Handles QR code scan data
+        /// Similar to ScannerActivity.OnDecodeDataQR
+        /// </summary>
+        public async void OnDecodeDataQR(object sender, BarcodeDecoder decoder)
+        {
+            if (decoder == null || _viewModel == null)
+                return;
+
+            // Set scanner as working to prevent duplicate scans
+            _scannerService?.SetScannerWorking();
+
+            try
+            {
+                await _viewModel.HandleScannedQRCodeAsync(decoder);
+            }
+            finally
+            {
+                // Release scanner after processing
+                _scannerService?.ReleaseScanner();
             }
         }
     }

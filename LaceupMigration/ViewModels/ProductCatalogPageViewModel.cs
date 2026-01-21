@@ -38,6 +38,7 @@ namespace LaceupMigration.ViewModels
         private ViewTypes _currentViewType = ViewTypes.Normal;
         private bool _onlyReturn = false;
         private bool _onlyDamage = false;
+        private bool _isShowingSuggested = false;
 
         public ObservableCollection<CatalogItemViewModel> Products { get; } = new();
         public ObservableCollection<CatalogItemViewModel> FilteredProducts { get; } = new();
@@ -50,6 +51,9 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private string _viewTypeIcon = "catalog_two";
+
+        [ObservableProperty]
+        private string _pageTitle = "Products";
 
         public ProductCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner, AdvancedOptionsService advancedOptionsService)
         {
@@ -130,6 +134,20 @@ namespace LaceupMigration.ViewModels
                 _comingFrom = fromValue.ToString();
             }
 
+            if (query.TryGetValue("isShowingSuggested", out var suggestedValue) && suggestedValue != null)
+            {
+                _isShowingSuggested = suggestedValue.ToString() == "1" || suggestedValue.ToString().ToLowerInvariant() == "true";
+                
+                // Update page title for suggested products
+                if (_isShowingSuggested)
+                {
+                    string categoryName = string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) 
+                        ? "Suggested Products" 
+                        : $"{Config.ProductCategoryNameIdentifier} Products";
+                    PageTitle = categoryName;
+                }
+            }
+
             MainThread.BeginInvokeOnMainThread(async () => await InitializeAsync(orderId));
         }
 
@@ -180,6 +198,30 @@ namespace LaceupMigration.ViewModels
 
             var productsForOrder = Product.GetProductListForOrder(_order, _asCreditItem, _categoryId ?? 0).ToList();
 
+            // Filter to only suggested products if isShowingSuggested is true
+            if (_isShowingSuggested && _order.Client != null)
+            {
+                var suggestedCategory = SuggestedClientCategory.List.FirstOrDefault(x => 
+                    x.SuggestedClientCategoryClients.Any(y => y.ClientId == _order.Client.ClientId));
+                
+                if (suggestedCategory != null && suggestedCategory.SuggestedClientCategoryProducts.Count > 0)
+                {
+                    var suggestedProductIds = suggestedCategory.SuggestedClientCategoryProducts
+                        .Select(sp => sp.ProductId)
+                        .Where(id => id > 0)
+                        .ToList();
+                    
+                    productsForOrder = productsForOrder
+                        .Where(p => suggestedProductIds.Contains(p.ProductId))
+                        .ToList();
+                }
+                else
+                {
+                    // No suggested products available
+                    productsForOrder = new List<Product>();
+                }
+            }
+
             if (!string.IsNullOrEmpty(_productSearch) && _comingFromSearch)
             {
                 var searchLower = _productSearch.Trim().ToLowerInvariant();
@@ -202,7 +244,8 @@ namespace LaceupMigration.ViewModels
             {
                 var catalogItem = new CatalogItemViewModel
                 {
-                    Product = product
+                    Product = product,
+                    Order = _order // Store order reference for suggested check
                 };
 
                 var clientSourceKey = clientSource.Keys.FirstOrDefault(x => x.ProductId == product.ProductId);
@@ -516,8 +559,8 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // For PreviouslyOrdered (sales items), show popup to enter quantity (same as PreviouslyOrderedTemplatePage)
-            await AddProductWithPopupAsync(item);
+            // For PreviouslyOrdered (sales items), show RestOfTheAddDialog (same as PreviouslyOrderedTemplatePage row click)
+            await AddProductWithRestOfTheAddDialogAsync(item);
         }
 
         private async Task SelectCreditTypeAsync(CatalogItemViewModel item, bool fromEdit, int defaultType = 0)
@@ -661,35 +704,56 @@ namespace LaceupMigration.ViewModels
             Filter();
         }
 
-        private async Task AddProductWithPopupAsync(CatalogItemViewModel item)
+        private async Task AddProductWithRestOfTheAddDialogAsync(CatalogItemViewModel item)
         {
             if (_order == null || item.Product == null)
                 return;
 
-            // Show popup to enter quantity (same as PreviouslyOrderedTemplatePage)
-            var defaultQty = "1";
-            if (item.Values.Count > 0 && item.Values[0].Qty > 0)
-                defaultQty = item.Values[0].Qty.ToString();
-            
-            var qtyInput = await _dialogService.ShowPromptAsync(
-                $"Enter Quantity for {item.Product.Name}",
-                "Quantity",
-                "OK",
-                "Cancel",
-                defaultQty,
-                keyboard: Keyboard.Numeric);
+            // Show RestOfTheAddDialog (matches PreviouslyOrderedTemplatePage row click)
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && !x.IsCredit);
+            var result = await _dialogService.ShowRestOfTheAddDialogAsync(
+                item.Product,
+                _order,
+                existingDetail,
+                isCredit: false,
+                isDamaged: false,
+                isDelivery: _order.IsDelivery);
 
-            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out var qty) || qty <= 0)
+            if (result.Cancelled)
                 return;
 
-            // Get or create order detail
-            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && !x.IsCredit);
+            // Handle qty == 0 - always delete the detail
+            if (result.Qty == 0)
+            {
+                if (existingDetail != null)
+                {
+                    _order.DeleteDetail(existingDetail);
+                    _order.Save();
+                }
+                PrepareProductList();
+                Filter();
+                return;
+            }
 
+            // qty > 0 - normal flow (matches PreviouslyOrderedTemplatePage DoTheThing1 logic)
             OrderDetail? updatedDetail = null;
             if (existingDetail != null)
             {
                 // Update existing detail
-                existingDetail.Qty = (float)qty;
+                existingDetail.Qty = result.Qty;
+                existingDetail.Weight = result.Weight;
+                existingDetail.Lot = result.Lot;
+                if (result.LotExpiration.HasValue)
+                    existingDetail.LotExpiration = result.LotExpiration.Value;
+                existingDetail.Comments = result.Comments;
+                existingDetail.Price = result.Price;
+                existingDetail.UnitOfMeasure = result.SelectedUoM;
+                existingDetail.IsFreeItem = result.IsFreeItem;
+                existingDetail.ReasonId = result.ReasonId;
+                if (result.PriceLevelSelected > 0)
+                {
+                    existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
+                }
                 updatedDetail = existingDetail;
             }
             else
@@ -697,20 +761,54 @@ namespace LaceupMigration.ViewModels
                 // Create new detail
                 var detail = new OrderDetail(item.Product, 0, _order);
                 double expectedPrice = Product.GetPriceForProduct(item.Product, _order, false, false);
-                double price = 0;
-                if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out price))
+                double price = result.Price;
+                
+                // If UseLastSoldPrice, get from last invoice detail (from client history)
+                if (result.UseLastSoldPrice && _order.Client != null)
                 {
-                    detail.Price = price;
-                    detail.FromOfferPrice = true;
+                    var clientHistory = InvoiceDetail.ClientProduct(_order.Client.ClientId, item.Product.ProductId);
+                    if (clientHistory != null && clientHistory.Count > 0)
+                    {
+                        var lastInvoiceDetail = clientHistory.OrderByDescending(x => x.Date).FirstOrDefault();
+                        if (lastInvoiceDetail != null)
+                            price = lastInvoiceDetail.Price;
+                    }
+                }
+                else if (price == 0)
+                {
+                    // Get price from offers or default
+                    double offerPrice = 0;
+                    if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out offerPrice))
+                    {
+                        detail.Price = offerPrice;
+                        detail.FromOfferPrice = true;
+                    }
+                    else
+                    {
+                        detail.Price = expectedPrice;
+                        detail.FromOfferPrice = false;
+                    }
                 }
                 else
                 {
-                    detail.Price = expectedPrice;
+                    detail.Price = price;
                     detail.FromOfferPrice = false;
                 }
+
                 detail.ExpectedPrice = expectedPrice;
-                detail.UnitOfMeasure = item.Line.UoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
-                detail.Qty = (float)qty;
+                detail.UnitOfMeasure = result.SelectedUoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.Qty = result.Qty;
+                detail.Weight = result.Weight;
+                detail.Lot = result.Lot;
+                if (result.LotExpiration.HasValue)
+                    detail.LotExpiration = result.LotExpiration.Value;
+                detail.Comments = result.Comments;
+                detail.IsFreeItem = result.IsFreeItem;
+                detail.ReasonId = result.ReasonId;
+                if (result.PriceLevelSelected > 0)
+                {
+                    detail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), detail.ExtraFields);
+                }
                 detail.CalculateOfferDetail();
                 _order.AddDetail(detail);
                 updatedDetail = detail;
@@ -1228,6 +1326,14 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private Color _productNameColor = Colors.Black;
 
+        [ObservableProperty]
+        private bool _isSuggested = false;
+
+        [ObservableProperty]
+        private string _suggestedLabelText = string.Empty;
+
+        public Order? Order { get; set; } // Store order reference to check if product is suggested
+
         public void UpdateDisplay()
         {
             if (Product == null || Line == null)
@@ -1286,6 +1392,27 @@ namespace LaceupMigration.ViewModels
             if (Config.ShowAvgInCatalog)
             {
                 AvgSaleText = $"Avg: {Line.AvgSale:F2}";
+            }
+
+            // Check if product is suggested
+            if (Order != null && Order.Client != null && Product != null)
+            {
+                IsSuggested = Product.IsSuggestedForClient(Order.Client, Product);
+                if (IsSuggested)
+                {
+                    SuggestedLabelText = string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) 
+                        ? "Suggested Products" 
+                        : $"{Config.ProductCategoryNameIdentifier} Products";
+                }
+                else
+                {
+                    SuggestedLabelText = string.Empty;
+                }
+            }
+            else
+            {
+                IsSuggested = false;
+                SuggestedLabelText = string.Empty;
             }
         }
     }

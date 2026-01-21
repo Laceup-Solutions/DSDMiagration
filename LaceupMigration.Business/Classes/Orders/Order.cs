@@ -7791,6 +7791,63 @@ namespace LaceupMigration
             return false;
         }
 
+        public static Order ConvertInvoiceToOrder(Invoice invoice)
+        {
+            var order = new Order();
+            order.Client = invoice.Client;
+            order.OrderId = invoice.InvoiceId;
+            foreach (var detail in invoice.Details)
+            {
+                Product product = detail.Product;
+                float qty = (float)detail.Quantity;
+                var price = detail.Price;
+                OrderDetail d = new OrderDetail(product, qty, order);
+
+                d.Price = price;
+
+                if (detail.UnitOfMeasureId > 0)
+                {
+                    var uom = UnitOfMeasure.List.FirstOrDefault(x => x.Id == detail.UnitOfMeasureId);
+                    if (uom == null)
+                        uom = UnitOfMeasure.InactiveUoM.FirstOrDefault(x => x.Id == detail.UnitOfMeasureId);
+
+                    if (uom != null) d.UnitOfMeasure = uom;
+                }
+
+                if (detail.Product.SoldByWeight) d.Weight = qty;
+
+                order.Details.Add(d);
+            }
+
+            order.ConvertedInvoice = true;
+            order.InvoiceSignature = invoice.Signature;
+            order.InvoiceSignatureSize = invoice.SignatureSize;
+            order.InvoiceSignatureWidth = (int)invoice.SignatureWidth;
+            order.InvoiceSignatureHeight = invoice.SignatureHeight;
+            order.SalesmanId = invoice.SalesmanId;
+            if (order.SalesmanId == 0) order.SalesmanId = Config.SalesmanId;
+
+            order.Finished = true;
+            order.PrintedOrderId = invoice.InvoiceNumber;
+            order.DueDate = invoice.DueDate;
+            order.Date = invoice.Date;
+            order._paid = Math.Round((invoice.Amount - invoice.Balance), Config.Round);
+
+            var totalByDetails = invoice.Details.Sum(x => (x.Quantity * x.Price));
+
+            var discount = Math.Round((totalByDetails - invoice.Amount), 2);
+
+            if (!string.IsNullOrEmpty(invoice.CompanyName)) order.CompanyName = invoice.CompanyName;
+
+            if (Math.Round(totalByDetails, 2) != Math.Round(invoice.Amount, 2) && discount > 0)
+            {
+                order.DiscountAmount = (float)discount;
+                order.DiscountType = DiscountType.Amount;
+            }
+
+            return order;
+        }
+
         public void CheckOrderLengthsBeforeSending()
         {
             try

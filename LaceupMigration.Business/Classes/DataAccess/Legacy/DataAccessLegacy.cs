@@ -7815,6 +7815,36 @@ namespace LaceupMigration
             }
         }
 
+        public string GetInvoiceDetails(int InvoiceId, int ClientId)
+        {
+            string tempFile = Path.GetTempFileName();
+
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+
+            try
+            {
+                using (var access = new NetAccess())
+                {
+                    access.OpenConnection();
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("GetInvoiceDetailsCommand");
+                    access.WriteStringToNetwork(InvoiceId.ToString());
+                    access.WriteStringToNetwork(ClientId.ToString());
+                    access.ReceiveFile(tempFile);
+                    access.WriteStringToNetwork("GoodBye");
+                    access.CloseConnection();
+                }
+
+                return tempFile;
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog("Exception in GetInvoiceDetails in NetAccess ==>" + ex.ToString());
+                return "";
+            }
+        }
+                
         public void AddDeliveryClient(Client client)
         {
             string s = string.Format("{1}{0}{2}{0}{3}{0}{4}{0}{5}{0}{6}{0}{7}{0}{8}{0}{9}{0}{10}{0}{11}{0}{12}{0}{13}{0}{14}" +

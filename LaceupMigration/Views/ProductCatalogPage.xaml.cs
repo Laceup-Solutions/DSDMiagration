@@ -44,11 +44,33 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        protected override bool OnBackButtonPressed()
+        /// <summary>
+        /// Override GoBack to remove navigation state when navigating away.
+        /// This is called by both the physical back button and navigation bar back button.
+        /// </summary>
+        protected override void GoBack()
         {
             // [ACTIVITY STATE]: Remove state when navigating away via back button
-            Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
-            return false; // Allow navigation
+            var currentRoute = Shell.Current.CurrentState?.Location?.OriginalString ?? "";
+            if (currentRoute.Contains("productcatalog"))
+            {
+                Helpers.NavigationHelper.RemoveNavigationState(currentRoute);
+            }
+            else
+            {
+                // Fallback: try to remove by route name
+                Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
+            }
+            
+            // Navigate back
+            Shell.Current.GoToAsync("..");
+        }
+
+        protected override bool OnBackButtonPressed()
+        {
+            // Handle physical back button - call GoBack which will remove state
+            GoBack();
+            return true; // Prevent default back navigation (we handle it in GoBack)
         }
 
         private async void OnCellTapped(object sender, EventArgs e)
