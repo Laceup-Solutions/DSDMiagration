@@ -41,7 +41,7 @@ namespace LaceupMigration.ViewModels
         private string _onHandText = string.Empty;
 
         [ObservableProperty]
-        private string _totalText = "Total: $0.00";
+        private string _totalText = "$0.00";
 
         [ObservableProperty]
         private string _commentsText = string.Empty;
@@ -170,7 +170,32 @@ namespace LaceupMigration.ViewModels
             if (_product == null || _order == null)
                 return;
 
-            ProductName = _product.Name;
+            // Format product name with full description (Code + Name + Package + UPC)
+            // Example: "100756 Tostada Raspada Tonantzin 12/9.88oz 850000239005 (36Pp)"
+            var parts = new List<string>();
+            
+            // Add code if available
+            if (!string.IsNullOrEmpty(_product.Code))
+            {
+                parts.Add(_product.Code);
+            }
+            
+            // Add product name
+            parts.Add(_product.Name);
+            
+            // Add UPC if available
+            if (!string.IsNullOrEmpty(_product.Upc))
+            {
+                parts.Add(_product.Upc);
+            }
+            
+            // Add package info if available and not default
+            if (!string.IsNullOrEmpty(_product.Package) && _product.Package != "1")
+            {
+                parts.Add($"({_product.Package}Pp)");
+            }
+            
+            ProductName = string.Join(" ", parts);
             ProductUpc = _product.Upc ?? string.Empty;
 
             // Load UOMs
@@ -276,9 +301,9 @@ namespace LaceupMigration.ViewModels
             var listPrice = _product.PriceLevel0;
             ListPriceText = listPrice > 0 ? $"List Price: ${listPrice:F2}" : string.Empty;
 
-            // Get on hand
+            // Get on hand (format as integer like in the image: OH:3001)
             var onHand = _product.GetInventory(_order.AsPresale);
-            OnHandText = $"On Hand: {onHand}";
+            OnHandText = ((int)onHand).ToString();
 
             ShowLot =!_order.AsPresale && !IsDamaged && (_product.UseLot || _product.UseLotAsReference);
 
@@ -294,7 +319,7 @@ namespace LaceupMigration.ViewModels
 
             // Refresh product data (inventory, price, etc.)
             var onHand = _product.GetInventory(_order.AsPresale);
-            OnHandText = $"On Hand: {onHand}";
+            OnHandText = ((int)onHand).ToString();
 
             // Recalculate price if UOM changed
             if (SelectedUom != null)
@@ -378,7 +403,7 @@ namespace LaceupMigration.ViewModels
             }
 
             var total = price * qty;
-            TotalText = $"Total: ${total:F2}";
+            TotalText = $"${total:F2}";
         }
 
         [RelayCommand]
@@ -485,6 +510,16 @@ namespace LaceupMigration.ViewModels
         private async Task CancelAsync()
         {
             await Shell.Current.GoToAsync("..");
+        }
+
+        [RelayCommand]
+        private async Task ViewProductDetailsAsync()
+        {
+            if (_product == null || _order == null)
+                return;
+
+            // Navigate to product details page
+            await Shell.Current.GoToAsync($"productdetails?productId={_product.ProductId}&orderId={_order.OrderId}");
         }
 
     }

@@ -168,5 +168,49 @@ namespace LaceupMigration
         public int SignatureHeight { get; set; }
         public int SignatureSize { get; set; }
         public string SignatureAsBase64 { get; set; }
+        
+        public static List<InvoiceDetail> DeserializeInvoiceDetails(string filename, Invoice invoice)
+        {
+
+            List<InvoiceDetail> details = new List<InvoiceDetail>();
+
+            string line = null;
+
+            if (!File.Exists(filename))
+                return details;
+
+            try
+            {
+                using (StreamReader reader = new StreamReader(filename))
+                {
+                    List<string> parts = new List<string>();
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        parts = line.Split(new char[] { (char)20 }).ToList();
+
+                        InvoiceDetail tempDetail = new InvoiceDetail();
+                        tempDetail.InvoiceId = Convert.ToInt32(parts[0]);
+                        tempDetail.Comments = parts[1];
+                        tempDetail.Price = Math.Round(Convert.ToDouble(parts[2]), Config.Round);
+                        tempDetail.ProductId = Convert.ToInt32(parts[3]);
+                        tempDetail.Quantity = Math.Round(Convert.ToDouble(parts[4]), Config.Round);
+
+                        if (!string.IsNullOrEmpty(parts[5]))
+                            tempDetail.UnitOfMeasureId = Convert.ToInt32(parts[5]);
+
+                        tempDetail.ClientId = invoice.ClientId;
+
+                        details.Add(tempDetail);
+                    }
+                }
+
+                return details;
+            }
+            catch (Exception ex)
+            {
+                return details;
+            }
+
+        }
     }
 }

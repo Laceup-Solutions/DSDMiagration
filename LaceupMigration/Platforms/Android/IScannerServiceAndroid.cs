@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using LaceupMigration;
+using Microsoft.Maui.ApplicationModel;
 
 [assembly: Dependency(typeof(IScannerService))]
 
@@ -21,6 +22,7 @@ public class ScannerService : IScannerService
     protected static HoneywellWorker honeywellWorker;
     
     protected CipherlabScanner cipherlabScanner;
+    private EventHandler _cipherlabQRHandler; // Store handler for proper unsubscribe
 
     protected bool errorScanner = false;
 
@@ -57,7 +59,21 @@ public class ScannerService : IScannerService
         {
             cipherlabScanner.InitScanner();
             cipherlabScanner.HandleData += OnDecodeData;
-            cipherlabScanner.HandleDataQR += OnDecodeDataQR;
+            // CipherlabScanner passes string for QR codes, create wrapper handler
+            _cipherlabQRHandler = (sender, e) => 
+            {
+                if (sender is string qrData)
+                {
+                    var decoder = BarcodeDecoder.CreateDecoder(qrData);
+                    // Dispatch to main thread to avoid threading issues with UI updates
+                    var capturedDecoder = decoder; // Capture for closure
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        OnDataScannedQR?.Invoke(this, capturedDecoder);
+                    });
+                }
+            };
+            cipherlabScanner.HandleDataQR += _cipherlabQRHandler;
         }
 
         if (Config.ScannerToUse == 7 && honeywellWorker != null)
@@ -85,7 +101,11 @@ public class ScannerService : IScannerService
         {
             cipherlabScanner.DeinitScanner();
             cipherlabScanner.HandleData -= OnDecodeData;
-            cipherlabScanner.HandleDataQR -= OnDecodeDataQR;
+            if (_cipherlabQRHandler != null)
+            {
+                cipherlabScanner.HandleDataQR -= _cipherlabQRHandler;
+                _cipherlabQRHandler = null;
+            }
         }
         else if (Config.ScannerToUse == 7 && honeywellWorker != null)
         {
@@ -130,13 +150,51 @@ public class ScannerService : IScannerService
 
     public void OnDecodeData(object sender, EventArgs e)
     {
-        var data = (string)sender; // Modify this based on how you get data
-        OnDataScanned?.Invoke(this, data);
+        // CipherlabScanner passes string directly as sender
+        // Other scanners may pass string or use EventArgs
+        string data = null;
+        if (sender is string str)
+        {
+            data = str;
+        }
+        else if (e != null && e.GetType().GetProperty("Data") != null)
+        {
+            data = e.GetType().GetProperty("Data").GetValue(e)?.ToString();
+        }
+        
+        if (!string.IsNullOrEmpty(data))
+        {
+            // Dispatch to main thread to avoid threading issues with UI updates
+            var capturedData = data; // Capture for closure
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                OnDataScanned?.Invoke(this, capturedData);
+            });
+        }
     }
 
     public virtual void OnDecodeDataQR(object sender, EventArgs e)
     {
-        var data = (BarcodeDecoder)sender; // Modify this based on how you get data
-        OnDataScannedQR?.Invoke(this, data);
+        // CipherlabScanner passes string directly as sender, need to create decoder
+        // Other scanners pass BarcodeDecoder directly
+        BarcodeDecoder decoder = null;
+        if (sender is string str)
+        {
+            decoder = BarcodeDecoder.CreateDecoder(str);
+        }
+        else if (sender is BarcodeDecoder bd)
+        {
+            decoder = bd;
+        }
+        
+        if (decoder != null)
+        {
+            // Dispatch to main thread to avoid threading issues with UI updates
+            var capturedDecoder = decoder; // Capture for closure
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                OnDataScannedQR?.Invoke(this, capturedDecoder);
+            });
+        }
     }
 }

@@ -1,9 +1,8 @@
 using LaceupMigration.ViewModels;
-using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.Views
 {
-    public partial class ConfigurationPage : ContentPage
+    public partial class ConfigurationPage : LaceupContentPage
     {
         private readonly ConfigurationPageViewModel _viewModel;
 
@@ -13,34 +12,22 @@ namespace LaceupMigration.Views
             _viewModel = viewModel;
             BindingContext = _viewModel;
             
-            // Set up back button override - works for both physical back button and navigation bar back button
-            BackButtonOverride();
+            // Override menu completely - only show SAVE option
+            UseCustomMenu = true;
         }
 
         /// <summary>
-        /// Override back button behavior for both physical back button and navigation bar back button.
+        /// Override GoBack to clear navigation state when navigating away.
+        /// This is called by both the physical back button and navigation bar back button.
         /// </summary>
-        private void BackButtonOverride()
-        {
-            var backCommand = new Command(GoBack);
-
-            // Set the back button behavior for this specific page
-            Shell.SetBackButtonBehavior(this, new BackButtonBehavior
-            {
-                Command = backCommand
-            });
-        }
-
-        /// <summary>
-        /// Handle back navigation logic for both physical and navigation bar back buttons.
-        /// </summary>
-        private void GoBack()
+        protected override void GoBack()
         {
             // [ACTIVITY STATE]: Remove state when navigating away via back button
+            // This prevents the app from restoring to ConfigurationPage after closing it
             Helpers.NavigationHelper.RemoveNavigationState("configuration");
             
             // Navigate back
-            Shell.Current.GoToAsync("..");
+            base.GoBack();
         }
 
         protected override async void OnAppearing()
@@ -52,13 +39,6 @@ namespace LaceupMigration.Views
             Helpers.NavigationHelper.SaveNavigationState("configuration");
             
             await _viewModel.OnAppearingAsync();
-        }
-
-        protected override bool OnBackButtonPressed()
-        {
-            // Call GoBack which handles both state removal and navigation
-            GoBack();
-            return true; // Prevent default navigation (GoBack handles it)
         }
     }
 }

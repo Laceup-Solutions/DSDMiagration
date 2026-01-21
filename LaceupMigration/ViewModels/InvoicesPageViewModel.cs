@@ -292,10 +292,30 @@ namespace LaceupMigration.ViewModels
 
 					foreach (var invoice in SelectedInvoices)
 					{
-						for (int i = 0; i < copies; i++)
+						if (invoice.Details.Count == 0)
 						{
-							if (!printer.PrintOpenInvoice(invoice))
-								allWent = false;
+							var fileToProcess = DataProvider.GetInvoiceDetails(invoice.InvoiceId, invoice.ClientId);
+
+							invoice.Details = Invoice.DeserializeInvoiceDetails(fileToProcess, invoice);
+						}
+						
+						if (Config.PrintExternalInvoiceAsOrder)
+						{
+							var order = Order.ConvertInvoiceToOrder(invoice);
+
+							for (int i = 0; i < copies; i++)
+							{
+								if (!printer.PrintOrder(order, false, false))
+									allWent = false;
+							}
+						}
+						else
+						{
+							for (int i = 0; i < copies; i++)
+							{
+								if (!printer.PrintOpenInvoice(invoice))
+									allWent = false;
+							}
 						}
 					}
 
@@ -320,6 +340,16 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
+			foreach (var inv in SelectedInvoices)
+			{
+				if (inv.Details.Count == 0)
+				{
+					var fileToProcess = DataProvider.GetInvoiceDetails(inv.InvoiceId, inv.ClientId);
+
+					inv.Details = Invoice.DeserializeInvoiceDetails(fileToProcess, inv);
+				}
+			}
+			
 			try
 			{
 				// Use EmailHelper to send invoices by email (matches Xamarin PdfHelper.SendInvoicesByEmail)

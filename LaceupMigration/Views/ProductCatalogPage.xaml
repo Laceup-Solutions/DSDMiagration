@@ -7,7 +7,7 @@
              x:DataType="vm:ProductCatalogPageViewModel"
              Shell.NavBarIsVisible="True"
              Shell.TabBarIsVisible="False"
-             Title="Products">
+             Title="{Binding PageTitle}">
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Menu" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
     </ContentPage.ToolbarItems>
@@ -43,13 +43,13 @@
                                 <Frame.GestureRecognizers>
                                     <TapGestureRecognizer Tapped="OnCellTapped" />
                                 </Frame.GestureRecognizers>
-                                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="4">
+                                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="4">
                                 <!-- Product Image (if available) -->
                                 <Image Source="dotnet_bot.png"
                                        WidthRequest="60"
                                        HeightRequest="60"
                                        Grid.Row="0" Grid.Column="0"
-                                       Grid.RowSpan="3"
+                                       Grid.RowSpan="4"
                                        IsVisible="{Binding HasImage}" />
 
                                 <!-- Product Name and OH -->
@@ -110,6 +110,15 @@
                                         CornerRadius="4"
                                         VerticalOptions="Start"
                                         HorizontalOptions="End" />
+
+                                <!-- Suggested Products Label (Green, at bottom) -->
+                                <Label Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="3"
+                                       Text="{Binding SuggestedLabelText}"
+                                       FontSize="12"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource colorLaceupGreen}"
+                                       IsVisible="{Binding IsSuggested}"
+                                       Margin="0,4,0,0" />
                                 </Grid>
                             </Frame>
                         </Grid>
