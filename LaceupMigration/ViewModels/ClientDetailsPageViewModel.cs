@@ -1625,49 +1625,10 @@ namespace LaceupMigration.ViewModels
                     return;
                 }
 
-                // Get client email address from ExtraProperties - match Xamarin SendEmailWithAttachment
-                // Email is optional - pre-fill if available, but user can enter manually
-                var toAddresses = new List<string>();
-                
-                // Get email from ExtraProperties
-                string clientEmail = null;
-                if (_client.ExtraProperties != null)
-                {
-                    var emailExtra = _client.ExtraProperties.FirstOrDefault(x => x.Item1.ToUpperInvariant() == "EMAIL");
-                    if (emailExtra != null && !string.IsNullOrEmpty(emailExtra.Item2))
-                        clientEmail = emailExtra.Item2;
-                }
-                
-                // Also try getting from ExtraPropertiesAsString using DataAccess
-                if (string.IsNullOrEmpty(clientEmail) && !string.IsNullOrEmpty(_client.ExtraPropertiesAsString))
-                {
-                    clientEmail = UDFHelper.GetSingleUDF("email", _client.ExtraPropertiesAsString);
-                }
-                
-                if (!string.IsNullOrEmpty(clientEmail))
-                    toAddresses.Add(clientEmail.ToLowerInvariant());
-
-                // Build subject and body - match Xamarin SendEmailWithAttachment logic
-                string subject = null;
-                string body = null;
-                
-                // If Config.SoutoBottomEmailText is set, use custom subject and HTML body
-                // Match Xamarin: sets subject "Souto Foods Statement" and HTML body
-                if (!string.IsNullOrEmpty(Config.SoutoBottomEmailText))
-                {
-                    subject = "Souto Foods Statement";
-                    body = $"<html><body>{Config.SoutoBottomEmailText}</body></html>";
-                }
-                // Otherwise, no subject/body set - user enters manually (matches Xamarin comment:
-                // "No se establece el receptor y el asunto para que el usuario los ingrese manualmente")
-                // SendOrderByEmail will use defaults if null, but user can still modify
-                
-                // Send email with PDF attachment - match Xamarin SendEmailWithAttachment
-                // Opens email client - user can modify recipients/subject/body if needed
-                // Email addresses are optional (pre-filled if available)
-                Config.helper?.SendOrderByEmail(pdfPath, subject, body, toAddresses);
-                
-                // Don't show success message - just opens email client (matches Xamarin behavior)
+                // Navigate to PDF viewer with the PDF path (matching MAUI pattern used by SendOrderByEmail, SendGoalByEmail, etc.)
+                // The PDF viewer has a "Send by Email" button that works correctly
+                // Statements are detected by filename (contains "statement" or "reportstatement")
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfPath)}");
             }
             catch (Exception ex)
             {
