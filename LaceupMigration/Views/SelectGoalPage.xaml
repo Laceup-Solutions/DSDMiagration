@@ -8,18 +8,25 @@
              Title="Goals">
     <Grid RowDefinitions="Auto,Auto,*">
         <!-- Search Bar at the top (matching Xamarin layout) -->
-        <SearchBar Grid.Row="0"
-                   Text="{Binding SearchText}"
-                   Placeholder="Search Goals"
-                   Margin="8,8,8,0"
-                   TextChanged="OnSearchTextChanged" />
+        <Border Grid.Row="0"
+                Margin="8,8,8,0"
+                StrokeThickness="1"
+                BackgroundColor="White"
+                Padding="12,2"
+                StrokeShape="RoundRectangle 12">
+            <SearchBar Text="{Binding SearchText}"
+                       BackgroundColor="Transparent"
+                       TextChanged="OnSearchTextChanged" />
+        </Border>
         
         <StackLayout Grid.Row="1" Orientation="Horizontal"  HorizontalOptions="FillAndExpand" >
-            <Grid ColumnDefinitions="auto,*,auto" HorizontalOptions="FillAndExpand" Margin="20,5,5,10" >
+            <Grid ColumnDefinitions="auto,*,auto" HorizontalOptions="FillAndExpand" Margin="20,5,5,0" >
                 <Label Grid.Column="0" Text="Goals" FontSize="18" VerticalOptions="Center" FontAttributes="Bold" TextColor="{StaticResource colorLaceupDark}"></Label>
 
-                <Button Grid.Column="2" BackgroundColor="Transparent" 
-                        ImageSource="{icons:MaterialOutlined Icon=Menu, IconColor={StaticResource colorLaceupDark}}" ></Button>  
+                <Button Grid.Column="2" 
+                        BackgroundColor="Transparent" 
+                        ImageSource="{icons:MaterialOutlined Icon=Menu, IconColor={StaticResource colorLaceupDark}}"
+                        Command="{Binding ShowFilterMenuCommand}" />  
             </Grid>
         </StackLayout>
 
@@ -32,7 +39,7 @@
 
         <CollectionView Grid.Row="2"
                         ItemsSource="{Binding FilteredGoals}"
-                        Margin="10,20,10,10">
+                        Margin="10,2,10,10">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:GoalItemViewModel">
                     <Border Margin="0,20,0,10"
@@ -40,12 +47,12 @@
                             BackgroundColor="Transparent"
                             Stroke="{StaticResource colorLaceupDark}"
                             StrokeThickness="2"
-                            InputTransparent="True">
+                            InputTransparent="False">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectGoalCommand}" 
                                                   CommandParameter="{Binding}" />
                         </Border.GestureRecognizers>
-                        <VerticalStackLayout Spacing="0" InputTransparent="True">
+                        <VerticalStackLayout Spacing="0" InputTransparent="False">
                             <!-- Header Section (matching Xamarin cellHeader) -->
                             <Grid ColumnDefinitions="*,*"
                                   BackgroundColor="{StaticResource colorLaceupLightBlue}"
@@ -58,7 +65,7 @@
                                        TextColor="Black"
                                        VerticalOptions="Center" />
                                 <Label Grid.Column="1"
-                                       Text="{Binding CriteriaText, StringFormat='Type Data {0}'}"
+                                       Text="{Binding CriteriaText, StringFormat='Type: {0}'}"
                                        FontSize="14"
                                        FontAttributes="Bold"
                                        TextColor="Black"
@@ -111,6 +118,7 @@
                                     <!-- Progress Bar -->
                                     <ProgressBar Progress="{Binding ProgressValue}"
                                                  ProgressColor="{Binding ProgressColor}"
+                                                 Style="{x:Null}"
                                                  Margin="0,0,5,0"
                                                  HeightRequest="8"
                                                  VerticalOptions="Center" />
@@ -128,5 +136,128 @@
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+
+        <!-- Filter Popup Overlay -->
+        <Grid Grid.RowSpan="3"
+              IsVisible="{Binding IsFilterPopupVisible}"
+              BackgroundColor="#80000000"
+              InputTransparent="False"
+              ColumnDefinitions="0.1*,*,0.1*"
+              RowDefinitions="*,Auto,*">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding CloseFilterPopupCommand}" />
+            </Grid.GestureRecognizers>
+            
+            <Frame Grid.Row="1"
+                   Grid.Column="1"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Fill"
+                   Padding="0"
+                   Margin="0"
+                   BackgroundColor="White"
+                   CornerRadius="8"
+                   HasShadow="True"
+                   InputTransparent="False">
+                <ScrollView MaximumHeightRequest="600">
+                    <VerticalStackLayout Padding="15" Spacing="0">
+                        <!-- Filter By Goal Type -->
+                        <Label Text="Filter By Goal Type:" 
+                               FontSize="16" 
+                               FontAttributes="Bold" 
+                               Margin="5" />
+                        
+                        <HorizontalStackLayout Spacing="8">
+                            <CheckBox IsChecked="{Binding FilterAll}"
+                                      VerticalOptions="Center" />
+                            <Label Text="All"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Spacing="8">
+                            <CheckBox IsChecked="{Binding FilterRoute}"
+                                      VerticalOptions="Center" />
+                            <Label Text="Route"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Spacing="8">
+                            <CheckBox IsChecked="{Binding FilterProduct}"
+                                      VerticalOptions="Center" />
+                            <Label Text="Product"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Spacing="8">
+                            <CheckBox IsChecked="{Binding FilterPayment}"
+                                      VerticalOptions="Center" />
+                            <Label Text="Payment"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Spacing="8">
+                            <CheckBox IsChecked="{Binding FilterCustomer}"
+                                      VerticalOptions="Center" />
+                            <Label Text="Customer"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Spacing="8">
+                            <CheckBox IsChecked="{Binding FilterProductByCustomer}"
+                                      VerticalOptions="Center" />
+                            <Label Text="Product By Customer"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+
+                        <!-- Filter By Date -->
+                        <Label Text="Filter By Date:" 
+                               FontSize="16" 
+                               FontAttributes="Bold" 
+                               Margin="5,15,5,10" />
+                        
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="10">
+                            <Label Grid.Row="0" Grid.Column="0" 
+                                   Text="Start Date:" 
+                                   VerticalOptions="Center" 
+                                   Margin="5,0" />
+                            <Button Grid.Row="0" Grid.Column="1" 
+                                    Text="{Binding StartDateButtonText}"
+                                    TextColor="{Binding StartDateButtonTextColor}"
+                                    FontAttributes="{Binding StartDateButtonFontAttributes}"
+                                    Command="{Binding SelectStartDateCommand}" />
+                            
+                            <Label Grid.Row="1" Grid.Column="0" 
+                                   Text="End Date:" 
+                                   VerticalOptions="Center" 
+                                   Margin="5,0" />
+                            <Button Grid.Row="1" Grid.Column="1" 
+                                    Text="{Binding EndDateButtonText}"
+                                    TextColor="{Binding EndDateButtonTextColor}"
+                                    FontAttributes="{Binding EndDateButtonFontAttributes}"
+                                    Command="{Binding SelectEndDateCommand}" />
+                        </Grid>
+
+                        <!-- Show Expired -->
+                        <HorizontalStackLayout Spacing="8">
+                            <CheckBox IsChecked="{Binding ShowExpired}"
+                                      VerticalOptions="Center" />
+                            <Label Text="Show Expired"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+
+                        <!-- Remove Filters Button -->
+                        <Button Text="Remove Filters" 
+                                BackgroundColor="{StaticResource colorLaceupRed}"
+                                TextColor="White"
+                                Command="{Binding RemoveFiltersCommand}"
+                                Margin="20,5" />
+
+                        <!-- Action Buttons -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,10,0,0">
+                            <Button Grid.Column="0" 
+                                    Text="Cancel" 
+                                    Command="{Binding CloseFilterPopupCommand}" />
+                            <Button Grid.Column="1" 
+                                    Text="Apply" 
+                                    Command="{Binding ApplyFiltersCommand}" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </ScrollView>
+            </Frame>
+        </Grid>
     </Grid>
 </local:LaceupContentPage>

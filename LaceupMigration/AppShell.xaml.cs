@@ -89,6 +89,7 @@ namespace LaceupMigration
             Routing.RegisterRoute("acceptloadeditdelivery", typeof(AcceptLoadEditDeliveryPage));
             Routing.RegisterRoute("routemanagement", typeof(ManageRoutePage));
             Routing.RegisterRoute("goals", typeof(SelectGoalPage));
+            Routing.RegisterRoute("goalfilter", typeof(GoalFilterPage));
             Routing.RegisterRoute("endofday", typeof(EndOfDayPage));
             Routing.RegisterRoute("selectpricelevel", typeof(SelectPriceLevelPage));
             Routing.RegisterRoute("selectretailpricelevel", typeof(SelectRetailPriceLevelPage));

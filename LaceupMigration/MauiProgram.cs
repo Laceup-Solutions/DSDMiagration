@@ -174,6 +174,7 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.ManageRoutePageViewModel>();
 		builder.Services.AddTransient<SelectGoalPage>();
 		builder.Services.AddTransient<ViewModels.SelectGoalPageViewModel>();
+		builder.Services.AddTransient<GoalFilterPage>();
 		builder.Services.AddTransient<EndOfDayPage>();
 		builder.Services.AddTransient<ViewModels.EndOfDayPageViewModel>();
 		

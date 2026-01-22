@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.GoalFilterPage"
+             Title="Filter">
+    <ScrollView>
+        <VerticalStackLayout Padding="15" Spacing="15">
+            <!-- Filter By Goal Type -->
+            <Label Text="Filter By Goal Type" 
+                   FontSize="16" 
+                   FontAttributes="Bold" 
+                   Margin="5,5,5,10" />
+            
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox x:Name="AllCheckBox" 
+                          IsChecked="True"
+                          VerticalOptions="Center" />
+                <Label Text="All"
+                       VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox x:Name="RouteCheckBox" 
+                          VerticalOptions="Center" />
+                <Label Text="Route"
+                       VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox x:Name="ProductCheckBox" 
+                          VerticalOptions="Center" />
+                <Label Text="Product"
+                       VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox x:Name="PaymentCheckBox" 
+                          VerticalOptions="Center" />
+                <Label Text="Payment"
+                       VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox x:Name="CustomerCheckBox" 
+                          VerticalOptions="Center" />
+                <Label Text="Customer"
+                       VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox x:Name="ProductByCustomerCheckBox" 
+                          VerticalOptions="Center" />
+                <Label Text="Product By Customer"
+                       VerticalOptions="Center" />
+            </HorizontalStackLayout>
+
+            <!-- Filter By Date -->
+            <Label Text="Filter By Date" 
+                   FontSize="16" 
+                   FontAttributes="Bold" 
+                   Margin="5,15,5,10" />
+            
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="10">
+                <Label Grid.Row="0" Grid.Column="0" 
+                       Text="Start Date:" 
+                       VerticalOptions="Center" 
+                       Margin="5,0" />
+                <Button Grid.Row="0" Grid.Column="1" 
+                        x:Name="StartDateButton"
+                        Text="Select Start Date"
+                        Clicked="StartDateButton_Clicked" />
+                
+                <Label Grid.Row="1" Grid.Column="0" 
+                       Text="End Date:" 
+                       VerticalOptions="Center" 
+                       Margin="5,0" />
+                <Button Grid.Row="1" Grid.Column="1" 
+                        x:Name="EndDateButton"
+                        Text="Select End Date"
+                        Clicked="EndDateButton_Clicked" />
+            </Grid>
+
+            <!-- Show Expired -->
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox x:Name="ShowExpiredCheckBox" 
+                          VerticalOptions="Center" />
+                <Label Text="Show Expired"
+                       VerticalOptions="Center" />
+            </HorizontalStackLayout>
+
+            <!-- Remove Filters Button -->
+            <Button Text="Remove Filters" 
+                    BackgroundColor="{StaticResource colorLaceupRed}"
+                    TextColor="White"
+                    Clicked="RemoveFiltersButton_Clicked"
+                    Margin="20,10" />
+
+            <!-- Action Buttons -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,20,0,0">
+                <Button Grid.Column="0" 
+                        Text="Cancel" 
+                        Clicked="CancelButton_Clicked" />
+                <Button Grid.Column="1" 
+                        Text="Apply" 
+                        Clicked="ApplyButton_Clicked" />
+            </Grid>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
