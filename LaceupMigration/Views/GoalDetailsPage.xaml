@@ -2,80 +2,393 @@
 <local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              x:Class="LaceupMigration.Views.GoalDetailsPage"
              Shell.TabBarIsVisible="False"
              Title="Goal Details">
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*" RowSpacing="8">
         <!-- Search Bar at the top (matching Xamarin layout) -->
-        <SearchBar Grid.Row="0"
-                   Text="{Binding SearchText}"
-                   Placeholder="Search Product Name"
-                   Margin="8,8,8,0"
-                   TextChanged="OnSearchTextChanged" />
+        <Border Grid.Row="0"
+                Margin="8,8,8,0"
+                StrokeThickness="1"
+                BackgroundColor="White"
+                Padding="12,2"
+                StrokeShape="RoundRectangle 12">
+            <SearchBar Text="{Binding SearchText}"
+                       Placeholder="Search Product Name"
+                       BackgroundColor="Transparent"
+                       TextChanged="OnSearchTextChanged" />
+        </Border>
 
-        <Frame Grid.Row="1"
-               Padding="16"
-               Margin="8"
-               BackgroundColor="{StaticResource Gray100}"
-               HasShadow="False"
-               CornerRadius="8">
-            <VerticalStackLayout Spacing="8">
-                <Label Text="{Binding GoalName}"
-                       FontSize="20"
-                       FontAttributes="Bold" />
-                <Label Text="{Binding GoalDescription}"
-                       FontSize="14"
-                       TextColor="#666666" />
-                <ProgressBar Progress="{Binding ProgressPercentage}"
-                            ProgressColor="{Binding ProgressColor}"
-                            Margin="0,8,0,0" />
-                <Label Text="{Binding ProgressText}"
-                       FontSize="14"
-                       HorizontalOptions="Center" />
-            </VerticalStackLayout>
-        </Frame>
+        <!-- Header Section (matching Xamarin goalsLayout.axml lines 23-126) -->
+        <Border Grid.Row="1"
+                Margin="5"
+                Padding="5"
+                Stroke="{StaticResource colorLaceupDark}"
+                StrokeThickness="2"
+                BackgroundColor="Transparent">
+            <Grid ColumnDefinitions="0.5*,0.5*"
+                  RowDefinitions="Auto">
+                <!-- Left Column: Dates (matching Xamarin lines 40-68) -->
+                <VerticalStackLayout Grid.Column="0"
+                                     Spacing="0"
+                                     Margin="5,0,0,0">
+                    <Label Text="{Binding StartDateText}"
+                           FontSize="12"
+                           TextColor="Black" />
+                    <Label Text="{Binding DaysToCompleteText}"
+                           FontSize="10"
+                           TextColor="Black" />
+                    <Label Text="{Binding EndDateText}"
+                           FontSize="12"
+                           TextColor="Black" />
+                </VerticalStackLayout>
+                
+                <!-- Right Column: Progress (matching Xamarin lines 70-123) -->
+                <VerticalStackLayout Grid.Column="1"
+                                     Spacing="0"
+                                     Margin="5,0,5,0">
+                    <!-- Real Accomplished Row (matching Xamarin lines 77-101) -->
+                    <Grid ColumnDefinitions="0.7*,0.3*"
+                          Margin="0,0,5,0">
+                        <Label Grid.Column="0"
+                               Text="Real Accomplished"
+                               FontSize="10"
+                               TextColor="Black"
+                               VerticalOptions="Center" />
+                        <Label Grid.Column="1"
+                               Text="{Binding PercentageText}"
+                               FontSize="10"
+                               FontAttributes="Bold"
+                               TextColor="Black"
+                               HorizontalOptions="End"
+                               VerticalOptions="Center"
+                               Margin="0,0,5,0" />
+                    </Grid>
+                    
+                    <!-- Progress Bar (matching Xamarin lines 105-110) -->
+                    <ProgressBar Progress="{Binding ProgressValue}"
+                                 ProgressColor="{Binding ProgressColor}"
+                                 Style="{x:Null}"
+                                 Margin="0,0,5,0"
+                                 HeightRequest="8"
+                                 VerticalOptions="Center" />
+                    
+                    <!-- Pending Days (matching Xamarin lines 112-120) -->
+                    <Label Text="{Binding PendingDaysText}"
+                           FontSize="12"
+                           TextColor="{StaticResource colorLaceupRed}"
+                           HorizontalOptions="End"
+                           Margin="0,0,5,0" />
+                </VerticalStackLayout>
+            </Grid>
+        </Border>
 
-        <HorizontalStackLayout Grid.Row="2"
-                               Spacing="8"
-                               Margin="8,0">
-            <DatePicker Date="{Binding StartDate}"
-                       Format="MM/dd/yyyy"
-                       HorizontalOptions="FillAndExpand" />
-            <Label Text="to"
-                   VerticalOptions="Center" />
-            <DatePicker Date="{Binding EndDate}"
-                       Format="MM/dd/yyyy"
-                       HorizontalOptions="FillAndExpand" />
-            <Button Text="Filter"
-                    Command="{Binding FilterCommand}"
-                    HorizontalOptions="FillAndExpand" />
-        </HorizontalStackLayout>
+        <!-- Checkboxes Section (matching Xamarin goalsLayout.axml lines 128-167) -->
+        <Grid Grid.Row="2"
+              ColumnDefinitions="0.6*,0.4*"
+              RowDefinitions="Auto,Auto,Auto"
+              Margin="8,0">
+            <!-- Row 1: Include Sales Order + Goal Type (matching Xamarin lines 128-153) -->
+            <HorizontalStackLayout Grid.Row="0"
+                                   Grid.Column="0"
+                                   Spacing="8"
+                                   IsVisible="{Binding ShowIncludeSalesOrders}">
+                <CheckBox IsChecked="{Binding IncludeSalesOrders}"
+                          VerticalOptions="Center" />
+                <Label Text="Include Sales Order"
+                       FontSize="12"
+                       VerticalOptions="Center"
+                       TextColor="Black" />
+            </HorizontalStackLayout>
+            
+            <Label Grid.Row="0"
+                   Grid.Column="1"
+                   Text="{Binding GoalTypeText}"
+                   FontSize="13"
+                   FontAttributes="Bold"
+                   HorizontalOptions="End"
+                   VerticalOptions="Center"
+                   Margin="0,0,15,0"
+                   TextColor="Black" />
+            
+            <!-- Row 2: Include Orders In Device (matching Xamarin lines 155-160) -->
+            <HorizontalStackLayout Grid.Row="1"
+                                   Grid.ColumnSpan="2"
+                                   Spacing="8">
+                <CheckBox IsChecked="{Binding IncludeDeviceOrders}"
+                          VerticalOptions="Center" />
+                <Label Text="{Binding IncludeDeviceOrdersText}"
+                       FontSize="12"
+                       VerticalOptions="Center"
+                       TextColor="Black" />
+            </HorizontalStackLayout>
+            
+            <!-- Row 3: Include Credit Invoices (matching Xamarin lines 162-167) -->
+            <HorizontalStackLayout Grid.Row="2"
+                                   Grid.ColumnSpan="2"
+                                   Spacing="8">
+                <CheckBox IsChecked="{Binding IncludeCreditOrders}"
+                          VerticalOptions="Center" />
+                <Label Text="Include Credit Invoices"
+                       FontSize="12"
+                       VerticalOptions="Center"
+                       TextColor="Black" />
+            </HorizontalStackLayout>
+        </Grid>
 
-        <CollectionView Grid.Row="4"
+        <!-- Goal Details Label and Menu Button (matching Xamarin goalsLayout.axml lines 169-194) -->
+        <Grid Grid.Row="3"
+              ColumnDefinitions="0.95*,Auto"
+              Margin="15,0,0,0">
+            <Label Grid.Column="0"
+                   Text="Goal Details"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource colorLaceupDark}"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Start" />
+            
+            <Button Grid.Column="1"
+                    x:Name="MenuButton"
+                    WidthRequest="40"
+                    HeightRequest="40"
+                    BackgroundColor="Transparent"
+                    Clicked="MenuButton_Clicked"
+                    Margin="0,0,0,0"
+                    Padding="0"
+                    Text="{mi:MaterialOutlined Icon=Menu, IconColor={StaticResource colorLaceupDark}}"
+                    FontSize="24" />
+        </Grid>
+        
+
+        <CollectionView Grid.Row="5"
                         ItemsSource="{Binding GoalDetails}"
-                        Margin="8">
+                        Margin="10,20,10,10">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:GoalDetailItemViewModel">
-                    <Frame Padding="12"
-                           Margin="0,4"
-                           BackgroundColor="{StaticResource Gray100}"
-                           HasShadow="False"
-                           CornerRadius="8">
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="{Binding ItemName}"
-                                   FontSize="16"
-                                   FontAttributes="Bold" />
-                            <Label Text="{Binding Progress, StringFormat='Progress: {0}'}"
-                                   FontSize="14"
-                                   TextColor="#666666" />
-                            <Label Text="{Binding Target, StringFormat='Target: {0}'}"
-                                   FontSize="14"
-                                   TextColor="#666666" />
+                    <!-- Goal Detail Cell (matching Xamarin goalsCellLayout.axml) -->
+                    <Border Margin="0,20,0,10"
+                            Padding="0"
+                            BackgroundColor="Transparent"
+                            Stroke="{StaticResource colorLaceupDark}"
+                            StrokeThickness="2">
+                        <VerticalStackLayout Spacing="0">
+                            <!-- Header Section (matching Xamarin lines 17-74) -->
+                            <Grid ColumnDefinitions="0.7*,0.3*"
+                                  BackgroundColor="{StaticResource colorLaceupLightBlue}"
+                                  Padding="2"
+                                  Margin="2,2,2,0">
+                                <VerticalStackLayout Grid.Column="0"
+                                                     Spacing="0"
+                                                     Margin="0,0,0,0">
+                                    <Label Text="{Binding ItemName}"
+                                           FontSize="14"
+                                           FontAttributes="Bold"
+                                           TextColor="Black"
+                                           LineBreakMode="WordWrap"
+                                           MaxLines="2" />
+                                    <Label Text="{Binding ClientName}"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           TextColor="Black"
+                                           Margin="3,0,2,0"
+                                           IsVisible="{Binding ShowClientName}" />
+                                </VerticalStackLayout>
+                                <Label Grid.Column="1"
+                                       Text="{Binding UomText}"
+                                       FontSize="14"
+                                       FontAttributes="Bold"
+                                       TextColor="Black"
+                                       HorizontalOptions="End"
+                                       VerticalOptions="Center"
+                                       Margin="0,0,5,0"
+                                       IsVisible="{Binding ShowUom}" />
+                            </Grid>
+                            
+                            <!-- Metrics Section (matching Xamarin lines 76-186) -->
+                            <Grid ColumnDefinitions="0.25*,0.25*,0.25*,0.25*"
+                                  Margin="5,5,5,5"
+                                  RowDefinitions="Auto,Auto">
+                                <!-- Goal Amount Column -->
+                                <VerticalStackLayout Grid.Column="0"
+                                                     Grid.Row="0"
+                                                     Spacing="0"
+                                                     Margin="0,0,5,0">
+                                    <Label Text="{Binding GoalAmountLabel}"
+                                           FontSize="10"
+                                           TextColor="Black"
+                                           HorizontalOptions="Center" />
+                                    <Label Text="{Binding GoalAmountText}"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           TextColor="Black"
+                                           HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                                
+                                <!-- Sold Column (Green) -->
+                                <VerticalStackLayout Grid.Column="1"
+                                                     Grid.Row="0"
+                                                     Spacing="0"
+                                                     Margin="0,0,5,0">
+                                    <Label Text="{Binding SoldLabel}"
+                                           FontSize="10"
+                                           TextColor="Black"
+                                           HorizontalOptions="Center" />
+                                    <Label Text="{Binding SoldText}"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           TextColor="DarkGreen"
+                                           HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                                
+                                <!-- Missing Column (Red) -->
+                                <VerticalStackLayout Grid.Column="2"
+                                                     Grid.Row="0"
+                                                     Spacing="0"
+                                                     Margin="0,0,5,0">
+                                    <Label Text="Missing To Goal"
+                                           FontSize="10"
+                                           TextColor="Black"
+                                           HorizontalOptions="Center" />
+                                    <Label Text="{Binding MissingText}"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           TextColor="Red"
+                                           HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                                
+                                <!-- Daily Sales Column -->
+                                <VerticalStackLayout Grid.Column="3"
+                                                     Grid.Row="0"
+                                                     Spacing="0">
+                                    <Label Text="{Binding DailySalesLabel}"
+                                           FontSize="10"
+                                           TextColor="Black"
+                                           HorizontalOptions="Center" />
+                                    <Label Text="{Binding DailySalesText}"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           TextColor="Black"
+                                           HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Grid>
+                            
+                            <!-- Progress Bar Section (matching Xamarin lines 188-213) -->
+                            <VerticalStackLayout Spacing="0"
+                                               Margin="10,0,10,5">
+                                <Label Text="{Binding PercentageText}"
+                                       FontSize="10"
+                                       FontAttributes="Bold"
+                                       TextColor="Black"
+                                       HorizontalOptions="End"
+                                       Margin="0,0,10,0" />
+                                <ProgressBar Progress="{Binding ProgressValue}"
+                                             ProgressColor="{Binding ProgressColor}"
+                                             Style="{x:Null}"
+                                             HeightRequest="8"
+                                             Margin="10,0,10,0" />
+                            </VerticalStackLayout>
                         </VerticalStackLayout>
-                    </Frame>
+                    </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+
+        <Grid Grid.RowSpan="6"
+              IsVisible="{Binding IsFilterPopupVisible}"
+              BackgroundColor="#80000000"
+              InputTransparent="False"
+              ColumnDefinitions="0.1*,*,0.1*"
+              RowDefinitions="*,Auto,*">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding CloseFilterPopupCommand}" />
+            </Grid.GestureRecognizers>
+            
+            <Frame Grid.Row="1"
+                   Grid.Column="1"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Fill"
+                   Padding="15"
+                   Margin="0"
+                   BackgroundColor="White"
+                   CornerRadius="8"
+                   HasShadow="True"
+                   InputTransparent="False">
+                <ScrollView>
+                    <VerticalStackLayout Spacing="10">
+                        <!-- View Goal By Section -->
+                        <Label Text="Filter" TextColor="{StaticResource colorLaceupDark}" FontSize="20"></Label>
+                        <BoxView HeightRequest="1"
+                                 Color="{StaticResource colorLaceupDark}"
+                                 Margin="0,5,0,5" />
+                        <VerticalStackLayout Spacing="5">
+                            <Label Text="View Goal By:"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   TextColor="Black" />
+                            
+                            <RadioButton Content="Monthly"
+                                        IsChecked="{Binding FilterMonthly}"
+                                        GroupName="TimeFrame"
+                                        CheckedChanged="TimeFrameRadioButton_CheckedChanged" />
+                            <RadioButton Content="Weekly"
+                                        IsChecked="{Binding FilterWeekly}"
+                                        GroupName="TimeFrame"
+                                        CheckedChanged="TimeFrameRadioButton_CheckedChanged" />
+                        </VerticalStackLayout>
+                        
+                        <!-- Sort Products By Section (only visible for Product/ProductsByCustomer criteria) -->
+                        <VerticalStackLayout Spacing="5"
+                                           IsVisible="{Binding ShowSortOptions}">
+                            <BoxView HeightRequest="1"
+                                   Color="Gray"
+                                   Margin="0,5,0,5" />
+                            
+                            <Label Text="Sort Products By:"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   TextColor="Black" />
+                            
+                            <RadioButton Content="None"
+                                        IsChecked="{Binding SortByNone}"
+                                        GroupName="SortBy"
+                                        CheckedChanged="SortByRadioButton_CheckedChanged" />
+                            <RadioButton Content="Product Name"
+                                        IsChecked="{Binding SortByName}"
+                                        GroupName="SortBy"
+                                        CheckedChanged="SortByRadioButton_CheckedChanged" />
+                            <RadioButton Content="Category"
+                                        IsChecked="{Binding SortByCategory}"
+                                        GroupName="SortBy"
+                                        CheckedChanged="SortByRadioButton_CheckedChanged" />
+                            <RadioButton Content="Product Code"
+                                        IsChecked="{Binding SortByCode}"
+                                        GroupName="SortBy"
+                                        CheckedChanged="SortByRadioButton_CheckedChanged" />
+                        </VerticalStackLayout>
+                        
+                        <BoxView HeightRequest="1"
+                               Color="Gray"
+                               Margin="0,5,0,5" />
+                        
+                        <!-- Action Buttons -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,10,0,0">
+                            <Button Grid.Column="0" 
+                                    Text="Cancel" 
+                                    BackgroundColor="Gray"
+                                    TextColor="White"
+                                    Command="{Binding CloseFilterPopupCommand}" />
+                            <Button Grid.Column="1" 
+                                    Text="Apply" 
+                                    BackgroundColor="{StaticResource colorLaceupDark}"
+                                    TextColor="White"
+                                    Command="{Binding ApplyFilterCommand}" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </ScrollView>
+            </Frame>
+        </Grid>
     </Grid>
 </local:LaceupContentPage>
 

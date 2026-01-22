@@ -810,13 +810,19 @@ namespace LaceupMigration
             }
         }
 
-        public static void SendGoalByEmail(GoalProgressDTO goal)
+        public static async Task SendGoalByEmail(GoalProgressDTO goal)
         {
             try
             {
                 string pdfFile = GetGoalPdf(goal);
 
-                ShowPdf(pdfFile);
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    return;
+                }
+
+                // Navigate to PDF viewer with the PDF path (matches SendOrderByEmail pattern)
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}");
             }
             catch (Exception ex)
             {
