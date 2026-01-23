@@ -346,32 +346,90 @@ public class InterfaceHelper : IInterfaceHelper
 
         try
         {
-            using (var emailIntent = new Intent(Intent.ActionSend))
+            Java.IO.File file = new Java.IO.File(pdfFile);
+            if (!file.Exists())
             {
-                Java.IO.File file = new Java.IO.File(pdfFile);
+                return; // Verify file exists (matching Xamarin SendEmailWithAttachment)
+            }
 
-                var appPackageName = context.ApplicationInfo.PackageName + ".fileprovider";
-                var apkURI = FileProvider.GetUriForFile(context, appPackageName, file);
+            Android.Net.Uri pdfPath = FileProvider.GetUriForFile(context, $"{context.PackageName}.fileprovider", file);
 
-                emailIntent.PutExtra(Intent.ExtraSubject, subject ?? "Invoice Attached");
-                emailIntent.PutExtra(Intent.ExtraText, body ?? "");
+            Intent emailIntent = new Intent(Intent.ActionSend);
+            emailIntent.SetType("message/rfc822"); // Start with message/rfc822 (matching Xamarin)
+            emailIntent.PutExtra(Intent.ExtraStream, pdfPath);
+            // No recipient and subject set initially so user can enter manually (matching Xamarin comment)
 
-                if (toAddresses != null && toAddresses.Count > 0)
+            // Add email addresses if provided
+            string detination_email = string.Empty;
+            if (toAddresses != null && toAddresses.Count > 0)
+            {
+                detination_email = toAddresses.FirstOrDefault(e => !string.IsNullOrEmpty(e)) ?? string.Empty;
+                if (!string.IsNullOrEmpty(detination_email))
                 {
-                    // Filter and format email addresses (Android prioritized implementation)
-                    var emailArray = toAddresses
-                        .Where(e => !string.IsNullOrEmpty(e))
-                        .Select(e => e.ToLowerInvariant())
-                        .ToArray();
-                    if (emailArray.Length > 0)
-                        emailIntent.PutExtra(Intent.ExtraEmail, emailArray);
+                    emailIntent.PutExtra(Intent.ExtraEmail, new string[] { detination_email.ToLowerInvariant() });
                 }
+            }
 
-                emailIntent.SetType("application/pdf");
-                emailIntent.PutExtra(Intent.ExtraStream, apkURI);
-                emailIntent.AddFlags(ActivityFlags.GrantReadUriPermission);
-                emailIntent.AddFlags(ActivityFlags.NewTask);
+            // If subject and body are provided (e.g., for SoutoBottomEmailText), set them
+            // Keep type as message/rfc822 to ensure email apps are targeted (don't change to text/html)
+            if (!string.IsNullOrEmpty(subject) && !string.IsNullOrEmpty(body))
+            {
+                emailIntent.PutExtra(Intent.ExtraSubject, subject);
+                // Convert HTML body to Spanned text (matching Xamarin Android.Text.Html.FromHtml)
+                // Try simple overload first (matches Xamarin's usage), fallback to direct HTML string if needed
+                try
+                {
+                    // Use the simple FromHtml overload if available (matches Xamarin)
+                    var spannedText = Android.Text.Html.FromHtml(body);
+                    emailIntent.PutExtra(Android.Content.Intent.ExtraText, spannedText);
+                }
+                catch
+                {
+                    // Fallback: pass HTML string directly (email clients can handle HTML)
+                    emailIntent.PutExtra(Android.Content.Intent.ExtraText, body);
+                }
+                // Keep type as message/rfc822 - don't change to text/html to avoid Quick Share dialog
+            }
 
+            // Try Gmail first (most common) - set package BEFORE querying to avoid Share dialog
+            PackageManager packageManager = context.PackageManager;
+            string gmailPackage = "com.google.android.gm";
+            emailIntent.SetPackage(gmailPackage);
+            
+            // Check if Gmail can handle this intent
+            if (emailIntent.ResolveActivity(packageManager) != null)
+            {
+                // Gmail is available, use it directly - this bypasses Share dialog
+                context.GrantUriPermission(gmailPackage, pdfPath, ActivityFlags.GrantReadUriPermission);
+                emailIntent.AddFlags(ActivityFlags.NewTask | ActivityFlags.GrantReadUriPermission);
+                context.StartActivity(emailIntent);
+                return;
+            }
+            
+            // Gmail not available, try other email apps
+            // Clear package and query all activities
+            emailIntent.SetPackage(null);
+            var activities = packageManager.QueryIntentActivities(emailIntent, 0);
+            
+            // Filter to only email apps, excluding Quick Share and other share mechanisms
+            var emailApps = activities.Where(a => 
+            {
+                string packageName = a.ActivityInfo.PackageName.ToLower();
+                return (packageName.Contains("com.android.email") || // Android Email
+                        packageName.Contains("com.microsoft.office.outlook") || // Outlook
+                        packageName.Contains("com.yahoo.mobile.client.android.mail") || // Yahoo Mail
+                        packageName.Contains("com.fsck.k9")) && // K-9 Mail
+                       !packageName.Contains("share") && // Exclude share apps
+                       !packageName.Contains("quick"); // Exclude quick share
+            }).ToList();
+            
+            if (emailApps.Count > 0)
+            {
+                // Use first email app found, set package explicitly to avoid Share dialog
+                var emailApp = emailApps.First();
+                emailIntent.SetPackage(emailApp.ActivityInfo.PackageName);
+                context.GrantUriPermission(emailApp.ActivityInfo.PackageName, pdfPath, ActivityFlags.GrantReadUriPermission);
+                emailIntent.AddFlags(ActivityFlags.NewTask | ActivityFlags.GrantReadUriPermission);
                 context.StartActivity(emailIntent);
             }
         }
