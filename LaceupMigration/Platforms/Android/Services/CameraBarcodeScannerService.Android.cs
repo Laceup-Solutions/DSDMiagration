@@ -10,6 +10,9 @@ using ZXing.Net.Maui;
 using ZXing.Net.Maui.Controls;
 using Task = System.Threading.Tasks.Task;
 using CancellationToken = System.Threading.CancellationToken;
+#if ANDROID
+using Android.Util;
+#endif
 
 namespace LaceupMigration.Platforms.Android.Services;
 
@@ -41,10 +44,19 @@ public class CameraBarcodeScannerService : ICameraBarcodeScannerService
             // Set up barcode detection handler
             scannerPage.OnBarcodeScanned += (sender, barcode) =>
             {
+                Console.WriteLine($"[CameraBarcodeScannerService] OnBarcodeScanned event received: '{(barcode ?? "NULL")}'");
+                System.Diagnostics.Debug.WriteLine($"[CameraBarcodeScannerService] OnBarcodeScanned event received: '{(barcode ?? "NULL")}'");
+                
                 if (!string.IsNullOrEmpty(barcode))
                 {
+                    Console.WriteLine($"[CameraBarcodeScannerService] Setting _scannedResult and releasing semaphore");
                     _scannedResult = barcode;
                     _scanSemaphore.Release();
+                    Console.WriteLine($"[CameraBarcodeScannerService] Semaphore released, _scannedResult = '{_scannedResult}'");
+                }
+                else
+                {
+                    Console.WriteLine("[CameraBarcodeScannerService] OnBarcodeScanned: Barcode is null or empty, ignoring");
                 }
             };
             
@@ -208,7 +220,7 @@ public class CameraBarcodeScannerPage : ContentPage
         // Create ZXing scanner view (CameraBarcodeReaderView)
         _scannerView = new CameraBarcodeReaderView
         {
-            IsDetecting = true,
+            IsDetecting = false, // Start as false, will be set to true after page loads
             IsTorchOn = false,
             Options = new BarcodeReaderOptions
             {
@@ -220,8 +232,17 @@ public class CameraBarcodeScannerPage : ContentPage
             VerticalOptions = LayoutOptions.Fill
         };
         
-        // Handle barcode detected
+        Console.WriteLine("[CameraBarcodeScannerPage] Constructor: Scanner view created");
+        System.Diagnostics.Debug.WriteLine("[CameraBarcodeScannerPage] Constructor: Scanner view created");
+        
+        // Handle barcode detected - attach BEFORE adding to visual tree
         _scannerView.BarcodesDetected += OnBarcodesDetected;
+        
+        // Test: Try to manually trigger to see if event works (this won't work but shows handler is attached)
+        Console.WriteLine("[CameraBarcodeScannerPage] Constructor: BarcodesDetected event handler attached");
+        System.Diagnostics.Debug.WriteLine("[CameraBarcodeScannerPage] Constructor: BarcodesDetected event handler attached");
+        Console.WriteLine("[CameraBarcodeScannerPage] Constructor: BarcodesDetected event handler attached to scanner view");
+        System.Diagnostics.Debug.WriteLine("[CameraBarcodeScannerPage] Constructor: BarcodesDetected event handler attached to scanner view");
         
         // Use Grid to ensure scanner view fills available space
         var scannerContainer = new Grid
@@ -230,13 +251,17 @@ public class CameraBarcodeScannerPage : ContentPage
             BackgroundColor = Colors.Black
         };
         scannerContainer.Children.Add(_scannerView);
+        Console.WriteLine("[CameraBarcodeScannerPage] Constructor: Scanner view added to container, IsDetecting = " + _scannerView.IsDetecting);
+        System.Diagnostics.Debug.WriteLine("[CameraBarcodeScannerPage] Constructor: Scanner view added to container, IsDetecting = " + _scannerView.IsDetecting);
         
         // Add barcode scanning guide overlay with corner brackets
+        // Make it InputTransparent so it doesn't interfere with scanner detection
         var guideOverlay = new Grid
         {
             BackgroundColor = Colors.Transparent,
             HorizontalOptions = LayoutOptions.Fill,
             VerticalOptions = LayoutOptions.Fill,
+            InputTransparent = true // Don't block scanner events
         };
         
         // Semi-transparent overlay for the entire camera view
@@ -399,55 +424,128 @@ public class CameraBarcodeScannerPage : ContentPage
         Content = stackLayout;
         
         // Start scanning when page appears
-        this.Appearing += (s, e) =>
+        this.Appearing += async (s, e) =>
         {
-            if (_scannerView != null)
+            Console.WriteLine("[CameraBarcodeScannerPage] Appearing event fired");
+            System.Diagnostics.Debug.WriteLine("[CameraBarcodeScannerPage] Appearing event fired");
+            
+            // Small delay to ensure camera is ready
+            await Task.Delay(300);
+            
+            if (_scannerView != null && !_isDisposed)
             {
+                Console.WriteLine($"[CameraBarcodeScannerPage] Appearing: Setting IsDetecting = true (current: {_scannerView.IsDetecting})");
+                System.Diagnostics.Debug.WriteLine($"[CameraBarcodeScannerPage] Appearing: Setting IsDetecting = true (current: {_scannerView.IsDetecting})");
+                
+                // Force restart detection
+                _scannerView.IsDetecting = false;
+                await Task.Delay(100);
                 _scannerView.IsDetecting = true;
+                
+                Console.WriteLine($"[CameraBarcodeScannerPage] Appearing: IsDetecting set to {_scannerView.IsDetecting}");
+                System.Diagnostics.Debug.WriteLine($"[CameraBarcodeScannerPage] Appearing: IsDetecting set to {_scannerView.IsDetecting}");
+            }
+            else
+            {
+                Console.WriteLine($"[CameraBarcodeScannerPage] Appearing: Scanner view is null or disposed (IsDisposed: {_isDisposed})");
             }
         };
         
         // Stop scanning when page disappears
         this.Disappearing += (s, e) =>
         {
+            Console.WriteLine("[CameraBarcodeScannerPage] Disappearing event fired - cleaning up");
+            System.Diagnostics.Debug.WriteLine("[CameraBarcodeScannerPage] Disappearing event fired - cleaning up");
             Cleanup();
         };
         
         // Handle page loaded
-        this.Loaded += (s, e) =>
+        this.Loaded += async (s, e) =>
         {
+            Console.WriteLine("[CameraBarcodeScannerPage] Loaded event fired");
+            System.Diagnostics.Debug.WriteLine("[CameraBarcodeScannerPage] Loaded event fired");
+            
+            // Delay to ensure everything is ready
+            await Task.Delay(500);
+            
             if (_scannerView != null && !_isDisposed)
             {
+                Console.WriteLine($"[CameraBarcodeScannerPage] Loaded: Setting IsDetecting = true (current: {_scannerView.IsDetecting})");
+                System.Diagnostics.Debug.WriteLine($"[CameraBarcodeScannerPage] Loaded: Setting IsDetecting = true (current: {_scannerView.IsDetecting})");
+                
+                // Force restart detection
+                _scannerView.IsDetecting = false;
+                await Task.Delay(100);
                 _scannerView.IsDetecting = true;
+                
+                Console.WriteLine($"[CameraBarcodeScannerPage] Loaded: IsDetecting set to {_scannerView.IsDetecting}");
+                System.Diagnostics.Debug.WriteLine($"[CameraBarcodeScannerPage] Loaded: IsDetecting set to {_scannerView.IsDetecting}");
+            }
+            else
+            {
+                Console.WriteLine($"[CameraBarcodeScannerPage] Loaded: Scanner view is null or disposed (IsDisposed: {_isDisposed})");
             }
         };
     }
     
     private void OnBarcodesDetected(object? sender, BarcodeDetectionEventArgs e)
     {
+        // This should fire when ZXing detects a barcode
+        Console.WriteLine($"[CameraBarcodeScannerPage] *** OnBarcodesDetected: EVENT FIRED! *** IsDisposed: {_isDisposed}, ScannerView null: {_scannerView == null}");
+        System.Diagnostics.Debug.WriteLine($"[CameraBarcodeScannerPage] *** OnBarcodesDetected: EVENT FIRED! *** IsDisposed: {_isDisposed}, ScannerView null: {_scannerView == null}");
+        
+#if ANDROID
+        // Also log to Android logcat for visibility
+        Log.Info("BarcodeScanner", $"OnBarcodesDetected fired! IsDisposed: {_isDisposed}");
+#endif
+        
         // Prevent processing if disposed
         if (_isDisposed || _scannerView == null)
         {
+            Console.WriteLine("[CameraBarcodeScannerPage] OnBarcodesDetected: Scanner disposed or null, returning");
             return;
         }
         
         var results = e.Results;
+        var resultCount = results?.Count() ?? 0;
+        Console.WriteLine($"[CameraBarcodeScannerPage] OnBarcodesDetected: Received {resultCount} barcode results");
+        System.Diagnostics.Debug.WriteLine($"[CameraBarcodeScannerPage] OnBarcodesDetected: Received {resultCount} barcode results");
+        
         if (results != null && results.Count() > 0)
         {
             var firstResult = results.First();
             var barcode = firstResult.Value;
             
+            Console.WriteLine($"[CameraBarcodeScannerPage] OnBarcodesDetected: Barcode value: '{(barcode ?? "NULL")}'");
+            System.Diagnostics.Debug.WriteLine($"[CameraBarcodeScannerPage] OnBarcodesDetected: Barcode value: '{(barcode ?? "NULL")}'");
+            
             if (!string.IsNullOrEmpty(barcode) && !_isDisposed)
             {
+                Console.WriteLine($"[CameraBarcodeScannerPage] OnBarcodesDetected: Invoking OnBarcodeScanned event with: '{barcode}'");
+                System.Diagnostics.Debug.WriteLine($"[CameraBarcodeScannerPage] OnBarcodesDetected: Invoking OnBarcodeScanned event with: '{barcode}'");
+                
                 // Invoke on main thread to ensure UI updates work correctly
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     if (!_isDisposed)
                     {
+                        Console.WriteLine($"[CameraBarcodeScannerPage] OnBarcodesDetected: Calling OnBarcodeScanned?.Invoke");
                         OnBarcodeScanned?.Invoke(this, barcode);
+                    }
+                    else
+                    {
+                        Console.WriteLine("[CameraBarcodeScannerPage] OnBarcodesDetected: Scanner was disposed before invoking");
                     }
                 });
             }
+            else
+            {
+                Console.WriteLine($"[CameraBarcodeScannerPage] OnBarcodesDetected: Barcode is empty or scanner disposed");
+            }
+        }
+        else
+        {
+            Console.WriteLine("[CameraBarcodeScannerPage] OnBarcodesDetected: No results or empty results");
         }
     }
     

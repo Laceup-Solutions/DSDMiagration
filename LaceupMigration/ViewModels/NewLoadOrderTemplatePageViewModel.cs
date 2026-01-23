@@ -17,6 +17,7 @@ namespace LaceupMigration.ViewModels
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
         private readonly AdvancedOptionsService _advancedOptionsService;
+        private readonly LaceupMigration.Business.Interfaces.ICameraBarcodeScannerService _cameraBarcodeScanner;
         private Order _loadOrder;
         private bool _readOnly;
         private bool _canGetOut;
@@ -37,11 +38,12 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private LaceupMigration.SiteEx _selectedSite;
         [ObservableProperty] private bool _isNotReadOnly = true;
 
-        public NewLoadOrderTemplatePageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService)
+        public NewLoadOrderTemplatePageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService, LaceupMigration.Business.Interfaces.ICameraBarcodeScannerService cameraBarcodeScanner)
         {
             _dialogService = dialogService;
             _appService = appService;
             _advancedOptionsService = advancedOptionsService;
+            _cameraBarcodeScanner = cameraBarcodeScanner;
             ShowTerm = Config.UseTermsInLoadOrder;
             ShowNextServiceDate = Config.AutoGenerateLoadOrder;
             ShowDriver = Config.MasterLoadOrder;
@@ -396,7 +398,14 @@ namespace LaceupMigration.ViewModels
             }
 
             _appService.RecordEvent("search button");
-            var searchTerm = await _dialogService.ShowPromptAsync("Enter Product Name", "Search", "OK", "Cancel", "Product Name");
+            // Use ShowPromptWithScanAsync to match Xamarin's simpleTextViewWithScan layout with scan icon
+            var searchTerm = await _dialogService.ShowPromptWithScanAsync(
+                "Search",
+                "Enter Product Name",
+                async () => await _cameraBarcodeScanner.ScanBarcodeAsync(),
+                "OK",
+                "Cancel",
+                "Product Name");
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}&productSearch={Uri.EscapeDataString(searchTerm)}&comingFromSearch=true");

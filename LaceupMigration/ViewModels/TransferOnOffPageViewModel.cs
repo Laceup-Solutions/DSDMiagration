@@ -202,6 +202,18 @@ namespace LaceupMigration.ViewModels
                     (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
                     (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
 
+                // Match Xamarin FindScannedProduct logic: if product is null, show "xxxxxx is not assigned to any product"
+                // This matches Xamarin ActivityExtensionMethods.FindScannedProduct line 256:
+                // DisplayDialog(sender, sender.GetString(Resource.String.alert), (exists ? inventoryMessage : data + " " + sender.GetString(Resource.String.notAssigned)), ...)
+                if (product == null)
+                {
+                    await _dialogService.ShowAlertAsync(
+                        $"{scanResult} is not assigned to any product.",
+                        "Alert",
+                        "OK");
+                    return;
+                }
+
                 await ScannerDoTheThingAsync(product);
             }
             catch (Exception ex)
