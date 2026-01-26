@@ -73,6 +73,258 @@ public class DialogService : IDialogService
         return null;
     }
 
+    public async Task<string> ShowPromptWithScanAsync(string title, string message, Func<Task<string>> scanAction, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", string initialValue = "")
+    {
+        var page = GetCurrentPage();
+        if (page == null)
+            return null;
+
+        var tcs = new TaskCompletionSource<string>();
+
+        // Create entry field
+        var entry = new Entry
+        {
+            Text = initialValue,
+            Placeholder = placeholder,
+            FontSize = 14,
+            BackgroundColor = Colors.White,
+            HeightRequest = 40
+        };
+
+        // Create scan icon button (using FontImageSource for QR code scanner icon)
+        // Using MaterialOutlinedIcons font to match XAML usage: mi:MaterialOutlined Icon=QrCodeScanner
+        var scanButton = new ImageButton
+        {
+            Source = new FontImageSource
+            {
+                Glyph = "\uF6C8", // QR code scanner icon in Material Outlined Icons (approximate Unicode)
+                FontFamily = "MaterialOutlinedIcons",
+                Size = 24,
+                Color = Colors.Black
+            },
+            WidthRequest = 40,
+            HeightRequest = 40,
+            BackgroundColor = Colors.Transparent,
+            VerticalOptions = LayoutOptions.Center,
+            HorizontalOptions = LayoutOptions.Center
+        };
+
+        // Handle scan button click
+        scanButton.Clicked += async (s, e) =>
+        {
+            try
+            {
+                var scanResult = await scanAction();
+                if (!string.IsNullOrEmpty(scanResult))
+                {
+                    entry.Text = scanResult;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error scanning: {ex.Message}");
+            }
+        };
+
+        // Create layout with entry and scan button
+        var inputRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto }
+            },
+            ColumnSpacing = 8,
+            Margin = new Thickness(0, 10, 0, 0)
+        };
+        Grid.SetColumn(entry, 0);
+        Grid.SetColumn(scanButton, 1);
+        inputRow.Children.Add(entry);
+        inputRow.Children.Add(scanButton);
+
+        // Create content
+        var content = new VerticalStackLayout
+        {
+            Spacing = 0,
+            BackgroundColor = Colors.White,
+            Padding = new Thickness(20, 20, 20, 10),
+            Children =
+            {
+                new Label
+                {
+                    Text = message,
+                    FontSize = 14,
+                    TextColor = Colors.Black,
+                    Margin = new Thickness(0, 0, 0, 10)
+                },
+                inputRow
+            }
+        };
+
+        // Create buttons
+        var cancelButton = new Button
+        {
+            Text = cancelText,
+            BackgroundColor = Colors.Transparent,
+            TextColor = Color.FromArgb("#017CBA"),
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            Margin = new Thickness(0),
+            CornerRadius = 0,
+            HeightRequest = 40
+        };
+
+        var okButton = new Button
+        {
+            Text = acceptText,
+            BackgroundColor = Colors.Transparent,
+            TextColor = Color.FromArgb("#017CBA"),
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            Margin = new Thickness(0),
+            CornerRadius = 0,
+            HeightRequest = 40
+        };
+
+        var buttonSeparator = new BoxView
+        {
+            WidthRequest = 1,
+            BackgroundColor = Color.FromArgb("#E0E0E0"),
+            VerticalOptions = LayoutOptions.Fill
+        };
+
+        var buttonRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = 1 },
+                new ColumnDefinition { Width = GridLength.Star }
+            },
+            ColumnSpacing = 0,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0),
+            BackgroundColor = Colors.White,
+            HeightRequest = 40
+        };
+
+        Grid.SetColumn(cancelButton, 0);
+        Grid.SetColumn(buttonSeparator, 1);
+        Grid.SetColumn(okButton, 2);
+        buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(buttonSeparator);
+        buttonRow.Children.Add(okButton);
+
+        // Main container
+        var mainContainer = new VerticalStackLayout
+        {
+            Spacing = 0,
+            BackgroundColor = Colors.White,
+            Children =
+            {
+                new Label
+                {
+                    Text = title,
+                    FontSize = 18,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Color.FromArgb("#017CBA"),
+                    Padding = new Thickness(20, 20, 20, 15),
+                    BackgroundColor = Colors.White
+                },
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") },
+                content,
+                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0, 4, 0, 0) },
+                buttonRow
+            }
+        };
+
+        var dialogBorder = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 0,
+            Padding = 0,
+            Margin = new Thickness(20),
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(8) },
+            WidthRequest = 320,
+            MaximumWidthRequest = 400,
+            Content = mainContainer
+        };
+
+        var overlayGrid = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"),
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            },
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        Grid.SetRow(dialogBorder, 1);
+        Grid.SetColumn(dialogBorder, 1);
+        overlayGrid.Children.Add(dialogBorder);
+
+        var dialog = new ContentPage
+        {
+            BackgroundColor = Colors.Transparent,
+            Content = overlayGrid
+        };
+
+        async Task SafePopModalAsync()
+        {
+            try
+            {
+                var currentPage = GetCurrentPage();
+                if (currentPage != null)
+                {
+                    if (currentPage == dialog && currentPage.Navigation.ModalStack.Count > 0)
+                    {
+                        await currentPage.Navigation.PopModalAsync();
+                    }
+                    else if (page != null && page.Navigation.ModalStack.Count > 0)
+                    {
+                        await page.Navigation.PopModalAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error popping modal: {ex.Message}");
+            }
+        }
+
+        okButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult(entry.Text);
+        };
+
+        cancelButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult(null);
+        };
+
+        await page.Navigation.PushModalAsync(dialog);
+        
+        // Focus entry and select all text if it has initial value
+        entry.Focus();
+        if (!string.IsNullOrEmpty(entry.Text))
+        {
+            entry.CursorPosition = 0;
+            entry.SelectionLength = entry.Text.Length;
+        }
+
+        return await tcs.Task;
+    }
+
     /// <summary>
     /// Custom quantity prompt dialog that automatically selects all text when opened.
     /// This makes it easier to edit quantity values.
