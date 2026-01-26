@@ -1,6 +1,9 @@
 ﻿using Microsoft.Maui.Controls.Shapes;
 using LaceupMigration;
-
+using LaceupMigration.Helpers;
+using MauiIcons.Core;
+using MauiIcons.Material.Outlined;
+using MauiIcons.Material; 
 namespace LaceupMigration.Controls;
 
 // In your MAUI project
@@ -63,17 +66,23 @@ public class DialogService : IDialogService
         return cancelText;
     }
 
-    public async Task<string> ShowPromptAsync(string title, string message, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", int maxLength = -1, string initialValue = "", Keyboard keyboard = null)
+    public async Task<string> ShowPromptAsync(string title, string message, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", int maxLength = -1, string initialValue = "", Keyboard keyboard = null, bool showScanIcon = false, Func<Task<string>> scanAction = null)
     {
         var page = GetCurrentPage();
-        if (page != null)
+        if (page == null)
+            return null;
+
+        // If scan icon is requested, use custom dialog that looks like native prompt
+        if (showScanIcon && scanAction != null)
         {
-            return await page.DisplayPromptAsync(title, message, acceptText, cancelText, placeholder, maxLength, initialValue: initialValue, keyboard: keyboard);
+            return await ShowPromptWithScanAsync(title, message, scanAction, acceptText, cancelText, placeholder, initialValue, maxLength, keyboard);
         }
-        return null;
+
+        // Otherwise, use default native implementation
+        return await page.DisplayPromptAsync(title, message, acceptText, cancelText, placeholder, maxLength, initialValue: initialValue, keyboard: keyboard);
     }
 
-    public async Task<string> ShowPromptWithScanAsync(string title, string message, Func<Task<string>> scanAction, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", string initialValue = "")
+    private async Task<string> ShowPromptWithScanAsync(string title, string message, Func<Task<string>> scanAction, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", string initialValue = "", int maxLength = -1, Keyboard keyboard = null)
     {
         var page = GetCurrentPage();
         if (page == null)
@@ -81,32 +90,34 @@ public class DialogService : IDialogService
 
         var tcs = new TaskCompletionSource<string>();
 
-        // Create entry field
+        // Create entry field - match native prompt style (underline, no border)
         var entry = new Entry
         {
             Text = initialValue,
             Placeholder = placeholder,
-            FontSize = 14,
-            BackgroundColor = Colors.White,
-            HeightRequest = 40
+            FontSize = 16,
+            Keyboard = keyboard ?? Keyboard.Default,
+            BackgroundColor = Colors.Transparent,
+            PlaceholderColor = Colors.Gray
         };
 
-        // Create scan icon button (using FontImageSource for QR code scanner icon)
-        // Using MaterialOutlinedIcons font to match XAML usage: mi:MaterialOutlined Icon=QrCodeScanner
+        if (maxLength > 0)
+        {
+            entry.MaxLength = maxLength;
+        }
+
+        // Create scan icon button - use QrCodeScanner icon from MauiIcons
+        // Use FontImageSource directly with the correct glyph code for QrCodeScanner
+        // Material Icons QrCodeScanner Unicode: \uE8B6 (qr_code_scanner)
         var scanButton = new ImageButton
         {
-            Source = new FontImageSource
-            {
-                Glyph = "\uF6C8", // QR code scanner icon in Material Outlined Icons (approximate Unicode)
-                FontFamily = "MaterialOutlinedIcons",
-                Size = 24,
-                Color = Colors.Black
-            },
+            Source = MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.QrCodeScanner, Colors.Black),
             WidthRequest = 40,
             HeightRequest = 40,
             BackgroundColor = Colors.Transparent,
             VerticalOptions = LayoutOptions.Center,
-            HorizontalOptions = LayoutOptions.Center
+            HorizontalOptions = LayoutOptions.End,
+            Padding = new Thickness(8, 0, 0, 0)
         };
 
         // Handle scan button click
@@ -126,7 +137,7 @@ public class DialogService : IDialogService
             }
         };
 
-        // Create layout with entry and scan button
+        // Create layout with entry and scan button on same row - entry takes most space, button on right
         var inputRow = new Grid
         {
             ColumnDefinitions = new ColumnDefinitionCollection
@@ -134,88 +145,61 @@ public class DialogService : IDialogService
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
                 new ColumnDefinition { Width = GridLength.Auto }
             },
-            ColumnSpacing = 8,
-            Margin = new Thickness(0, 10, 0, 0)
+            ColumnSpacing = 0,
+            Padding = new Thickness(0, 8, 0, 8)
         };
         Grid.SetColumn(entry, 0);
         Grid.SetColumn(scanButton, 1);
         inputRow.Children.Add(entry);
         inputRow.Children.Add(scanButton);
 
-        // Create content
+        // Content - match native prompt style (simpler, cleaner)
         var content = new VerticalStackLayout
         {
-            Spacing = 0,
-            BackgroundColor = Colors.White,
-            Padding = new Thickness(20, 20, 20, 10),
+            Spacing = 12,
+            Padding = new Thickness(24, 10, 24, 16),
             Children =
             {
                 new Label
                 {
                     Text = message,
-                    FontSize = 14,
-                    TextColor = Colors.Black,
-                    Margin = new Thickness(0, 0, 0, 10)
+                    FontSize = 12,
+                    TextColor = Colors.Black
                 },
                 inputRow
             }
         };
 
-        // Create buttons
+        // Buttons - match native prompt style (text buttons, not full buttons)
         var cancelButton = new Button
         {
             Text = cancelText,
-            BackgroundColor = Colors.Transparent,
-            TextColor = Color.FromArgb("#017CBA"),
             FontSize = 16,
-            FontAttributes = FontAttributes.Bold,
-            Margin = new Thickness(0),
-            CornerRadius = 0,
-            HeightRequest = 40
+            TextColor = Colors.Black,
+            BackgroundColor = Colors.Transparent,
+            BorderWidth = 0,
+            Padding = new Thickness(16, 8)
         };
 
         var okButton = new Button
         {
             Text = acceptText,
-            BackgroundColor = Colors.Transparent,
-            TextColor = Color.FromArgb("#017CBA"),
             FontSize = 16,
-            FontAttributes = FontAttributes.Bold,
-            Margin = new Thickness(0),
-            CornerRadius = 0,
-            HeightRequest = 40
+            TextColor = Colors.Black,
+            BackgroundColor = Colors.Transparent,
+            BorderWidth = 0,
+            Padding = new Thickness(16, 8)
         };
 
-        var buttonSeparator = new BoxView
+        var buttonRow = new HorizontalStackLayout
         {
-            WidthRequest = 1,
-            BackgroundColor = Color.FromArgb("#E0E0E0"),
-            VerticalOptions = LayoutOptions.Fill
+            Spacing = 0,
+            HorizontalOptions = LayoutOptions.End,
+            Padding = new Thickness(8, 8, 8, 8),
+            Children = { cancelButton, okButton }
         };
 
-        var buttonRow = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitionCollection
-            {
-                new ColumnDefinition { Width = GridLength.Star },
-                new ColumnDefinition { Width = 1 },
-                new ColumnDefinition { Width = GridLength.Star }
-            },
-            ColumnSpacing = 0,
-            Padding = new Thickness(0),
-            Margin = new Thickness(0),
-            BackgroundColor = Colors.White,
-            HeightRequest = 40
-        };
-
-        Grid.SetColumn(cancelButton, 0);
-        Grid.SetColumn(buttonSeparator, 1);
-        Grid.SetColumn(okButton, 2);
-        buttonRow.Children.Add(cancelButton);
-        buttonRow.Children.Add(buttonSeparator);
-        buttonRow.Children.Add(okButton);
-
-        // Main container
+        // Main container - match native prompt style (simpler layout)
         var mainContainer = new VerticalStackLayout
         {
             Spacing = 0,
@@ -225,28 +209,29 @@ public class DialogService : IDialogService
                 new Label
                 {
                     Text = title,
-                    FontSize = 18,
-                    FontAttributes = FontAttributes.Bold,
-                    TextColor = Color.FromArgb("#017CBA"),
-                    Padding = new Thickness(20, 20, 20, 15),
-                    BackgroundColor = Colors.White
+                    FontSize = 16,
+                    Padding = new Thickness(24, 24, 24, 0),
+                    TextColor = Colors.Black
                 },
-                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0") },
                 content,
-                new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0, 4, 0, 0) },
                 buttonRow
             }
         };
 
+        // Calculate 70% of screen width
+        var screenWidth = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density;
+        var dialogWidth = screenWidth * 0.70;
+
+        // Border - match native prompt style (rounded corners, shadow effect)
         var dialogBorder = new Border
         {
             BackgroundColor = Colors.White,
             StrokeThickness = 0,
             Padding = 0,
             Margin = new Thickness(20),
-            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(8) },
-            WidthRequest = 320,
-            MaximumWidthRequest = 400,
+            WidthRequest = dialogWidth,
+            MaximumWidthRequest = dialogWidth,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(4) },
             Content = mainContainer
         };
 
@@ -314,7 +299,7 @@ public class DialogService : IDialogService
 
         await page.Navigation.PushModalAsync(dialog);
         
-        // Focus entry and select all text if it has initial value
+        // Focus entry
         entry.Focus();
         if (!string.IsNullOrEmpty(entry.Text))
         {
