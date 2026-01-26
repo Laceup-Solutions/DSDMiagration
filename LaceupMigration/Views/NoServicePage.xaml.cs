@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace LaceupMigration.Views
 {
-    public partial class NoServicePage : IQueryAttributable
+    public partial class NoServicePage : LaceupContentPage, IQueryAttributable
     {
         private readonly NoServicePageViewModel _viewModel;
 
@@ -29,6 +29,29 @@ namespace LaceupMigration.Views
         {
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
+        }
+
+        /// <summary>
+        /// Override GoBack to handle cleanup when user navigates back without completing the NoService order.
+        /// This matches Xamarin NoServiceActivity behavior - if order is not completed, delete it.
+        /// This is called by both the physical back button and navigation bar back button.
+        /// </summary>
+        protected override void GoBack()
+        {
+            // Call ViewModel's GoBackAsync which handles cleanup logic
+            // This is async, but GoBack() is synchronous, so we fire and forget
+            _ = _viewModel.GoBackAsync();
+        }
+
+        /// <summary>
+        /// Override OnBackButtonPressed to handle physical back button.
+        /// This ensures the physical back button has the same behavior as the navigation back button.
+        /// </summary>
+        protected override bool OnBackButtonPressed()
+        {
+            // Handle physical back button - call GoBack which will handle cleanup
+            GoBack();
+            return true; // Prevent default back navigation (we handle it in GoBack)
         }
     }
 }

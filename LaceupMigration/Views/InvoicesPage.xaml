@@ -14,8 +14,8 @@
     </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,Auto,Auto,*"
-          Padding="16"
-          RowSpacing="12">
+          Padding="12"
+          RowSpacing="8">
         <Border Grid.Row="0"
                 StrokeThickness="1"
                 BackgroundColor="white"
@@ -95,86 +95,60 @@
                         EmptyView="No invoices available.">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:InvoiceGroupItemViewModel">
-                    <Grid Style="{StaticResource CollectionViewItemStyle}">
+                    <VerticalStackLayout Spacing="0">
                         <!-- Group Header -->
-                        <Frame Padding="12"
-                               Margin="0,8,0,4"
-                               BackgroundColor="#F5F5F5"
-                               HasShadow="False"
-                               IsVisible="{Binding IsGroupHeader}">
+                        <BoxView HeightRequest="1"
+                                 BackgroundColor="#E0E0E0"
+                                 Margin="0"
+                                 IsVisible="{Binding IsGroupHeader}" />
+                        <Grid Padding="8,6"
+                              BackgroundColor="#DDF0FF"
+                              IsVisible="{Binding IsGroupHeader}">
                             <Label Text="{Binding ClientName}"
-                                   FontSize="16"
-                                   FontAttributes="Bold" />
-                        </Frame>
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   TextColor="Black" />
+                        </Grid>
                         
                         <!-- Invoice Item -->
-                        <Frame Margin="0,4"
-                               Padding="12"
-                               HasShadow="False"
-                               BorderColor="#E0E0E0"
-                               CornerRadius="10"
-                               IsVisible="{Binding IsGroupHeader, Converter={StaticResource InvertedBoolConverter}}">
-                            <Grid ColumnDefinitions="Auto,*"
-                                  RowDefinitions="Auto,Auto,Auto"
-                                  ColumnSpacing="12">
-                                <CheckBox Grid.Row="0"
-                                          Grid.Column="0"
-                                          IsChecked="{Binding InvoiceItem.IsSelected}"
-                                          VerticalOptions="Center" />
-                                <Grid Grid.Row="0"
-                                      Grid.Column="1"
-                                      ColumnDefinitions="*,Auto">
-                                    <Grid.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding InvoiceItem.ViewDetailsCommand}" />
-                                    </Grid.GestureRecognizers>
-                                    <VerticalStackLayout Grid.Column="0"
-                                                         Spacing="4">
-                                        <Label Text="{Binding InvoiceItem.InvoiceNumberText}"
-                                               FontSize="16"
-                                               FontAttributes="Bold" />
-                                        <Label Text="{Binding InvoiceItem.DateText}"
-                                               FontSize="13"
-                                               TextColor="#666666" />
-                                        <Grid ColumnDefinitions="*,*"
-                                              IsVisible="{Binding InvoiceItem.ShowAmounts}">
-                                            <Label Grid.Column="0"
-                                                   Text="{Binding InvoiceItem.TotalText}"
-                                                   FontSize="13" />
-                                            <Label Grid.Column="1"
-                                                   Text="{Binding InvoiceItem.OpenBalanceText}"
-                                                   FontSize="13"
-                                                   TextColor="{Binding InvoiceItem.OpenBalanceColor}"
-                                                   HorizontalOptions="End" />
-                                        </Grid>
-                                        <Label Text="{Binding InvoiceItem.DiscountText}"
-                                               FontSize="12"
-                                               TextColor="#4CAF50"
-                                               IsVisible="{Binding InvoiceItem.ShowDiscount}" />
-                                        <Frame IsVisible="{Binding InvoiceItem.ShowGoalInfo}"
-                                               Padding="8"
-                                               BackgroundColor="#E3F2FD"
-                                               HasShadow="False">
-                                            <VerticalStackLayout Spacing="4">
-                                                <Label Text="{Binding InvoiceItem.GoalPaymentText}"
-                                                       FontSize="12" />
-                                                <Label Text="{Binding InvoiceItem.PendingDaysText}"
-                                                       FontSize="12" />
-                                            </VerticalStackLayout>
-                                        </Frame>
-                                    </VerticalStackLayout>
-                                    <Button Grid.Column="1"
-                                            Text="→"
-                                            FontSize="18"
-                                            BackgroundColor="Transparent"
-                                            TextColor="#1976D2"
-                                            Command="{Binding InvoiceItem.ViewDetailsCommand}"
-                                            WidthRequest="40"
-                                            HeightRequest="40"
-                                            Padding="0" />
-                                </Grid>
-                            </Grid>
-                        </Frame>
-                    </Grid>
+                        <Grid ColumnDefinitions="Auto,*,Auto"
+                              Padding="8,4"
+                              BackgroundColor="White"
+                              InputTransparent="False"
+                              IsVisible="{Binding IsGroupHeader, Converter={StaticResource InvertedBoolConverter}}">
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding InvoiceItem.ViewDetailsCommand}" />
+                            </Grid.GestureRecognizers>
+                            <CheckBox Grid.Column="0"
+                                      IsChecked="{Binding InvoiceItem.IsSelected}"
+                                      VerticalOptions="Center"
+                                      Margin="0,0,8,0" />
+                            <VerticalStackLayout Grid.Column="1"
+                                                 Spacing="2"
+                                                 VerticalOptions="Center">
+                                <Label Text="{Binding InvoiceItem.InvoiceNumberText}"
+                                       FontSize="14"
+                                       TextColor="Black" />
+                                <Label Text="{Binding InvoiceItem.DateText}"
+                                       FontSize="14"
+                                       TextColor="Black" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="2"
+                                                 Spacing="2"
+                                                 HorizontalOptions="End"
+                                                 VerticalOptions="Center"
+                                                 IsVisible="{Binding InvoiceItem.ShowAmounts}">
+                                <Label Text="{Binding InvoiceItem.TotalText}"
+                                       FontSize="14"
+                                       TextColor="Black"
+                                       HorizontalOptions="End" />
+                                <Label Text="{Binding InvoiceItem.OpenBalanceText}"
+                                       FontSize="14"
+                                       TextColor="{Binding InvoiceItem.OpenBalanceColor}"
+                                       HorizontalOptions="End" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </VerticalStackLayout>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
             <CollectionView.ItemsLayout>

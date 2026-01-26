@@ -433,15 +433,8 @@ namespace LaceupMigration.ViewModels
                 await _dialogService.ShowAlertAsync("No orders to print.", "Alert");
                 return;
             }
-
-            var copies = await _dialogService.ShowPromptAsync("Copies to Print", "Enter number of copies:", initialValue: "1", keyboard: Keyboard.Numeric);
-            if (string.IsNullOrWhiteSpace(copies) || !int.TryParse(copies, out var copiesCount) || copiesCount < 1)
-            {
-                await _dialogService.ShowAlertAsync("Please enter a valid number of copies.", "Alert");
-                return;
-            }
-
-            await PrintBatchAsync(selectedOrders, copiesCount, false);
+            
+            await PrintBatchAsync(selectedOrders, false);
         }
 
         [RelayCommand]
@@ -454,14 +447,7 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            var copies = await _dialogService.ShowPromptAsync("Copies to Print", "Enter number of copies:", initialValue: "1", keyboard: Keyboard.Numeric);
-            if (string.IsNullOrWhiteSpace(copies) || !int.TryParse(copies, out var copiesCount) || copiesCount < 1)
-            {
-                await _dialogService.ShowAlertAsync("Please enter a valid number of copies.", "Alert");
-                return;
-            }
-
-            await PrintBatchAsync(selectedOrders, copiesCount, false);
+            await PrintBatchAsync(selectedOrders, false);
         }
 
         [RelayCommand]
@@ -805,7 +791,7 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private async Task PrintBatchAsync(List<Order> orders, int copies, bool isPickTicket)
+        private async Task PrintBatchAsync(List<Order> orders, bool isPickTicket)
         {
             if (orders.Count == 0)
             {
@@ -879,7 +865,7 @@ namespace LaceupMigration.ViewModels
                     if (!allWent)
                         return "At least one order failed to print.";
                     return string.Empty;
-                }, copies);
+                });
             }
             catch (Exception ex)
             {

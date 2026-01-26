@@ -757,18 +757,18 @@ namespace LaceupMigration.ViewModels
 			{
 				var label = _invoice.InvoiceType switch
 				{
-					1 => "Credit:",
-					2 => "Quote:",
-					3 => "Sales Order:",
-					4 => "Credit Invoice:",
-					_ => "Invoice:"
+					1 => "Credit #:",
+					2 => "Quote #:",
+					3 => "Sales Order #:",
+					4 => "Credit Invoice #:",
+					_ => "Invoice #:"
 				};
-				return $"{label} {_invoice.InvoiceNumber}";
+				return $"{label}{_invoice.InvoiceNumber}";
 			}
 		}
 
-		public string DateText => $"Date: {_invoice.Date.ToShortDateString()}";
-		public string TotalText => $"Total: {_invoice.Amount.ToCustomString()}";
+		public string DateText => $"Date:{_invoice.Date.ToShortDateString()}";
+		public string TotalText => $"Total:{_invoice.Amount.ToCustomString()}";
 
 		// Cached values to avoid expensive recalculations during scrolling
 		private string? _cachedOpenBalanceText;
@@ -783,7 +783,7 @@ namespace LaceupMigration.ViewModels
 				if (_cachedOpenBalanceText == null)
 				{
 					CalculateOpenBalance();
-					_cachedOpenBalanceText = $"Open: {_openBalance.ToCustomString()}";
+					_cachedOpenBalanceText = $"Open:{_openBalance.ToCustomString()}";
 				}
 				return _cachedOpenBalanceText;
 			}
@@ -801,10 +801,8 @@ namespace LaceupMigration.ViewModels
 					
 					if (_openBalance == 0)
 						_cachedOpenBalanceColor = Colors.Green;
-					else if (_invoice.DueDate < DateTime.Today)
-						_cachedOpenBalanceColor = Colors.Red;
 					else
-						_cachedOpenBalanceColor = Colors.Black;
+						_cachedOpenBalanceColor = Colors.Red; // Always red for open balance (matching image)
 				}
 				return _cachedOpenBalanceColor;
 			}

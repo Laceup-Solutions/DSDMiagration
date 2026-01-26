@@ -34,6 +34,15 @@ namespace LaceupMigration.ViewModels
         private int _lastScannedProductId = 0;
         private List<int> _relatedLines = new();
         
+        // WhatToViewInList enum and field (matches AdvancedTemplateActivity)
+        private enum WhatToViewInList
+        {
+            All,
+            Selected
+        }
+        
+        private WhatToViewInList _whatToViewInList = WhatToViewInList.All;
+        
         // Performance optimization: caching
         private List<AdvancedCatalogItemViewModel>? _cachedItems = null;
         private int? _cachedItemType = null;
@@ -235,6 +244,12 @@ namespace LaceupMigration.ViewModels
             
             ShowSendButton = _order.AsPresale;
 
+            // Initialize What To View filter based on whether order has details
+            if (_order.Details.Count > 0)
+            {
+                _whatToViewInList = WhatToViewInList.Selected; // Show only ordered items if order has details
+            }
+
             // Company info
             if (!string.IsNullOrEmpty(_order.CompanyName))
             {
@@ -367,7 +382,7 @@ namespace LaceupMigration.ViewModels
 
             var items = new List<AdvancedCatalogItemViewModel>();
 
-            var products = Product.GetProductListForOrder(_order, _itemType > 0, categoryId);
+            var products = Product.GetProductListForOrder(_order, _itemType > 0, categoryId, true);
 
             if (!string.IsNullOrEmpty(_searchCriteriaFromCategories))
             {
@@ -640,6 +655,20 @@ namespace LaceupMigration.ViewModels
                 
                 // Access Details to trigger CollectionChanged handler which will notify property changes
                 _ = item.Details;
+
+                // Apply "Just Ordered" filter (matches Xamarin whatToViewInList == WhatToViewInList.Selected)
+                if (_whatToViewInList == WhatToViewInList.Selected)
+                {
+                    // Check if this product has any non-free order details for the current item type
+                    var hasOrderDetail = item.Details.Any(d => d.Detail != null && !d.Detail.IsFreeItem && 
+                        (string.IsNullOrEmpty(d.Detail.ExtraFields) || !d.Detail.ExtraFields.Contains("productfree")));
+                    
+                    if (!hasOrderDetail)
+                    {
+                        // Skip items not in the current order when showing "Just Ordered"
+                        continue;
+                    }
+                }
 
                 items.Add(item);
             }
@@ -2645,157 +2674,406 @@ namespace LaceupMigration.ViewModels
                 return options;
 
             var finalized = _order.Finished;
-            var allowDiscount = _order.Client.UseDiscount;
+            var voided = _order.Voided;
+            var canEdit = CanEdit;
+            var locked = _order.Locked();
+            var asset = UDFHelper.GetSingleUDF("workOrderAsset", _order.ExtraFields);
+            var isWorkOrder = _order != null && _order.IsWorkOrder;
+            var hasOrderDiscounts = OrderDiscount.List.Count > 0 && !isWorkOrder;
+            var allowDiscount = _order.Client.UseDiscount && !OrderDiscount.HasDiscounts;
+            var isSplitClient = _order.Client.SplitInvoices.Count > 0;
             var asPresale = _order.AsPresale;
 
-            // Add Send Order as first option if applicable
-            if (ShowSendButton && CanEdit)
+            // Xamarin PreviouslyOrderedTemplateActivity logic:
+            // If !AsPresale && (Finished || Voided), only show Print option
+            bool isReadOnly = !_order.AsPresale && (finalized || voided);
+            
+            if (isReadOnly)
             {
-                options.Add(new MenuOption("Send Order", async () => { await SendOrderAsync(); }));
+                // Only allow Print when read-only
+                options.Add(new MenuOption("Print", async () =>
+                {
+                    await PrintAsync();
+                }));
+                return options;
             }
 
+            // Scanner (only if Config.ScannerToUse == 4)
+            if (Config.ScannerToUse == 4)
+            {
+                options.Add(new MenuOption("Scan", async () =>
+                {
+                    await GotoBarcodeReaderAsync();
+                }));
+            }
+
+            // Presale-specific menu items (matching AdvancedTemplateActivity order)
             if (asPresale)
             {
-                // Presale menu items
-                if (allowDiscount && !_order.Locked())
+                // Discount (presale)
+                if (allowDiscount)
                 {
-                    options.Add(new MenuOption("Add Discount",
-                        async () =>
-                        {
-                            await _dialogService.ShowAlertAsync(
-                                "Add Discount functionality is not yet fully implemented.", "Info");
-                        }));
-                }
-
-                if (Config.SetPO && (_order.OrderType != OrderType.Order || Config.POIsMandatory))
-                {
-                    options.Add(new MenuOption("Set PO", async () =>
+                    options.Add(new MenuOption("Add Discount", async () =>
                     {
-                        var po = await _dialogService.ShowPromptAsync("Set PO", "Enter PO Number:",
-                            initialValue: _order.PONumber ?? string.Empty);
-                        if (!string.IsNullOrWhiteSpace(po))
-                        {
-                            _order.PONumber = po;
-                            _order.Save();
-                            await _dialogService.ShowAlertAsync("PO number set.", "Success");
-                        }
+                        await ApplyDiscountAsync();
                     }));
                 }
 
-                if (Config.PrinterAvailable)
+                // Set PO (presale)
+                options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO", async () =>
                 {
-                    options.Add(new MenuOption("Print",
-                        async () =>
-                        {
-                            await _dialogService.ShowAlertAsync("Print functionality is not yet fully implemented.",
-                                "Info");
-                        }));
-                }
-
-                options.Add(new MenuOption("Set Ship Date", async () =>
-                {
-                    var currentShipDate = _order.ShipDate.Year == 1 ? DateTime.Now : _order.ShipDate;
-                    var selectedDate =
-                        await _dialogService.ShowDatePickerAsync("Set Ship Date", currentShipDate, DateTime.Now, null);
-                    if (selectedDate.HasValue)
-                    {
-                        _order.ShipDate = selectedDate.Value;
-                        _order.Save();
-                    }
+                    await GetPONumberAsync();
                 }));
 
-                if (!(_order.Client.SplitInvoices.Count > 0))
+                // Print (presale)
+                if (Config.PrinterAvailable)
                 {
-                    options.Add(new MenuOption("Send by Email",
-                        async () =>
-                        {
-                            await _dialogService.ShowAlertAsync(
-                                "Send by Email functionality is not yet fully implemented.", "Info");
-                        }));
-
-                    options.Add(new MenuOption("Share PDF",
-                        async () =>
-                        {
-                            await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.",
-                                "Info");
-                        }));
+                    options.Add(new MenuOption("Print", async () =>
+                    {
+                        await PrintAsync();
+                    }));
                 }
+
+                // Ship Via (presale)
+                if (Config.ShowShipVia)
+                {
+                    options.Add(new MenuOption("Ship Via", async () =>
+                    {
+                        await AddEditShipViaAsync();
+                    }));
+                }
+
+                // Set Ship Date (presale)
+                if (Config.SetShipDate)
+                {
+                    options.Add(new MenuOption("Set Ship Date", async () =>
+                    {
+                        await SetShipDateAsync();
+                    }));
+                }
+
+                // Offers vs Order Discount (presale)
+                if (!hasOrderDiscounts)
+                {
+                    options.Add(new MenuOption("Offers", async () =>
+                    {
+                        await ShowOffersAsync();
+                    }));
+                }
+                else
+                {
+                    options.Add(new MenuOption("Discount Offers", async () =>
+                    {
+                        await GoToOrderDiscountAsync();
+                    }));
+
+                    if (!Config.CalculateOffersAutomatically)
+                    {
+                        options.Add(new MenuOption("Calculate Offers", async () =>
+                        {
+                            await CalculateDiscountOffersAsync();
+                        }));
+                    }
+                }
+
+                // Convert Quote to Sales Order
+                if (Config.CanModifyQuotes && _order.IsQuote && !_order.IsDelivery)
+                {
+                    options.Add(new MenuOption("Convert to Order", async () =>
+                    {
+                        await ConvertQuoteToSalesOrderAsync();
+                    }));
+                }
+
+                // What To View (presale)
+                options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added All" : "Just Ordered", async () =>
+                {
+                    await WhatToViewClickedAsync();
+                }));
+
+                // Comments (presale)
+                options.Add(new MenuOption("Add Comments", async () =>
+                {
+                    await ShowCommentsDialogAsync();
+                }));
+
+                // Signature (presale)
+                options.Add(new MenuOption("Order By", async () =>
+                {
+                    await SignAsync();
+                }));
+
+                // Send Order (presale)
+                options.Add(new MenuOption("Send", async () =>
+                {
+                    await SendOrderAsync();
+                }));
+
+                // Email/Share PDF (presale)
+                if (!isSplitClient)
+                {
+                    if (Config.ShowBillOfLadingPdf)
+                    {
+                        options.Add(new MenuOption("Share PDF", async () =>
+                        {
+                            await SharePdfAsync();
+                        }));
+                    }
+                    else
+                    {
+                        options.Add(new MenuOption("Send by Email", async () =>
+                        {
+                            await SendByEmailAsync();
+                        }));
+                    }
+                }
+
+                // Delete Order (presale)
+                options.Add(new MenuOption("Delete Order", async () =>
+                {
+                    await DeleteOrderAsync();
+                }));
             }
             else
             {
-                // Previously ordered menu items
-                if ((Config.SetPO || Config.POIsMandatory) && !finalized)
+                // Non-presale menu items
+
+                // Discount (non-presale)
+                if (!finalized && allowDiscount && !locked)
                 {
-                    options.Add(new MenuOption("Set PO", async () =>
+                    options.Add(new MenuOption("Add Discount", async () =>
                     {
-                        var po = await _dialogService.ShowPromptAsync("Set PO", "Enter PO Number:",
-                            initialValue: _order.PONumber ?? string.Empty);
-                        if (!string.IsNullOrWhiteSpace(po))
-                        {
-                            _order.PONumber = po;
-                            _order.Save();
-                            await _dialogService.ShowAlertAsync("PO number set.", "Success");
-                        }
+                        await ApplyDiscountAsync();
                     }));
                 }
 
-                if (allowDiscount && !finalized && !_order.Locked())
+                // Offers vs Order Discount (non-presale)
+                if (!finalized && !locked)
                 {
-                    options.Add(new MenuOption("Add Discount",
-                        async () =>
-                        {
-                            await _dialogService.ShowAlertAsync(
-                                "Add Discount functionality is not yet fully implemented.", "Info");
-                        }));
-                }
-
-                if (!Config.LockOrderAfterPrinted)
-                {
-                    var isSplitClient = _order.Client.SplitInvoices.Count > 0;
-                    if (!isSplitClient || _order.Finished)
+                    if (!hasOrderDiscounts)
                     {
-                        options.Add(new MenuOption("Print",
-                            async () =>
+                        options.Add(new MenuOption("Offers", async () =>
+                        {
+                            await ShowOffersAsync();
+                        }));
+                    }
+                    else
+                    {
+                        options.Add(new MenuOption("Discount Offers", async () =>
+                        {
+                            await GoToOrderDiscountAsync();
+                        }));
+
+                        if (!Config.CalculateOffersAutomatically)
+                        {
+                            options.Add(new MenuOption("Calculate Offers", async () =>
                             {
-                                await _dialogService.ShowAlertAsync("Print functionality is not yet fully implemented.",
-                                    "Info");
+                                await CalculateDiscountOffersAsync();
                             }));
+                        }
                     }
                 }
 
-                if (!(_order.Client.SplitInvoices.Count > 0))
+                // Print (non-presale)
+                if (!Config.LockOrderAfterPrinted)
                 {
-                    options.Add(new MenuOption("Send by Email",
-                        async () =>
-                        {
-                            await _dialogService.ShowAlertAsync(
-                                "Send by Email functionality is not yet fully implemented.", "Info");
-                        }));
-
-                    options.Add(new MenuOption("Share PDF",
-                        async () =>
-                        {
-                            await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.",
-                                "Info");
-                        }));
+                    options.Add(new MenuOption("Print", async () =>
+                    {
+                        await PrintAsync();
+                    }));
                 }
+
+                // Email/Share PDF (non-presale)
+                if (!isSplitClient)
+                {
+                    options.Add(new MenuOption("Send by Email", async () =>
+                    {
+                        await SendByEmailAsync();
+                    }));
+
+                    if (Config.ShowBillOfLadingPdf)
+                    {
+                        options.Add(new MenuOption("Share PDF", async () =>
+                        {
+                            await SharePdfAsync();
+                        }));
+                    }
+                }
+
+                // Set PO (non-presale)
+                if ((_order.OrderType == OrderType.Bill || Config.SetPO || Config.POIsMandatory) && !finalized)
+                {
+                    options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO", async () =>
+                    {
+                        await GetPONumberAsync();
+                    }));
+                }
+
+                // Payment (non-presale)
+                var hasPayment = InvoicePayment.List.FirstOrDefault(x => x.OrderId != null && x.OrderId.IndexOf(_order.UniqueId) >= 0) != null;
+                if (finalized && !hasPayment && !Config.HidePriceInTransaction)
+                {
+                    options.Add(new MenuOption("Add Payment", async () =>
+                    {
+                        await GetPaymentAsync();
+                    }));
+                }
+
+                // What To View (non-presale)
+                if (!finalized)
+                {
+                    options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added All" : "Just Ordered", async () =>
+                    {
+                        await WhatToViewClickedAsync();
+                    }));
+                }
+
+                // Service Report (non-presale)
+                if (!finalized && Config.ShowServiceReport)
+                {
+                    options.Add(new MenuOption("Service Report", async () =>
+                    {
+                        await GoToServiceReportAsync();
+                    }));
+                }
+
+                // Comments (non-presale)
+                options.Add(new MenuOption("Add Comments", async () =>
+                {
+                    await ShowCommentsDialogAsync();
+                }));
             }
 
-            // Common menu items
-            options.Add(new MenuOption("Add Comments", async () =>
-            {
-                var comments = await _dialogService.ShowPromptAsync("Add Comments", "Enter comments:",
-                    initialValue: _order.Comments ?? string.Empty);
-                if (comments != null)
-                {
-                    _order.Comments = comments;
-                    _order.Save();
-                    await _dialogService.ShowAlertAsync("Comments saved.", "Success");
-                }
-            }));
+            // Common menu items (both presale and non-presale)
 
-            // Note: "Advanced Options" is already added by LaceupContentPage.GetCommonMenuOptions()
-            // Don't add it here to avoid duplication
+            // Company Selection
+            if (CompanyInfo.Companies.Count > 1)
+            {
+                options.Add(new MenuOption("Select Company", async () =>
+                {
+                    await SelectCompanyAsync();
+                }));
+            }
+
+            // Crate In/Out
+            var prods = Product.Products.Where(x => x.ExtraPropertiesAsString.Contains("caseInOut"));
+            var prodIn = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=1"));
+            var prodOut = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=0"));
+            if (Config.MustEnterCaseInOut && (_order.OrderType == OrderType.Order || _order.OrderType == OrderType.Credit) && (prodIn != null || prodOut != null))
+            {
+                options.Add(new MenuOption("Enter Crate In/Out", async () =>
+                {
+                    await EnterCasesInOutAsync(false);
+                }));
+            }
+
+            // Use LSP
+            if (Config.LspInAllLines)
+            {
+                options.Add(new MenuOption("Use LSP", async () =>
+                {
+                    await UseLspInAllLinesAsync();
+                }));
+            }
+
+            // View Captures
+            bool isVisible = true;
+            if (finalized && Config.MustAddImageToFinalized)
+                isVisible = false;
+            if (Config.CaptureImages && isVisible)
+            {
+                options.Add(new MenuOption("View Captures", async () =>
+                {
+                    await ViewCapturedImagesAsync();
+                }));
+            }
+
+            // Select Driver (presale only)
+            if (asPresale)
+            {
+                options.Add(new MenuOption("Select Driver", async () =>
+                {
+                    await SelectSalesmanAsync();
+                }));
+            }
+
+            // Select Price Level
+            if (Config.AllowSelectPriceLevel)
+            {
+                options.Add(new MenuOption("Select Price Level", async () =>
+                {
+                    await SelectPriceLevelAsync();
+                }));
+            }
+
+            // Take Survey
+            if (!string.IsNullOrEmpty(Config.SurveyQuestions))
+            {
+                options.Add(new MenuOption("Take Survey", async () =>
+                {
+                    await TakeSurveyAsync();
+                }));
+            }
+
+            // Disol Client Values
+            if (Config.DisolCrap)
+            {
+                options.Add(new MenuOption("Edit Client Values", async () =>
+                {
+                    await EnterEditDisolValuesAsync();
+                }));
+            }
+
+            // Suggested Products
+            bool suggestedVisible = false;
+            if (!string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier))
+            {
+                if (SuggestedClientCategory.List.Count > 0 && _order != null && _order.Client != null)
+                {
+                    var suggestedForThisClient = SuggestedClientCategory.List.FirstOrDefault(x => x.SuggestedClientCategoryClients.Any(y => y.ClientId == _order.Client.ClientId));
+                    if (suggestedForThisClient != null && suggestedForThisClient.SuggestedClientCategoryProducts.Count > 0)
+                        suggestedVisible = true;
+                }
+            }
+            if (suggestedVisible && !finalized && !locked)
+            {
+                var title = !string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) 
+                    ? $"{Config.ProductCategoryNameIdentifier} Products" 
+                    : "Suggested Products";
+                options.Add(new MenuOption(title, async () =>
+                {
+                    await ShowSuggestedProductsAsync();
+                }));
+            }
+
+            // Other Charges
+            if (!string.IsNullOrEmpty(asset) || Config.AllowOtherCharges)
+            {
+                options.Add(new MenuOption("Other Charges", async () =>
+                {
+                    await OtherChargesAsync();
+                }));
+            }
+
+            // Delete Weight Lines
+            if (Config.DeleteWeightItemsMenu)
+            {
+                options.Add(new MenuOption("Delete Weight Lines", async () =>
+                {
+                    await Delete0WeightItemsAsync();
+                }));
+            }
+
+            // Reset Order
+            if (Config.AllowReset)
+            {
+                var resetValue = UDFHelper.GetSingleUDF("reset", _order.ExtraFields);
+                var resetTitle = (!string.IsNullOrEmpty(resetValue) && resetValue == "1") ? "Undo Reset Order" : "Reset";
+                options.Add(new MenuOption(resetTitle, async () =>
+                {
+                    await ResetOrderAsync();
+                }));
+            }
 
             return options;
         }
@@ -2803,6 +3081,382 @@ namespace LaceupMigration.ViewModels
         private async Task ShowAdvancedOptionsAsync()
         {
             await _advancedOptionsService.ShowAdvancedOptionsAsync();
+        }
+
+        // Menu option methods - matching PreviouslyOrderedTemplatePageViewModel
+        private async Task GotoBarcodeReaderAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"barcodereader?orderId={_order.OrderId}");
+        }
+
+        private async Task ApplyDiscountAsync()
+        {
+            if (_order == null)
+                return;
+            await _dialogService.ShowAlertAsync("Add Discount functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task GetPONumberAsync()
+        {
+            if (_order == null)
+                return;
+            var po = await _dialogService.ShowPromptAsync("Set PO", "Enter PO Number:",
+                initialValue: _order.PONumber ?? string.Empty);
+            if (!string.IsNullOrWhiteSpace(po))
+            {
+                _order.PONumber = po;
+                _order.Save();
+                await _dialogService.ShowAlertAsync("PO number set.", "Success");
+            }
+        }
+
+        private async Task AddEditShipViaAsync()
+        {
+            if (_order == null)
+                return;
+            await _dialogService.ShowAlertAsync("Ship Via functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task SetShipDateAsync()
+        {
+            if (_order == null)
+                return;
+            var currentShipDate = _order.ShipDate.Year == 1 ? DateTime.Now : _order.ShipDate;
+            var selectedDate = await _dialogService.ShowDatePickerAsync("Set Ship Date", currentShipDate, DateTime.Now, null);
+            if (selectedDate.HasValue)
+            {
+                _order.ShipDate = selectedDate.Value;
+                _order.Save();
+            }
+        }
+
+        private async Task ShowOffersAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"offers?orderId={_order.OrderId}");
+        }
+
+        private async Task GoToOrderDiscountAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"orderdiscount?orderId={_order.OrderId}");
+        }
+
+        private async Task CalculateDiscountOffersAsync()
+        {
+            if (_order == null)
+                return;
+            await _dialogService.ShowAlertAsync("Calculate Offers functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task ConvertQuoteToSalesOrderAsync()
+        {
+            if (_order == null)
+                return;
+            await _dialogService.ShowAlertAsync("Convert Quote to Sales Order functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task SignAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"ordersignature?ordersId={_order.OrderId}");
+        }
+
+        private async Task SendByEmailAsync()
+        {
+            if (_order == null)
+            {
+                await _dialogService.ShowAlertAsync("No order to send.", "Alert", "OK");
+                return;
+            }
+
+            try
+            {
+                await _dialogService.ShowLoadingAsync("Generating PDF...");
+        
+                string pdfFile = PdfHelper.GetOrderPdf(_order);
+        
+                await _dialogService.HideLoadingAsync();
+        
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    await _dialogService.ShowAlertAsync("Error generating PDF.", "Alert", "OK");
+                    return;
+                }
+
+                // Navigate to PDF viewer with both PDF path and orderId
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}&orderId={_order.OrderId}");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error occurred.", "Alert", "OK");
+            }
+        }
+
+        private async Task SharePdfAsync()
+        {
+            if (_order == null)
+                return;
+            await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task DeleteOrderAsync()
+        {
+            if (_order == null)
+                return;
+
+            var confirmed = await _dialogService.ShowConfirmAsync(
+                "Are you sure you want to delete this order?",
+                "Alert",
+                "Yes",
+                "No");
+
+            if (!confirmed)
+                return;
+
+            if (_order.AsPresale)
+            {
+                // UpdateRoute(false); // TODO: Implement UpdateRoute
+            }
+
+            var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
+            if (batch != null)
+                batch.Delete();
+
+            _order.Delete();
+
+            // Remove state
+            Helpers.NavigationHelper.RemoveNavigationState("advancedcatalog");
+
+            await Shell.Current.GoToAsync("..");
+        }
+
+        private async Task GetPaymentAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"payment?orderId={_order.OrderId}");
+        }
+
+        private async Task GoToServiceReportAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"servicereport?orderId={_order.OrderId}");
+        }
+
+        private async Task ShowCommentsDialogAsync()
+        {
+            if (_order == null)
+                return;
+            var comments = await _dialogService.ShowPromptAsync("Add Comments", "Enter comments:",
+                initialValue: _order.Comments ?? string.Empty);
+            if (comments != null)
+            {
+                _order.Comments = comments;
+                _order.Save();
+                await _dialogService.ShowAlertAsync("Comments saved.", "Success");
+            }
+        }
+
+        private async Task SelectCompanyAsync()
+        {
+            if (_order == null)
+                return;
+            await _dialogService.ShowAlertAsync("Select Company functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task EnterCasesInOutAsync(bool exit)
+        {
+            if (_order == null)
+                return;
+
+            var prods = Product.Products.Where(x => x.ExtraPropertiesAsString.Contains("caseInOut"));
+            var prodIn = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=1"));
+            var prodOut = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=0"));
+
+            if (prodIn == null && prodOut == null)
+            {
+                if (exit)
+                    await Shell.Current.GoToAsync("..");
+                return;
+            }
+
+            await _dialogService.ShowAlertAsync("Enter Crate In/Out functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task UseLspInAllLinesAsync()
+        {
+            if (_order == null)
+                return;
+            await _dialogService.ShowAlertAsync("Use LSP functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task ViewCapturedImagesAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"viewinvoiceimages?orderId={_order.OrderId}");
+        }
+
+        private async Task SelectSalesmanAsync()
+        {
+            if (_order == null)
+                return;
+            await _dialogService.ShowAlertAsync("Select Driver functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task SelectPriceLevelAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"selectpricelevel?orderId={_order.OrderId}");
+        }
+
+        private async Task TakeSurveyAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"survey?orderId={_order.OrderId}");
+        }
+
+        private async Task EnterEditDisolValuesAsync()
+        {
+            if (_order == null)
+                return;
+            await _dialogService.ShowAlertAsync("Edit Client Values functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task ShowSuggestedProductsAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"productcatalog?orderId={_order.OrderId}&isShowingSuggested=1&comingFrom=AdvancedCatalog");
+        }
+
+        private async Task WhatToViewClickedAsync()
+        {
+            _whatToViewInList = _whatToViewInList == WhatToViewInList.All ? WhatToViewInList.Selected : WhatToViewInList.All;
+            // Clear cache to force reload with new filter
+            _cachedItems = null;
+            await RefreshAsync();
+        }
+
+        private async Task OtherChargesAsync()
+        {
+            if (_order == null)
+                return;
+            await _dialogService.ShowAlertAsync("Other Charges functionality is not yet fully implemented.", "Info");
+        }
+
+        private async Task Delete0WeightItemsAsync()
+        {
+            if (_order == null)
+                return;
+
+            var toDelete = _order.Details.Where(x => x.Product.SoldByWeight && x.Weight == 0).ToList();
+            if (toDelete.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("No weight items with 0 weight found.", "Info");
+                return;
+            }
+
+            var confirmed = await _dialogService.ShowConfirmAsync(
+                $"Are you sure you want to delete {toDelete.Count} weight item(s) with 0 weight?",
+                "Alert",
+                "Yes",
+                "No");
+
+            if (!confirmed)
+                return;
+
+            foreach (var detail in toDelete)
+            {
+                _order.DeleteDetail(detail);
+            }
+
+            _order.Save();
+            await RefreshAsync();
+            await _dialogService.ShowAlertAsync($"{toDelete.Count} weight item(s) deleted.", "Success");
+        }
+
+        private async Task ResetOrderAsync()
+        {
+            if (_order == null)
+                return;
+
+            var resetValue = UDFHelper.GetSingleUDF("reset", _order.ExtraFields);
+            var isReset = !string.IsNullOrEmpty(resetValue) && resetValue == "1";
+
+            var confirmed = await _dialogService.ShowConfirmAsync(
+                isReset ? "Are you sure you want to undo the reset?" : "Are you sure you want to reset this order?",
+                "Alert",
+                "Yes",
+                "No");
+
+            if (!confirmed)
+                return;
+
+            if (isReset)
+            {
+                _order.ExtraFields = UDFHelper.SyncSingleUDF("reset", "0", _order.ExtraFields);
+            }
+            else
+            {
+                _order.ExtraFields = UDFHelper.SyncSingleUDF("reset", "1", _order.ExtraFields);
+            }
+
+            _order.Save();
+            await RefreshAsync();
+        }
+
+        private async Task PrintAsync()
+        {
+            if (_order == null)
+            {
+                await _dialogService.ShowAlertAsync("No order to print.", "Alert", "OK");
+                return;
+            }
+
+            try
+            {
+                PrinterProvider.PrintDocument((int number) =>
+                {
+                    if (string.IsNullOrEmpty(_order.PrintedOrderId))
+                    {
+                        if ((_order.AsPresale && Config.GeneratePresaleNumber) || (!_order.AsPresale && Config.GeneratePreorderNum))
+                        {
+                            _order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(_order);
+                            _order.Save();
+                        }
+                    }
+
+                    IPrinter printer = PrinterProvider.CurrentPrinter();
+                    bool allWent = true;
+
+                    for (int i = 0; i < number; i++)
+                    {
+                        if (!printer.PrintOrder(_order, !_order.Finished))
+                            allWent = false;
+                    }
+
+                    if (!allWent)
+                        return "Error printing order.";
+                    return string.Empty;
+                });
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
+                _appService.TrackError(ex);
+            }
         }
 
         [RelayCommand]
