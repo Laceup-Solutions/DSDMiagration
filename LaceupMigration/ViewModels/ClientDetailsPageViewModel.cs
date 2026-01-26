@@ -1076,7 +1076,7 @@ namespace LaceupMigration.ViewModels
             {
                 var order = new Order(_client) { OrderType = OrderType.NoService };
                 order.BatchId = batch.Id;
-                order.Finished = true;
+                order.Finished = false; // Don't mark as finished until user completes it
                 order.AsPresale = true;
                 order.Latitude = Config.LastLatitude;
                 order.Longitude = Config.LastLongitude;

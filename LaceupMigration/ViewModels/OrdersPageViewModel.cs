@@ -833,8 +833,8 @@ namespace LaceupMigration.ViewModels
 		}
 
 		public string OrderNumberText => !string.IsNullOrEmpty(_order.PrintedOrderId) ? _order.PrintedOrderId : $"Order #{_order.OrderId}";
-		public string DateText => $"Date: {_order.Date.ToShortDateString()}";
-		public string TotalText => _order.OrderType == OrderType.NoService ? string.Empty : $"Total: {_order.OrderTotalCost().ToCustomString()}";
+		public string DateText => _order.Date.ToString("M/d/yyyy h:mm:ss tt");
+		public string TotalText => _order.OrderType == OrderType.NoService ? string.Empty : _order.OrderTotalCost().ToCustomString();
 		public bool ShowTotal => !Config.HidePriceInTransaction && _order.OrderType != OrderType.NoService;
 
 		partial void OnIsSelectedChanged(bool value)

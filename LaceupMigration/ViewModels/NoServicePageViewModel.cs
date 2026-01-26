@@ -295,6 +295,49 @@ namespace LaceupMigration.ViewModels
                 RouteEx.Save();
             }
         }
+
+        /// <summary>
+        /// Handles back navigation - if order is not completed, delete it.
+        /// This matches Xamarin NoServiceActivity behavior - going back without completing shouldn't create a NoService order.
+        /// </summary>
+        public async Task GoBackAsync()
+        {
+            if (_order == null)
+            {
+                await Shell.Current.GoToAsync("..");
+                return;
+            }
+
+            // Check if order was actually completed (has PrintedOrderId set)
+            // If not, delete it to prevent creating an incomplete NoService order
+            if (string.IsNullOrEmpty(_order.PrintedOrderId))
+            {
+                // Order was not completed - delete it and clean up batch if needed
+                var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
+                
+                // Delete the order
+                _order.Delete();
+
+                // If batch has no other orders, delete the batch too
+                if (batch != null)
+                {
+                    var otherOrders = Order.Orders.Where(x => x.BatchId == batch.Id && x.OrderId != _order.OrderId).ToList();
+                    if (otherOrders.Count == 0)
+                    {
+                        batch.Delete();
+                    }
+                }
+
+                // Update route if needed
+                UpdateRoute(false);
+            }
+
+            // Remove navigation state
+            Helpers.NavigationHelper.RemoveNavigationState("noservice");
+
+            // Navigate back
+            await Shell.Current.GoToAsync("..");
+        }
     }
 
     public partial class NoServiceImageViewModel : ObservableObject
