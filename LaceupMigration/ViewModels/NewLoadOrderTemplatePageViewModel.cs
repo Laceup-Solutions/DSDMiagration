@@ -23,8 +23,6 @@ namespace LaceupMigration.ViewModels
         private bool _canGetOut;
         private int _clientId;
         private OrderDetail _lastDetail;
-        private bool _initialized;
-        private int _initializedOrderId;
 
         [ObservableProperty] private ObservableCollection<LoadOrderDetailViewModel> _orderDetails = new();
         [ObservableProperty] private string _totalQtyText = "Total Qty: 0";
@@ -53,13 +51,6 @@ namespace LaceupMigration.ViewModels
 
         public async Task InitializeAsync(int orderId, bool canGetOutIntent = false, int? clientIdIntent = null)
         {
-            // If already initialized with the same orderId, skip re-initialization
-            // This prevents errors when navigating back and ApplyQueryAttributes is called again
-            if (_initialized && _initializedOrderId == orderId && _loadOrder != null)
-            {
-                return;
-            }
-
             _canGetOut = canGetOutIntent;
             _clientId = clientIdIntent ?? 0;
 
@@ -70,9 +61,6 @@ namespace LaceupMigration.ViewModels
                 await Shell.Current.GoToAsync("..");
                 return;
             }
-
-            _initialized = true;
-            _initializedOrderId = orderId;
 
             // Xamarin PreviouslyOrderedTemplateActivity logic:
             // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
@@ -370,12 +358,6 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task Prod()
         {
-            if (_loadOrder == null)
-            {
-                await _dialogService.ShowAlertAsync("Load order not initialized.", "Error", "OK");
-                return;
-            }
-
             if (Sites.Count > 0 && _loadOrder.SiteId == 0)
             {
                 await _dialogService.ShowAlertAsync("You must select a Warehouse to request the load from.", "Alert", "OK");
@@ -387,13 +369,20 @@ namespace LaceupMigration.ViewModels
             var loadOrderSource = "&comingFrom=LoadOrderTemplate";
             if (_lastDetail == null)
             {
-                // Navigate to categories - add fromLoadOrder flag to show only Advanced Options in menu
-                await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}&fromLoadOrder=1");
+                // Navigate to categories (user picks category, then catalog)
+                await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}{loadOrderSource}");
             }
             else
             {
-                // Navigate to product catalog for the last detail's category
-                await Shell.Current.GoToAsync($"productcatalog?orderId={_loadOrder.OrderId}&categoryId={_lastDetail.Product.CategoryId}&productId={_lastDetail.Product.ProductId}&fromLoadOrder=1");
+                // Navigate to catalog on last selected category: use advance or regular per config
+                if (Config.UseLaceupAdvancedCatalog)
+                {
+                    await Shell.Current.GoToAsync($"advancedcatalog?orderId={_loadOrder.OrderId}&categoryId={_lastDetail.Product.CategoryId}{loadOrderSource}&loadOrderReturnDepth=1");
+                }
+                else
+                {
+                    await Shell.Current.GoToAsync($"productcatalog?orderId={_loadOrder.OrderId}&categoryId={_lastDetail.Product.CategoryId}&productId={_lastDetail.Product.ProductId}{loadOrderSource}&loadOrderReturnDepth=1");
+                }
             }
         }
 
@@ -407,8 +396,7 @@ namespace LaceupMigration.ViewModels
             }
 
             _appService.RecordEvent("cats button");
-            // Add fromLoadOrder flag to show only Advanced Options in menu
-            await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}&fromLoadOrder=1");
+            await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}&comingFrom=LoadOrderTemplate");
         }
 
         [RelayCommand]
@@ -435,8 +423,7 @@ namespace LaceupMigration.ViewModels
                 scanAction: async () => await _cameraBarcodeScanner.ScanBarcodeAsync());
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                // Add fromLoadOrder flag to show only Advanced Options in menu
-                await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}&productSearch={Uri.EscapeDataString(searchTerm)}&comingFromSearch=true&fromLoadOrder=1");
+                await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}&productSearch={Uri.EscapeDataString(searchTerm)}&comingFromSearch=true&comingFrom=LoadOrderTemplate");
             }
         }
 
