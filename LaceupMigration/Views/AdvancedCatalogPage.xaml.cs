@@ -14,7 +14,11 @@ namespace LaceupMigration.Views
             InitializeComponent();
             _viewModel = viewModel;
             BindingContext = _viewModel;
-            UseCustomMenu = true; // We build toolbar in OnAppearing based on IsFromLoadOrder
+            
+            // Override base menu - AdvancedCatalogPage builds its own complete menu
+            // This prevents duplicate "Advanced Options" from GetCommonMenuOptions()
+            OverrideBaseMenu = true;
+            
             // Subscribe to property changes to update Grid columns
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         }

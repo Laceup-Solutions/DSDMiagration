@@ -33,6 +33,7 @@ namespace LaceupMigration.ViewModels
         private bool _isScanning = false;
         private int _lastScannedProductId = 0;
         private List<int> _relatedLines = new();
+        private bool _fromLoadOrder = false; // Flag to indicate coming from Load Order (Prod button)
         
         // WhatToViewInList enum and field (matches AdvancedTemplateActivity)
         private enum WhatToViewInList
@@ -183,6 +184,7 @@ namespace LaceupMigration.ViewModels
             int? categoryId = null;
             string? search = null;
             int? itemType = null;
+            bool fromLoadOrder = false;
 
             if (query.TryGetValue("orderId", out var orderValue) && orderValue != null)
             {
@@ -207,54 +209,17 @@ namespace LaceupMigration.ViewModels
                     itemType = it;
             }
 
-            if (query.TryGetValue("comingFrom", out var fromValue) && fromValue != null)
+            // Extract fromLoadOrder flag - defaults to false if not present
+            if (query.TryGetValue("fromLoadOrder", out var fromLoadValue) && fromLoadValue != null)
             {
-                _comingFrom = fromValue.ToString();
-                IsFromLoadOrder = _comingFrom == "LoadOrderTemplate";
-            }
-
-            if (query.TryGetValue("loadOrderReturnDepth", out var depthValue) && depthValue != null)
-            {
-                if (int.TryParse(depthValue.ToString(), out var d) && d >= 1)
-                    _loadOrderReturnDepth = d;
-            }
-            else if (_comingFrom == "LoadOrderTemplate")
-            {
-                _loadOrderReturnDepth = 2; // Default when from FullCategory redirect
+                fromLoadOrder = fromLoadValue.ToString() == "1" || fromLoadValue.ToString().ToLowerInvariant() == "true";
             }
 
             MainThread.BeginInvokeOnMainThread(async () =>
-                await InitializeAsync(orderId, categoryId, search, itemType));
+                await InitializeAsync(orderId, categoryId, search, itemType, fromLoadOrder));
         }
 
-        /// <summary>Navigate back from catalog. When opened from LoadOrderTemplate, pop loadOrderReturnDepth times to return to NewLoadOrderTemplatePage.</summary>
-        private async Task NavigateBackFromCatalogAsync()
-        {
-            if (_comingFrom == "LoadOrderTemplate")
-            {
-                for (int i = 0; i < _loadOrderReturnDepth; i++)
-                    await Shell.Current.GoToAsync("..");
-            }
-            else
-            {
-                await Shell.Current.GoToAsync("..");
-            }
-        }
-
-        /// <summary>When from load order: pop one level (back to Categories if came from categories, or to LoadOrderTemplate if came directly).</summary>
-        private async Task NavigateBackOneAsync()
-        {
-            await Shell.Current.GoToAsync("..");
-        }
-
-        /// <summary>When from load order and user taps "Add To Order": always go back to LoadOrderTemplate (pop loadOrderReturnDepth times).</summary>
-        private async Task NavigateToLoadOrderTemplateAsync()
-        {
-            for (int i = 0; i < _loadOrderReturnDepth; i++)
-                await Shell.Current.GoToAsync("..");
-        }
-
-        public async Task InitializeAsync(int? orderId, int? categoryId, string? search, int? itemType)
+        public async Task InitializeAsync(int? orderId, int? categoryId, string? search, int? itemType, bool fromLoadOrder = false)
         {
             if (!orderId.HasValue)
             {
@@ -278,6 +243,8 @@ namespace LaceupMigration.ViewModels
 
             if (itemType.HasValue)
                 _itemType = itemType.Value;
+
+            _fromLoadOrder = fromLoadOrder;
 
             _initialized = true;
             IsFromLoadOrder = _comingFrom == "LoadOrderTemplate";
@@ -2831,9 +2798,13 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return options;
 
-            if (_comingFrom == "LoadOrderTemplate")
+            // If coming from Load Order (Prod button), show only Advanced Options
+            if (_fromLoadOrder)
             {
-                options.Add(new MenuOption("Add To Order", async () => await DoneAsync()));
+                options.Add(new MenuOption("Advanced Options", async () =>
+                {
+                    await ShowAdvancedOptionsAsync();
+                }));
                 return options;
             }
 

@@ -140,6 +140,13 @@ namespace LaceupMigration.Views
                 comingFrom = fromValue.ToString();
             }
 
+            // Extract fromLoadOrder flag - defaults to false if not present
+            bool fromLoadOrder = false;
+            if (query.TryGetValue("fromLoadOrder", out var fromLoadValue) && fromLoadValue != null)
+            {
+                fromLoadOrder = fromLoadValue.ToString() == "1" || fromLoadValue.ToString().ToLowerInvariant() == "true";
+            }
+
             Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(
                 clientId: clientId,
                 orderId: orderId,
@@ -150,7 +157,8 @@ namespace LaceupMigration.Views
                 asReturnItem: asReturnItem,
                 productId: productId,
                 consignmentCounting: consignmentCounting,
-                comingFrom: comingFrom));
+                comingFrom: comingFrom,
+                fromLoadOrder: fromLoadOrder));
             
             // [ACTIVITY STATE]: Save navigation state with query parameters
             // Build route with query parameters for state saving
