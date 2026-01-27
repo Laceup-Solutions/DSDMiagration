@@ -159,6 +159,9 @@ namespace LaceupMigration.ViewModels
                     }
                 }
 
+                // Keep last detail for "Products" navigation (go to catalog on last selected category)
+                _lastDetail = _loadOrder.Details.Where(d => !d.Deleted).LastOrDefault();
+
                 UpdateTotalQty();
             }
             catch (Exception ex)
@@ -363,15 +366,23 @@ namespace LaceupMigration.ViewModels
 
             _appService.RecordEvent("prod button");
 
+            var loadOrderSource = "&comingFrom=LoadOrderTemplate";
             if (_lastDetail == null)
             {
-                // Navigate to categories
-                await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}");
+                // Navigate to categories (user picks category, then catalog)
+                await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}{loadOrderSource}");
             }
             else
             {
-                // Navigate to product catalog for the last detail's category
-                await Shell.Current.GoToAsync($"productcatalog?orderId={_loadOrder.OrderId}&categoryId={_lastDetail.Product.CategoryId}&productId={_lastDetail.Product.ProductId}");
+                // Navigate to catalog on last selected category: use advance or regular per config
+                if (Config.UseLaceupAdvancedCatalog)
+                {
+                    await Shell.Current.GoToAsync($"advancedcatalog?orderId={_loadOrder.OrderId}&categoryId={_lastDetail.Product.CategoryId}{loadOrderSource}&loadOrderReturnDepth=1");
+                }
+                else
+                {
+                    await Shell.Current.GoToAsync($"productcatalog?orderId={_loadOrder.OrderId}&categoryId={_lastDetail.Product.CategoryId}&productId={_lastDetail.Product.ProductId}{loadOrderSource}&loadOrderReturnDepth=1");
+                }
             }
         }
 
@@ -385,7 +396,7 @@ namespace LaceupMigration.ViewModels
             }
 
             _appService.RecordEvent("cats button");
-            await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}");
+            await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}&comingFrom=LoadOrderTemplate");
         }
 
         [RelayCommand]
@@ -412,7 +423,7 @@ namespace LaceupMigration.ViewModels
                 scanAction: async () => await _cameraBarcodeScanner.ScanBarcodeAsync());
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}&productSearch={Uri.EscapeDataString(searchTerm)}&comingFromSearch=true");
+                await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}&productSearch={Uri.EscapeDataString(searchTerm)}&comingFromSearch=true&comingFrom=LoadOrderTemplate");
             }
         }
 

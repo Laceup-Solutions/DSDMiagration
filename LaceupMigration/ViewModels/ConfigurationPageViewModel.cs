@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Storage;
@@ -346,6 +347,8 @@ namespace LaceupMigration.ViewModels
 
                 await _dialogService.ShowAlertAsync("Configuration saved successfully.", "Success", "OK");
                 
+                // Remove from navigation state so app doesn't restore to Configuration after force quit
+                NavigationHelper.RemoveNavigationState("configuration");
                 // Navigate back after successful save
                 await Shell.Current.GoToAsync("..");
             }
@@ -1367,9 +1370,7 @@ namespace LaceupMigration.ViewModels
                     "Success",
                     "OK");
 
-                // Navigate to MainPage to clean the tabs/navigation stack - match Xamarin behavior
-                // This clears the navigation stack and resets to main page
-                await Shell.Current.GoToAsync("///MainPage");
+                // Stay on Configuration screen after clear (do not navigate away)
             }
             catch (Exception ex)
             {

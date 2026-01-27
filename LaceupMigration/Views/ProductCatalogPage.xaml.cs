@@ -17,6 +17,31 @@ namespace LaceupMigration.Views
             UseCustomMenu = true;
         }
 
+        private void UpdateToolbar()
+        {
+            ToolbarItems.Clear();
+            if (_viewModel.IsFromLoadOrder)
+            {
+                ToolbarItems.Add(new ToolbarItem
+                {
+                    Text = "Add To Order",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = 0,
+                    Command = new Command(() => _ = _viewModel.AddItemsCommand.ExecuteAsync(null))
+                });
+            }
+            else
+            {
+                ToolbarItems.Add(new ToolbarItem
+                {
+                    Text = "Menu",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = 0,
+                    Command = new Command(() => _ = _viewModel.ShowMenuCommand.ExecuteAsync(null))
+                });
+            }
+        }
+
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
             _viewModel.ApplyQueryAttributes(query);
@@ -42,6 +67,7 @@ namespace LaceupMigration.Views
         {
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
+            UpdateToolbar();
         }
 
         /// <summary>
@@ -64,13 +90,6 @@ namespace LaceupMigration.Views
             
             // Navigate back
             Shell.Current.GoToAsync("..");
-        }
-
-        protected override bool OnBackButtonPressed()
-        {
-            // Handle physical back button - call GoBack which will remove state
-            GoBack();
-            return true; // Prevent default back navigation (we handle it in GoBack)
         }
 
         private async void OnCellTapped(object sender, EventArgs e)
