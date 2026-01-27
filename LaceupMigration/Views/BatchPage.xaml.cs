@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class BatchPage : IQueryAttributable
+    public partial class BatchPage : LaceupContentPage, IQueryAttributable
     {
         private readonly BatchPageViewModel _viewModel;
 
@@ -58,71 +58,48 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        protected override bool OnBackButtonPressed()
+        /// <summary>Both physical and nav bar back use this; Xamarin BatchActivity OnKeyDown logic.</summary>
+        protected override void GoBack()
         {
-            // Xamarin BatchActivity OnKeyDown logic (lines 3686-3747)
-            // Check if we can leave based on canLeaveScreen and order states
-            
-            // If canLeaveScreen is false (operation in progress), prevent navigation
             if (!_viewModel.CanLeaveScreen)
             {
-                // Show dialog asynchronously (fire and forget)
                 _ = _viewModel.ShowCannotLeaveDialog();
-                return true; // Prevent navigation
+                return;
             }
-            
-            // Check if we can leave based on Xamarin logic:
-            // canLeave = adapter.Source.Count == 0 || (Config.CanLeaveBatch && adapter.Source.Any(x => !x.Finished))
             var allOrders = _viewModel.Orders.Select(x => x.Order).ToList();
             bool canLeave = allOrders.Count == 0 || (Config.CanLeaveBatch && allOrders.Any(x => !x.Finished));
-            
             if (canLeave)
             {
-                // Xamarin: If canGetOut || canLeave, delete batch if empty and finish
                 var batchId = _viewModel?.GetBatchId();
                 if (batchId.HasValue)
-                {
                     Helpers.NavigationHelper.RemoveNavigationState($"batch?batchId={batchId.Value}");
-                }
-                return false; // Allow navigation
+                base.GoBack();
+                return;
             }
-            
-            // Check if all orders are finalized or voided
             if (!allOrders.All(x => x.Voided || x.Finished))
             {
                 _ = _viewModel.ShowCannotLeaveDialog();
-                return true; // Prevent navigation
+                return;
             }
-            
-            // Check if batch is clocked out
             var batch = Batch.List.FirstOrDefault(x => x.Id == _viewModel.GetBatchId());
             if (batch != null && batch.ClockedOut == DateTime.MinValue)
             {
                 _ = _viewModel.ShowCannotLeaveDialog();
-                return true; // Prevent navigation
+                return;
             }
-            
-            // ButlerCustomization check: all voided orders must be printed
             if (Config.ButlerCustomization && batch != null)
             {
                 var voided = allOrders.Where(x => x.Voided).ToList();
                 if (voided.Count > 0 && !voided.All(x => x.PrintedCopies > 0))
                 {
-                    // Show dialog asynchronously (fire and forget)
                     _ = _viewModel.ShowCannotLeaveDialog();
-                    return true; // Prevent navigation
+                    return;
                 }
             }
-            
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
             var batchIdToRemove = _viewModel?.GetBatchId();
             if (batchIdToRemove.HasValue)
-            {
                 Helpers.NavigationHelper.RemoveNavigationState($"batch?batchId={batchIdToRemove.Value}");
-            }
-            
-            // Allow default back navigation
-            return false;
+            base.GoBack();
         }
     }
 }

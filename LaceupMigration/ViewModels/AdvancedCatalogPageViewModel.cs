@@ -52,6 +52,8 @@ namespace LaceupMigration.ViewModels
         private Dictionary<Product, List<InvoiceDetail>>? _cachedClientHistory = null;
         private Timer? _searchDebounceTimer;
         private const int SearchDebounceMs = 300;
+        private string? _comingFrom; // e.g. "LoadOrderTemplate" — when set, pop to return to NewLoadOrderTemplatePage
+        private int _loadOrderReturnDepth = 2; // When comingFrom=LoadOrderTemplate: 1=direct from template, 2=via fullcategory
 
         public ObservableCollection<AdvancedCatalogItemViewModel> Items { get; } = new();
         public ObservableCollection<AdvancedCatalogItemViewModel> FilteredItems { get; } = new();
@@ -81,6 +83,10 @@ namespace LaceupMigration.ViewModels
         partial void OnShowReturnsButtonChanged(bool value) => UpdateButtonGridColumns();
 
         [ObservableProperty] private bool _showButtonGrid = true;
+
+        [ObservableProperty] private bool _showOrderSummary = true;
+
+        [ObservableProperty] private bool _isFromLoadOrder;
 
         [ObservableProperty] private string _buttonGridColumns = "*,*,*";
 
@@ -148,6 +154,11 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _filterText = "Filter";
 
         [ObservableProperty] private bool _showPrices = true;
+        partial void OnShowPricesChanged(bool value) => OnPropertyChanged(nameof(ShowPriceAndHistoryInCells));
+        partial void OnIsFromLoadOrderChanged(bool value) => OnPropertyChanged(nameof(ShowPriceAndHistoryInCells));
+
+        /// <summary>Show price, history, type, etc. in product cells. False when load order (cells show only OH + Truck Inventory).</summary>
+        public bool ShowPriceAndHistoryInCells => ShowPrices && !IsFromLoadOrder;
 
         public AdvancedCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService,
             IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner,
@@ -219,7 +230,8 @@ namespace LaceupMigration.ViewModels
             _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId.Value);
             if (_order == null)
             {
-                // await _dialogService.ShowAlertAsync("Order not found.", "Error");
+                await _dialogService.ShowAlertAsync("Order not found.", "Error", "OK");
+                await Shell.Current.GoToAsync("..");
                 return;
             }
 
@@ -235,6 +247,13 @@ namespace LaceupMigration.ViewModels
             _fromLoadOrder = fromLoadOrder;
 
             _initialized = true;
+            IsFromLoadOrder = _comingFrom == "LoadOrderTemplate";
+            if (IsFromLoadOrder)
+            {
+                ShowButtonGrid = false;
+                ShowOrderSummary = false;
+            }
+
             ClientName = _order.Client?.ClientName ?? "Unknown Client";
             OrderTypeText = GetOrderTypeText(_order);
             TermsText = "Terms: " + _order.Term;
@@ -254,8 +273,12 @@ namespace LaceupMigration.ViewModels
             
             ShowSendButton = _order.AsPresale;
 
-            // Initialize What To View filter based on whether order has details
-            if (_order.Details.Count > 0)
+            // Initialize What To View filter: load order always shows All (in order + to be added); else Selected when order has details
+            if (IsFromLoadOrder)
+            {
+                _whatToViewInList = WhatToViewInList.All;
+            }
+            else if (_order.Details.Count > 0)
             {
                 _whatToViewInList = WhatToViewInList.Selected; // Show only ordered items if order has details
             }
@@ -404,6 +427,26 @@ namespace LaceupMigration.ViewModels
                     x.Description.ToLowerInvariant().Replace(" ", "").Contains(searchLower) ||
                     x.Code.ToLowerInvariant().Replace(" ", "").Contains(searchLower)
                 ).ToList();
+            }
+
+            // Filter products based on inventory when !AsPresale and Sales (itemType == 0)
+            // For load order (IsFromLoadOrder) show all products; for Dump (1) or Return (2), show all products
+            if (!IsFromLoadOrder && !_order.AsPresale && _itemType == 0)
+            {
+                var productsWithOrderDetails = _order.Details
+                    .Where(d => !d.IsCredit && d.Product != null)
+                    .Select(d => d.Product.ProductId)
+                    .ToHashSet();
+                
+                products = products.Where(x =>
+                {
+                    if (productsWithOrderDetails.Contains(x.ProductId))
+                        return true;
+                    
+                    var oh = x.GetInventory(_order.AsPresale, false);
+                    // Show product if CanGoBelow0 is true OR if inventory is greater than 0
+                    return Config.CanGoBelow0 || oh > 0;
+                }).ToList();
             }
 
             // Cache client history
@@ -992,7 +1035,7 @@ namespace LaceupMigration.ViewModels
                 IEnumerable<AdvancedCatalogItemViewModel> filtered = Items;
 
                 // Apply filters in sequence without creating intermediate lists
-                if ((_currentFilter & 2) > 0) // In Stock
+                if (!IsFromLoadOrder && (_currentFilter & 2) > 0) // In Stock (skip when load order - show all)
                     filtered = filtered.Where(x => x.Product.CurrentWarehouseInventory > 0);
 
                 if ((_currentFilter & 4) > 0) // Previously Ordered
@@ -1138,12 +1181,18 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
-        private async Task DoneAsync()
+        public async Task DoneAsync()
         {
+            if (IsFromLoadOrder)
+            {
+                _order?.Save();
+                await NavigateToLoadOrderTemplateAsync(); // Add To Order always goes to load order template
+                return;
+            }
             var canNavigate = await FinalizeOrderAsync();
             if (canNavigate)
             {
-                await Shell.Current.GoToAsync("..");
+                await NavigateBackFromCatalogAsync();
             }
         }
 
@@ -1213,7 +1262,7 @@ namespace LaceupMigration.ViewModels
                 baseQty *= detail.UoM.Conversion;
 
             var isCredit = detail.Detail != null ? detail.Detail.IsCredit : false;
-            if (!Config.CanGoBelow0 && !isCredit && _itemType == 0)
+            if (!IsFromLoadOrder && !Config.CanGoBelow0 && !isCredit && _itemType == 0)
             {
                 if (currentOH - baseQty < 0)
                 {
@@ -1319,6 +1368,43 @@ namespace LaceupMigration.ViewModels
 
             var isFreeItem = detail.Detail.IsFreeItem || 
                             (!string.IsNullOrEmpty(detail.Detail.ExtraFields) && detail.Detail.ExtraFields.Contains("productfree"));
+
+            // Check inventory before incrementing for Sales (!AsPresale and itemType == 0); skip when load order
+            var isCredit = detail.Detail.IsCredit;
+            if (!IsFromLoadOrder && !Config.CanGoBelow0 && !isCredit && _itemType == 0 && !_order.AsPresale)
+            {
+                var currentOH = detail.Product.GetInventory(_order.AsPresale, false);
+                var incrementBaseQty = 1.0;
+                if (detail.UoM != null)
+                    incrementBaseQty *= detail.UoM.Conversion;
+                
+                var currentQty = detail.Detail.Qty;
+                var currentQtyBase = (double)currentQty;
+                if (detail.UoM != null)
+                    currentQtyBase *= detail.UoM.Conversion;
+                
+                var newQtyBase = currentQtyBase + incrementBaseQty;
+                
+                // Calculate total base quantity already in order for this product (excluding current detail)
+                var totalBaseQtyInOrder = _order.Details
+                    .Where(d => d.Product.ProductId == detail.Product.ProductId && 
+                           !d.IsCredit && 
+                           d.OrderDetailId != detail.Detail.OrderDetailId)
+                    .Sum(d => 
+                    {
+                        var qty = (double)d.Qty;
+                        if (d.UnitOfMeasure != null)
+                            qty *= d.UnitOfMeasure.Conversion;
+                        return qty;
+                    });
+                
+                // Check if adding this quantity would exceed available inventory
+                if (incrementBaseQty > currentOH)
+                {
+                    await _dialogService.ShowAlertAsync("Not enough inventory.", "Alert");
+                    return;
+                }
+            }
 
             _order.UpdateInventory(detail.Detail, 1);
             detail.Detail.Qty++;
@@ -1581,7 +1667,6 @@ namespace LaceupMigration.ViewModels
 
             if (qty < 0)
                 qty = 0;
-
             var isFreeItem = detail.Detail != null && (detail.Detail.IsFreeItem || 
                             (!string.IsNullOrEmpty(detail.Detail.ExtraFields) && detail.Detail.ExtraFields.Contains("productfree")));
 
@@ -1599,10 +1684,40 @@ namespace LaceupMigration.ViewModels
                 _order.Details.Add(detail.Detail);
             }
 
+            // Check inventory before setting quantity for Sales (!AsPresale and itemType == 0); skip when load order
+            var isCredit = detail.Detail.IsCredit;
+            if (!IsFromLoadOrder && !Config.CanGoBelow0 && !isCredit && _itemType == 0 && !_order.AsPresale && qty > 0)
+            {
+                var currentOH = detail.Product.GetInventory(_order.AsPresale, false);
+                var baseQty = (double)qty;
+                if (detail.UoM != null)
+                    baseQty *= detail.UoM.Conversion;
+                
+                // Calculate total base quantity already in order for this product (excluding current detail)
+                var totalBaseQtyInOrder = _order.Details
+                    .Where(d => d.Product.ProductId == detail.Product.ProductId && 
+                           !d.IsCredit && 
+                           d.OrderDetailId != detail.Detail.OrderDetailId)
+                    .Sum(d => 
+                    {
+                        var q = d.Qty;
+                        if (d.UnitOfMeasure != null)
+                            q *= (float)d.UnitOfMeasure.Conversion;
+                        return q;
+                    });
+                
+                // Check if setting this quantity would exceed available inventory
+                if (totalBaseQtyInOrder + baseQty > currentOH)
+                {
+                    await _dialogService.ShowAlertAsync("Not enough inventory.", "Alert");
+                    return;
+                }
+            }
+
             var oldQty = detail.Detail.Qty;
-            _order.UpdateInventory(detail.Detail, (int)oldQty);
+            _order.UpdateInventory(detail.Detail, 1);
             detail.Detail.Qty = qty;
-            _order.UpdateInventory(detail.Detail, (int)-qty);
+            _order.UpdateInventory(detail.Detail, -1);
 
             if (detail.Detail.Qty <= 0)
             {
@@ -2221,8 +2336,8 @@ namespace LaceupMigration.ViewModels
             if (ShowDumpsButton) visibleCount++;
             if (ShowReturnsButton) visibleCount++;
 
-            // Show the grid only if at least one button is visible
-            ShowButtonGrid = visibleCount > 0;
+            // Show the grid only if at least one button is visible (always hide when from load order - catalog only)
+            ShowButtonGrid = !IsFromLoadOrder && visibleCount > 0;
 
             // Set column definitions based on visible count
             ButtonGridColumns = visibleCount switch
@@ -2396,7 +2511,7 @@ namespace LaceupMigration.ViewModels
                 }
                 Helpers.NavigationHelper.RemoveNavigationState(route);
 
-                await Shell.Current.GoToAsync("..");
+                await NavigateBackFromCatalogAsync();
             }
             catch (Exception ex)
             {
@@ -2455,8 +2570,8 @@ namespace LaceupMigration.ViewModels
             }
 
             // Navigate back - matches Xamarin's Finish() behavior which just closes the current Activity
-            // and returns to the previous one (ClientDetailsPage)
-            await Shell.Current.GoToAsync("..");
+            // and returns to the previous one (ClientDetailsPage), or to NewLoadOrderTemplatePage when comingFrom=LoadOrderTemplate
+            await NavigateBackFromCatalogAsync();
         }
 
         private async Task<bool> FinalizeOrderAsync()
@@ -2654,7 +2769,7 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
-        private async Task ShowMenuAsync()
+        public async Task ShowMenuAsync()
         {
             if (_order == null)
                 return;
@@ -3255,7 +3370,7 @@ namespace LaceupMigration.ViewModels
             // Remove state
             Helpers.NavigationHelper.RemoveNavigationState("advancedcatalog");
 
-            await Shell.Current.GoToAsync("..");
+            await NavigateBackFromCatalogAsync();
         }
 
         private async Task GetPaymentAsync()
@@ -3305,7 +3420,7 @@ namespace LaceupMigration.ViewModels
             if (prodIn == null && prodOut == null)
             {
                 if (exit)
-                    await Shell.Current.GoToAsync("..");
+                    await NavigateBackFromCatalogAsync();
                 return;
             }
 
@@ -3484,7 +3599,19 @@ namespace LaceupMigration.ViewModels
         {
             if (_order == null)
             {
-                await Shell.Current.GoToAsync("..");
+                await NavigateBackFromCatalogAsync();
+                return;
+            }
+
+            // From load order: never finalize or delete; back goes to previous page (categories if from categories, else load order template)
+            if (IsFromLoadOrder)
+            {
+                _order.Save();
+                var route = "advancedcatalog";
+                if (_order != null)
+                    route += $"?orderId={_order.OrderId}";
+                Helpers.NavigationHelper.RemoveNavigationState(route);
+                await NavigateBackOneAsync(); // Back: one pop → categories or load template depending how we got here
                 return;
             }
 
@@ -3506,7 +3633,7 @@ namespace LaceupMigration.ViewModels
                     }
                     Helpers.NavigationHelper.RemoveNavigationState(route);
                     
-                    await Shell.Current.GoToAsync("..");
+                    await NavigateBackFromCatalogAsync();
                 }
                 return; // Don't show the 3-option dialog for empty orders
             }
@@ -3546,7 +3673,7 @@ namespace LaceupMigration.ViewModels
                             }
                             Helpers.NavigationHelper.RemoveNavigationState(route);
                             
-                            await Shell.Current.GoToAsync("..");
+                            await NavigateBackFromCatalogAsync();
                         }
                         break;
                     case "Stay In The Order":
@@ -3568,7 +3695,7 @@ namespace LaceupMigration.ViewModels
                     }
                     Helpers.NavigationHelper.RemoveNavigationState(route);
                     
-                    await Shell.Current.GoToAsync("..");
+                    await NavigateBackFromCatalogAsync();
                 }
             }
         }
@@ -3677,6 +3804,21 @@ namespace LaceupMigration.ViewModels
         }
         
         public Order? Order { get; set; }
+
+        /// <summary>True when this catalog is used for a load order: cell shows only OH and Truck Inventory.</summary>
+        public bool IsLoadOrderDisplay => Order != null && Order.OrderType == OrderType.Load;
+
+        /// <summary>True when price, history, type, and other non-load info should be shown.</summary>
+        public bool ShowPriceHistoryType => !IsLoadOrderDisplay;
+
+        /// <summary>True when type text should be shown (not load and has type).</summary>
+        public bool ShowTypeInCell => ShowPriceHistoryType && ShowTypeText;
+
+        /// <summary>True when free item section should be shown (not load and has free item).</summary>
+        public bool ShowFreeItemDetailInCell => ShowPriceHistoryType && ShowFreeItemDetail;
+
+        /// <summary>True when Add Free Item button should be shown (not load).</summary>
+        public bool ShowFreeItemButtonInCell => ShowPriceHistoryType && ShowFreeItemButton;
         
         private AdvancedCatalogDetailViewModel? _primaryDetail;
 
@@ -3695,6 +3837,8 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _productDisplayName = string.Empty;
 
         [ObservableProperty] private string _onHandText = string.Empty;
+
+        [ObservableProperty] private string _truckInventoryText = string.Empty;
 
         [ObservableProperty] private string _listPriceText = string.Empty;
 
@@ -3761,11 +3905,38 @@ namespace LaceupMigration.ViewModels
                     return;
 
                 // Product Display Name (Code + Name)
-                ProductDisplayName = $"{Product.Code} {Product.Name}";
+                ProductDisplayName = $"{Product.Name}";
 
-                // On-Hand
-                var oh = Product.CurrentWarehouseInventory;
-                OnHandText = $"OH: {oh:F0}";
+                // Use PrimaryDetail's UoM if available, otherwise use first detail's UoM
+                var detailForUom = PrimaryDetail ?? Details.FirstOrDefault();
+                string uomName = detailForUom?.UoM?.Name ?? string.Empty;
+                double uomConversion = detailForUom?.UoM?.Conversion ?? 1.0;
+
+                // On-Hand (OH) and Truck Inventory: for load order show only those two; otherwise use GetInventory
+                var isLoadOrder = order != null && order.OrderType == OrderType.Load;
+                if (isLoadOrder)
+                {
+                    var ohBase = (double)Product.CurrentWarehouseInventory;
+                    var truckBase = (double)Product.CurrentInventory;
+                    var ohDisplay = ohBase / uomConversion;
+                    var truckDisplay = truckBase / uomConversion;
+                    OnHandText = string.IsNullOrEmpty(uomName)
+                        ? $"OH: {ohDisplay:F0}"
+                        : $"OH: {ohDisplay:F0} {uomName}";
+                    TruckInventoryText = string.IsNullOrEmpty(uomName)
+                        ? $"Truck Inventory: {truckDisplay:F0}"
+                        : $"Truck Inventory: {truckDisplay:F0} {uomName}";
+                }
+                else
+                {
+                    var aspresale = order != null ? order.AsPresale : true;
+                    var ohBase = Product.GetInventory(aspresale, false);
+                    double ohDisplay = ohBase / uomConversion;
+                    OnHandText = string.IsNullOrEmpty(uomName)
+                        ? $"OH: {ohDisplay:F0}"
+                        : $"OH: {ohDisplay:F0} {uomName}";
+                    TruckInventoryText = string.Empty;
+                }
 
                 // List Price
                 var listPrice = Product.PriceLevel0;
@@ -3897,6 +4068,11 @@ namespace LaceupMigration.ViewModels
                 var imagePath = ProductImage.GetProductImage(Product.ProductId);
                 HasImage = !string.IsNullOrEmpty(imagePath);
                 ProductImagePath = imagePath ?? string.Empty;
+
+                OnPropertyChanged(nameof(IsLoadOrderDisplay));
+                OnPropertyChanged(nameof(ShowTypeInCell));
+                OnPropertyChanged(nameof(ShowFreeItemDetailInCell));
+                OnPropertyChanged(nameof(ShowFreeItemButtonInCell));
             }
         }
 

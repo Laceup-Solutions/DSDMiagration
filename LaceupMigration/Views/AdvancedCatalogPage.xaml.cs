@@ -23,11 +23,39 @@ namespace LaceupMigration.Views
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         }
 
-        // Override to integrate ViewModel menu with base menu
+        // Override to integrate ViewModel menu with base menu (or single "Add To Order" when from load order)
         protected override List<MenuOption> GetPageSpecificMenuOptions()
         {
-            // Get menu options from ViewModel - BuildMenuOptions returns List<MenuOption>
             return _viewModel.BuildMenuOptions();
+        }
+
+        private void UpdateToolbarForLoadOrder()
+        {
+            ToolbarItems.Clear();
+            if (_viewModel.IsFromLoadOrder)
+            {
+                ToolbarItems.Add(new ToolbarItem
+                {
+                    Text = "Add To Order",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = 0,
+                    Command = new Command(() => _ = _viewModel.DoneAsync())
+                });
+            }
+            else
+            {
+                var options = _viewModel.BuildMenuOptions();
+                if (options?.Count > 0)
+                {
+                    ToolbarItems.Add(new ToolbarItem
+                    {
+                        Text = "MENU",
+                        Order = ToolbarItemOrder.Primary,
+                        Priority = 0
+                    });
+                    ToolbarItems[0].Clicked += async (s, e) => await _viewModel.ShowMenuAsync();
+                }
+            }
         }
 
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -84,7 +112,7 @@ namespace LaceupMigration.Views
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
 
-            UpdateMenuToolbarItem();
+            UpdateToolbarForLoadOrder();
             UpdateButtonGridColumns();
         }
 
@@ -119,13 +147,6 @@ namespace LaceupMigration.Views
             // Call ViewModel's GoBackAsync which handles finalization logic
             // This is async, but GoBack() is synchronous, so we fire and forget
             _ = _viewModel.GoBackAsync();
-        }
-
-        protected override bool OnBackButtonPressed()
-        {
-            // Handle physical back button - call GoBack which will finalize the order
-            GoBack();
-            return true; // Prevent default back navigation
         }
 
     }

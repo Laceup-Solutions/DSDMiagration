@@ -27,6 +27,7 @@ namespace LaceupMigration.ViewModels
         private bool _creditAccount = false;
         private bool _fromPaymentTab = false;
         private bool _fromClientDetails = false;
+        private bool _fromFinalize = false;
         private bool _goBackToMain = false;
         private int _paymentId = 0;
         private string _invoicesId = string.Empty;
@@ -114,10 +115,14 @@ namespace LaceupMigration.ViewModels
                 _invoicesId = invoiceIdsValue.ToString() ?? string.Empty;
             }
 
-            // Parse orderIds
+            // Parse orderIds (SelectInvoice etc.) or ordersId (FinalizeBatch - matches Xamarin ordersIdIntent)
             if (query.TryGetValue("orderIds", out var orderIdsValue) && orderIdsValue != null)
             {
                 _ordersId = orderIdsValue.ToString() ?? string.Empty;
+            }
+            if (query.TryGetValue("ordersId", out var ordersIdValue) && ordersIdValue != null)
+            {
+                _ordersId = ordersIdValue.ToString() ?? string.Empty;
             }
 
             // Parse clientId
@@ -151,6 +156,14 @@ namespace LaceupMigration.ViewModels
                 var fromClientDetailsStr = fromClientDetailsValue.ToString();
                 _fromClientDetails = fromClientDetailsStr == "1" || fromClientDetailsStr?.ToLowerInvariant() == "true" || 
                                     (fromClientDetailsValue is bool fromClientDetailsBool && fromClientDetailsBool);
+            }
+
+            // Parse fromFinalize (FinalizeBatch Collect Payment - matches Xamarin commingFromFinalizeIntent)
+            if (query.TryGetValue("fromFinalize", out var fromFinalizeValue) && fromFinalizeValue != null)
+            {
+                var fromFinalizeStr = fromFinalizeValue.ToString();
+                _fromFinalize = fromFinalizeStr == "1" || fromFinalizeStr?.ToLowerInvariant() == "true" || 
+                               (fromFinalizeValue is bool fromFinalizeBool && fromFinalizeBool);
             }
 
             await InitializeAsync();
@@ -515,33 +528,36 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            // Load orders
+            // Load orders (matches Xamarin PaymentSetValuesActivity when !string.IsNullOrEmpty(ordersId) && string.IsNullOrEmpty(invoicesId))
             if (!string.IsNullOrEmpty(_ordersId))
             {
-                foreach (var idAsString in _ordersId.Split(','))
+                foreach (var idAsString in _ordersId.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
                 {
-                    var id = Convert.ToInt32(idAsString);
+                    var trimmed = idAsString.Trim();
+                    if (string.IsNullOrEmpty(trimmed) || !int.TryParse(trimmed, out var id))
+                        continue;
                     var order = Order.Orders.FirstOrDefault(x => x.OrderId == id);
                     if (order != null)
                     {
+                        double orderTotal = Config.DisolCrap ? order.DisolOrderTotalCost() : order.OrderTotalCost();
                         if (Config.ShowInvoicesCreditsInPayments)
                         {
-                            if (order.OrderTotalCost() < 0)
+                            if (orderTotal < 0)
                             {
-                                _creditAmount += order.OrderTotalCost();
+                                _creditAmount += orderTotal;
                                 if (!string.IsNullOrEmpty(order.PrintedOrderId))
                                     creditsDocNumbersList.Add(order.PrintedOrderId);
                             }
                             else
                             {
-                                _amount += order.OrderTotalCost();
+                                _amount += orderTotal;
                                 if (!string.IsNullOrEmpty(order.PrintedOrderId))
                                     docNumbersList.Add(order.PrintedOrderId);
                             }
                         }
                         else
                         {
-                            _amount += order.OrderTotalCost();
+                            _amount += orderTotal;
                             if (!string.IsNullOrEmpty(order.PrintedOrderId))
                                 docNumbersList.Add(order.PrintedOrderId);
                         }
@@ -688,7 +704,9 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SavePayment()
         {
-            await SavePaymentInternal();
+            // Match Xamarin SavePayment_Click: only finish/navigate when save succeeded
+            if (!await SavePaymentInternal())
+                return;
             await FinishProcessAsync();
         }
 
@@ -776,8 +794,8 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SaveAndClose()
         {
+            // SavePayment already calls FinishProcessAsync() on success; do not call it again or we pop twice (e.g. back to BatchPage instead of FinalizeBatch)
             await SavePayment();
-            await FinishProcessAsync();
         }
 
         [RelayCommand]
@@ -971,6 +989,14 @@ namespace LaceupMigration.ViewModels
         {
             if (File.Exists(_tempFile))
                 File.Delete(_tempFile);
+
+            // Match Xamarin FinishActivityProcess: when coming from FinalizeBatch, just navigate back once
+            if (_fromFinalize)
+            {
+                Helpers.NavigationHelper.RemoveNavigationState("paymentsetvalues");
+                await Shell.Current.GoToAsync("..");
+                return;
+            }
 
             if (_goBackToMain)
             {

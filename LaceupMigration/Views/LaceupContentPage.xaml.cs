@@ -53,6 +53,7 @@ namespace LaceupMigration.Views
         /// <summary>
         /// Virtual method for pages to override and provide custom back navigation logic.
         /// Default implementation removes state and navigates back.
+        /// Called by both physical back button (via OnBackButtonPressed) and navigation bar back button (via BackButtonBehavior).
         /// </summary>
         protected virtual void GoBack()
         {
@@ -62,6 +63,16 @@ namespace LaceupMigration.Views
             
             // Navigate back
             Shell.Current.GoToAsync("..");
+        }
+
+        /// <summary>
+        /// Routes physical back button through GoBack() so both physical and nav bar back use the same logic.
+        /// State is removed and navigation happens in GoBack(); override GoBack() for custom behavior.
+        /// </summary>
+        protected override bool OnBackButtonPressed()
+        {
+            GoBack();
+            return true; // We handle back; GoBack() performs RemoveNavigationState + navigation when appropriate
         }
 
         /// <summary>

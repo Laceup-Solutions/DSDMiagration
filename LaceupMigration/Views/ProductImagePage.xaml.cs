@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class ProductImagePage : IQueryAttributable
+    public partial class ProductImagePage : LaceupContentPage, IQueryAttributable
     {
         private readonly ProductImagePageViewModel _viewModel;
 
@@ -55,11 +55,11 @@ namespace LaceupMigration.Views
             Helpers.NavigationHelper.SaveNavigationState(route);
         }
 
-        protected override bool OnBackButtonPressed()
+        /// <summary>Both physical and nav bar back use this; remove state then navigate.</summary>
+        protected override void GoBack()
         {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
             Helpers.NavigationHelper.RemoveNavigationState("productimage");
-            return false; // Allow navigation
+            base.GoBack();
         }
     }
 }

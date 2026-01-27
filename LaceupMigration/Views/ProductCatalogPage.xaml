@@ -8,9 +8,6 @@
              Shell.NavBarIsVisible="True"
              Shell.TabBarIsVisible="False"
              Title="{Binding PageTitle}">
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Menu" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
-    </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,*">
             <!-- Search Bar with Barcode Icon -->

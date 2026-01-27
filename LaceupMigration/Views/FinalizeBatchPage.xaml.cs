@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class FinalizeBatchPage : IQueryAttributable
+    public partial class FinalizeBatchPage : LaceupContentPage, IQueryAttributable
     {
         private readonly FinalizeBatchPageViewModel _viewModel;
 
@@ -70,20 +70,22 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        protected override bool OnBackButtonPressed()
+        /// <summary>
+        /// Override GoBack so the navigation bar back runs the same "can't leave until finalizing" check as the physical back button.
+        /// When payment was collected or printing was done, block and show "You must click Done to leave this screen."
+        /// </summary>
+        /// <summary>
+        /// Both physical and nav bar back use this. Block when payment/printed; otherwise remove state and navigate.
+        /// </summary>
+        protected override void GoBack()
         {
-            // Xamarin FinalizeBatchActivity OnKeyDown logic (lines 759-789)
-            // Prevent back navigation if payment was collected or printing was done
             if (!_viewModel.CanLeaveScreen)
             {
                 _ = _viewModel.ShowCannotLeaveDialog();
-                return true; // Prevent navigation
+                return;
             }
-
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
             Helpers.NavigationHelper.RemoveNavigationState("finalizebatch");
-
-            return false; // Allow navigation
+            base.GoBack();
         }
     }
 }

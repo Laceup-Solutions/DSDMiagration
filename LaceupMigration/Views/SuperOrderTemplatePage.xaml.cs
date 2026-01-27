@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class SuperOrderTemplatePage : IQueryAttributable
+    public partial class SuperOrderTemplatePage : LaceupContentPage, IQueryAttributable
     {
         private readonly SuperOrderTemplatePageViewModel _viewModel;
 
@@ -71,11 +71,11 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        protected override bool OnBackButtonPressed()
+        /// <summary>Both physical and nav bar back use this; remove state then navigate.</summary>
+        protected override void GoBack()
         {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
             Helpers.NavigationHelper.RemoveNavigationState("superordertemplate");
-            return false; // Allow navigation
+            base.GoBack();
         }
     }
 }

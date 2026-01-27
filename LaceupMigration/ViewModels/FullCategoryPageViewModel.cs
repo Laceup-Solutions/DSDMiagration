@@ -58,6 +58,9 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private string _title = "Product Catalog";
 
+        [ObservableProperty]
+        private bool _isFromLoadOrder;
+
         public FullCategoryPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner, AdvancedOptionsService advancedOptionsService)
         {
             _dialogService = dialogService;
@@ -99,13 +102,20 @@ namespace LaceupMigration.ViewModels
                 _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId.Value);
                 if (_order == null)
                 {
-                    // await _dialogService.ShowAlertAsync("Order not found.", "Error");
+                    await _dialogService.ShowAlertAsync("Order not found.", "Error", "OK");
+                    await Shell.Current.GoToAsync("..");
                     return;
                 }
                 _client = _order.Client;
 
-                // Check config to determine which catalog to use
-                if (Config.UseLaceupAdvancedCatalog)
+                // When from LoadOrderTemplate with no category/search, always show categories (do not redirect)
+                bool isLoadOrderCategoriesOnly = _comingFrom == "LoadOrderTemplate"
+                    && !categoryId.HasValue
+                    && string.IsNullOrEmpty(productSearch)
+                    && !comingFromSearch;
+
+                // Check config to determine which catalog to use (skip redirect when showing categories for load order)
+                if (!isLoadOrderCategoriesOnly && Config.UseLaceupAdvancedCatalog)
                 {
                     // Redirect to AdvancedCatalog - pass fromLoadOrder flag
                     var route = $"advancedcatalog?orderId={orderId.Value}";
@@ -122,7 +132,7 @@ namespace LaceupMigration.ViewModels
                     await Shell.Current.GoToAsync(route);
                     return;
                 }
-                else if (Config.UseCatalog)
+                else if (!isLoadOrderCategoriesOnly && Config.UseCatalog)
                 {
                     // If categoryId is provided, navigate directly to ProductCatalog
                     // Otherwise, show categories first (don't redirect)
@@ -146,6 +156,8 @@ namespace LaceupMigration.ViewModels
                             route += "&consignmentCounting=1";
                         if (!string.IsNullOrEmpty(_comingFrom))
                             route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
+                        if (_comingFrom == "LoadOrderTemplate")
+                            route += "&loadOrderReturnDepth=2";
                         await Shell.Current.GoToAsync(route);
                         return;
                     }
@@ -168,6 +180,8 @@ namespace LaceupMigration.ViewModels
                     Title = "Categories";
                     LoadCategories();
                 }
+
+                IsFromLoadOrder = _comingFrom == "LoadOrderTemplate";
             }
             else if (clientId.HasValue)
             {
@@ -480,11 +494,23 @@ namespace LaceupMigration.ViewModels
             // This is called when a category with no subcategories is clicked
             int categoryId = item.Category.CategoryId;
 
+            if (Config.UseLaceupAdvancedCatalog && _orderId.HasValue)
+            {
+                var route = $"advancedcatalog?orderId={_orderId.Value}&categoryId={categoryId}";
+                if (!string.IsNullOrEmpty(_comingFrom))
+                    route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
+                if (_comingFrom == "LoadOrderTemplate")
+                    route += "&loadOrderReturnDepth=2";
+                await Shell.Current.GoToAsync(route);
+                return;
+            }
             if (Config.UseCatalog && _orderId.HasValue)
             {
                 var route = $"productcatalog?orderId={_orderId.Value}&categoryId={categoryId}";
                 if (!string.IsNullOrEmpty(_comingFrom))
                     route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
+                if (_comingFrom == "LoadOrderTemplate")
+                    route += "&loadOrderReturnDepth=2";
                 if (_asCreditItem)
                     route += "&asCreditItem=1";
                 if (_asReturnItem)
@@ -496,7 +522,10 @@ namespace LaceupMigration.ViewModels
             // Both configs OFF - navigate to FullCategoryPage with products (matches Xamarin's FullProductListActivity)
             if (_orderId.HasValue)
             {
-                await Shell.Current.GoToAsync($"fullcategory?orderId={_orderId.Value}&categoryId={categoryId}");
+                var route = $"fullcategory?orderId={_orderId.Value}&categoryId={categoryId}";
+                if (!string.IsNullOrEmpty(_comingFrom))
+                    route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
+                await Shell.Current.GoToAsync(route);
             }
             else if (_client != null)
             {
@@ -881,6 +910,12 @@ namespace LaceupMigration.ViewModels
                 Logger.CreateLog($"Error scanning barcode: {ex.Message}");
                 await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
             }
+        }
+
+        [RelayCommand]
+        private async Task ReturnToLoadOrderAsync()
+        {
+            await Shell.Current.GoToAsync("..");
         }
 
         [RelayCommand]

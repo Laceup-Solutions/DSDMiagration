@@ -43,15 +43,5 @@ namespace LaceupMigration.Views
             _ = _viewModel.GoBackAsync();
         }
 
-        /// <summary>
-        /// Override OnBackButtonPressed to handle physical back button.
-        /// This ensures the physical back button has the same behavior as the navigation back button.
-        /// </summary>
-        protected override bool OnBackButtonPressed()
-        {
-            // Handle physical back button - call GoBack which will handle cleanup
-            GoBack();
-            return true; // Prevent default back navigation (we handle it in GoBack)
-        }
     }
 }

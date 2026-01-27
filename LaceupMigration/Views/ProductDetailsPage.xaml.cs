@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class ProductDetailsPage : IQueryAttributable
+    public partial class ProductDetailsPage : LaceupContentPage, IQueryAttributable
     {
         private readonly ProductDetailsPageViewModel _viewModel;
 
@@ -61,11 +61,11 @@ namespace LaceupMigration.Views
             await _viewModel.RefreshProductDataAsync();
         }
 
-        protected override bool OnBackButtonPressed()
+        /// <summary>Both physical and nav bar back use this; remove state then navigate.</summary>
+        protected override void GoBack()
         {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
             Helpers.NavigationHelper.RemoveNavigationState("productdetails");
-            return false; // Allow navigation
+            base.GoBack();
         }
 
         private async void ProductImage_Tapped(object sender, EventArgs e)

@@ -4,7 +4,7 @@ using System;
 
 namespace LaceupMigration.Views
 {
-    public partial class AcceptLoadPage : IQueryAttributable
+    public partial class AcceptLoadPage : LaceupContentPage, IQueryAttributable
     {
         private readonly AcceptLoadPageViewModel _viewModel;
         private DateTime? _lastInitializedDate; // Track the last date we initialized with
@@ -104,27 +104,17 @@ namespace LaceupMigration.Views
             };
         }
 
-        protected override bool OnBackButtonPressed()
+        /// <summary>Both physical and nav bar back use this; delete pending loads, remove state, then navigate.</summary>
+        protected override void GoBack()
         {
             // Match Xamarin: OnKeyDown - when back button is pressed, delete pending loads
-            // Match Xamarin AcceptLoadOrderList.cs line 234-247
-            // In Xamarin: if (keyCode == Keycode.Back) { ActivityState.RemoveState(state); DataAccess.DeletePengingLoads(); }
             _viewModel.DeletePendingLoads();
-            
-            // [ACTIVITY STATE]: Remove state when properly exiting
-            // Build route from current state or use saved route
             var currentRoute = Shell.Current.CurrentState?.Location?.OriginalString ?? "";
             if (currentRoute.Contains("acceptload"))
-            {
                 Helpers.NavigationHelper.RemoveNavigationState(currentRoute);
-            }
             else
-            {
-                // Fallback: try to remove by route name (will remove any acceptload state)
                 Helpers.NavigationHelper.RemoveNavigationState("acceptload");
-            }
-            
-            return base.OnBackButtonPressed();
+            base.GoBack();
         }
 
         protected override void OnDisappearing()

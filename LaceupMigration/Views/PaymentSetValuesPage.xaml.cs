@@ -7,7 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace LaceupMigration.Views
 {
-    public partial class PaymentSetValuesPage : IQueryAttributable
+    public partial class PaymentSetValuesPage : LaceupContentPage, IQueryAttributable
     {
         private readonly PaymentSetValuesPageViewModel _viewModel;
 
@@ -107,11 +107,11 @@ namespace LaceupMigration.Views
             }
         }
 
-        protected override bool OnBackButtonPressed()
+        /// <summary>Both physical and nav bar back use this; remove state then navigate.</summary>
+        protected override void GoBack()
         {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
             Helpers.NavigationHelper.RemoveNavigationState("paymentsetvalues");
-            return false; // Allow navigation
+            base.GoBack();
         }
 
         private async void EditPayment_Clicked(object sender, EventArgs e)

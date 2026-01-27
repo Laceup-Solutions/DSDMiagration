@@ -171,6 +171,9 @@ namespace LaceupMigration.ViewModels
                     }
                 }
 
+                // Keep last detail for "Products" navigation (go to catalog on last selected category)
+                _lastDetail = _loadOrder.Details.Where(d => !d.Deleted).LastOrDefault();
+
                 UpdateTotalQty();
             }
             catch (Exception ex)
@@ -381,6 +384,7 @@ namespace LaceupMigration.ViewModels
 
             _appService.RecordEvent("prod button");
 
+            var loadOrderSource = "&comingFrom=LoadOrderTemplate";
             if (_lastDetail == null)
             {
                 // Navigate to categories - add fromLoadOrder flag to show only Advanced Options in menu
