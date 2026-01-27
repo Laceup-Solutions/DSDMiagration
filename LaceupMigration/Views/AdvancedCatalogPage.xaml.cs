@@ -15,6 +15,10 @@ namespace LaceupMigration.Views
             _viewModel = viewModel;
             BindingContext = _viewModel;
             
+            // Override base menu - AdvancedCatalogPage builds its own complete menu
+            // This prevents duplicate "Advanced Options" from GetCommonMenuOptions()
+            OverrideBaseMenu = true;
+            
             // Subscribe to property changes to update Grid columns
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         }

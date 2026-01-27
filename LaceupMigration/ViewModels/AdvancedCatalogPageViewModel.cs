@@ -33,6 +33,7 @@ namespace LaceupMigration.ViewModels
         private bool _isScanning = false;
         private int _lastScannedProductId = 0;
         private List<int> _relatedLines = new();
+        private bool _fromLoadOrder = false; // Flag to indicate coming from Load Order (Prod button)
         
         // WhatToViewInList enum and field (matches AdvancedTemplateActivity)
         private enum WhatToViewInList
@@ -172,6 +173,7 @@ namespace LaceupMigration.ViewModels
             int? categoryId = null;
             string? search = null;
             int? itemType = null;
+            bool fromLoadOrder = false;
 
             if (query.TryGetValue("orderId", out var orderValue) && orderValue != null)
             {
@@ -196,11 +198,17 @@ namespace LaceupMigration.ViewModels
                     itemType = it;
             }
 
+            // Extract fromLoadOrder flag - defaults to false if not present
+            if (query.TryGetValue("fromLoadOrder", out var fromLoadValue) && fromLoadValue != null)
+            {
+                fromLoadOrder = fromLoadValue.ToString() == "1" || fromLoadValue.ToString().ToLowerInvariant() == "true";
+            }
+
             MainThread.BeginInvokeOnMainThread(async () =>
-                await InitializeAsync(orderId, categoryId, search, itemType));
+                await InitializeAsync(orderId, categoryId, search, itemType, fromLoadOrder));
         }
 
-        public async Task InitializeAsync(int? orderId, int? categoryId, string? search, int? itemType)
+        public async Task InitializeAsync(int? orderId, int? categoryId, string? search, int? itemType, bool fromLoadOrder = false)
         {
             if (!orderId.HasValue)
             {
@@ -223,6 +231,8 @@ namespace LaceupMigration.ViewModels
 
             if (itemType.HasValue)
                 _itemType = itemType.Value;
+
+            _fromLoadOrder = fromLoadOrder;
 
             _initialized = true;
             ClientName = _order.Client?.ClientName ?? "Unknown Client";
@@ -2672,6 +2682,16 @@ namespace LaceupMigration.ViewModels
 
             if (_order == null)
                 return options;
+
+            // If coming from Load Order (Prod button), show only Advanced Options
+            if (_fromLoadOrder)
+            {
+                options.Add(new MenuOption("Advanced Options", async () =>
+                {
+                    await ShowAdvancedOptionsAsync();
+                }));
+                return options;
+            }
 
             var finalized = _order.Finished;
             var voided = _order.Voided;

@@ -32,6 +32,7 @@ namespace LaceupMigration.ViewModels
         private bool _consignmentCounting;
         private string? _comingFrom; // "Credit" or "PreviouslyOrdered"
         private int? _scannedProductId; // Product ID from camera scan
+        private bool _fromLoadOrder = false; // Flag to indicate coming from Load Order (Prod button)
 
         public ObservableCollection<CategoryViewModel> Categories { get; } = new();
         public ObservableCollection<ProductViewModel> Products { get; } = new();
@@ -68,7 +69,7 @@ namespace LaceupMigration.ViewModels
 
         public async Task InitializeAsync(int? clientId = null, int? orderId = null, int? categoryId = null, 
             string? productSearch = null, bool comingFromSearch = false, bool asCreditItem = false, 
-            bool asReturnItem = false, int? productId = null, bool consignmentCounting = false, string? comingFrom = null)
+            bool asReturnItem = false, int? productId = null, bool consignmentCounting = false, string? comingFrom = null, bool fromLoadOrder = false)
         {
             
             if (!string.IsNullOrEmpty(productSearch))
@@ -84,6 +85,7 @@ namespace LaceupMigration.ViewModels
             _productId = productId;
             _consignmentCounting = consignmentCounting;
             _comingFrom = comingFrom;
+            _fromLoadOrder = fromLoadOrder;
             _scannedProductId = null; // Clear scanned product ID on initialization
             
             if (comingFromSearch && !string.IsNullOrEmpty(productSearch))
@@ -105,7 +107,7 @@ namespace LaceupMigration.ViewModels
                 // Check config to determine which catalog to use
                 if (Config.UseLaceupAdvancedCatalog)
                 {
-                    // Redirect to AdvancedCatalog
+                    // Redirect to AdvancedCatalog - pass fromLoadOrder flag
                     var route = $"advancedcatalog?orderId={orderId.Value}";
                     if (categoryId.HasValue)
                         route += $"&categoryId={categoryId.Value}";
@@ -115,6 +117,8 @@ namespace LaceupMigration.ViewModels
                         route += "&itemType=1"; // 0=Sales, 1=Dump, 2=Return
                     if (asReturnItem)
                         route += "&itemType=2";
+                    if (fromLoadOrder)
+                        route += "&fromLoadOrder=1";
                     await Shell.Current.GoToAsync(route);
                     return;
                 }

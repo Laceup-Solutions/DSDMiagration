@@ -48,10 +48,14 @@ namespace LaceupMigration.Views
                     clientIdIntent = cId;
             }
 
+            // Only initialize if orderId is provided and greater than 0
+            // This prevents re-initialization when navigating back if orderId is missing from query
             if (orderId > 0)
             {
                 Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(orderId, canGetOutIntent, clientIdIntent));
             }
+            // Note: If orderId is 0, don't initialize - the ViewModel will handle this gracefully
+            // if it's already initialized, or the user will need to navigate back manually
             
             // [ACTIVITY STATE]: Save navigation state with query parameters
             // Build route with query parameters for state saving
