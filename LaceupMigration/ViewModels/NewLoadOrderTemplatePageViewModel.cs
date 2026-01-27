@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using System;
 using System.Collections.Generic;
@@ -971,6 +972,9 @@ namespace LaceupMigration.ViewModels
 
                     // Delete the order (matches Xamarin loadOrder.Delete())
                     _loadOrder.Delete();
+
+                    // Clear state so app doesn't restore to this page after force quit
+                    NavigationHelper.RemoveNavigationState("newloadordertemplate");
 
                     // Navigate back (matches Xamarin FinishMe())
                     await Shell.Current.GoToAsync("..");

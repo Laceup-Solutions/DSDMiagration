@@ -77,6 +77,25 @@ namespace LaceupMigration.ViewModels
             await LoadInventoryAsync();
         }
 
+        public List<MenuOption> BuildMenuOptions()
+        {
+            var options = new List<MenuOption>();
+
+            // Submit - Match Xamarin: always visible UNLESS file doesn't exist
+            var finalFile = GetFinalFilePath();
+            if (File.Exists(finalFile) || !ReadOnly)
+            {
+                options.Add(new MenuOption("Submit", async () => await SubmitAsync()));
+            }
+
+            options.Add(new MenuOption("Add Comments", async () => await ShowCommentsDialog()));
+
+            if (!ReadOnly)
+                options.Add(new MenuOption("Delete Document", async () => await DeleteDocumentAsync()));
+
+            return options;
+        }
+        
         /// <summary>
         /// Gets the current temp file path. Used for saving to ActivityState.
         /// </summary>

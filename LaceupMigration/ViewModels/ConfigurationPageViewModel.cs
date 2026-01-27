@@ -265,9 +265,9 @@ namespace LaceupMigration.ViewModels
                 okButton.Clicked += async (s, e) =>
                 {
                     // Update connection settings
-                    InternetServer = internetServerEntry.Text;
-                    LanServer = lanServerEntry.Text;
-                    Ssid = ssidEntry.Text;
+                    Config.IPAddressGateway = InternetServer = internetServerEntry.Text;
+                    Config.LanAddress = LanServer = lanServerEntry.Text;
+                    Config.SSID = Ssid = ssidEntry.Text;
                     
                     await SafePopModalAsync();
                     tcs.SetResult(true);
