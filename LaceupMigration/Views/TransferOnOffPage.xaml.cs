@@ -6,7 +6,7 @@ using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.Views
 {
-    public partial class TransferOnOffPage : IQueryAttributable
+    public partial class TransferOnOffPage : LaceupContentPage, IQueryAttributable
     {
         private readonly TransferOnOffPageViewModel _viewModel;
 
@@ -32,6 +32,14 @@ namespace LaceupMigration.Views
             {
                 Command = backCommand
             });
+        }
+
+        protected override List<MenuOption> GetPageSpecificMenuOptions()
+        {
+            // Get menu options from ViewModel - BuildMenuOptions returns List<MenuOption>
+            // But the ViewModel uses a private record MenuOption, so we need to convert it
+            // Actually, let's check if BuildMenuOptions is accessible and returns the right type
+            return _viewModel.BuildMenuOptions();
         }
 
         /// <summary>
