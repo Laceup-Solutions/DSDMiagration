@@ -1437,14 +1437,15 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            // Handle company selection
-            if (CompanyInfo.Companies.Count > 1)
+            // Handle company selection: only when this client has multiple companies (matches Xamarin ClientDetailsActivity)
+            var clientCompanies = SalesmanAvailableCompany.GetCompanies(Config.SalesmanId, _client.ClientId);
+            if (clientCompanies.Count > 1)
             {
-                var companyNames = CompanyInfo.Companies.Select(x => x.CompanyName).ToArray();
+                var companyNames = clientCompanies.Select(x => x.CompanyName).ToArray();
                 var selectedIndex = await _dialogService.ShowSelectionAsync("Select Company", companyNames);
-                if (selectedIndex >= 0 && selectedIndex < CompanyInfo.Companies.Count)
+                if (selectedIndex >= 0 && selectedIndex < clientCompanies.Count)
                 {
-                    CompanyInfo.SelectedCompany = CompanyInfo.Companies[selectedIndex];
+                    CompanyInfo.SelectedCompany = clientCompanies[selectedIndex];
                 }
                 else
                 {
@@ -1452,6 +1453,10 @@ namespace LaceupMigration.ViewModels
                     order.Delete();
                     return;
                 }
+            }
+            else if (clientCompanies.Count == 1)
+            {
+                CompanyInfo.SelectedCompany = clientCompanies[0];
             }
 
             // Handle warehouse/site selection
@@ -1480,8 +1485,8 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            // Set company info on order
-            if (CompanyInfo.Companies.Count > 1 && CompanyInfo.SelectedCompany != null)
+            // Set company info on order (use selected company when this client has companies)
+            if (CompanyInfo.SelectedCompany != null)
             {
                 order.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
                 order.CompanyId = CompanyInfo.SelectedCompany.CompanyId;

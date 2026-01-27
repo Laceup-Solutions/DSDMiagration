@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.Views
 {
-    public partial class EndInventoryPage 
+    public partial class EndInventoryPage : LaceupContentPage
     {
         private readonly EndInventoryPageViewModel _viewModel;
 
@@ -24,19 +24,14 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        protected override bool OnBackButtonPressed()
+        /// <summary>Both physical and nav bar back use this; ask ViewModel, then remove state and navigate if allowed.</summary>
+        protected override void GoBack()
         {
-            // Handle back button - call ViewModel's OnBackButtonPressed
-            // Return true to prevent default back navigation, false to allow it
             bool preventNavigation = _viewModel.OnBackButtonPressed().GetAwaiter().GetResult();
-            
-            // [ACTIVITY STATE]: If navigation is allowed, remove state
-            if (!preventNavigation)
-            {
-                Helpers.NavigationHelper.RemoveNavigationState("endinventory");
-            }
-            
-            return preventNavigation;
+            if (preventNavigation)
+                return;
+            Helpers.NavigationHelper.RemoveNavigationState("endinventory");
+            base.GoBack();
         }
 
         private void OnSearchTextChanged(object sender, TextChangedEventArgs e)

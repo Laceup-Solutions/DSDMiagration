@@ -3,7 +3,7 @@ using Microsoft.Maui.ApplicationModel;
 
 namespace LaceupMigration.Views
 {
-    public partial class RouteReturnsPage 
+    public partial class RouteReturnsPage : LaceupContentPage
     {
         private readonly RouteReturnsPageViewModel _viewModel;
 
@@ -25,20 +25,14 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
         
-        protected override bool OnBackButtonPressed()
+        /// <summary>Both physical and nav bar back use this; ask ViewModel, then remove state and navigate if allowed.</summary>
+        protected override void GoBack()
         {
-            // Handle back button - call ViewModel's OnBackButtonPressed
-            // Return true to prevent default back navigation, false to allow it
-            // Note: We need to block here because OnBackButtonPressed must return synchronously
             bool preventNavigation = _viewModel.OnBackButtonPressed().GetAwaiter().GetResult();
-            
-            // [ACTIVITY STATE]: If navigation is allowed, remove state
-            if (!preventNavigation)
-            {
-                Helpers.NavigationHelper.RemoveNavigationState("routereturns");
-            }
-            
-            return preventNavigation;
+            if (preventNavigation)
+                return;
+            Helpers.NavigationHelper.RemoveNavigationState("routereturns");
+            base.GoBack();
         }
 
         private void OnSearchTextChanged(object sender, TextChangedEventArgs e)

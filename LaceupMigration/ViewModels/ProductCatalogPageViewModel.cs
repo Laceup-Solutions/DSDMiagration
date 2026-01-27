@@ -30,7 +30,8 @@ namespace LaceupMigration.ViewModels
         private bool _asReturnItem;
         private int? _productId;
         private bool _consignmentCounting;
-        private string? _comingFrom; // "Credit" or "PreviouslyOrdered"
+        private string? _comingFrom; // "Credit", "PreviouslyOrdered", or "LoadOrderTemplate"
+        private int _loadOrderReturnDepth = 1; // When comingFrom=LoadOrderTemplate: pops to return (1=direct from template, 2=via fullcategory)
         private string _searchCriteria = string.Empty;
         private bool _isCreating = false;
         private bool _isScanning = false;
@@ -54,6 +55,9 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private string _pageTitle = "Products";
+
+        [ObservableProperty]
+        private bool _isFromLoadOrder;
 
         public ProductCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner, AdvancedOptionsService advancedOptionsService)
         {
@@ -134,6 +138,16 @@ namespace LaceupMigration.ViewModels
                 _comingFrom = fromValue.ToString();
             }
 
+            if (query.TryGetValue("loadOrderReturnDepth", out var depthValue) && depthValue != null)
+            {
+                if (int.TryParse(depthValue.ToString(), out var d) && d >= 1)
+                    _loadOrderReturnDepth = d;
+            }
+            else if (_comingFrom == "LoadOrderTemplate")
+            {
+                _loadOrderReturnDepth = 1; // Direct from NewLoadOrderTemplate (Prod with last category)
+            }
+
             if (query.TryGetValue("isShowingSuggested", out var suggestedValue) && suggestedValue != null)
             {
                 _isShowingSuggested = suggestedValue.ToString() == "1" || suggestedValue.ToString().ToLowerInvariant() == "true";
@@ -162,7 +176,8 @@ namespace LaceupMigration.ViewModels
             _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId.Value);
             if (_order == null)
             {
-                // await _dialogService.ShowAlertAsync("Order not found.", "Error");
+                await _dialogService.ShowAlertAsync("Order not found.", "Error", "OK");
+                await Shell.Current.GoToAsync("..");
                 return;
             }
 
@@ -171,6 +186,7 @@ namespace LaceupMigration.ViewModels
             _onlyDamage = _order.Details.Count > 0 && _order.Details[0].IsCredit && _order.Details[0].Damaged == true;
 
             _initialized = true;
+            IsFromLoadOrder = _comingFrom == "LoadOrderTemplate";
             PrepareProductList();
             Filter();
         }
@@ -1079,14 +1095,16 @@ namespace LaceupMigration.ViewModels
             _order.Save();
             ProductInventory.Save();
 
-            // Navigate to load order template
-            var route = $"loadordertemplate?orderId={_order.OrderId}";
-            if (oneDetail != null)
-                route += $"&lastDetail={oneDetail.OrderDetailId}";
-            else
-                route += "&lastDetail=0";
+            // Return to NewLoadOrderTemplatePage when we came from load order (Categories/Products from template)
+            if (_comingFrom == "LoadOrderTemplate")
+            {
+                for (int i = 0; i < _loadOrderReturnDepth; i++)
+                    await Shell.Current.GoToAsync("..");
+                return;
+            }
 
-            await Shell.Current.GoToAsync(route);
+            // Navigate to load order template when adding to load order from elsewhere (use registered route)
+            await Shell.Current.GoToAsync($"newloadordertemplate?orderId={_order.OrderId}");
         }
 
         [RelayCommand]

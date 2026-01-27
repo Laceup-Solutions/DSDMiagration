@@ -28,6 +28,37 @@ namespace LaceupMigration.Views
             }
         }
 
+        private void UpdateToolbar()
+        {
+            ToolbarItems.Clear();
+            // On Categories view never show Add To Order (user said no need)
+            if (_viewModel.IsFromLoadOrder && _viewModel.ShowCategories)
+            {
+                // Categories page from load order: no toolbar action
+                return;
+            }
+            if (_viewModel.IsFromLoadOrder)
+            {
+                ToolbarItems.Add(new ToolbarItem
+                {
+                    Text = "Add To Order",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = 0,
+                    Command = new Command(() => _ = _viewModel.ReturnToLoadOrderCommand.ExecuteAsync(null))
+                });
+            }
+            else
+            {
+                ToolbarItems.Add(new ToolbarItem
+                {
+                    Text = "Menu",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = 0,
+                    Command = new Command(() => _ = _viewModel.ShowMenuCommand.ExecuteAsync(null))
+                });
+            }
+        }
+
 
         private async void ProductsCollectionView_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -142,6 +173,7 @@ namespace LaceupMigration.Views
         {
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
+            UpdateToolbar();
         }
 
         /// <summary>
@@ -164,13 +196,6 @@ namespace LaceupMigration.Views
             
             // Navigate back
             Shell.Current.GoToAsync("..");
-        }
-
-        protected override bool OnBackButtonPressed()
-        {
-            // Handle physical back button - call GoBack which will remove state
-            GoBack();
-            return true; // Prevent default back navigation (we handle it in GoBack)
         }
 
         private void SearchBar_TextChanged(object sender, TextChangedEventArgs e)

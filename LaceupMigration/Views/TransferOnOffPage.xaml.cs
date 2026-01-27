@@ -138,13 +138,6 @@ namespace LaceupMigration.Views
             }
         }
 
-        protected override bool OnBackButtonPressed()
-        {
-            // Call GoBack which handles both state removal and navigation
-            GoBack();
-            return true; // Prevent default navigation (GoBack handles it)
-        }
-
         private async void SortButton_Tapped(object sender, EventArgs e)
         {
             await _viewModel.ShowSortDialogAsync();

@@ -209,9 +209,9 @@ namespace LaceupMigration.ViewModels
             {
                 _appService.RecordEvent("Payment button");
 
-                // Save state that we're coming from finalize
-                // Navigate to payment page
-                await Shell.Current.GoToAsync($"paymentsetvalues?ordersId={_ordersId}&clientId={_client.ClientId}&fromFinalize=true");
+                // Match Xamarin FinalizeBatchActivity.PaymentButton_Click: pass ordersId and coming-from-finalize.
+                // PaymentSetValuesPage expects ordersId (or orderIds), clientId; amount/details come from loading those orders.
+                await Shell.Current.GoToAsync($"paymentsetvalues?ordersId={Uri.EscapeDataString(_ordersId)}&clientId={_client.ClientId}&fromFinalize=true");
                 
                 // After returning, update button states
                 UpdateButtonStates();

@@ -284,7 +284,8 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            var canSelect = !order.Voided || Config.CanVoidFOrders;
+            // Keep checkbox enabled at all times, including for voided orders
+            var canSelect = true;
 
             return new BatchOrderViewModel(this)
             {
@@ -358,11 +359,13 @@ namespace LaceupMigration.ViewModels
                 CanPick = activeOrders.Count > 0 && !Config.HidePrintBatch;
                 CanDex = Config.DexAvailable && activeOrders.Count > 0;
                 CanFinalize = selectedOrders.Count > 0 && selectedOrders.All(x => !x.Voided && !x.Finished && !x.Reshipped);
-                CanVoid = selectedOrders.Count > 0;
+                // Void enabled only when at least one selected order is voidable: not already voided, and (setting allows voiding finalized OR order is not finalized)
+                CanVoid = selectedOrders.Any(o => !o.Voided && (Config.CanVoidFOrders || !o.Finished));
                 CanReship = Config.UseReship && selectedOrders.Count > 0 && 
                            selectedOrders.Any(x => RouteEx.Routes.Any(r => r.Order != null && r.Order.OrderId == x.OrderId && !r.Order.Finished));
                 CanPrintLabel = ShowPrintLabelButton && activeOrders.Count > 0;
-                CanPrint = activeOrders.Count > 0 && !Config.HidePrintBatch;
+                // Print available whenever there are any orders, including when all are voided
+                CanPrint = allOrders.Count > 0 && !Config.HidePrintBatch;
 
                 // Clock Out logic:
                 // Disabled if there are no orders
@@ -478,7 +481,7 @@ namespace LaceupMigration.ViewModels
             }
 
             var result = await _dialogService.ShowConfirmAsync(
-                selectedOrders.Count == 1 ? "Finalize this order?" : $"Finalize these {selectedOrders.Count} orders?",
+                selectedOrders.Count == 1 ? "Are you sure that you would like to finalize this transaction?" : $"Are you sure you would like to finalize these {selectedOrders.Count} transactions?",
                 "Warning",
                 "Yes",
                 "No");
@@ -514,15 +517,30 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
+            // Cannot void already voided orders; respect Config.CanVoidFOrders for finalized orders
+            var voidableOrders = selectedOrders
+                .Where(o => !o.Voided && (Config.CanVoidFOrders || !o.Finished))
+                .ToList();
+            if (voidableOrders.Count == 0)
+            {
+                _canLeaveScreen = true;
+                var allVoided = selectedOrders.All(o => o.Voided);
+                var msg = allVoided
+                    ? "Selected orders are already voided."
+                    : "Selected orders cannot be voided. Finalized orders require the \"Can void finalized orders\" setting to be enabled.";
+                await _dialogService.ShowAlertAsync(msg, "Alert");
+                return;
+            }
+
             var result = await _dialogService.ShowConfirmAsync(
-                selectedOrders.Count == 1 ? "Void this order?" : $"Void these {selectedOrders.Count} orders?",
+                voidableOrders.Count == 1 ? "Void this order?" : $"Void these {voidableOrders.Count} orders?",
                 "Warning",
                 "Yes",
                 "No");
 
             if (result)
             {
-                await VoidOrdersAsync(selectedOrders);
+                await VoidOrdersAsync(voidableOrders);
             }
             else
             {
@@ -722,6 +740,14 @@ namespace LaceupMigration.ViewModels
             {
                 foreach (var order in orders)
                 {
+                    // Never void an already voided order
+                    if (order.Voided)
+                        continue;
+
+                    // Respect setting: do not void finalized orders when CanVoidFOrders is false
+                    if (order.Finished && !Config.CanVoidFOrders)
+                        continue;
+
                     if (order.IsDelivery && !Config.DeliveryEditable)
                     {
                         await _dialogService.ShowAlertAsync($"The order {order.PrintedOrderId ?? ""} cannot be voided", "Alert");
@@ -978,6 +1004,7 @@ namespace LaceupMigration.ViewModels
             var orders = _batch.Orders().ToList();
             var hasActiveOrders = orders.Any(x => !x.Voided && !x.Finished);
             var isLocked = _batch.Status == BatchStatus.Locked;
+            bool isClockedOut = _batch.ClockedOut != DateTime.MinValue && (DateTime.Now.Year - _batch.ClockedOut.Year < 2);
 
             var useFullTemplate = Config.UseFullTemplateForClient(_batch.Client);
 
@@ -1037,34 +1064,37 @@ namespace LaceupMigration.ViewModels
             }
 
             // 4. Bill (not implemented in MAUI)
-            // 5. Sales Invoice/Order
-            options.Add(new MenuOption(useFullTemplate ? "Create Invoice" : "Sales Invoice", async () =>
+            // 5. Sales Invoice/Order (hidden when batch is clocked out)
+            if (!isClockedOut)
             {
-                if (isLocked)
+                options.Add(new MenuOption(useFullTemplate ? "Create Invoice" : "Sales Invoice", async () =>
                 {
-                    await _dialogService.ShowAlertAsync("Batch is locked. Cannot create new orders.", "Alert");
-                    return;
-                }
+                    if (isLocked)
+                    {
+                        await _dialogService.ShowAlertAsync("Batch is locked. Cannot create new orders.", "Alert");
+                        return;
+                    }
 
-                // Check unpaid invoices (matches Xamarin BatchActivity CanCreateOrder method)
-                if (!await CanCreateOrderInBatchAsync(OrderType.Order))
-                    return;
+                    // Check unpaid invoices (matches Xamarin BatchActivity CanCreateOrder method)
+                    if (!await CanCreateOrderInBatchAsync(OrderType.Order))
+                        return;
 
-                // Check credit limit (matches Xamarin BatchActivity line 2769)
-                if (_batch.Client.IsOverCreditLimit())
-                {
-                    await _dialogService.ShowAlertAsync("This customer is over the credit limit. No new order is allowed", "Alert");
-                    return;
-                }
+                    // Check credit limit (matches Xamarin BatchActivity line 2769)
+                    if (_batch.Client.IsOverCreditLimit())
+                    {
+                        await _dialogService.ShowAlertAsync("This customer is over the credit limit. No new order is allowed", "Alert");
+                        return;
+                    }
 
-                var order = new Order(_batch.Client) { OrderType = OrderType.Order };
-                order.BatchId = _batch.Id;
-                order.Save();
-                await NavigateToOrderAsync(order);
-            }));
+                    var order = new Order(_batch.Client) { OrderType = OrderType.Order };
+                    order.BatchId = _batch.Id;
+                    order.Save();
+                    await NavigateToOrderAsync(order);
+                }));
+            }
 
-            // 6. Credit Invoice (Note: Credit Invoice doesn't check credit limit - it's a credit that reduces balance)
-            if (Config.AllowCreditOrders && !useFullTemplate)
+            // 6. Credit Invoice (hidden when batch is clocked out; Credit Invoice doesn't check credit limit - it's a credit that reduces balance)
+            if (Config.AllowCreditOrders && !useFullTemplate && !isClockedOut)
             {
                 options.Add(new MenuOption("Credit Invoice", async () =>
                 {
@@ -1245,7 +1275,8 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            if (Config.CheckCommunicatorVersion("37.0"))
+            // Attach Photo (hidden when batch is clocked out)
+            if (Config.CheckCommunicatorVersion("37.0") && !isClockedOut)
             {
                 options.Add(new MenuOption("Attach Photo", async () =>
                 {
