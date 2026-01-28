@@ -36,7 +36,7 @@ namespace LaceupMigration.ViewModels
 
         public void OnNavigatedTo(IDictionary<string, object> query)
         {
-            // Store ship-to address but don't pre-fill fields (fields start empty)
+            // Store ship-to address
             if (query != null && query.TryGetValue("currentAddress", out var currentAddress))
             {
                 // Parse existing address if provided (this is the ship to address)
@@ -51,12 +51,33 @@ namespace LaceupMigration.ViewModels
                 }
             }
             
-            // Fields start empty - don't pre-fill them
-            Address1 = string.Empty;
-            Address2 = string.Empty;
-            City = string.Empty;
-            State = string.Empty;
-            Zip = string.Empty;
+            // Pre-populate with existing Bill To address if provided (for editing)
+            if (query != null && query.TryGetValue("billToAddress", out var billToAddress))
+            {
+                if (billToAddress is string billToAddressString && !string.IsNullOrEmpty(billToAddressString))
+                {
+                    var parts = billToAddressString.Split('|');
+                    Address1 = parts.Length > 0 ? parts[0] : string.Empty;
+                    Address2 = parts.Length > 1 ? parts[1] : string.Empty;
+                    City = parts.Length > 2 ? parts[2] : string.Empty;
+                    State = parts.Length > 3 ? parts[3] : string.Empty;
+                    Zip = parts.Length > 4 ? parts[4] : string.Empty;
+                    Country = parts.Length > 5 ? parts[5] : string.Empty;
+                    
+                    // Check if Bill To matches Ship To
+                    var shipToAddress = $"{_shipToAddress1}|{_shipToAddress2}|{_shipToCity}|{_shipToState}|{_shipToZip}";
+                    UseSameAsShipTo = (billToAddressString == shipToAddress);
+                }
+            }
+            else
+            {
+                // Fields start empty if no existing Bill To address
+                Address1 = string.Empty;
+                Address2 = string.Empty;
+                City = string.Empty;
+                State = string.Empty;
+                Zip = string.Empty;
+            }
         }
 
         partial void OnUseSameAsShipToChanged(bool value)

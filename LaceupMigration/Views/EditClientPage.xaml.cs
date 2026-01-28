@@ -25,6 +25,9 @@ namespace LaceupMigration.Views
                 }
             }
             
+            // Handle Bill To address result from AddClientBillToPage
+            _viewModel.OnBillToSelected(query);
+            
             // [ACTIVITY STATE]: Save navigation state with query parameters
             // Build route with query parameters for state saving
             var route = "editclient";

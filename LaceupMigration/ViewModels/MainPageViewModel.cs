@@ -799,6 +799,16 @@ namespace LaceupMigration.ViewModels
 						var batches = Batch.List.Where(x => orders.Any(y => y.BatchId == x.Id));
 						DataProvider.SendTheOrders(batches, orders.Select(x => x.OrderId.ToString()).ToList());
 
+						// Set client Editable to false when sending presale orders (fixes Xamarin bug)
+						// Only for locally created clients (ClientId <= 0)
+						// Only set once per client (use first presale order's client)
+						var firstPresaleOrder = orders.FirstOrDefault(o => o.AsPresale && o.Client != null && o.Client.ClientId <= 0);
+						if (firstPresaleOrder?.Client != null)
+						{
+							firstPresaleOrder.Client.Editable = false;
+							Client.Save();
+						}
+
 						if (Session.session != null)
 							Session.ClockOutCurrentSession();
 					}

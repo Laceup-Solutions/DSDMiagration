@@ -492,6 +492,15 @@ namespace LaceupMigration.ViewModels
                 // Build ordersId string (comma-separated)
                 var ordersIdString = string.Join(",", selectedOrders.Select(x => x.OrderId));
                 var clientId = _batch?.Client?.ClientId ?? 0;
+                
+                // Set client Editable to false when finalizing orders (matches Xamarin BatchActivity.cs line 1828)
+                // This happens BEFORE navigating to FinalizeBatchActivity, just like in Xamarin
+                if (_batch?.Client != null && _batch.Client.ClientId <= 0)
+                {
+                    _batch.Client.Editable = false;
+                    Client.Save();
+                }
+                
                 await Shell.Current.GoToAsync($"finalizebatch?ordersId={ordersIdString}&clientId={clientId}&printed=0");
                 
                 // Reset canLeaveScreen after navigation (operation will complete in FinalizeBatchPage)
@@ -715,6 +724,14 @@ namespace LaceupMigration.ViewModels
                     order.Finished = true;
                     order.EndDate = DateTime.Now;
                     order.Save();
+                }
+
+                // Set client Editable to false when finalizing orders (matches Xamarin BatchActivity.cs line 1828)
+                var firstOrder = orders.FirstOrDefault();
+                if (firstOrder?.Client != null && firstOrder.Client.ClientId <= 0)
+                {
+                    firstOrder.Client.Editable = false;
+                    Client.Save();
                 }
 
                 // Xamarin: adapter.NotifyDataSetChanged() and UpdateStates() are called after finalizing

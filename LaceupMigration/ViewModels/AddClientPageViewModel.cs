@@ -42,6 +42,9 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private List<RetailPriceLevel> _retailPriceLevels = new();
         [ObservableProperty] private RetailPriceLevel _selectedRetailPriceLevelItem;
 
+        // Store Bill To address separately from Ship To address
+        private string _billToAddress = string.Empty;
+
         public AddClientPageViewModel(DialogService dialogService, ILaceupAppService appService)
         {
             _dialogService = dialogService;
@@ -157,8 +160,14 @@ namespace LaceupMigration.ViewModels
                 // Get next negative ID for new client
                 int nextId = Client.NextAddedId() - 1;
 
-                var addressParts = new List<string> { Address1, Address2, City, State, Zip };
-                var addressString = string.Join("|", addressParts);
+                // Build Ship To address from the main address fields
+                var shipToAddressParts = new List<string> { Address1, Address2, City, State, Zip };
+                var shipToAddressString = string.Join("|", shipToAddressParts);
+
+                // Use Bill To address if set, otherwise default to Ship To address
+                var billToAddressString = !string.IsNullOrEmpty(_billToAddress) 
+                    ? _billToAddress 
+                    : shipToAddressString;
 
                 var client = new Client
                 {
@@ -166,8 +175,8 @@ namespace LaceupMigration.ViewModels
                     ClientName = Name,
                     ContactName = Contact,
                     ContactPhone = Phone,
-                    BillToAddress = addressString,
-                    ShipToAddress = addressString,
+                    BillToAddress = billToAddressString,
+                    ShipToAddress = shipToAddressString,
                     LicenceNumber = License,
                     Comment = Comment ?? string.Empty,
                     Taxable = Taxable,
@@ -327,21 +336,25 @@ namespace LaceupMigration.ViewModels
         {
             var currentAddress = $"{Address1}|{Address2}|{City}|{State}|{Zip}";
             var query = new Dictionary<string, object> { { "currentAddress", currentAddress } };
+            
+            // Pass existing Bill To address if it exists (matches Xamarin AddClientActivity.cs lines 319-335)
+            // This allows the Bill To page to pre-populate with the existing Bill To address when editing
+            if (!string.IsNullOrEmpty(_billToAddress))
+            {
+                query.Add("billToAddress", _billToAddress);
+            }
+            
             await Shell.Current.GoToAsync("addclientbillto", query);
         }
 
         public void OnBillToSelected(IDictionary<string, object> query)
         {
+            // Store the Bill To address separately - do NOT update Ship To fields
             if (query != null && query.TryGetValue("billToAddress", out var billToAddress))
             {
                 if (billToAddress is string addressString && !string.IsNullOrEmpty(addressString))
                 {
-                    var parts = addressString.Split('|');
-                    if (parts.Length > 0) Address1 = parts[0];
-                    if (parts.Length > 1) Address2 = parts[1];
-                    if (parts.Length > 2) City = parts[2];
-                    if (parts.Length > 3) State = parts[3];
-                    if (parts.Length > 4) Zip = parts[4];
+                    _billToAddress = addressString;
                 }
             }
         }
