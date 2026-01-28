@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using System;
 using System.Collections.Generic;
@@ -551,7 +552,7 @@ namespace LaceupMigration.ViewModels
                     // Otherwise, go back to Accept Load page
                     if (Config.RouteOrdersCount == 0)
                     {
-                        await _appService.GoBackToMainAsync();
+                        await GoBackToMainAfterAcceptAsync();
                     }
                     else
                     {
@@ -559,6 +560,16 @@ namespace LaceupMigration.ViewModels
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Navigate to main and remove accept-load screens from ActivityState so the app won't restore to them next time.
+        /// </summary>
+        private async Task GoBackToMainAfterAcceptAsync()
+        {
+            NavigationHelper.RemoveNavigationState("acceptloadeditdelivery");
+            NavigationHelper.RemoveNavigationState("acceptload");
+            await _appService.GoBackToMainAsync();
         }
 
         private string GetValuesChangedPerOrder(List<Order> orders)
@@ -810,7 +821,7 @@ namespace LaceupMigration.ViewModels
                 // For old sync method, always navigate back to Accept Load and let RefreshAsync check the count
                 if (Config.NewSyncLoadOnDemand && Config.RouteOrdersCount == 0)
                 {
-                    await _appService.GoBackToMainAsync();
+                    await GoBackToMainAfterAcceptAsync();
                 }
                 else
                 {

@@ -95,17 +95,14 @@
                                            TextColor="{Binding StatusColor}"
                                            IsVisible="{Binding ShowStatus}"
                                            Margin="0,2,0,0" />
-                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                                        <Label Text="{Binding TermText}"
-                                               FontSize="13"
-                                               TextColor="{StaticResource Gray600}"
-                                               Grid.Column="0" />
-                                        <Label Text="{Binding CompanyText}"
-                                               FontSize="13"
-                                               TextColor="{StaticResource Gray600}"
-                                               IsVisible="{Binding ShowCompany}"
-                                               Grid.Column="1" />
-                                    </Grid>
+                                    <!-- Company: {name} on top when order has CompanyId > 0 -->
+                                    <Label Text="{Binding CompanyText}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}"
+                                           IsVisible="{Binding ShowCompany}" />
+                                    <Label Text="{Binding TermText}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}" />
                                 </VerticalStackLayout>
                             </Grid>
                         </Frame>

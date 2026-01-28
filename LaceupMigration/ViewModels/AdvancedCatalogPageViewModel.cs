@@ -462,6 +462,14 @@ namespace LaceupMigration.ViewModels
                 ).ToList();
             }
 
+            // Cache client history (needed for inventory filter to show products with history when OH <= 0)
+            if (_cachedClientHistory == null)
+            {
+                if (_order.Client.ClientProductHistory == null)
+                    _order.Client.ClientProductHistory = InvoiceDetail.GetProductHistoryDictionary(_order.Client);
+                _cachedClientHistory = _order.Client.ClientProductHistory;
+            }
+
             // Filter products based on inventory when !AsPresale and Sales (itemType == 0)
             // For load order (IsFromLoadOrder) show all products; for Dump (1) or Return (2), show all products
             if (!IsFromLoadOrder && !_order.AsPresale && _itemType == 0)
@@ -470,24 +478,24 @@ namespace LaceupMigration.ViewModels
                     .Where(d => !d.IsCredit && d.Product != null)
                     .Select(d => d.Product.ProductId)
                     .ToHashSet();
-                
+
+                var productsWithHistory = _cachedClientHistory?
+                    .Where(kvp => kvp.Key != null && kvp.Value != null && kvp.Value.Count > 0)
+                    .Select(kvp => kvp.Key.ProductId)
+                    .ToHashSet() ?? new HashSet<int>();
+
                 products = products.Where(x =>
                 {
                     if (productsWithOrderDetails.Contains(x.ProductId))
                         return true;
-                    
+
+                    if (productsWithHistory.Contains(x.ProductId))
+                        return true;
+
                     var oh = x.GetInventory(_order.AsPresale, false);
                     // Show product if CanGoBelow0 is true OR if inventory is greater than 0
                     return Config.CanGoBelow0 || oh > 0;
                 }).ToList();
-            }
-
-            // Cache client history
-            if (_cachedClientHistory == null)
-            {
-                if (_order.Client.ClientProductHistory == null)
-                    _order.Client.ClientProductHistory = InvoiceDetail.GetProductHistoryDictionary(_order.Client);
-                _cachedClientHistory = _order.Client.ClientProductHistory;
             }
 
             var clientSource = _cachedClientHistory;
@@ -2874,39 +2882,6 @@ namespace LaceupMigration.ViewModels
             // Presale-specific menu items (matching AdvancedTemplateActivity order)
             if (asPresale)
             {
-                // Discount (presale)
-                if (allowDiscount)
-                {
-                    options.Add(new MenuOption("Add Discount", async () =>
-                    {
-                        await ApplyDiscountAsync();
-                    }));
-                }
-
-                // Set PO (presale)
-                options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO", async () =>
-                {
-                    await GetPONumberAsync();
-                }));
-
-                // Print (presale)
-                if (Config.PrinterAvailable)
-                {
-                    options.Add(new MenuOption("Print", async () =>
-                    {
-                        await PrintAsync();
-                    }));
-                }
-
-                // Ship Via (presale)
-                if (Config.ShowShipVia)
-                {
-                    options.Add(new MenuOption("Ship Via", async () =>
-                    {
-                        await AddEditShipViaAsync();
-                    }));
-                }
-
                 // Set Ship Date (presale)
                 if (Config.SetShipDate)
                 {
@@ -2915,7 +2890,77 @@ namespace LaceupMigration.ViewModels
                         await SetShipDateAsync();
                     }));
                 }
+                
+                
+                // Set PO (presale)
+                options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO", async () =>
+                {
+                    await GetPONumberAsync();
+                }));
+                
+                
+                // Comments (presale)
+                options.Add(new MenuOption("Add Comments", async () =>
+                {
+                    await ShowCommentsDialogAsync();
+                }));
+                
+                
+                // Other Charges
+                if (!string.IsNullOrEmpty(asset) || Config.AllowOtherCharges)
+                {
+                    options.Add(new MenuOption("Other Charges", async () =>
+                    {
+                        await OtherChargesAsync();
+                    }));
+                }
+                
+                // Signature (presale)
+                options.Add(new MenuOption("Ordered By", async () =>
+                {
+                    await SignAsync();
+                }));
 
+                
+               
+                // Send Order (presale)
+                options.Add(new MenuOption("Send", async () =>
+                {
+                    await SendOrderAsync();
+                }));
+
+                
+                // Email/Share PDF (presale)
+                if (!isSplitClient)
+                {
+                    if (Config.ShowBillOfLadingPdf)
+                    {
+                        options.Add(new MenuOption("Share PDF", async () =>
+                        {
+                            await SharePdfAsync();
+                        }));
+                    }
+                    else
+                    {
+                        options.Add(new MenuOption("Send by Email", async () =>
+                        {
+                            await SendByEmailAsync();
+                        }));
+                    }
+                }
+                
+                
+                options.Add(new MenuOption("Select Driver", async () =>
+                {
+                    await SelectSalesmanAsync();
+                }));
+                
+                options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added All" : "Just Ordered", async () =>
+                {
+                    await WhatToViewClickedAsync();
+                }));
+                
+                
                 // Offers vs Order Discount (presale)
                 if (!hasOrderDiscounts)
                 {
@@ -2939,7 +2984,43 @@ namespace LaceupMigration.ViewModels
                         }));
                     }
                 }
+                
+                
+                // Print (presale)
+                if (Config.PrinterAvailable)
+                {
+                    options.Add(new MenuOption("Print", async () =>
+                    {
+                        await PrintAsync();
+                    }));
+                }
+                
+                // Delete Order (presale)
+                options.Add(new MenuOption("Delete Order", async () =>
+                {
+                    await DeleteOrderAsync();
+                }));
+                
+                // Discount (presale)
+                if (allowDiscount)
+                {
+                    options.Add(new MenuOption("Add Discount", async () =>
+                    {
+                        await ApplyDiscountAsync();
+                    }));
+                }
 
+
+
+                // Ship Via (presale)
+                if (Config.ShowShipVia)
+                {
+                    options.Add(new MenuOption("Ship Via", async () =>
+                    {
+                        await AddEditShipViaAsync();
+                    }));
+                }
+                
                 // Convert Quote to Sales Order
                 if (Config.CanModifyQuotes && _order.IsQuote && !_order.IsDelivery)
                 {
@@ -2948,66 +3029,28 @@ namespace LaceupMigration.ViewModels
                         await ConvertQuoteToSalesOrderAsync();
                     }));
                 }
-
-                // What To View (presale)
-                options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added All" : "Just Ordered", async () =>
+                
+                // View Captures
+                bool isVisible_ = true;
+                if (finalized && Config.MustAddImageToFinalized)
+                    isVisible_ = false;
+                if (Config.CaptureImages && isVisible_)
                 {
-                    await WhatToViewClickedAsync();
-                }));
-
-                // Comments (presale)
-                options.Add(new MenuOption("Add Comments", async () =>
-                {
-                    await ShowCommentsDialogAsync();
-                }));
-
-                // Signature (presale)
-                options.Add(new MenuOption("Order By", async () =>
-                {
-                    await SignAsync();
-                }));
-
-                // Send Order (presale)
-                options.Add(new MenuOption("Send", async () =>
-                {
-                    await SendOrderAsync();
-                }));
-
-                // Email/Share PDF (presale)
-                if (!isSplitClient)
-                {
-                    if (Config.ShowBillOfLadingPdf)
+                    options.Add(new MenuOption("Take Picture", async () =>
                     {
-                        options.Add(new MenuOption("Share PDF", async () =>
-                        {
-                            await SharePdfAsync();
-                        }));
-                    }
-                    else
-                    {
-                        options.Add(new MenuOption("Send by Email", async () =>
-                        {
-                            await SendByEmailAsync();
-                        }));
-                    }
+                        await ViewCapturedImagesAsync();
+                    }));
                 }
-
-                // Delete Order (presale)
-                options.Add(new MenuOption("Delete Order", async () =>
-                {
-                    await DeleteOrderAsync();
-                }));
             }
             else
             {
-                // Non-presale menu items
-
-                // Discount (non-presale)
-                if (!finalized && allowDiscount && !locked)
+                
+                // Print (non-presale)
+                if (!Config.LockOrderAfterPrinted)
                 {
-                    options.Add(new MenuOption("Add Discount", async () =>
+                    options.Add(new MenuOption("Print", async () =>
                     {
-                        await ApplyDiscountAsync();
+                        await PrintAsync();
                     }));
                 }
 
@@ -3037,16 +3080,44 @@ namespace LaceupMigration.ViewModels
                         }
                     }
                 }
-
-                // Print (non-presale)
-                if (!Config.LockOrderAfterPrinted)
+                
+                
+                // What To View (non-presale)
+                if (!finalized)
                 {
-                    options.Add(new MenuOption("Print", async () =>
+                    options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added All" : "Just Ordered", async () =>
                     {
-                        await PrintAsync();
+                        await WhatToViewClickedAsync();
+                    }));
+                }
+                
+                
+                // Comments (non-presale)
+                options.Add(new MenuOption("Add Comments", async () =>
+                {
+                    await ShowCommentsDialogAsync();
+                }));
+                
+                
+                // Other Charges
+                if (!string.IsNullOrEmpty(asset) || Config.AllowOtherCharges)
+                {
+                    options.Add(new MenuOption("Other Charges", async () =>
+                    {
+                        await OtherChargesAsync();
+                    }));
+                }
+                
+                // Discount (non-presale)
+                if (!finalized && allowDiscount && !locked)
+                {
+                    options.Add(new MenuOption("Add Discount", async () =>
+                    {
+                        await ApplyDiscountAsync();
                     }));
                 }
 
+                
                 // Email/Share PDF (non-presale)
                 if (!isSplitClient)
                 {
@@ -3063,34 +3134,7 @@ namespace LaceupMigration.ViewModels
                         }));
                     }
                 }
-
-                // Set PO (non-presale)
-                if ((_order.OrderType == OrderType.Bill || Config.SetPO || Config.POIsMandatory) && !finalized)
-                {
-                    options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO", async () =>
-                    {
-                        await GetPONumberAsync();
-                    }));
-                }
-
-                // Payment (non-presale)
-                var hasPayment = InvoicePayment.List.FirstOrDefault(x => x.OrderId != null && x.OrderId.IndexOf(_order.UniqueId) >= 0) != null;
-                if (finalized && !hasPayment && !Config.HidePriceInTransaction)
-                {
-                    options.Add(new MenuOption("Add Payment", async () =>
-                    {
-                        await GetPaymentAsync();
-                    }));
-                }
-
-                // What To View (non-presale)
-                if (!finalized)
-                {
-                    options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added All" : "Just Ordered", async () =>
-                    {
-                        await WhatToViewClickedAsync();
-                    }));
-                }
+                
 
                 // Service Report (non-presale)
                 if (!finalized && Config.ShowServiceReport)
@@ -3100,25 +3144,20 @@ namespace LaceupMigration.ViewModels
                         await GoToServiceReportAsync();
                     }));
                 }
-
-                // Comments (non-presale)
-                options.Add(new MenuOption("Add Comments", async () =>
+                
+                // View Captures
+                bool isVisible_ = true;
+                if (finalized && Config.MustAddImageToFinalized)
+                    isVisible_ = false;
+                if (Config.CaptureImages && isVisible_)
                 {
-                    await ShowCommentsDialogAsync();
-                }));
+                    options.Add(new MenuOption("Take Picture", async () =>
+                    {
+                        await ViewCapturedImagesAsync();
+                    }));
+                }
             }
-
-            // Common menu items (both presale and non-presale)
-
-            // Company Selection
-            if (CompanyInfo.Companies.Count > 1)
-            {
-                options.Add(new MenuOption("Select Company", async () =>
-                {
-                    await SelectCompanyAsync();
-                }));
-            }
-
+            
             // Crate In/Out
             var prods = Product.Products.Where(x => x.ExtraPropertiesAsString.Contains("caseInOut"));
             var prodIn = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=1"));
@@ -3137,27 +3176,6 @@ namespace LaceupMigration.ViewModels
                 options.Add(new MenuOption("Use LSP", async () =>
                 {
                     await UseLspInAllLinesAsync();
-                }));
-            }
-
-            // View Captures
-            bool isVisible = true;
-            if (finalized && Config.MustAddImageToFinalized)
-                isVisible = false;
-            if (Config.CaptureImages && isVisible)
-            {
-                options.Add(new MenuOption("View Captures", async () =>
-                {
-                    await ViewCapturedImagesAsync();
-                }));
-            }
-
-            // Select Driver (presale only)
-            if (asPresale)
-            {
-                options.Add(new MenuOption("Select Driver", async () =>
-                {
-                    await SelectSalesmanAsync();
                 }));
             }
 
@@ -3210,14 +3228,6 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // Other Charges
-            if (!string.IsNullOrEmpty(asset) || Config.AllowOtherCharges)
-            {
-                options.Add(new MenuOption("Other Charges", async () =>
-                {
-                    await OtherChargesAsync();
-                }));
-            }
 
             // Delete Weight Lines
             if (Config.DeleteWeightItemsMenu)

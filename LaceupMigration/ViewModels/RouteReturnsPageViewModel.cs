@@ -1,7 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
+using Microsoft.Maui.ApplicationModel;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -717,11 +719,6 @@ namespace LaceupMigration.ViewModels
             if (File.Exists(_fileName))
                 File.Delete(_fileName);
             
-            // [ACTIVITY STATE]: Remove state when properly exiting
-            Helpers.NavigationHelper.RemoveNavigationState("routereturns");
-            
-            // Allow navigation
-            await Shell.Current.GoToAsync("..");
             return false;
         }
         
@@ -735,12 +732,6 @@ namespace LaceupMigration.ViewModels
             
             // [ACTIVITY STATE]: Remove state when properly exiting
             Helpers.NavigationHelper.RemoveNavigationState("routereturns");
-            
-            // If emptyTruckOption, pass it back to EndOfDay page
-            if (_emptyTruckOption)
-            {
-                // TODO: Pass emptyTruckOption back to EndOfDay page via query parameters
-            }
             
             await Shell.Current.GoToAsync("..");
         }
@@ -766,32 +757,20 @@ namespace LaceupMigration.ViewModels
             
             await SaveHandler();
         }
-        
+
         private async Task Validate()
         {
-            // Ask for password first
-            if (!string.IsNullOrEmpty(Config.AddInventoryPassword))
+            var password = await _dialogService.ShowPromptAsync("Enter Password", "Enter password to validate returns",
+                "OK", "Cancel", "Password", -1, "", Keyboard.Default);
+
+            if (string.IsNullOrEmpty(password)) return;
+
+            if (string.Compare(password, Config.AddInventoryPassword, StringComparison.CurrentCultureIgnoreCase) != 0)
             {
-                var password = await _dialogService.ShowPromptAsync(
-                    "Enter Password",
-                    "Enter password to validate returns",
-                    "OK",
-                    "Cancel",
-                    "Password",
-                    -1,
-                    "",
-                    Keyboard.Default);
-                
-                if (string.IsNullOrEmpty(password))
-                    return;
-                
-                if (string.Compare(password, Config.AddInventoryPassword, StringComparison.CurrentCultureIgnoreCase) != 0)
-                {
-                    await _dialogService.ShowAlertAsync("Invalid password.", "Alert", "OK");
-                    return;
-                }
+                await _dialogService.ShowAlertAsync("Invalid password.", "Alert", "OK");
+                return;
             }
-            
+
             await SaveHandler();
         }
         

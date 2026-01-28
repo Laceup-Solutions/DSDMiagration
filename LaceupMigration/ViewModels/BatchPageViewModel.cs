@@ -156,6 +156,13 @@ namespace LaceupMigration.ViewModels
             if (_batch == null)
                 return;
 
+            // When batch has no clock-in (e.g. delivery batch), set it so BatchPage shows Clock In like regular orders (matches Xamarin)
+            if (_batch.ClockedIn == DateTime.MinValue)
+            {
+                _batch.ClockedIn = DateTime.Now;
+                _batch.Save();
+            }
+
             ClientName = _batch.Client?.ClientName ?? "Unknown Client";
             ClockInText = $"Clock In: {_batch.ClockedIn:g}";
 
@@ -266,9 +273,18 @@ namespace LaceupMigration.ViewModels
 
             var titleColor = order.Dexed ? Colors.Green : (order.Voided ? Colors.Red : Colors.Blue);
 
-            var companyText = string.IsNullOrEmpty(order.CompanyName) 
-                ? string.Empty 
-                : $"Company: {order.CompanyName}";
+            string companyText = string.Empty;
+            if (order.CompanyId > 0)
+            {
+                var companyName = order.CompanyName;
+                if (string.IsNullOrEmpty(companyName))
+                {
+                    var company = CompanyInfo.Companies?.FirstOrDefault(x => x.CompanyId == order.CompanyId);
+                    companyName = company?.CompanyName ?? string.Empty;
+                }
+                if (!string.IsNullOrEmpty(companyName))
+                    companyText = $"Company: {companyName}";
+            }
 
             var poNumberText = string.IsNullOrEmpty(order.PONumber)
                 ? string.Empty
@@ -311,6 +327,7 @@ namespace LaceupMigration.ViewModels
             };
         }
 
+        /// <summary>Matches Xamarin BatchActivity / ClientDetailsActivity: show "Invoice" when finished (or not presale), "Order" when presale or delivery not finished.</summary>
         private string GetOrderTitle(Order order)
         {
             if (order.OrderType == OrderType.NoService)
@@ -320,11 +337,33 @@ namespace LaceupMigration.ViewModels
             if (order.IsExchange)
                 return "Exchange";
 
-            var orderTypeText = order.OrderType.ToString();
-            if (!string.IsNullOrEmpty(order.PrintedOrderId))
-                return $"{orderTypeText}: {order.PrintedOrderId}";
-
-            return orderTypeText;
+            var number = string.IsNullOrEmpty(order.PrintedOrderId) ? string.Empty : $" #: {order.PrintedOrderId}";
+            switch (order.OrderType)
+            {
+                case OrderType.Order:
+                    if (order.AsPresale || (order.IsDelivery && !order.Finished))
+                        return order.IsQuote ? $"Quote{number}" : $"Sales order{number}";
+                    return $"Sales invoice{number}";
+                case OrderType.Consignment:
+                    if (order.AsPresale || (order.IsDelivery && !order.Finished))
+                        return $"Sales order{number}";
+                    return $"Sales invoice{number}";
+                case OrderType.Credit:
+                    if (order.AsPresale || (order.IsDelivery && !order.Finished))
+                        return $"Credit order{number}";
+                    return $"Credit invoice{number}";
+                case OrderType.Return:
+                    if (order.AsPresale || (order.IsDelivery && !order.Finished))
+                        return $"Return order{number}";
+                    return $"Return invoice{number}";
+                case OrderType.Load:
+                    // Delivery (load) orders: show as invoice when finished
+                    if (order.AsPresale || !order.Finished)
+                        return $"Sales order{number}";
+                    return $"Sales invoice{number}";
+                default:
+                    return $"Invoice{number}";
+            }
         }
 
         private void UpdateButtonStates()
@@ -424,7 +463,7 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task PrintAsync()
         {
-            var selectedOrders = GetSelectedActiveOrders();
+            var selectedOrders = GetSelectedOrders();
             if (selectedOrders.Count == 0)
             {
                 // If no orders selected, use all active orders
@@ -443,7 +482,7 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task PickAsync()
         {
-            var selectedOrders = GetSelectedActiveOrders();
+            var selectedOrders = GetSelectedOrders();
             if (selectedOrders.Count == 0)
             {
                 await _dialogService.ShowAlertAsync("Please select valid orders to print.", "Alert");
@@ -680,7 +719,7 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task PrintLabelAsync()
         {
-            var selectedOrders = GetSelectedActiveOrders();
+            var selectedOrders = GetSelectedOrders();
             if (selectedOrders.Count == 0)
             {
                 await _dialogService.ShowAlertAsync("Please select valid orders to print labels.", "Alert");
@@ -1105,6 +1144,7 @@ namespace LaceupMigration.ViewModels
 
                     var order = new Order(_batch.Client) { OrderType = OrderType.Order };
                     order.BatchId = _batch.Id;
+                    CompanyInfo.AssignCompanyToOrder(order);
                     order.Save();
                     await NavigateToOrderAsync(order);
                 }));
@@ -1124,6 +1164,7 @@ namespace LaceupMigration.ViewModels
                     // Credit Invoice doesn't check credit limit (matches Xamarin BatchActivity line 2796)
                     var order = new Order(_batch.Client) { OrderType = OrderType.Credit };
                     order.BatchId = _batch.Id;
+                    CompanyInfo.AssignCompanyToOrder(order);
                     order.Save();
                     await NavigateToOrderAsync(order);
                 }));
@@ -1143,6 +1184,7 @@ namespace LaceupMigration.ViewModels
                     // Return Invoice doesn't check credit limit (it reduces balance, so it's allowed)
                     var order = new Order(_batch.Client) { OrderType = OrderType.Return };
                     order.BatchId = _batch.Id;
+                    CompanyInfo.AssignCompanyToOrder(order);
                     order.Save();
                     await NavigateToOrderAsync(order);
                 }));
@@ -1170,12 +1212,13 @@ namespace LaceupMigration.ViewModels
                         // Navigate to no service page
                         var noServiceOrder = new Order(_batch.Client) { OrderType = OrderType.NoService };
                         noServiceOrder.BatchId = _batch.Id;
+                        CompanyInfo.AssignCompanyToOrder(noServiceOrder);
                         noServiceOrder.Save();
                         await Shell.Current.GoToAsync($"noservice?orderId={noServiceOrder.OrderId}");
                     }
                 }));
             }
-            
+
             // Work Order
             if (Config.AllowWorkOrder)
             {
@@ -1189,6 +1232,7 @@ namespace LaceupMigration.ViewModels
 
                     var order = new Order(_batch.Client) { OrderType = OrderType.Order };
                     order.BatchId = _batch.Id;
+                    CompanyInfo.AssignCompanyToOrder(order);
                     order.Save();
                     await Shell.Current.GoToAsync($"workorder?clientId={_batch.Client.ClientId}&orderId={order.OrderId}&asPresale=0");
                 }));
@@ -1217,6 +1261,7 @@ namespace LaceupMigration.ViewModels
                             IsParLevel = true,
                             BatchId = _batch.Id
                         };
+                        CompanyInfo.AssignCompanyToOrder(order);
                         order.Save();
                         await NavigateToOrderAsync(order);
                     }
@@ -1252,6 +1297,7 @@ namespace LaceupMigration.ViewModels
                         // Navigate to no service page
                         var noServiceOrder = new Order(_batch.Client) { OrderType = OrderType.NoService };
                         noServiceOrder.BatchId = _batch.Id;
+                        CompanyInfo.AssignCompanyToOrder(noServiceOrder);
                         noServiceOrder.Save();
                         await Shell.Current.GoToAsync($"noservice?orderId={noServiceOrder.OrderId}");
                     }
@@ -1467,6 +1513,7 @@ namespace LaceupMigration.ViewModels
                 order = new Order(_batch.Client);
                 order.TaxRate = _batch.Client.TaxRate;
                 order.BatchId = _batch.Id;
+                CompanyInfo.AssignCompanyToOrder(order);
 
                 if (_batch.Client.ConsignmentTemplate != null)
                 {

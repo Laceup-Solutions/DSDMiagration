@@ -244,12 +244,7 @@ namespace LaceupMigration.ViewModels
                 credit.AsPresale = true;
                 credit.RelationUniqueId = Guid.NewGuid().ToString("N");
                 _order.RelationUniqueId = credit.RelationUniqueId;
-
-                if (CompanyInfo.Companies.Count > 1 && CompanyInfo.SelectedCompany != null)
-                {
-                    credit.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
-                    credit.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
-                }
+                CompanyInfo.AssignCompanyToOrder(credit);
 
                 credit.Save();
                 _order.Save();

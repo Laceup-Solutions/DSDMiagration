@@ -26,7 +26,8 @@ namespace LaceupMigration.Views
 
             if (query.TryGetValue("ordersId", out var ordersIdValue) && ordersIdValue != null)
             {
-                ordersId = ordersIdValue.ToString() ?? string.Empty;
+                var raw = ordersIdValue.ToString() ?? string.Empty;
+                ordersId = string.IsNullOrEmpty(raw) ? raw : Uri.UnescapeDataString(raw);
             }
             
             if (query.TryGetValue("clientId", out var clientIdValue) && clientIdValue != null)

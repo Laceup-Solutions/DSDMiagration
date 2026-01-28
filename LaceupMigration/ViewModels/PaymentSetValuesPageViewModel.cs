@@ -116,13 +116,16 @@ namespace LaceupMigration.ViewModels
             }
 
             // Parse orderIds (SelectInvoice etc.) or ordersId (FinalizeBatch - matches Xamarin ordersIdIntent)
+            // Decode URL-encoded values (e.g. 3|4 -> 3%7C4, 3,4 -> 3%2C4) so parsing works
             if (query.TryGetValue("orderIds", out var orderIdsValue) && orderIdsValue != null)
             {
-                _ordersId = orderIdsValue.ToString() ?? string.Empty;
+                var raw = orderIdsValue.ToString() ?? string.Empty;
+                _ordersId = string.IsNullOrEmpty(raw) ? raw : Uri.UnescapeDataString(raw);
             }
             if (query.TryGetValue("ordersId", out var ordersIdValue) && ordersIdValue != null)
             {
-                _ordersId = ordersIdValue.ToString() ?? string.Empty;
+                var raw = ordersIdValue.ToString() ?? string.Empty;
+                _ordersId = string.IsNullOrEmpty(raw) ? raw : Uri.UnescapeDataString(raw);
             }
 
             // Parse clientId

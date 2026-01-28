@@ -25,7 +25,11 @@ namespace LaceupMigration.Views
             string uniqueId = null;
 
             if (query.TryGetValue("orderIds", out var orderIdsValue))
-                ordersIds = orderIdsValue?.ToString() ?? string.Empty;
+            {
+                var raw = orderIdsValue?.ToString() ?? string.Empty;
+                // Shell passes query values URL-encoded (e.g. 3|4 becomes 3%7C4); decode so we get the pipe-separated list back
+                ordersIds = string.IsNullOrEmpty(raw) ? raw : System.Uri.UnescapeDataString(raw);
+            }
 
             if (query.TryGetValue("changed", out var changedValue))
                 bool.TryParse(changedValue?.ToString(), out changed);

@@ -34,6 +34,8 @@ namespace LaceupMigration.Services
             { "SuperOrderTemplateActivity", "superordertemplate" },
             { "PreviouslyOrderedTemplateActivity", "previouslyorderedtemplate" },
             { "BatchActivity", "batch" },
+            { "FinalizeBatchActivity", "finalizebatch" },
+            { "OrderSignatureActivity", "ordersignature" },
             { "BatchDepartmentActivity", "batchdepartment" },
             { "WorkOrderActivity", "workorder" },
             { "ConsignmentActivity", "consignment" },
@@ -375,6 +377,24 @@ namespace LaceupMigration.Services
                             System.Diagnostics.Debug.WriteLine($"[ActivityStateRestoration] Client {clientId} no longer exists, skipping restoration");
                             return false;
                         }
+                    }
+                    break;
+
+                case "finalizebatch":
+                    // Check if client still exists and ordersId is present
+                    if (parameters.TryGetValue("clientId", out var fbClientIdStr) && int.TryParse(fbClientIdStr, out var fbClientId))
+                    {
+                        var fbClient = Client.Clients.FirstOrDefault(c => c.ClientId == fbClientId);
+                        if (fbClient == null)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ActivityStateRestoration] FinalizeBatch client {fbClientId} no longer exists, skipping restoration");
+                            return false;
+                        }
+                    }
+                    if (!parameters.ContainsKey("ordersId") || string.IsNullOrEmpty(parameters["ordersId"]))
+                    {
+                        System.Diagnostics.Debug.WriteLine("[ActivityStateRestoration] FinalizeBatch has no ordersId, skipping restoration");
+                        return false;
                     }
                     break;
             }

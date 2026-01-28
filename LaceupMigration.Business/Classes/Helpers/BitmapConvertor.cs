@@ -1,4 +1,4 @@
-﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using SkiaSharp;
@@ -42,38 +42,32 @@ namespace LaceupMigration
 
         private void convertArgbToGrayscale(int width, int height)
         {
-            byte On = 1;
-            byte Off = 0;
+            // Zebra ^GFA: 1 = black (print), 0 = white (no print). Signature is black on white, so dark → 1, light → 0.
+            byte On = 1;   // black in ZPL (signature)
+            byte Off = 0;  // white in ZPL (background)
+            const int threshold = 512; // r+g+b+a; below = dark (signature), above = light (background). Max white = 1020.
             int k = 0;
             for (int x = 0; x < height; x++)
             {
                 for (int y = 0; y < width; y++, k++)
                 {
-                    // get one pixel color
                     var pixel = PixelColor(y, x);
-
-                    if (pixel > 0)
-                    {
-                        mDataArray[k] = On;
-                    }
-                    else
-                    {
-                        mDataArray[k] = Off;
-                    }
+                    mDataArray[k] = (pixel > threshold) ? Off : On;
                 }
                 if (mDataWidth > width)
                 {
                     for (int p = width; p < mDataWidth; p++, k++)
                     {
-                        mDataArray[k] = 1;
+                        mDataArray[k] = Off; // padding = white (no print)
                     }
                 }
             }
         }
 
+        // (x, y) = (column, row). SKBitmap is top-left origin, row-major: pixel (x,y) at (y * mWidth + x) * 4.
         int PixelColor(int x, int y)
         {
-            int offset = ((mWidth * (mHeight - y - 1)) + x) * 4;
+            int offset = (y * mWidth + x) * 4;
             int r = originalData[offset];
             int g = originalData[offset + 1];
             int b = originalData[offset + 2];
@@ -81,19 +75,16 @@ namespace LaceupMigration
             return r + g + b + a;
         }
 
+        // Pack 8 pixels (0/1) per byte for Zebra ^GFA: MSB = first pixel, LSB = 8th pixel.
         private void createRawMonochromeData()
         {
             int length = 0;
-            for (int i = 0; i < mDataArray.Length; i = i + 8)
+            for (int i = 0; i < mDataArray.Length; i += 8)
             {
-                byte first = mDataArray[i];
-                for (int j = 0; j < 7; j++)
-                {
-                    byte second = (byte)((first << 1) | mDataArray[i + j]);
-                    first = second;
-                }
-                mRawBitmapData[length] = first;
-                length++;
+                byte b = mDataArray[i];
+                for (int j = 1; j < 8; j++)
+                    b = (byte)((b << 1) | mDataArray[i + j]);
+                mRawBitmapData[length++] = b;
             }
         }
 
@@ -102,12 +93,14 @@ namespace LaceupMigration
             if (SignaturePoints == null || SignaturePoints.Count == 0)
                 return null;
 
-            // Calculate bounding box
+            // Calculate bounding box (skip stroke separators Point.Empty / -1,-1)
             float minX = float.MaxValue, minY = float.MaxValue;
             float maxX = float.MinValue, maxY = float.MinValue;
 
             foreach (var point in SignaturePoints)
             {
+                if (point == SixLabors.ImageSharp.Point.Empty || (point.X == -1 && point.Y == -1))
+                    continue;
                 if (point.X < minX) minX = point.X;
                 if (point.Y < minY) minY = point.Y;
                 if (point.X > maxX) maxX = point.X;
@@ -135,7 +128,7 @@ namespace LaceupMigration
 
                 foreach (var point in SignaturePoints)
                 {
-                    if (point == SixLabors.ImageSharp.Point.Empty) // End of line
+                    if (point == SixLabors.ImageSharp.Point.Empty || (point.X == -1 && point.Y == -1)) // End of line
                     {
                         lastPoint = null;
                     }

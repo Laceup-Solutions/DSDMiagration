@@ -129,9 +129,11 @@ namespace LaceupMigration.ViewModels
 
 			if (Config.ExistPendingTransfer)
 			{
-				await _dialogService.ShowAlertAsync("Pending transfers must be submitted.", "Alert", "OK");
-				
-				await Shell.Current.GoToAsync("transferonoff");
+				await _dialogService.ShowAlertAsync("There is a pending transfer in the system that you haven't finalized. You must either submit it or delete it.", "Alert", "OK");
+				// Match Xamarin MainActivity: take user to the transfer screen so they can submit or delete
+				var onTempFile = Path.Combine(Config.DataPath, "On_temp_LoadOrderPath.xml");
+				var action = File.Exists(onTempFile) ? "transferOn" : "transferOff";
+				await Shell.Current.GoToAsync($"transferonoff?action={action}");
 				
 				return;
 			}
@@ -637,10 +639,52 @@ namespace LaceupMigration.ViewModels
 				}
 				else
 				{
-					// Navigate to AcceptLoad page with today's date
+					// Navigate to AcceptLoad page with today's date (matches Xamarin: auto go to accept load for today when has loads to download)
 					await Shell.Current.GoToAsync($"acceptload?loadDate={DateTime.Now.Ticks}");
 				}
 				return;
+			}
+
+			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() - when SyncLoadOnDemand (old flow), fetch load orders for today and auto-navigate if any
+			// NewSyncLoadOnDemand sets RouteOrdersCount during DownloadData; SyncLoadOnDemand does not, so we fetch and check here
+			if (!errorDownloadingData && Config.SyncLoadOnDemand && !Config.NewSyncLoadOnDemand && !Config.OnlyPresale)
+			{
+				await _dialogService.ShowLoadingAsync("Downloading load orders...");
+				string loadOrdersResponseMessage = null;
+				bool hasLoadsForToday = false;
+
+				try
+				{
+					await Task.Run(() =>
+					{
+						try
+						{
+							DataProvider.GetPendingLoadOrders(DateTime.Now, Config.ShowAllAvailableLoads);
+							var pendingOrders = Order.Orders.Where(x => (x.OrderType == OrderType.Load || x.IsDelivery) && x.PendingLoad).ToList();
+							hasLoadsForToday = pendingOrders.Any();
+						}
+						catch (Exception e)
+						{
+							Logger.CreateLog(e);
+							loadOrdersResponseMessage = "Error downloading load orders.";
+						}
+					});
+				}
+				finally
+				{
+					await _dialogService.HideLoadingAsync();
+				}
+
+				if (!string.IsNullOrEmpty(loadOrdersResponseMessage))
+				{
+					await _dialogService.ShowAlertAsync(loadOrdersResponseMessage, "Alert", "OK");
+				}
+				else if (hasLoadsForToday)
+				{
+					// Auto-navigate to accept load for today (matches Xamarin MainActivity after download when has loads to download)
+					await Shell.Current.GoToAsync($"acceptload?loadDate={DateTime.Now.Ticks}");
+					return;
+				}
 			}
 
 			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1740-1769
