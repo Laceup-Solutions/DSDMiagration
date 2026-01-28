@@ -90,7 +90,7 @@ namespace LaceupMigration.UtilDlls
 
         private async void OnMenuClicked(object sender, EventArgs e)
         {
-            var action = await DialogHelper._dialogService.ShowActionSheetAsync("Menu", "Cancel", null, 
+            var action = await DialogHelper._dialogService.ShowActionSheetAsync("Menu", "", "Cancel", 
                 "Print", 
                 "Send By Email", 
                 "Share",

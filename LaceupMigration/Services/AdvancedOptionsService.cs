@@ -35,7 +35,7 @@ namespace LaceupMigration.Services
 				options.Add("Go to main activity");
 			}
 
-			var choice = await _dialogService.ShowActionSheetAsync("Advanced options", "Cancel", null, options.ToArray());
+			var choice = await _dialogService.ShowActionSheetAsync("Advanced options", "", "Cancel", options.ToArray());
 
 			if (string.IsNullOrEmpty(choice) || choice == "Cancel")
 				return;
@@ -158,7 +158,7 @@ namespace LaceupMigration.Services
 		{
 			// Match Xamarin SelectPrinter() behavior
 			var printerNames = printers.Select(x => x.Name).ToArray();
-			var choice = await _dialogService.ShowActionSheetAsync("Select Printer", "Cancel", null, printerNames);
+			var choice = await _dialogService.ShowActionSheetAsync("Select Printer", "", "Cancel", printerNames);
 			
 			if (string.IsNullOrEmpty(choice) || choice == "Cancel")
 				return;

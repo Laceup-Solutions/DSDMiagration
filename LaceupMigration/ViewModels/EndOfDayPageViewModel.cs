@@ -317,7 +317,7 @@ namespace LaceupMigration.ViewModels
 
             // Show dialog with options: "Send by Email" or "Print Reports"
             var options = new[] { "Send by Email", "Print Reports" };
-            var choice = await _dialogService.ShowActionSheetAsync("Print Options", "Cancel", null, options);
+            var choice = await _dialogService.ShowActionSheetAsync("Print Options", "", "Cancel", options);
 
             if (string.IsNullOrEmpty(choice) || choice == "Cancel")
                 return;
@@ -949,7 +949,7 @@ namespace LaceupMigration.ViewModels
                 "Advanced Options"
             };
 
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, menuItems.ToArray());
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", menuItems.ToArray());
 
             switch (choice)
             {

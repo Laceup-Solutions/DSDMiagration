@@ -514,7 +514,7 @@ namespace LaceupMigration.ViewModels
 
             options.Add("Advanced Options");
 
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.ToArray());
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options.ToArray());
 
             switch (choice)
             {

@@ -392,7 +392,7 @@ namespace LaceupMigration.ViewModels
         {
             var options = new List<string> { "Print Label", "Advanced Options" };
             
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.ToArray());
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options.ToArray());
             
             if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
                 return;

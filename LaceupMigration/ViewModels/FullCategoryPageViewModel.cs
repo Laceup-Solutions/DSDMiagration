@@ -607,7 +607,7 @@ namespace LaceupMigration.ViewModels
 
                 if (creditTypes.Count > 1)
                 {
-                    var choice = await _dialogService.ShowActionSheetAsync("Select Credit Type", "Cancel", null, creditTypes.ToArray());
+                    var choice = await _dialogService.ShowActionSheetAsync("Select Credit Type", "", "Cancel", creditTypes.ToArray());
                     if (choice == null || choice == "Cancel")
                         return;
 
@@ -922,7 +922,7 @@ namespace LaceupMigration.ViewModels
         private async Task ShowMenuAsync()
         {
             var options = new[] { "Send by Email", "Advanced Options" };
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options);
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options);
             
             switch (choice)
             {

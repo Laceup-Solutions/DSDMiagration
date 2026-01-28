@@ -104,7 +104,7 @@ namespace LaceupMigration.ViewModels
             }
             
             var productNames = expenseProducts.Select(x => x.Name ?? $"Product {x.ProductId}").ToArray();
-            var selectedProductName = await _dialogService.ShowActionSheetAsync("Select Expense Product", "Cancel", null, productNames);
+            var selectedProductName = await _dialogService.ShowActionSheetAsync("Select Expense Product", "", "Cancel", productNames);
             
             if (string.IsNullOrEmpty(selectedProductName) || selectedProductName == "Cancel")
                 return;

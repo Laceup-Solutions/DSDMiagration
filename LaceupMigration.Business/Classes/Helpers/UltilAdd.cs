@@ -370,7 +370,7 @@ namespace LaceupMigration
 
             var items = new string[] { "Dump", "Return" };
 
-            var selectedItem = await DialogHelper._dialogService.ShowActionSheetAsync("Type of Credit Item", null, "Cancel", items);
+            var selectedItem = await DialogHelper._dialogService.ShowActionSheetAsync("Type of Credit Item", "", "Cancel", items);
 
             if (selectedItem == "Cancel" || string.IsNullOrEmpty(selectedItem))
                 return;
@@ -393,7 +393,7 @@ namespace LaceupMigration
         {
             var items = new string[] { "Consignment Item", "Dealer Own" };
 
-            var selectedItem = await DialogHelper._dialogService.ShowActionSheetAsync("Add Line As", null, "Cancel", items);
+            var selectedItem = await DialogHelper._dialogService.ShowActionSheetAsync("Add Line As", "", "Cancel", items);
 
             if (selectedItem == "Cancel" || string.IsNullOrEmpty(selectedItem))
                 return false;

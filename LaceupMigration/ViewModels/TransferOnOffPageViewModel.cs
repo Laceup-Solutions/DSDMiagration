@@ -1099,7 +1099,7 @@ namespace LaceupMigration.ViewModels
             if (options.Count == 0)
                 return;
             
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.ToArray());
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options.ToArray());
             
             if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
                 return;
