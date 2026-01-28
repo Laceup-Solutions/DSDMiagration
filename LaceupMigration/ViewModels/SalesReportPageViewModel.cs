@@ -76,7 +76,7 @@ namespace LaceupMigration.ViewModels
             var list = _salesmenList.Select(x => x.Name).ToList();
             list.Insert(0, "All Salesmen");
 
-            var selectedName = await _dialogService.ShowActionSheetAsync("Select Salesman", "Cancel", null, list.ToArray());
+            var selectedName = await _dialogService.ShowActionSheetAsync("Select Salesman", "", "Cancel", list.ToArray());
 
             if (!string.IsNullOrEmpty(selectedName) && selectedName != "Cancel")
             {
@@ -226,7 +226,7 @@ namespace LaceupMigration.ViewModels
                     "Email Report With Details"
                 };
 
-                var selected = await _dialogService.ShowActionSheetAsync("Print Options", "Cancel", null, options.ToArray());
+                var selected = await _dialogService.ShowActionSheetAsync("Print Options", "", "Cancel", options.ToArray());
 
                 if (selected == "Email Report")
                 {

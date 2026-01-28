@@ -58,7 +58,7 @@ namespace LaceupMigration.ViewModels
             var list = Salesman.List.OrderBy(x => x.Name).Select(x => x.Name).ToList();
             list.Insert(0, "All Salesmen");
 
-            var selectedName = await _dialogService.ShowActionSheetAsync("Select Salesman", "Cancel", null, list.ToArray());
+            var selectedName = await _dialogService.ShowActionSheetAsync("Select Salesman", "", "Cancel", list.ToArray());
 
             if (!string.IsNullOrEmpty(selectedName) && selectedName != "Cancel")
             {

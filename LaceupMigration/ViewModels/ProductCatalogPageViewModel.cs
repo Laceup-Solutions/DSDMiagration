@@ -632,7 +632,7 @@ namespace LaceupMigration.ViewModels
 
             // Show selection dialog
             var options = items.Select(x => x.Description).ToArray();
-            var selected = await _dialogService.ShowActionSheetAsync("Type of Credit Item", "Cancel", null, options);
+            var selected = await _dialogService.ShowActionSheetAsync("Type of Credit Item", "", "Cancel", options);
             
             if (string.IsNullOrEmpty(selected) || selected == "Cancel")
                 return;
@@ -1130,7 +1130,7 @@ namespace LaceupMigration.ViewModels
         private async Task ShowMenuAsync()
         {
             var options = new[] { "Advanced Options" };
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options);
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options);
             
             switch (choice)
             {

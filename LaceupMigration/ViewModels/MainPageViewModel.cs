@@ -392,7 +392,7 @@ namespace LaceupMigration.ViewModels
 			// 21. About Laceup Solutions
 			menuItems.Add("About Laceup Solutions");
 
-			var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, menuItems.ToArray());
+			var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", menuItems.ToArray());
 			
 			switch (choice)
 			{
@@ -1230,7 +1230,7 @@ namespace LaceupMigration.ViewModels
 		{
 			var sites = SiteEx.Sites.Where(x => x.SiteType == SiteType.Main).ToList();
 			var siteNames = sites.Select(x => x.Name).ToArray();
-			var selected = await _dialogService.ShowActionSheetAsync("Select Driver", "Cancel", null, siteNames);
+			var selected = await _dialogService.ShowActionSheetAsync("Select Driver", "", "Cancel", siteNames);
 			
 			var index = Array.IndexOf(siteNames, selected);
 			if (index >= 0)

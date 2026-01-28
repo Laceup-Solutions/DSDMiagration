@@ -709,7 +709,7 @@ namespace LaceupMigration.ViewModels
             if (options.Count == 0)
                 return;
 
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.Select(o => o.Title).ToArray());
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options.Select(o => o.Title).ToArray());
             if (string.IsNullOrWhiteSpace(choice))
                 return;
 
@@ -1982,7 +1982,7 @@ namespace LaceupMigration.ViewModels
             options.Add(new MenuOption("Print Statement", async () =>
             {
                 var subOptions = new[] { "Send by Email", "Share", "Print" };
-                var choice = await _dialogService.ShowActionSheetAsync("Print Statement", "Cancel", null, subOptions);
+                var choice = await _dialogService.ShowActionSheetAsync("Print Statement", "", "Cancel", subOptions);
                 switch (choice)
                 {
                     case "Send by Email":

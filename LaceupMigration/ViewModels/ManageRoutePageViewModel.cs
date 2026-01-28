@@ -208,7 +208,7 @@ namespace LaceupMigration.ViewModels
             }
 
             var truckNames = trucks.Select(x => x.Name ?? $"Truck {x.Id}").ToArray();
-            var selectedTruckName = await _dialogService.ShowActionSheetAsync("Select Driver", "Cancel", null, truckNames);
+            var selectedTruckName = await _dialogService.ShowActionSheetAsync("Select Driver", "", "Cancel", truckNames);
             
             if (!string.IsNullOrEmpty(selectedTruckName) && selectedTruckName != "Cancel")
             {
@@ -258,7 +258,7 @@ namespace LaceupMigration.ViewModels
             }
 
             var salesmanNames = salesmen.Select(x => x.Name).ToArray();
-            var selectedSalesmanName = await _dialogService.ShowActionSheetAsync("Select Salesman", "Cancel", null, salesmanNames);
+            var selectedSalesmanName = await _dialogService.ShowActionSheetAsync("Select Salesman", "", "Cancel", salesmanNames);
             
             if (!string.IsNullOrEmpty(selectedSalesmanName) && selectedSalesmanName != "Cancel")
             {

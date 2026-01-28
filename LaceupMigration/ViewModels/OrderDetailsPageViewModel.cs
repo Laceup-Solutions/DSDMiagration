@@ -497,7 +497,7 @@ namespace LaceupMigration.ViewModels
 
             // Equivalent to Search_Click - show search dialog
             var searchOptions = new[] { "Search in Product List", "Search in Current Transaction" };
-            var choice = await _dialogService.ShowActionSheetAsync("Search", "Cancel", null, searchOptions);
+            var choice = await _dialogService.ShowActionSheetAsync("Search", "", "Cancel", searchOptions);
             
             if (choice == null || choice == "Cancel")
                 return;
@@ -844,7 +844,7 @@ namespace LaceupMigration.ViewModels
             if (options.Count == 0)
                 return;
 
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.Select(o => o.Title).ToArray());
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options.Select(o => o.Title).ToArray());
             if (string.IsNullOrWhiteSpace(choice))
                 return;
 

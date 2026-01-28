@@ -746,7 +746,7 @@ namespace LaceupMigration.ViewModels
                 return;
 
             var searchOptions = new[] { "Search in Product List", "Search in Current Transaction" };
-            var choice = await _dialogService.ShowActionSheetAsync("Search", "Cancel", null, searchOptions);
+            var choice = await _dialogService.ShowActionSheetAsync("Search", "", "Cancel", searchOptions);
             
             if (choice == null || choice == "Cancel")
                 return;
@@ -1228,7 +1228,7 @@ namespace LaceupMigration.ViewModels
             if (options.Count == 0)
                 return;
 
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.Select(o => o.Title).ToArray());
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options.Select(o => o.Title).ToArray());
             if (string.IsNullOrWhiteSpace(choice))
                 return;
 
@@ -1792,7 +1792,7 @@ namespace LaceupMigration.ViewModels
             else
             {
                 _appService.RecordEvent("menu option Discount");
-                var choice = await _dialogService.ShowActionSheetAsync("Select Type Discount", "Cancel", null, new[] { "Amount", "Percentage" });
+                var choice = await _dialogService.ShowActionSheetAsync("Select Type Discount", "", "Cancel", new[] { "Amount", "Percentage" });
                 if (choice == "Amount")
                     await AddEditDiscountAsync(DiscountType.Amount);
                 else if (choice == "Percentage")
@@ -2229,7 +2229,7 @@ namespace LaceupMigration.ViewModels
                     "Stay In The Order"
                 };
 
-                var choice = await _dialogService.ShowActionSheetAsync("Action Options", "Cancel", null, options);
+                var choice = await _dialogService.ShowActionSheetAsync("Action Options", "", "Cancel", options);
                 
                 if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
                     return; // User cancelled, stay in order
@@ -2578,7 +2578,7 @@ namespace LaceupMigration.ViewModels
 
             // Show selection dialog
             var options = items.Select(x => x.Description).ToArray();
-            var selected = await _dialogService.ShowActionSheetAsync("Type of Credit Item", "Cancel", null, options);
+            var selected = await _dialogService.ShowActionSheetAsync("Type of Credit Item", "", "Cancel", options);
             
             if (string.IsNullOrEmpty(selected) || selected == "Cancel")
                 return;
@@ -2791,7 +2791,7 @@ namespace LaceupMigration.ViewModels
                 if (Config.ShowBillOfLadingPdf)
                 {
                     // Show dialog to select document type
-                    var choice = await _dialogService.ShowActionSheetAsync("Select Type Document", "Cancel", null, new[] { "Invoice", "Bill Of Lading" });
+                    var choice = await _dialogService.ShowActionSheetAsync("Select Type Document", "", "Cancel", new[] { "Invoice", "Bill Of Lading" });
                     if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
                     {
                         await _dialogService.HideLoadingAsync();

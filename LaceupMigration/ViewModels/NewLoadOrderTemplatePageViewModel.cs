@@ -318,7 +318,7 @@ namespace LaceupMigration.ViewModels
         private async Task SelectLoadTermForSendAsync()
         {
             // Select term for sending (matches Xamarin SelectLoadTerm(SendIt))
-            var result = await _dialogService.ShowActionSheetAsync("Select Terms", "Cancel", null, new[] { "CIA", "Regular Order" });
+            var result = await _dialogService.ShowActionSheetAsync("Select Terms", "", "Cancel", new[] { "CIA", "Regular Order" });
             if (result == "CIA")
             {
                 _loadOrder.ExtraFields = UDFHelper.SyncSingleUDF("cashTerm", "1", _loadOrder.ExtraFields);
@@ -339,7 +339,7 @@ namespace LaceupMigration.ViewModels
 
         private async Task SelectLoadTermAsync()
         {
-            var result = await _dialogService.ShowActionSheetAsync("Select Terms", "Cancel", null, new[] { "CIA", "Regular Order" });
+            var result = await _dialogService.ShowActionSheetAsync("Select Terms", "", "Cancel", new[] { "CIA", "Regular Order" });
             if (result == "CIA")
             {
                 _loadOrder.ExtraFields = UDFHelper.SyncSingleUDF("cashTerm", "1", _loadOrder.ExtraFields);
@@ -655,7 +655,7 @@ namespace LaceupMigration.ViewModels
 
             options.Add("Advanced Options");
 
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options.ToArray());
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options.ToArray());
 
             switch (choice)
             {

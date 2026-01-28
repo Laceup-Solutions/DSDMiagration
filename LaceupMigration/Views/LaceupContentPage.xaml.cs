@@ -256,7 +256,7 @@ namespace LaceupMigration.Views
             if (validOptions.Count == 0)
                 return;
 
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, validOptions.Select(o => o.Title).ToArray());
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", validOptions.Select(o => o.Title).ToArray());
             if (string.IsNullOrWhiteSpace(choice))
                 return;
 

@@ -966,7 +966,7 @@ namespace LaceupMigration.ViewModels
         private async Task FilterAsync()
         {
             var options = new List<string> { "In Stock", "Previously Ordered", "Never Ordered", "In Offer" };
-            var selected = await _dialogService.ShowActionSheetAsync("Filter", "Cancel", null, options.ToArray());
+            var selected = await _dialogService.ShowActionSheetAsync("Filter", "", "Cancel", options.ToArray());
 
             if (selected == "Cancel" || string.IsNullOrEmpty(selected))
                 return;
@@ -1009,7 +1009,7 @@ namespace LaceupMigration.ViewModels
                 "Product Name", "Product Code", "Category", "In Stock", "Qty", "Descending", "Order of Entry",
                 "Description"
             };
-            var selected = await _dialogService.ShowActionSheetAsync("Sort By", "Cancel", null, options);
+            var selected = await _dialogService.ShowActionSheetAsync("Sort By", "", "Cancel", options);
 
             if (selected == "Cancel" || string.IsNullOrEmpty(selected))
                 return;
@@ -2293,7 +2293,7 @@ namespace LaceupMigration.ViewModels
                 return;
 
             var searchOptions = new[] { "Search in Product List", "Search in Current Transaction" };
-            var choice = await _dialogService.ShowActionSheetAsync("Search", "Cancel", null, searchOptions);
+            var choice = await _dialogService.ShowActionSheetAsync("Search", "", "Cancel", searchOptions);
 
             if (choice == null || choice == "Cancel")
                 return;
@@ -2812,7 +2812,7 @@ namespace LaceupMigration.ViewModels
                 return;
 
             var choice =
-                await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null,
+                await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel",
                     options.Select(o => o.Title).ToArray());
             if (string.IsNullOrWhiteSpace(choice))
                 return;
@@ -3678,7 +3678,7 @@ namespace LaceupMigration.ViewModels
                     "Stay In The Order"
                 };
 
-                var choice = await _dialogService.ShowActionSheetAsync("Action Options", "Cancel", null, options);
+                var choice = await _dialogService.ShowActionSheetAsync("Action Options", "", "Cancel", options);
                 
                 if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
                     return; // User cancelled, stay in order

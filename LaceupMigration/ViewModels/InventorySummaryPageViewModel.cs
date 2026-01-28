@@ -267,7 +267,7 @@ namespace LaceupMigration.ViewModels
         private async Task ShowMenuAsync()
         {
             var options = new[] { "Advanced Options" };
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null, options);
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options);
             
             switch (choice)
             {

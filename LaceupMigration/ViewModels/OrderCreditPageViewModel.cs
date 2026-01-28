@@ -555,7 +555,7 @@ namespace LaceupMigration.ViewModels
                     "Stay In The Order"
                 };
 
-                var choice = await _dialogService.ShowActionSheetAsync("Action Options", "Cancel", null, options);
+                var choice = await _dialogService.ShowActionSheetAsync("Action Options", "", "Cancel", options);
                 
                 if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
                     return; // User cancelled, stay in order
@@ -882,7 +882,7 @@ namespace LaceupMigration.ViewModels
         private async Task SortByAsync()
         {
             var sortOptions = new[] { "Product Name", "Product Code", "Last Visit" };
-            var choice = await _dialogService.ShowActionSheetAsync("Sort By", "Cancel", null, sortOptions);
+            var choice = await _dialogService.ShowActionSheetAsync("Sort By", "", "Cancel", sortOptions);
             
             if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
                 return;
@@ -900,7 +900,7 @@ namespace LaceupMigration.ViewModels
             var options = BuildMenuOptions();
             if (options.Count == 0) return;
 
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "Cancel", null,
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel",
                 options.Select(o => o.Title).ToArray());
             if (string.IsNullOrWhiteSpace(choice)) return;
 
