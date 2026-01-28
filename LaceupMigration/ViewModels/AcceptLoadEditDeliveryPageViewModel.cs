@@ -672,6 +672,15 @@ namespace LaceupMigration.ViewModels
                 order.Save();
             }
 
+            // Set client Editable to false when finalizing orders (matches Xamarin BatchActivity.cs line 1828)
+            // Only set once per client (use first order's client)
+            var firstFinishedOrder = orders.FirstOrDefault(o => !o.IsDelivery && o.Client != null && o.Client.ClientId <= 0);
+            if (firstFinishedOrder?.Client != null)
+            {
+                firstFinishedOrder.Client.Editable = false;
+                Client.Save();
+            }
+
             if (Config.RecalculateStops)
                 RecalculateStops();
 

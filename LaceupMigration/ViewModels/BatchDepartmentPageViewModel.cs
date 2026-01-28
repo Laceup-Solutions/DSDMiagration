@@ -360,6 +360,16 @@ namespace LaceupMigration.ViewModels
                 // Send the orders
                 DataProvider.SendTheOrders(new Batch[] { _batch }, ordersIds, true, true);
 
+                // Set client Editable to false when sending presale orders (fixes Xamarin bug)
+                // Only for locally created clients (ClientId <= 0)
+                // Only set once per client (use first presale order's client)
+                var firstPresaleOrder = orders.FirstOrDefault(o => o.AsPresale && o.Client != null && o.Client.ClientId <= 0);
+                if (firstPresaleOrder?.Client != null)
+                {
+                    firstPresaleOrder.Client.Editable = false;
+                    Client.Save();
+                }
+
                 await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Orders sent successfully.", "Success");
                 await Shell.Current.GoToAsync("..");

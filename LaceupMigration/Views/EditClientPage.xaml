@@ -93,6 +93,12 @@
                         IsVisible="{Binding ShowTerms}"
                         HorizontalOptions="Fill" />
 
+                <!-- Add Bill To Address button -->
+                <Button Text="Edit Bill To Address"
+                        Command="{Binding SelectBillToCommand}"
+                        HorizontalOptions="Fill"
+                        Margin="0,8,0,0" />
+
                 <Button Text="Save"
                         Command="{Binding SaveCommand}"
                         Style="{StaticResource PrimaryButton}"

@@ -79,8 +79,8 @@ namespace LaceupMigration.Platforms.Android
                     // Add main container to wrapper
                     wrapperLayout.AddView(mainContainer);
                     
-                    // Create header section with title (match XAML design)
-                    if (!string.IsNullOrEmpty(title))
+                    // Create header section with title and message (match XAML design)
+                    if (!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(message))
                     {
                         var headerContainer = new AndroidLinearLayout(activity)
                         {
@@ -95,18 +95,42 @@ namespace LaceupMigration.Platforms.Android
                         headerContainer.SetBackgroundColor(AndroidGraphics.Color.Transparent);
                         
                         // Title text view - 18sp, DimGray, centered
-                        var titleView = new AndroidTextView(activity)
+                        if (!string.IsNullOrEmpty(title))
                         {
-                            Text = title,
-                            TextSize = 18f, // 18sp
-                            Typeface = AndroidGraphics.Typeface.Default,
-                            Gravity = global::Android.Views.GravityFlags.CenterHorizontal | global::Android.Views.GravityFlags.CenterVertical
-                        };
-                        // DimGray color (#696969 or RGB(105, 105, 105))
-                        titleView.SetTextColor(AndroidGraphics.Color.Rgb(105, 105, 105));
-                        titleView.SetPadding(0, 0, 0, 0);
+                            var titleView = new AndroidTextView(activity)
+                            {
+                                Text = title,
+                                TextSize = 18f, // 18sp
+                                Typeface = AndroidGraphics.Typeface.Default,
+                                Gravity = global::Android.Views.GravityFlags.CenterHorizontal | global::Android.Views.GravityFlags.CenterVertical
+                            };
+                            // DimGray color (#696969 or RGB(105, 105, 105))
+                            titleView.SetTextColor(AndroidGraphics.Color.Rgb(105, 105, 105));
+                            titleView.SetPadding(0, 0, 0, 0);
+                            
+                            headerContainer.AddView(titleView);
+                        }
                         
-                        headerContainer.AddView(titleView);
+                        // Message/subtitle text view - 14sp, lighter gray, centered, below title
+                        if (!string.IsNullOrEmpty(message))
+                        {
+                            var messageView = new AndroidTextView(activity)
+                            {
+                                Text = message,
+                                TextSize = 14f, // 14sp (smaller than title)
+                                Typeface = AndroidGraphics.Typeface.Default,
+                                Gravity = global::Android.Views.GravityFlags.CenterHorizontal | global::Android.Views.GravityFlags.CenterVertical
+                            };
+                            // Lighter gray color for subtitle
+                            messageView.SetTextColor(AndroidGraphics.Color.Rgb(140, 140, 140));
+                            messageView.SetPadding(0, 
+                                (int)(4 * activity.Resources.DisplayMetrics.Density), // 4dp top margin from title
+                                0, 
+                                0);
+                            
+                            headerContainer.AddView(messageView);
+                        }
+                        
                         mainContainer.AddView(headerContainer);
                         
                         // Header separator - 0.5dp height, #C6C6C8 color

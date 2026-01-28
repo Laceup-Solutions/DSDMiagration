@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -79,6 +80,9 @@ namespace LaceupMigration.ViewModels
         private PriceLevel? _selectedPriceLevel;
         private int _termId;
         private int _retailPriceLevelId;
+        
+        // Store Bill To address separately from Ship To address
+        private string _billToAddress = string.Empty;
 
         public EditClientPageViewModel(DialogService dialogService)
         {
@@ -136,12 +140,24 @@ namespace LaceupMigration.ViewModels
             var email = UDFHelper.GetSingleUDF("email", _client.ExtraPropertiesAsString);
             Email = email ?? string.Empty;
 
+            // Load Ship To address
             var addr = _client.ShipToAddress.Split('|');
             Address1 = addr.Length > 0 ? addr[0] : string.Empty;
             Address2 = addr.Length > 1 ? addr[1] : string.Empty;
             City = addr.Length > 2 ? addr[2] : string.Empty;
             State = addr.Length > 3 ? addr[3] : string.Empty;
             Zip = addr.Length > 4 ? addr[4] : string.Empty;
+
+            // Load Bill To address (use Ship To if Bill To is empty)
+            if (!string.IsNullOrEmpty(_client.BillToAddress))
+            {
+                _billToAddress = _client.BillToAddress;
+            }
+            else
+            {
+                // Default to Ship To if Bill To is not set
+                _billToAddress = _client.ShipToAddress;
+            }
 
             var savedPriceLevel = PriceLevel.List.FirstOrDefault(x => x.Id == _client.PriceLevel);
             if (savedPriceLevel != null)
@@ -212,6 +228,35 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
+        private async Task SelectBillTo()
+        {
+            // Pass current Ship To address so Bill To page can offer "Use same as Ship To" option
+            var shipToAddress = $"{Address1}|{Address2}|{City}|{State}|{Zip}";
+            var query = new Dictionary<string, object> { { "currentAddress", shipToAddress } };
+            
+            // Also pass current Bill To address if it exists and is different from Ship To
+            // This allows the page to pre-populate with existing Bill To address when editing
+            if (!string.IsNullOrEmpty(_billToAddress) && _billToAddress != shipToAddress)
+            {
+                query.Add("billToAddress", _billToAddress);
+            }
+            
+            await Shell.Current.GoToAsync("addclientbillto", query);
+        }
+
+        public void OnBillToSelected(IDictionary<string, object> query)
+        {
+            // Store the Bill To address separately - do NOT update Ship To fields
+            if (query != null && query.TryGetValue("billToAddress", out var billToAddress))
+            {
+                if (billToAddress is string addressString && !string.IsNullOrEmpty(addressString))
+                {
+                    _billToAddress = addressString;
+                }
+            }
+        }
+
+        [RelayCommand]
         private async Task SaveAsync()
         {
             if (_client == null)
@@ -229,8 +274,20 @@ namespace LaceupMigration.ViewModels
 
             _client.ExtraPropertiesAsString = UDFHelper.SyncSingleUDF("email", Email, _client.ExtraPropertiesAsString);
 
+            // Save Ship To address
             var address = $"{Address1}|{Address2}|{City}|{State}|{Zip}";
             _client.ShipToAddress = address;
+
+            // Save Bill To address (use Ship To if Bill To is empty)
+            if (!string.IsNullOrEmpty(_billToAddress))
+            {
+                _client.BillToAddress = _billToAddress;
+            }
+            else
+            {
+                // Default to Ship To if Bill To is not set
+                _client.BillToAddress = address;
+            }
 
             if (_selectedPriceLevel != null)
             {

@@ -832,6 +832,14 @@ namespace LaceupMigration.ViewModels
                 // Send the orders
                 DataProvider.SendTheOrders(new Batch[] { batch });
 
+                // Set client Editable to false when sending presale orders (fixes Xamarin bug)
+                // Only for locally created clients (ClientId <= 0)
+                if (_order.AsPresale && _order.Client != null && _order.Client.ClientId <= 0)
+                {
+                    _order.Client.Editable = false;
+                    Client.Save();
+                }
+
                 await _dialogService.ShowAlertAsync("Credit sent successfully.", "Info");
 
                 // Navigate back

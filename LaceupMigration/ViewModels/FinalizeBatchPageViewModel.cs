@@ -704,6 +704,9 @@ namespace LaceupMigration.ViewModels
                         Session.session.AddDetailFromOrder(order);
                 }
 
+                // Note: client.Editable = false is already set in BatchPageViewModel.FinalizeAsync() 
+                // before navigating to this page (matches Xamarin BatchActivity.cs line 1828)
+
                 // Check if there is any payment, if so set it to printed to lock it
                 var firstOrder = _orders.FirstOrDefault();
                 if (firstOrder != null)
