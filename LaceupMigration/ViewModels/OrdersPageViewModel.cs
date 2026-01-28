@@ -968,17 +968,7 @@ namespace LaceupMigration.ViewModels
 						credit.BatchId = batch.Id;
 						credit.AsPresale = true;
 						credit.RelationUniqueId = order.RelationUniqueId;
-
-						// Handle company selection
-						if (CompanyInfo.Companies.Count > 1 && CompanyInfo.SelectedCompany != null)
-						{
-							credit.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
-							credit.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
-						}
-						else
-						{
-							credit.CompanyName = string.Empty;
-						}
+						CompanyInfo.AssignCompanyToOrder(credit);
 
 						credit.Save();
 						orderId = order.OrderId;
@@ -991,17 +981,7 @@ namespace LaceupMigration.ViewModels
 						newOrder.BatchId = batch.Id;
 						newOrder.AsPresale = true;
 						newOrder.RelationUniqueId = order.RelationUniqueId;
-
-						// Handle company selection
-						if (CompanyInfo.Companies.Count > 1 && CompanyInfo.SelectedCompany != null)
-						{
-							newOrder.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
-							newOrder.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
-						}
-						else
-						{
-							newOrder.CompanyName = string.Empty;
-						}
+						CompanyInfo.AssignCompanyToOrder(newOrder);
 
 						newOrder.Save();
 						orderId = newOrder.OrderId;

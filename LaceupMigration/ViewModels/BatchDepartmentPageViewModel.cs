@@ -202,6 +202,7 @@ namespace LaceupMigration.ViewModels
                 order.BatchId = _batch.Id;
                 order.DepartmentId = SelectedDepartment.DepartmentId;
                 order.AsPresale = true;
+                CompanyInfo.AssignCompanyToOrder(order);
                 order.Save();
             }
 

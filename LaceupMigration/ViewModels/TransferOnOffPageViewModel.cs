@@ -483,7 +483,7 @@ namespace LaceupMigration.ViewModels
                     if (!allGood)
                         return "Error printing transfer.";
                     return string.Empty;
-                });
+                }, 2);
             }
             catch (Exception ex)
             {

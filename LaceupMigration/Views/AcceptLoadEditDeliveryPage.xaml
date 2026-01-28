@@ -5,7 +5,7 @@
              x:Class="LaceupMigration.Views.AcceptLoadEditDeliveryPage"
              Shell.TabBarIsVisible="False"
              Title="Edit Delivery">
-    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+    <Grid RowDefinitions="Auto, Auto,*" RowSpacing="8">
         <!-- Print, Search, Done buttons -->
         <HorizontalStackLayout Grid.Row="0" Spacing="8" Margin="16,8">
             <Button Text="Print"

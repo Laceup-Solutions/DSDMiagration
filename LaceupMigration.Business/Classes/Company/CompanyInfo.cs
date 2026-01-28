@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -376,6 +376,27 @@ namespace LaceupMigration
             catch
             {
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Assigns company name and id to an order from SelectedCompany or, if null, from GetMasterCompany().
+        /// Call this when creating orders so company is always set when the app has at least one company (matches Xamarin behavior).
+        /// </summary>
+        public static void AssignCompanyToOrder(Order order)
+        {
+            if (order == null)
+                return;
+            var company = SelectedCompany ?? GetMasterCompany();
+            if (company != null)
+            {
+                order.CompanyName = company.CompanyName;
+                order.CompanyId = company.CompanyId;
+            }
+            else
+            {
+                order.CompanyName = string.Empty;
+                order.CompanyId = 0;
             }
         }
 

@@ -126,7 +126,7 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // Get signature points from drawable
+            // Get signature points from drawable (same format as Laceup AddSignature: raw points, Point.Empty between strokes)
             var signaturePoints = _signatureDrawable.GetPoints();
             if (signaturePoints == null || signaturePoints.Count == 0)
             {
@@ -134,93 +134,24 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // Calculate bounding box (Xamarin lines 189-205)
-            float minX = float.MaxValue;
-            float minY = float.MaxValue;
-            float width = 0;
-            float height = 0;
-
+            // Save raw points like Laceup - no scaling, no rounding to 32 (scaling caused black square in ZPL)
+            var pointsToSave = new List<SixLabors.ImageSharp.Point>();
             foreach (var point in signaturePoints)
             {
                 if (point.IsEmpty)
-                    continue;
-                if (minX > point.X)
-                    minX = point.X;
-                if (minY > point.Y)
-                    minY = point.Y;
-                if (width < point.X)
-                    width = point.X;
-                if (height < point.Y)
-                    height = point.Y;
+                    pointsToSave.Add(SixLabors.ImageSharp.Point.Empty);
+                else
+                    pointsToSave.Add(new SixLabors.ImageSharp.Point((int)point.X, (int)point.Y));
             }
 
-            if (minX == float.MaxValue || minY == float.MaxValue)
-            {
-                await _dialogService.ShowAlertAsync("Signature is too small.", "Alert", "OK");
-                return;
-            }
-
-            // Round up to 32 (Xamarin lines 211-213)
-            int x = Convert.ToInt32((width + 31 - minX)) / 32 * 32;
-            int y = Convert.ToInt32((height + 31 - minY)) / 32 * 32;
-            if (x < 10 || y < 10)
-            {
-                await _dialogService.ShowAlertAsync("Signature is too small.", "Alert", "OK");
-                return;
-            }
-
-            // Calculate factor and scale down if needed (Xamarin lines 219-234)
-            int factor = 1;
-            if (x > 320 && x < 641)
-                factor = 2;
-            else if (x > 640 && x < 961)
-                factor = 3;
-            else if (x > 960)
-                factor = 4;
-
-            // Convert PointF to SixLabors.ImageSharp.Point and scale if needed
-            var scaledPoints = new List<SixLabors.ImageSharp.Point>();
-            if (x > 300)
-            {
-                foreach (var point in signaturePoints)
-                {
-                    if (point.IsEmpty)
-                    {
-                        scaledPoints.Add(SixLabors.ImageSharp.Point.Empty);
-                    }
-                    else
-                    {
-                        scaledPoints.Add(new SixLabors.ImageSharp.Point(
-                            (int)(point.X / factor),
-                            (int)(point.Y / factor)));
-                    }
-                }
-            }
-            else
-            {
-                foreach (var point in signaturePoints)
-                {
-                    if (point.IsEmpty)
-                    {
-                        scaledPoints.Add(SixLabors.ImageSharp.Point.Empty);
-                    }
-                    else
-                    {
-                        scaledPoints.Add(new SixLabors.ImageSharp.Point(
-                            (int)point.X,
-                            (int)point.Y));
-                    }
-                }
-            }
-
-            // Save signature to all orders (Xamarin lines 236-244)
+            // Save signature to all orders
             foreach (var order in _orders)
             {
                 if (string.IsNullOrEmpty(order.SignatureUniqueId))
                     order.SignatureUniqueId = Guid.NewGuid().ToString("N");
 
                 order.SignatureName = sName;
-                order.SignaturePoints = scaledPoints;
+                order.SignaturePoints = pointsToSave;
                 order.Save();
             }
 

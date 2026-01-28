@@ -48,6 +48,8 @@ namespace LaceupMigration.Helpers
             { "superordertemplate", "SuperOrderTemplateActivity" },
             { "previouslyorderedtemplate", "PreviouslyOrderedTemplateActivity" },
             { "batch", "BatchActivity" },
+            { "finalizebatch", "FinalizeBatchActivity" },
+            { "ordersignature", "OrderSignatureActivity" },
             { "batchdepartment", "BatchDepartmentActivity" },
             { "workorder", "WorkOrderActivity" },
             { "consignment", "ConsignmentActivity" },

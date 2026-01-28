@@ -1,4 +1,4 @@
-﻿
+
 using iText.Kernel.Geom;
 using System;
 using System.Collections.Generic;
@@ -824,7 +824,7 @@ namespace LaceupMigration
             // var path = System.IO.Path.GetTempFileName () + ".bmp";
             var rawBytes = converter.convertBitmap(signature);
             //int bitmapDataOffset = 62;
-            double widthInBytes = ((signature.Width / 32) * 32) / 8;
+            double widthInBytes = ((signature.Width + 31) / 32) * 32 / 8;
             int height = signature.Height / 32 * 32;
             var bitmapDataLength = rawBytes.Length;
 

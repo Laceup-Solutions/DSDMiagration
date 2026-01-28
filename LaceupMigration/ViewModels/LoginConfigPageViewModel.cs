@@ -629,38 +629,22 @@ namespace LaceupMigration.ViewModels
 			if (!errorDownloadingData)
 				SalesmanSession.StartSession();
 
-			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1733-1738
-			if (!errorDownloadingData && Config.NewSyncLoadOnDemand && Config.RouteOrdersCount > 0)
-			{
-				// needToEnterVehicle = true;
-				// GoToAcceptLoad(DateTime.Now, true); - navigate to accept load page
-				await GoToAsyncOrMainAsync("///MainPage"); // Simplified for now
-				return;
-			}
-
 			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1740-1769
-			// Inventory load acceptance logic (simplified - full implementation would navigate to inventory page)
+			// Inventory load acceptance logic (AutoAcceptLoad = true path only; pending-load navigation happens on Main Page after render)
 			if (!errorDownloadingData && Config.TrackInventory && updateInventory && Config.PendingLoadToAccept)
 			{
 				if (Config.AutoAcceptLoad)
 				{
 					// Auto-accept load logic (Xamarin lines 1744-1758)
-					// Simplified for now - full implementation would update inventory
 					Config.PendingLoadToAccept = false;
 					Config.SaveAppStatus();
 					ProductInventory.Save();
 				}
-				else
-				{
-					// Navigate to inventory page (Xamarin lines 1762-1765)
-					// await GoToAsyncOrMainAsync("inventorymain"); // If page exists
-				}
 			}
 
-			// [MIGRATION]: Matches Xamarin MainActivity.FinishDownloadData() lines 1771-1772
-			// Vehicle information check (simplified)
-			// if (!needToEnterVehicle && Config.RequestVehicleInformation && VehicleInformation.CurrentVehicleInformation == null)
-			//     OpenVehicleInformation();
+			// [MIGRATION]: Navigate to Main Page first so it renders (Clients Page is shown); then Clients Page OnAppearing will check for pending loads and navigate to Accept Load if needed
+			if (!errorDownloadingData)
+				ClientsPageViewModel.SetCheckPendingLoadsAfterRender(true);
 
 			// [MIGRATION]: Navigate to MainPage and subscribe to notifications
 			// Matches Xamarin MainActivity.OnCreate() lines 2228-2230

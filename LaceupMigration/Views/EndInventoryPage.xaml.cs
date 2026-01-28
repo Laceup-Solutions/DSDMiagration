@@ -25,9 +25,9 @@ namespace LaceupMigration.Views
         }
 
         /// <summary>Both physical and nav bar back use this; ask ViewModel, then remove state and navigate if allowed.</summary>
-        protected override void GoBack()
+        protected async override void GoBack()
         {
-            bool preventNavigation = _viewModel.OnBackButtonPressed().GetAwaiter().GetResult();
+            bool preventNavigation = await _viewModel.OnBackButtonPressed();
             if (preventNavigation)
                 return;
             Helpers.NavigationHelper.RemoveNavigationState("endinventory");

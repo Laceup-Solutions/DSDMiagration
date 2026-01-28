@@ -38,6 +38,9 @@ namespace LaceupMigration
                         printerToUse = "LaceUPMobileClassesIOS.ZebraFourInchesPrinter";
                 }
 
+                if (printerToUse.Contains("LaceUPMobileClassesIOS"))
+                    printerToUse = printerToUse.Replace("LaceUPMobileClassesIOS", "LaceupMigration");
+                
                 Logger.CreateLog("Trying to use printer " + printerToUse);
                 Type t = Type.GetType(printerToUse);
                 if (t == null)
@@ -72,7 +75,7 @@ namespace LaceupMigration
 
         public static async void PrintDocument(Func<int, string> printIt, int copies = 1)
         {
-            var response = await DialogHelper._dialogService.ShowPromptAsync("Alert", "Enter Copies", "Print", "Cancel", "1", 1, "1");
+            var response = await DialogHelper._dialogService.ShowPromptAsync("Alert", "Enter Copies", "Print", "Cancel", "1", 1, copies.ToString());
 
             // If user cancelled, return early (don't show printer selection)
             if (string.IsNullOrEmpty(response))

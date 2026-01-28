@@ -25,6 +25,10 @@ namespace LaceupMigration.ViewModels
 			Route
 		}
 
+		/// <summary>Set by login flow so Clients Page runs the pending-loads check after it renders, then navigates to Accept Load if needed.</summary>
+		private static bool _checkPendingLoadsAfterRender;
+		public static void SetCheckPendingLoadsAfterRender(bool value) => _checkPendingLoadsAfterRender = value;
+
 		private readonly DialogService _dialogService;
 		private readonly ILaceupAppService _appService;
 		private readonly AdvancedOptionsService _advancedOptionsService;
@@ -107,6 +111,12 @@ namespace LaceupMigration.ViewModels
 			_displayMode = RouteEx.Routes.Count > 0 ? DisplayMode.Route : DisplayMode.All;
 			UpdateViewButtonText();
 			// Match Xamarin: Button text is static "Other Day", not the date
+
+			// When ConfigurationPage "Clear Data" runs, reset route date to today
+			MessagingCenter.Subscribe<ConfigurationPageViewModel>(this, "DataCleared", _ =>
+			{
+				RouteDate = DateTime.Today;
+			});
 		}
 
 		public async Task OnAppearingAsync()
@@ -117,6 +127,14 @@ namespace LaceupMigration.ViewModels
 			if (!Config.SignedIn)
 			{
 				Console.WriteLine("[DEBUG] ClientsPage.OnAppearingAsync: User not signed in, skipping logic.");
+				return;
+			}
+
+			// After first-time login download: Main Page shows Clients; when Clients Page appears, check for pending loads and navigate to Accept Load if needed
+			if (_checkPendingLoadsAfterRender)
+			{
+				_checkPendingLoadsAfterRender = false;
+				_ = RunPendingLoadCheckAfterRenderAsync();
 				return;
 			}
 
@@ -155,6 +173,109 @@ namespace LaceupMigration.ViewModels
 		{
 			// DataProvider not initialized yet - skip these checks
 		}
+		}
+
+		/// <summary>Same logic as MainPageViewModel after download: if there are pending loads for today, navigate to Accept Load. Called when Clients Page appears after login.</summary>
+		private async Task RunPendingLoadCheckAfterRenderAsync()
+		{
+			await Task.Delay(300);
+
+			if (Config.NewSyncLoadOnDemand && Config.RouteOrdersCount > 0)
+			{
+				await _dialogService.ShowLoadingAsync("Downloading load orders...");
+				string loadOrdersResponseMessage = null;
+				try
+				{
+					await Task.Run(() =>
+					{
+						try
+						{
+							DataProvider.GetPendingLoadOrders(DateTime.Now, Config.ShowAllAvailableLoads);
+						}
+						catch (Exception e)
+						{
+							Logger.CreateLog(e);
+							loadOrdersResponseMessage = "Error downloading load orders.";
+						}
+					});
+				}
+				finally
+				{
+					await _dialogService.HideLoadingAsync();
+				}
+				if (!string.IsNullOrEmpty(loadOrdersResponseMessage))
+					await _dialogService.ShowAlertAsync(loadOrdersResponseMessage, "Alert", "OK");
+				else
+					await Shell.Current.GoToAsync($"acceptload?loadDate={DateTime.Now.Ticks}");
+				return;
+			}
+
+			if (Config.SyncLoadOnDemand && !Config.NewSyncLoadOnDemand && !Config.OnlyPresale)
+			{
+				await _dialogService.ShowLoadingAsync("Downloading load orders...");
+				string loadOrdersResponseMessage = null;
+				bool hasLoadsForToday = false;
+				try
+				{
+					await Task.Run(() =>
+					{
+						try
+						{
+							DataProvider.GetPendingLoadOrders(DateTime.Now, Config.ShowAllAvailableLoads);
+							var pendingOrders = Order.Orders.Where(x => (x.OrderType == OrderType.Load || x.IsDelivery) && x.PendingLoad).ToList();
+							hasLoadsForToday = pendingOrders.Any();
+						}
+						catch (Exception e)
+						{
+							Logger.CreateLog(e);
+							loadOrdersResponseMessage = "Error downloading load orders.";
+						}
+					});
+				}
+				finally
+				{
+					await _dialogService.HideLoadingAsync();
+				}
+				if (!string.IsNullOrEmpty(loadOrdersResponseMessage))
+					await _dialogService.ShowAlertAsync(loadOrdersResponseMessage, "Alert", "OK");
+				else if (hasLoadsForToday)
+				{
+					await Shell.Current.GoToAsync($"acceptload?loadDate={DateTime.Now.Ticks}");
+					return;
+				}
+			}
+
+			if (!Config.AutoAcceptLoad && Config.PendingLoadToAccept)
+			{
+				await _dialogService.ShowLoadingAsync("Checking for deliveries...");
+				string loadOrdersResponseMessage = null;
+				bool hasDeliveries = false;
+				try
+				{
+					await Task.Run(() =>
+					{
+						try
+						{
+							DataProvider.GetPendingLoadOrders(DateTime.Now, Config.ShowAllAvailableLoads);
+							var pendingOrders = Order.Orders.Where(x => (x.OrderType == OrderType.Load || x.IsDelivery) && x.PendingLoad).ToList();
+							hasDeliveries = pendingOrders.Any();
+						}
+						catch (Exception e)
+						{
+							Logger.CreateLog(e);
+							loadOrdersResponseMessage = "Error checking for deliveries.";
+						}
+					});
+				}
+				finally
+				{
+					await _dialogService.HideLoadingAsync();
+				}
+				if (!string.IsNullOrEmpty(loadOrdersResponseMessage))
+					await _dialogService.ShowAlertAsync(loadOrdersResponseMessage, "Alert", "OK");
+				else if (hasDeliveries)
+					await Shell.Current.GoToAsync($"acceptload?loadDate={DateTime.Now.Ticks}");
+			}
 		}
 
 		public async Task OnRouteDateSelectedAsync(DateTime date)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
@@ -2968,12 +2968,14 @@ namespace LaceupMigration
             if (SignaturePoints == null || SignaturePoints.Count == 0)
                 return null;
 
-            // Calculate bounding box
+            // Calculate bounding box (skip stroke separators Point.Empty / -1,-1 so they don't affect size)
             float minX = float.MaxValue, minY = float.MaxValue;
             float maxX = float.MinValue, maxY = float.MinValue;
 
             foreach (var point in SignaturePoints)
             {
+                if (point == SixLabors.ImageSharp.Point.Empty || (point.X == -1 && point.Y == -1))
+                    continue;
                 if (point.X < minX) minX = (float)point.X;
                 if (point.Y < minY) minY = (float)point.Y;
                 if (point.X > maxX) maxX = (float)point.X;
@@ -3011,7 +3013,7 @@ namespace LaceupMigration
 
                 foreach (var point in SignaturePoints)
                 {
-                    if (point == SixLabors.ImageSharp.Point.Empty) // End of line
+                    if (point == SixLabors.ImageSharp.Point.Empty || (point.X == -1 && point.Y == -1)) // End of line
                     {
                         if (isDrawingPath)
                         {
@@ -3045,17 +3047,17 @@ namespace LaceupMigration
                 // Handle individual dots
                 foreach (var point in SignaturePoints)
                 {
-                    if (point != SixLabors.ImageSharp.Point.Empty && SignaturePoints.Count(p => p.X == point.X && p.Y == point.Y) == 1)
+                    if (point != SixLabors.ImageSharp.Point.Empty && !(point.X == -1 && point.Y == -1) && SignaturePoints.Count(p => p.X == point.X && p.Y == point.Y) == 1)
                     {
                         canvas.DrawCircle((float)point.X - minX, (float)point.Y - minY, paint.StrokeWidth / 2, paint);
                     }
                 }
 
-                // Save the bitmap to a file
+                // Save the bitmap to a file (valid temp path; GetTempFileName() is a file path, not a directory)
                 using (var image = SKImage.FromBitmap(bitmap))
                 using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
                 {
-                    var filePath = Path.Combine(System.IO.Path.GetTempFileName(), "signature.png");
+                    var filePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + "_signature.png");
                     using (var stream = File.OpenWrite(filePath))
                     {
                         data.SaveTo(stream);

@@ -547,14 +547,7 @@ namespace LaceupMigration.ViewModels
             if (order != null)
             {
                 order.BatchId = newBatch.Id;
-
-                if (CompanyInfo.Companies.Count > 1)
-                {
-                    order.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
-                    order.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
-                }
-                else
-                    order.CompanyName = string.Empty;
+                CompanyInfo.AssignCompanyToOrder(order);
 
                 order.SalesmanId = Config.SalesmanId;
                 order.Save();
@@ -675,14 +668,7 @@ namespace LaceupMigration.ViewModels
                 var credit = new Order(_client) { OrderType = OrderType.Credit };
                 credit.BatchId = batch.Id;
                 credit.RelationUniqueId = order.RelationUniqueId;
-
-                if (CompanyInfo.Companies.Count > 1)
-                {
-                    credit.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
-                    credit.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
-                }
-                else
-                    credit.CompanyName = string.Empty;
+                CompanyInfo.AssignCompanyToOrder(credit);
                 credit.Save();
 
                 await Shell.Current.GoToAsync($"superordertemplate?asPresale=1&orderId={order.OrderId}&creditId={credit.OrderId}");

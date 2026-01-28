@@ -10,7 +10,13 @@ namespace LaceupMigration
             {
                 IInvoiceIdProvider provider;
                 // instantiate selected printer
-                Type t = Type.GetType(Config.InvoiceIdProvider);
+                
+                var idProvider = Config.InvoiceIdProvider;
+
+                if (idProvider.Contains("LaceUPMobileClassesIOS"))
+                    idProvider = idProvider.Replace("LaceUPMobileClassesIOS", "LaceupMigration");
+                
+                Type t = Type.GetType(idProvider);
                 if (t == null)
                 {
                     Logger.CreateLog("could not instantiate invoice id provider" + Config.InvoiceIdProvider + " using DefaultInvoiceProvider instead");

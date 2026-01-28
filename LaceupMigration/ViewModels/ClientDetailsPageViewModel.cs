@@ -984,6 +984,7 @@ namespace LaceupMigration.ViewModels
             var order = new Order(_client) { OrderType = OrderType.Order };
             order.BatchId = batch.Id;
             order.AsPresale = true;
+            CompanyInfo.AssignCompanyToOrder(order);
             order.Save();
 
             await Shell.Current.GoToAsync($"workorder?clientId={_client.ClientId}&orderId={order.OrderId}&asPresale=1");
@@ -1011,6 +1012,7 @@ namespace LaceupMigration.ViewModels
                 consignment.BatchId = batch.Id;
                 consignment.OrderType = OrderType.Consignment;
                 consignment.AsPresale = true;
+                CompanyInfo.AssignCompanyToOrder(consignment);
 
                 if (_client.ConsignmentTemplate != null)
                 {
@@ -1080,6 +1082,7 @@ namespace LaceupMigration.ViewModels
                 order.AsPresale = true;
                 order.Latitude = Config.LastLatitude;
                 order.Longitude = Config.LastLongitude;
+                CompanyInfo.AssignCompanyToOrder(order);
                 order.Save();
 
                 await Shell.Current.GoToAsync($"noservice?orderId={order.OrderId}");
@@ -1137,6 +1140,7 @@ namespace LaceupMigration.ViewModels
             order.Longitude = Config.LastLongitude;
             order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
             order.ReasonId = reasonId;
+            CompanyInfo.AssignCompanyToOrder(order);
             order.Save();
 
             batch.Status = BatchStatus.Locked;
@@ -1201,7 +1205,7 @@ namespace LaceupMigration.ViewModels
             if (_client == null)
                 return;
 
-            // Ensure batch exists
+            // Ensure batch exists (matches Xamarin ClientDetailsActivity: create or find batch, ensure clock-in for delivery)
             if (batch == null)
             {
                 batch = Batch.List.FirstOrDefault(x => x.Id == order.BatchId);
@@ -1214,6 +1218,13 @@ namespace LaceupMigration.ViewModels
                     order.BatchId = batch.Id;
                     order.Save();
                 }
+            }
+
+            // When navigating to batch (e.g. clicking a Delivery in client details), ensure batch has clock-in so BatchPage shows it (matches Xamarin)
+            if (batch.ClockedIn == DateTime.MinValue)
+            {
+                batch.ClockedIn = DateTime.Now;
+                batch.Save();
             }
 
             // Handle NoService orders
@@ -1293,16 +1304,7 @@ namespace LaceupMigration.ViewModels
                         credit.AsPresale = true;
                         credit.RelationUniqueId = order.RelationUniqueId;
 
-                        // Handle company selection
-                        if (CompanyInfo.Companies.Count > 1 && CompanyInfo.SelectedCompany != null)
-                        {
-                            credit.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
-                            credit.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
-                        }
-                        else
-                        {
-                            credit.CompanyName = string.Empty;
-                        }
+                        CompanyInfo.AssignCompanyToOrder(credit);
 
                         credit.Save();
                         orderId = order.OrderId;
@@ -1315,17 +1317,7 @@ namespace LaceupMigration.ViewModels
                         newOrder.BatchId = batch.Id;
                         newOrder.AsPresale = true;
                         newOrder.RelationUniqueId = order.RelationUniqueId;
-
-                        // Handle company selection
-                        if (CompanyInfo.Companies.Count > 1 && CompanyInfo.SelectedCompany != null)
-                        {
-                            newOrder.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
-                            newOrder.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
-                        }
-                        else
-                        {
-                            newOrder.CompanyName = string.Empty;
-                        }
+                        CompanyInfo.AssignCompanyToOrder(newOrder);
 
                         newOrder.Save();
                         orderId = newOrder.OrderId;
@@ -1485,13 +1477,12 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            // Set company info on order (use selected company when this client has companies)
+            // Set company info on order (always assign when app has companies: use SelectedCompany or fallback to master — matches Xamarin ClientDetails)
+            CompanyInfo.AssignCompanyToOrder(order);
+
+            // Set company logo config when we have a selected/default company
             if (CompanyInfo.SelectedCompany != null)
             {
-                order.CompanyName = CompanyInfo.SelectedCompany.CompanyName;
-                order.CompanyId = CompanyInfo.SelectedCompany.CompanyId;
-
-                // Set company logo config
                 var defaultCompany = CompanyInfo.SelectedCompany ?? 
                     CompanyInfo.Companies.FirstOrDefault(x => x.IsDefault);
 
@@ -1502,10 +1493,6 @@ namespace LaceupMigration.ViewModels
                     Config.CompanyLogo = defaultCompany.CompanyLogo;
                     Config.CompanyLogoHeight = defaultCompany.CompanyLogoHeight;
                 }
-            }
-            else
-            {
-                order.CompanyName = string.Empty;
             }
 
             order.SalesmanId = selectedSalesmanId;
