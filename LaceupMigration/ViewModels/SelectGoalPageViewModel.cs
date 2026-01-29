@@ -12,6 +12,7 @@ namespace LaceupMigration.ViewModels
 {
     public partial class SelectGoalPageViewModel : ObservableObject
     {
+        private static readonly Color GoalRed = Color.FromRgb(229, 115, 115);
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
         private List<GoalItemViewModel> _allGoals = new();
@@ -98,7 +99,7 @@ namespace LaceupMigration.ViewModels
                         CreditInvoice = goal.CreditInvoice,
                         Criteria = goal.Criteria,
                         Percentage = progressPercent,
-                        ProgressColor = progressPercent >= 100 ? Colors.DarkGreen : Colors.Red // Set initial color
+                        ProgressColor = progressPercent >= 100 ? Colors.DarkGreen : GoalRed // Set initial color
                     };
                     
                     Goals.Add(goalItem);
@@ -345,7 +346,7 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private double _creditInvoice;
         [ObservableProperty] private GoalCriteria _criteria;
         [ObservableProperty] private double _percentage;
-        [ObservableProperty] private Color _progressColor = Colors.Red;
+        [ObservableProperty] private Color _progressColor = Color.FromRgb(229, 115, 115);
 
         public string CriteriaText
         {
@@ -377,7 +378,7 @@ namespace LaceupMigration.ViewModels
         // Update ProgressColor when Percentage changes (matching Xamarin color change logic)
         partial void OnPercentageChanged(double value)
         {
-            ProgressColor = value >= 100 ? Colors.DarkGreen : Colors.Red;
+            ProgressColor = value >= 100 ? Colors.DarkGreen : Color.FromRgb(229, 115, 115);
             OnPropertyChanged(nameof(ProgressValue));
         }
     }
