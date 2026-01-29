@@ -9,6 +9,9 @@
              Shell.TabBarIsVisible="False"
              Shell.BackgroundColor="{StaticResource White}"
              Title="Client Images">
+    <Shell.BackButtonBehavior>
+        <BackButtonBehavior Command="{Binding GoBackCommand}" />
+    </Shell.BackButtonBehavior>
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,*">
             <!-- Done button at top left -->

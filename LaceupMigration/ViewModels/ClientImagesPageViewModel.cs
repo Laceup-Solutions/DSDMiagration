@@ -20,8 +20,13 @@ namespace LaceupMigration.ViewModels
         private Client? _client;
         private bool _initialized;
         private bool _isLoading;
-        private bool _changed = false;
+        //private bool _changed = false;
         private bool _isRefreshing = false;
+        
+        //To keep track what's being done and being able to on back not save when deleting but save on adding
+        //a picture , as requested :)
+        private bool _hasAddedImages = false;
+        private bool _hasDeletedImages = false;
 
         public ObservableCollection<ClientImageViewModel> Images { get; } = new();
 
@@ -80,6 +85,19 @@ namespace LaceupMigration.ViewModels
             // Do nothing - images are already loaded and should remain visible
             // This prevents clearing the list when navigating back from ViewImagePage
             await Task.CompletedTask;
+        }
+        
+        [RelayCommand]
+        private async Task GoBackAsync()
+        {
+            if (_hasAddedImages && _client != null)
+            {
+                await SendImagesAsync(false);
+            }
+            else
+            {
+                await Shell.Current.GoToAsync("..");
+            }
         }
 
         private async Task RefreshAsync()
@@ -267,7 +285,8 @@ namespace LaceupMigration.ViewModels
                 if (_client != null)
                 {
                     _client.ImageList.Add(imageId);
-                    _changed = true;
+                    //_changed = true;
+                    _hasAddedImages = true; 
                 }
 
                 Images.Add(new ClientImageViewModel { ImagePath = filePath, ImageId = imageId });
@@ -323,7 +342,8 @@ namespace LaceupMigration.ViewModels
                 if (!string.IsNullOrEmpty(imageId) && _client.ImageList.Contains(imageId))
                 {
                     _client.ImageList.Remove(imageId);
-                    _changed = true;
+                    //_changed = true;
+                    _hasDeletedImages = true; 
                 }
 
                 // Remove from UI
@@ -348,7 +368,7 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task DoneAsync()
         {
-            if (_changed && _client != null)
+            if ((_hasAddedImages || _hasDeletedImages) && _client != null)
             {
                 await SendImagesAsync();
             }
@@ -358,7 +378,7 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private async Task SendImagesAsync()
+        private async Task SendImagesAsync(bool showLoading = true) // to silently save :)
         {
             if (_client == null)
                 return;
@@ -366,8 +386,11 @@ namespace LaceupMigration.ViewModels
             var current = Connectivity.NetworkAccess;
             bool isOnline = current != NetworkAccess.None;
 
-            string sendingString = isOnline ? "Sending..." : "Saving...";
-            await _dialogService.ShowLoadingAsync(sendingString);
+            if (showLoading)
+            {
+                string sendingString = isOnline ? "Sending..." : "Saving...";
+                await _dialogService.ShowLoadingAsync(sendingString);
+            }
 
             try
             {
@@ -381,7 +404,9 @@ namespace LaceupMigration.ViewModels
             }
             catch (Exception ex)
             {
-                await _dialogService.HideLoadingAsync();
+                if (showLoading) 
+                    await _dialogService.HideLoadingAsync();
+
                 Logger.CreateLog($"Error sending images: {ex.Message}");
                 await _dialogService.ShowAlertAsync("Error sending images.", "Error");
             }

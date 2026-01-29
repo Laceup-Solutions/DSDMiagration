@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <?xaml-comp compile="true" ?>
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
@@ -21,6 +21,8 @@
     <Color x:Key="colorWhite">#FFFFFF</Color>
     <Color x:Key="colorLaceupGreen">#3FBC4D</Color>
     <Color x:Key="colorLaceupRed">#BA2D0B</Color>
+    <!-- Lighter red for goal screens (Pending Days, Missing To Goal, progress bars) -->
+    <Color x:Key="colorGoalRed">#E57373</Color>
     <Color x:Key="colorLaceupPurple">#7d3c98</Color>
     <Color x:Key="colorLaceupOrange">#D47A00</Color>
     <Color x:Key="colorLaceupLightGray">#d5d5d5</Color>

@@ -142,15 +142,15 @@
               IsVisible="{Binding IsFilterPopupVisible}"
               BackgroundColor="#80000000"
               InputTransparent="False"
-              ColumnDefinitions="0.1*,*,0.1*"
-              RowDefinitions="*,Auto,*">
+              ColumnDefinitions="0.1*,0.8*,0.1*"
+              RowDefinitions="0.1*,0.8*,0.1*">
             <Grid.GestureRecognizers>
                 <TapGestureRecognizer Command="{Binding CloseFilterPopupCommand}" />
             </Grid.GestureRecognizers>
             
             <Frame Grid.Row="1"
                    Grid.Column="1"
-                   VerticalOptions="Center"
+                   VerticalOptions="Fill"
                    HorizontalOptions="Fill"
                    Padding="0"
                    Margin="0"
@@ -158,7 +158,7 @@
                    CornerRadius="8"
                    HasShadow="True"
                    InputTransparent="False">
-                <ScrollView MaximumHeightRequest="600">
+                <ScrollView>
                     <VerticalStackLayout Padding="15" Spacing="0">
                         <!-- Filter By Goal Type -->
                         <Label Text="Filter By Goal Type:" 
