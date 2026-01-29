@@ -650,72 +650,114 @@ namespace LaceupMigration.ViewModels
             if (_order == null || item.Product == null)
                 return;
 
-            // Show popup to enter quantity for credit item
-            var defaultQty = "1";
-            if (item.Values.Count > 0 && item.Values[0].Qty > 0)
-                defaultQty = item.Values[0].Qty.ToString();
-            
-            var qtyInput = await _dialogService.ShowPromptAsync(
-                $"Enter Quantity for {item.Product.Name}",
-                "Quantity",
-                "OK",
-                "Cancel",
-                defaultQty,
-                keyboard: Keyboard.Numeric);
+            // Use same RestOfTheAddDialog as PreviouslyOrderedTemplatePage and OrderCreditPage (not a simple qty prompt)
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && x.IsCredit && x.Damaged == damaged);
+            var result = await _dialogService.ShowRestOfTheAddDialogAsync(
+                item.Product,
+                _order,
+                existingDetail,
+                isCredit: true,
+                isDamaged: damaged,
+                isDelivery: _order.IsDelivery);
 
-            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out var qty) || qty <= 0)
+            if (result.Cancelled)
                 return;
 
-            // Get or create order detail
-            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && x.IsCredit == true);
+            // Handle qty == 0 - delete the detail
+            if (result.Qty == 0)
+            {
+                if (existingDetail != null)
+                {
+                    _order.DeleteDetail(existingDetail);
+                    _order.Save();
+                }
+                PrepareProductList();
+                Filter();
+                return;
+            }
 
+            // qty > 0 - update existing or create new credit detail (same structure as AddProductWithRestOfTheAddDialogAsync)
             OrderDetail? updatedDetail = null;
             if (existingDetail != null)
             {
-                // Update existing detail
-                existingDetail.Qty = (float)qty;
+                existingDetail.Qty = result.Qty;
+                existingDetail.Weight = result.Weight;
+                existingDetail.Lot = result.Lot;
+                if (result.LotExpiration.HasValue)
+                    existingDetail.LotExpiration = result.LotExpiration.Value;
+                existingDetail.Comments = result.Comments;
+                existingDetail.Price = result.Price;
+                existingDetail.UnitOfMeasure = result.SelectedUoM;
+                existingDetail.IsFreeItem = result.IsFreeItem;
                 existingDetail.Damaged = damaged;
-                existingDetail.ReasonId = reasonId;
+                existingDetail.ReasonId = result.ReasonId;
+                if (result.PriceLevelSelected > 0)
+                {
+                    existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
+                }
                 updatedDetail = existingDetail;
             }
             else
             {
-                // Create new credit detail
                 var detail = new OrderDetail(item.Product, 0, _order);
                 detail.IsCredit = true;
                 detail.Damaged = damaged;
-                detail.ReasonId = reasonId;
-                double expectedPrice = Product.GetPriceForProduct(item.Product, _order, true, false);
-                double price = 0;
-                if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out price))
+                detail.ReasonId = result.ReasonId;
+                double expectedPrice = Product.GetPriceForProduct(item.Product, _order, true, damaged);
+                double price = result.Price;
+                if (result.UseLastSoldPrice && _order.Client != null)
                 {
-                    detail.Price = price;
-                    detail.FromOfferPrice = true;
+                    var clientHistory = InvoiceDetail.ClientProduct(_order.Client.ClientId, item.Product.ProductId);
+                    if (clientHistory != null && clientHistory.Count > 0)
+                    {
+                        var lastInvoiceDetail = clientHistory.OrderByDescending(x => x.Date).FirstOrDefault();
+                        if (lastInvoiceDetail != null)
+                            price = lastInvoiceDetail.Price;
+                    }
+                }
+                else if (price == 0)
+                {
+                    if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out var offerPrice))
+                    {
+                        detail.Price = offerPrice;
+                        detail.FromOfferPrice = true;
+                    }
+                    else
+                    {
+                        detail.Price = expectedPrice;
+                        detail.FromOfferPrice = false;
+                    }
                 }
                 else
                 {
-                    detail.Price = expectedPrice;
+                    detail.Price = price;
                     detail.FromOfferPrice = false;
                 }
                 detail.ExpectedPrice = expectedPrice;
-                detail.UnitOfMeasure = item.Line.UoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
-                detail.Qty = (float)qty;
+                detail.UnitOfMeasure = result.SelectedUoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.Qty = result.Qty;
+                detail.Weight = result.Weight;
+                detail.Lot = result.Lot;
+                if (result.LotExpiration.HasValue)
+                    detail.LotExpiration = result.LotExpiration.Value;
+                detail.Comments = result.Comments;
+                detail.IsFreeItem = result.IsFreeItem;
+                if (result.PriceLevelSelected > 0)
+                {
+                    detail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), detail.ExtraFields);
+                }
                 detail.CalculateOfferDetail();
                 _order.AddDetail(detail);
                 updatedDetail = detail;
             }
 
-            // Update related details and recalculate discounts
             if (updatedDetail != null)
             {
                 OrderDetail.UpdateRelated(updatedDetail, _order);
                 _order.RecalculateDiscounts();
             }
 
-            // Save the order
             _order.Save();
-
-            // Refresh the product list
             PrepareProductList();
             Filter();
         }

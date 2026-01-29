@@ -140,6 +140,20 @@ namespace LaceupMigration.Views
                 comingFrom = fromValue.ToString();
             }
 
+            // Set navigation params synchronously so they are available before InitializeAsync runs
+            // (e.g. when LoadCategories runs from RefreshAsync/OnAppearing before the dispatched InitializeAsync)
+            _viewModel.SetNavigationQuery(
+                clientId: clientId,
+                orderId: orderId,
+                categoryId: categoryId,
+                productSearch: productSearch,
+                comingFromSearch: comingFromSearch,
+                asCreditItem: asCreditItem,
+                asReturnItem: asReturnItem,
+                productId: productId,
+                consignmentCounting: consignmentCounting,
+                comingFrom: comingFrom);
+
             Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(
                 clientId: clientId,
                 orderId: orderId,

@@ -27,6 +27,7 @@ namespace LaceupMigration.Views
         {
             int orderId = 0;
             bool asPresale = false;
+            bool fromOneDoc = false;
 
             if (query.TryGetValue("orderId", out var orderIdValue) && orderIdValue != null)
             {
@@ -35,12 +36,19 @@ namespace LaceupMigration.Views
 
             if (query.TryGetValue("asPresale", out var asPresaleValue) && asPresaleValue != null)
             {
-                bool.TryParse(asPresaleValue.ToString(), out asPresale);
+                var s = asPresaleValue.ToString();
+                asPresale = s == "1" || string.Equals(s, "true", StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (query.TryGetValue("fromOneDoc", out var fromOneDocValue) && fromOneDocValue != null)
+            {
+                var s = fromOneDocValue.ToString();
+                fromOneDoc = s == "1" || string.Equals(s, "true", StringComparison.OrdinalIgnoreCase);
             }
 
             if (orderId > 0)
             {
-                Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(orderId, asPresale));
+                Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(orderId, asPresale, fromOneDoc));
             }
             
             // [ACTIVITY STATE]: Save navigation state with query parameters

@@ -980,6 +980,15 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
+            // Take Picture (order captured images)
+            if (Config.CaptureImages)
+            {
+                options.Add(new MenuOption("Take Picture", async () =>
+                {
+                    await ViewCapturedImagesAsync();
+                }));
+            }
+
             // Common menu items
             options.Add(new MenuOption("Add Comments", async () =>
             {
@@ -1000,6 +1009,13 @@ namespace LaceupMigration.ViewModels
         private async Task ShowAdvancedOptionsAsync()
         {
             await _advancedOptionsService.ShowAdvancedOptionsAsync();
+        }
+
+        private async Task ViewCapturedImagesAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"viewcapturedimages?orderId={_order.OrderId}");
         }
 
         private async Task SendOrderAsync()

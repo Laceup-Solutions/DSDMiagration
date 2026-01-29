@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Maui;
+using CommunityToolkit.Maui;
 using LaceupMigration.Controls;
 using LaceupMigration.Views;
 using MauiIcons.Material.Outlined;
@@ -140,6 +140,8 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.ProductImagePageViewModel>();
 		builder.Services.AddTransient<ViewImagePage>();
 		builder.Services.AddTransient<ViewModels.ViewImagePageViewModel>();
+		builder.Services.AddTransient<ViewCapturedImagesPage>();
+		builder.Services.AddTransient<ViewModels.ViewCapturedImagesPageViewModel>();
 		builder.Services.AddTransient<ProductDetailsPage>();
 		builder.Services.AddTransient<ViewModels.ProductDetailsPageViewModel>();
 		builder.Services.AddTransient<TimeSheetPage>();

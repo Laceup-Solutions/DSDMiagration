@@ -22,6 +22,8 @@ namespace LaceupMigration.ViewModels
         private int _lastDetailCount = 0;
         private int? _lastDetailId = null;
         private bool _isReturn;
+        /// <summary>True when navigated from PreviouslyOrderedTemplatePage (Add Credit). When set, empty order is not deleted on Done.</summary>
+        private bool _fromOneDoc;
 
         public ObservableCollection<OrderCreditLineItemViewModel> LineItems { get; } = new();
 
@@ -70,7 +72,7 @@ namespace LaceupMigration.ViewModels
             ShowDiscount = Config.AllowDiscount;
         }
 
-        public async Task InitializeAsync(int orderId, bool asPresale)
+        public async Task InitializeAsync(int orderId, bool asPresale, bool fromOneDoc = false)
         {
             if (_initialized && _order?.OrderId == orderId)
             {
@@ -86,6 +88,7 @@ namespace LaceupMigration.ViewModels
             }
 
             _asPresale = asPresale;
+            _fromOneDoc = fromOneDoc;
             _isReturn = (Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order));
             _initialized = true;
             _lastDetailCount = _order.Details.Count;
@@ -276,9 +279,9 @@ namespace LaceupMigration.ViewModels
                 ? $"Qty: {detail.Qty} (Weight: {detail.Weight})"
                 : $"Qty: {detail.Qty}";
 
-            // Get on hand inventory
-            var onHand = detail.Product.GetInventory(_order.AsPresale);
-            var onHandText = $"OH:{onHand}";
+            // On hand: use GetInventory(AsPresale, false) so when !AsPresale we show truck inventory (same as PreviouslyOrderedTemplatePage)
+            var onHand = detail.Product.GetInventory(_order.AsPresale, false);
+            var onHandText = $"OH:{onHand:F0}";
             var onHandColor = onHand <= 0 ? Colors.Red : Colors.Orange;
 
             // List price
@@ -336,41 +339,49 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task EditLineItemAsync(OrderCreditLineItemViewModel? item)
         {
-            if (item == null || item.Detail == null || _order == null) return;
+            if (item == null || item.Detail == null || _order == null || !CanEdit) return;
 
-            // Show popup to edit quantity (similar to PreviouslyOrderedTemplate)
-            var defaultQty = item.Detail.Qty > 0 ? item.Detail.Qty.ToString() : "1";
-            var qtyInput = await _dialogService.ShowPromptAsync(
-                $"Enter Quantity for {item.ProductName}",
-                "Quantity",
-                "OK",
-                "Cancel",
-                defaultQty,
-                keyboard: Keyboard.Numeric);
+            // Use same RestOfTheAddDialog as PreviouslyOrderedTemplatePage for editing qty (lot, weight, price, comments, etc.)
+            var existingDetail = item.Detail;
+            var result = await _dialogService.ShowRestOfTheAddDialogAsync(
+                item.Detail.Product,
+                _order,
+                existingDetail,
+                isCredit: true,
+                isDamaged: existingDetail.Damaged,
+                isDelivery: _order.IsDelivery);
 
-            double qty = 0;
-            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out qty) || qty <= 0)
+            if (result.Cancelled)
+                return;
+
+            // Handle qty == 0 - delete the detail
+            if (result.Qty == 0)
             {
-                // If quantity is 0, remove the item
-                if (qty == 0)
-                {
-                    _order.DeleteDetail(item.Detail);
-                    _order.Save();
-                    LoadOrderData();
-                }
+                _order.DeleteDetail(existingDetail);
+                _order.Save();
+                LoadOrderData();
                 return;
             }
 
-            // Update quantity
-            _order.UpdateInventory(item.Detail, (int)item.Detail.Qty);
-            item.Detail.Qty = (float)qty;
-            _order.UpdateInventory(item.Detail, -(int)qty);
+            // Update existing detail with dialog result (same as PreviouslyOrderedTemplatePage)
+            existingDetail.Qty = result.Qty;
+            existingDetail.Weight = result.Weight;
+            existingDetail.Lot = result.Lot;
+            if (result.LotExpiration.HasValue)
+                existingDetail.LotExpiration = result.LotExpiration.Value;
+            existingDetail.Comments = result.Comments;
+            existingDetail.Price = result.Price;
+            existingDetail.UnitOfMeasure = result.SelectedUoM;
+            existingDetail.IsFreeItem = result.IsFreeItem;
+            existingDetail.ReasonId = result.ReasonId;
+            if (result.PriceLevelSelected > 0)
+            {
+                existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
+            }
 
-            // Recalculate discounts
+            OrderDetail.UpdateRelated(existingDetail, _order);
             _order.RecalculateDiscounts();
             _order.Save();
-
-            // Refresh UI
             LoadOrderData();
         }
 
@@ -515,6 +526,14 @@ namespace LaceupMigration.ViewModels
         {
             if (_order == null) return;
 
+            // When coming from PreviouslyOrderedTemplatePage (Add Credit), never delete empty order
+            if (_order.Details.Count == 0 && _fromOneDoc)
+            {
+                Helpers.NavigationHelper.RemoveNavigationState("ordercredit");
+                await Shell.Current.GoToAsync("..");
+                return;
+            }
+
             if (_order.Details.Count == 0)
             {
                 var route = RouteEx.Routes.FirstOrDefault(x => x.Order != null && x.Order.OrderId == _order.OrderId);
@@ -610,6 +629,10 @@ namespace LaceupMigration.ViewModels
             // Check if order is empty
             if (_order.Details.Count == 0)
             {
+                // When coming from PreviouslyOrderedTemplatePage (Add Credit / fromOneDoc), never delete or void the empty order
+                if (_fromOneDoc)
+                    return true; // Allow navigation without touching the order
+
                 if (_order.AsPresale)
                 {
                     UpdateRoute(false);
@@ -1049,6 +1072,15 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
+            // Take Picture (order captured images)
+            if (Config.CaptureImages)
+            {
+                options.Add(new MenuOption("Take Picture", async () =>
+                {
+                    await ViewCapturedImagesAsync();
+                }));
+            }
+
             // Common menu items
             options.Add(new MenuOption("Add Comments", async () =>
             {
@@ -1073,6 +1105,12 @@ namespace LaceupMigration.ViewModels
             await _advancedOptionsService.ShowAdvancedOptionsAsync();
         }
 
+        private async Task ViewCapturedImagesAsync()
+        {
+            if (_order == null)
+                return;
+            await Shell.Current.GoToAsync($"viewcapturedimages?orderId={_order.OrderId}");
+        }
 
         private async Task PrintAsync()
         {
