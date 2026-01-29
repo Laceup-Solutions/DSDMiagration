@@ -28,5 +28,29 @@
 	</array>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>We need access to your location for invoices, proofs of delivery, service reports and customer visits.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need access to your location for invoices, proofs of delivery, service reports and customer visits.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We need access to the camera to add images to orders, payments and other transactions.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need access to the microphone to attach short voice memos to invoices and service reports so nothing gets lost.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need access to the photo library to attach images to transactions (orders, payments, invoices).</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>We need access to Bluetooth to find available mobile printers and to pair scanners.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>We need access to Bluetooth to find available mobile printers and to pair scanners.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>We use the local network to discover and connect to devices (printers/scanners) on your network.</string>
+	<key>UISupportedExternalAccessoryProtocols</key>
+	<array>
+		<string>com.zebra.rawport</string>
+		<string>com.socketmobile.chs</string>
+		<string>com.woosim.wspr240</string>
+	</array>
 </dict>
 </plist>
