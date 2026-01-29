@@ -1,4 +1,4 @@
-﻿using LaceupMigration.Controls;
+using LaceupMigration.Controls;
 using MauiIcons.Core;
 
 namespace LaceupMigration
@@ -13,7 +13,15 @@ namespace LaceupMigration
 			if (Current != null)
 				Current.UserAppTheme = AppTheme.Light;
 
-			_ = new MauiIcon();
+			// MauiIcons init can fail in release (e.g. font/reflection); don't crash app startup
+			try
+			{
+				_ = new MauiIcon();
+			}
+			catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine($"[MIGRATION] MauiIcon init: {ex.Message}");
+			}
 
 			InitializeComponent();
 

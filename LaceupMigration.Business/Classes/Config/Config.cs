@@ -9819,7 +9819,8 @@ namespace LaceupMigration
 
             if (!string.IsNullOrEmpty(dex_version)) dexText = " DEX:" + dex_version;
 
-            return string.Format("{0} Android {1}", Version, (helper.GetDeviceModel() + dexText));
+            var deviceModel = helper != null ? helper.GetDeviceModel() + dexText : "Unknown";
+            return string.Format("{0} Android {1}", Version, deviceModel);
         }
 
         public static string GetAuthString()
