@@ -12,36 +12,31 @@
             <!-- Action Buttons -->
             <Grid x:Name="ActionButtonsGrid" Grid.Row="0" ColumnSpacing="4" Padding="8,8,8,4">
                 <Button Text="Add Credit"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding AddCreditCommand}"
                         IsEnabled="{Binding CanEdit}"
                         IsVisible="{Binding ShowAddCredit}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="0" />
                 <Button x:Name="ProdButton" Text="Prod"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding ViewProductsCommand}"
                         IsEnabled="{Binding CanEdit}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="1" />
                 <Button x:Name="CatsButton" Text="Cats"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding ViewCategoriesCommand}"
                         IsEnabled="{Binding CanEdit}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="2" />
                 <Button x:Name="SearchButton" Text="Search"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding SearchCommand}"
                         IsEnabled="{Binding CanEdit}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="3" />
                 <Button x:Name="SendButton" Text="Send"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding SendOrderCommand}"
                         IsEnabled="{Binding CanEdit}"
                         IsVisible="{Binding ShowSendButton}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         Grid.Column="4" />
             </Grid>
 
@@ -196,7 +191,20 @@
                                             FontAttributes="Bold"
                                             CornerRadius="4"
                                             HorizontalOptions="End"
-                                            Margin="0,2,0,0" />
+                                            Margin="0,2,0,0">
+                                        <VisualStateManager.VisualStateGroups>
+                                            <VisualStateGroupList>
+                                                <VisualStateGroup x:Name="CommonStates">
+                                                    <VisualState x:Name="Disabled">
+                                                        <VisualState.Setters>
+                                                            <Setter Property="BackgroundColor" Value="{StaticResource Gray300}" />
+                                                            <Setter Property="TextColor" Value="{StaticResource Gray400}" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                            </VisualStateGroupList>
+                                        </VisualStateManager.VisualStateGroups>
+                                    </Button>
                                 </VerticalStackLayout>
 
                                 <!-- Suggested Products Label (Green, at bottom) -->

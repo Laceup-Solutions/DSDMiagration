@@ -3477,7 +3477,7 @@ namespace LaceupMigration.ViewModels
         {
             if (_order == null)
                 return;
-            await Shell.Current.GoToAsync($"viewinvoiceimages?orderId={_order.OrderId}");
+            await Shell.Current.GoToAsync($"viewcapturedimages?orderId={_order.OrderId}");
         }
 
         private async Task SelectSalesmanAsync()

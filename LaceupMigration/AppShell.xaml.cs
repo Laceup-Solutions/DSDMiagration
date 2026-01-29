@@ -1,4 +1,4 @@
-﻿using LaceupMigration.UtilDlls;
+using LaceupMigration.UtilDlls;
 using LaceupMigration.ViewModels;
 using LaceupMigration.Views;
 
@@ -53,6 +53,7 @@ namespace LaceupMigration
             Routing.RegisterRoute("productcatalog", typeof(ProductCatalogPage));
             Routing.RegisterRoute("productimage", typeof(ProductImagePage));
             Routing.RegisterRoute("viewimage", typeof(ViewImagePage));
+            Routing.RegisterRoute("viewcapturedimages", typeof(ViewCapturedImagesPage));
             Routing.RegisterRoute("productdetails", typeof(ProductDetailsPage));
             Routing.RegisterRoute("viewinvoiceimages", typeof(ViewInvoiceImagesPage));
             Routing.RegisterRoute("timesheet", typeof(TimeSheetPage));

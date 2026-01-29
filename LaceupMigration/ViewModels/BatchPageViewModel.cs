@@ -1327,7 +1327,7 @@ namespace LaceupMigration.ViewModels
                         return;
                     }
 
-                    await Shell.Current.GoToAsync($"clientimages?orderId={selectedOrders[0].OrderId}");
+                    await Shell.Current.GoToAsync($"viewcapturedimages?orderId={selectedOrders[0].OrderId}");
                 }));
             }
 

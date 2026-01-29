@@ -130,6 +130,13 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
+			if (!_initialized)
+			{
+				_initialized = true;
+			}
+
+			await RefreshAsync(true, true);
+
 			// After first-time login download: Main Page shows Clients; when Clients Page appears, check for pending loads and navigate to Accept Load if needed
 			if (_checkPendingLoadsAfterRender)
 			{
@@ -138,41 +145,34 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			if (!_initialized)
+			if (Config.Delivery && Config.PendingLoadToAccept && Config.TrackInventory)
 			{
-				_initialized = true;
-			}
-
-			await RefreshAsync(true, true);
-
-		if (Config.Delivery && Config.PendingLoadToAccept && Config.TrackInventory)
-		{
-			await _dialogService.ShowAlertAsync("Please accept the pending load before continuing.", "Warning");
-			DisableInteractions();
-			return;
-		}
-
-		// Only check DataProvider methods if DataProvider is initialized
-		// This prevents NullReferenceException if the page appears before initialization
-		try
-		{
-			if (DataProvider.MustEndOfDay())
-			{
-				await _dialogService.ShowAlertAsync("End of Day process is required before continuing.", "Warning");
-				ClearClientListAndLock();
+				await _dialogService.ShowAlertAsync("Please accept the pending load before continuing.", "Warning");
+				DisableInteractions();
 				return;
 			}
-			
-			if (!DataProvider.CanUseApplication())
+
+			// Only check DataProvider methods if DataProvider is initialized
+			// This prevents NullReferenceException if the page appears before initialization
+			try
 			{
-				await _dialogService.ShowAlertAsync("You must sync data before continuing.", "Warning");
-				ClearClientListAndLock();
+				if (DataProvider.MustEndOfDay())
+				{
+					await _dialogService.ShowAlertAsync("End of Day process is required before continuing.", "Warning");
+					ClearClientListAndLock();
+					return;
+				}
+
+				if (!DataProvider.CanUseApplication())
+				{
+					await _dialogService.ShowAlertAsync("You must sync data before continuing.", "Warning");
+					ClearClientListAndLock();
+				}
 			}
-		}
-		catch (NullReferenceException)
-		{
-			// DataProvider not initialized yet - skip these checks
-		}
+			catch (NullReferenceException)
+			{
+				// DataProvider not initialized yet - skip these checks
+			}
 		}
 
 		/// <summary>Same logic as MainPageViewModel after download: if there are pending loads for today, navigate to Accept Load. Called when Clients Page appears after login.</summary>
