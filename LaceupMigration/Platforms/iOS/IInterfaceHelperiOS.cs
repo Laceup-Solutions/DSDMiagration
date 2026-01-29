@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -59,8 +59,11 @@ public class InterfaceHelper : IInterfaceHelper
 
     public string GetDeviceId()
     {
-        return UIDevice.CurrentDevice.UserInterfaceIdiom.ToString() +
-               UIDevice.CurrentDevice.IdentifierForVendor.AsString();
+        // IdentifierForVendor can be nil on first launch, TestFlight installs, or before app is fully active.
+        // Calling .AsString() on null causes NRE and crashes release builds on physical devices.
+        var vendorId = UIDevice.CurrentDevice.IdentifierForVendor;
+        var vendorString = vendorId?.ToString() ?? Guid.NewGuid().ToString("N");
+        return UIDevice.CurrentDevice.UserInterfaceIdiom.ToString() + vendorString;
     }
 
     public string GetLocale()

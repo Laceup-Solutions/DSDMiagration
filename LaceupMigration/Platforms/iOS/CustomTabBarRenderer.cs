@@ -1,4 +1,4 @@
-﻿using UIKit;
+using UIKit;
 using CoreGraphics;
 using System;
 using LaceupMigration;
@@ -14,6 +14,8 @@ namespace LaceupMigration
         protected override IShellItemRenderer CreateShellItemRenderer(ShellItem item)
         {
             var renderer = base.CreateShellItemRenderer(item);
+            if (renderer == null)
+                return null;
 
             if (renderer is ShellItemRenderer shellItemRenderer)
             {

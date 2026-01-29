@@ -191,25 +191,14 @@ namespace LaceupMigration.Views
         }
 
         /// <summary>
-        /// Override GoBack to remove navigation state when navigating away.
-        /// This is called by both the physical back button and navigation bar back button.
+        /// Use base GoBack so back removes this page from navigation state (same as LaceupContentPage).
+        /// Base RemoveNavigationState() correctly derives the current route from Shell location
+        /// (e.g. fullcategory?categoryId=X -> fullcategory), so state is removed whether we're
+        /// on categories or products. Custom logic was passing full location and failed to remove.
         /// </summary>
         protected override void GoBack()
         {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
-            var currentRoute = Shell.Current.CurrentState?.Location?.OriginalString ?? "";
-            if (currentRoute.Contains("fullcategory"))
-            {
-                Helpers.NavigationHelper.RemoveNavigationState(currentRoute);
-            }
-            else
-            {
-                // Fallback: try to remove by route name
-                Helpers.NavigationHelper.RemoveNavigationState("fullcategory");
-            }
-            
-            // Navigate back
-            Shell.Current.GoToAsync("..");
+            base.GoBack();
         }
 
         private void SearchBar_TextChanged(object sender, TextChangedEventArgs e)
