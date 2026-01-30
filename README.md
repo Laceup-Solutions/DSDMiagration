@@ -9,20 +9,23 @@ This project represents the migration of the **Laceup Delivery DSD** application
 ```
 DSDMiagration/
 ├── LaceupMigration/              # Main .NET MAUI application
-│   ├── Views/                    # 83+ XAML views and code-behind files
-│   ├── ViewModels/               # 84 ViewModels using MVVM pattern
+│   ├── Views/                    # 95 XAML views and code-behind files
+│   ├── ViewModels/               # 94 ViewModels using MVVM pattern
 │   ├── Platforms/                # Platform-specific implementations
 │   │   ├── Android/              # Android-specific code
-│   │   │   ├── Scanner/         # Barcode scanner implementations
-│   │   │   └── Services/        # Android services
-│   │   └── iOS/                  # iOS-specific code
-│   ├── Services/                 # Shared services
-│   ├── Controls/                 # Custom controls
-│   └── Resources/                # Images, fonts, styles
+│   │   │   ├── Scanner/         # Barcode scanner (Socket Mobile, Zebra EMDK, Chainway, Cipherlab, Honeywell)
+│   │   │   ├── Handlers/        # CollectionView ripple effect
+│   │   │   └── Services/        # CameraBarcodeScanner, App Center, DatePicker
+│   │   └── iOS/                  # iOS-specific code (CameraBarcodeScanner, App Info)
+│   ├── Services/                 # LaceupAppService, ActivityStateRestoration, AdvancedOptions, DialogService
+│   ├── Controls/                 # DialogService, LoadingOverlay, SignatureDrawable
+│   ├── UtilDlls/                  # PdfViewer (in-app PDF viewing)
+│   ├── Helpers/                   # NavigationHelper, MaterialIconHelper, SafeNavigationExtensions
+│   └── Resources/                # Fonts (OpenSans, Roboto), images, styles
 ├── LaceupMigration.Business/     # Business logic layer
-│   ├── Classes/                  # 304 business classes
-│   └── Interfaces/               # Service interfaces
-└── XAMARIN/                      # Original Xamarin.Forms project (reference)
+│   ├── Classes/                  # 300+ business classes (Orders, Clients, Products, Config, DataAccess, Printers, PdfUtilities, etc.)
+│   └── Interfaces/               # IDataAccess, IDialogService, IScannerService, ICameraBarcodeScannerService, IDatePickerService
+└── LaceupMigration.sln           # Solution (LaceupMigration + LaceupMigration.Business)
 ```
 
 ## Technology Stack
@@ -31,12 +34,16 @@ DSDMiagration/
 - **Platforms**: Android (API 22+), iOS (15.0+)
 - **Architecture**: MVVM (Model-View-ViewModel)
 - **UI Framework**: .NET MAUI with XAML
-- **Dependency Injection**: Built-in MAUI DI container
-- **MVVM Toolkit**: CommunityToolkit.Mvvm
+- **Dependency Injection**: Built-in MAUI DI container (`MauiProgram.cs`)
+- **MVVM Toolkit**: CommunityToolkit.Maui (CommunityToolkit.Mvvm)
 - **Icons**: MauiIcons (Material Outlined)
-- **Analytics**: Microsoft App Center
+- **Barcode/Camera**: ZXing.Net.Maui (UseBarcodeReader)
+- **PDF Viewing**: Maui.PDFView (in-app PDF viewer)
+- **Analytics**: Microsoft App Center (Android; iOS via platform services)
 
 ## What Has Been Completed
+
+*Summary: The MAUI app has 95 Views, 94 ViewModels, 90+ Shell routes registered, 300+ business classes, 97+ printer implementations, and 16 PDF generator implementations. All main tabs (Customers, Open Inv, Transactions, Payments), order types, inventory, reports, EOD, route management, goals, and self-service flows are implemented with UI and navigation. Remaining work is mainly printing/email/PDF wiring in ViewModels, report generation, configuration persistence, and some scroll/navigation TODOs.*
 
 ### 1. Project Setup & Architecture
 - ✅ Migrated from Xamarin.Forms to .NET MAUI
@@ -47,18 +54,21 @@ DSDMiagration/
 - ✅ Set up App Center for analytics and crash reporting
 
 ### 2. Core Screens & Navigation
-- ✅ **Splash Screen** - Initial loading screen
-- ✅ **Login/Configuration** - Server connection and authentication
-- ✅ **Main Tabs** - Four-tab navigation (Customers, Open Inv, Transactions, Payments)
-- ✅ **Client Details** - Comprehensive client information display
-- ✅ **Terms and Conditions** - Legal acceptance screen
+- ✅ **Splash Screen** (SplashPage) - Initial loading, route `Splash`
+- ✅ **Login/Configuration** (LoginConfigPage) - Server connection and authentication
+- ✅ **Main Tabs** (AppShell.xaml) - Four-tab navigation: Customers (Clients), Open Inv (Invoices), Transactions (Orders), Payments (Payments)
+- ✅ **Client Details** (ClientDetailsPage) - Comprehensive client information, orders, invoices
+- ✅ **Terms and Conditions** (TermsAndConditionsPage)
+- ✅ **90+ routes** registered in AppShell.xaml.cs (clientdetails, batch, orderdetails, inventory, reports, configuration, selfservice/*, etc.)
+- ✅ **NavigationHelper** for state-preserving navigation; **SafeNavigationExtensions** for safe GoToAsync
 
 ### 3. Client Management
-- ✅ Clients list page with search and filtering
-- ✅ Client details page with orders and invoices
-- ✅ Add/Edit client functionality
-- ✅ Client images management
-- ✅ Bill-to address management
+- ✅ Clients list (ClientsPage) with search and filtering
+- ✅ Client details (ClientDetailsPage) with orders and invoices
+- ✅ Add client (AddClientPage), Edit client (EditClientPage)
+- ✅ Client images (ClientImagesPage), View image (ViewImagePage)
+- ✅ Bill-to address (AddClientBillToPage, AddClientBillToPageViewModel)
+- ✅ Select invoice (SelectInvoicePage), Invoice details (InvoiceDetailsPage)
 
 ### 4. Order Management
 - ✅ Orders list and details
@@ -109,37 +119,27 @@ DSDMiagration/
 - ✅ Data transmission
 
 ### 9. Scanning Functionality
-- ✅ Multi-scanner support:
-  - Socket Mobile scanners
-  - Zebra EMDK scanners
-  - Honeywell scanners
-  - Chainway 1D/2D scanners
-  - Cipherlab scanners
-- ✅ Scanner service abstraction
-- ✅ Platform-specific scanner implementations
-- ✅ QR code scanning support
+- ✅ Multi-scanner support (hardware):
+  - Socket Mobile, Zebra EMDK, Honeywell, Chainway 1D/2D, Cipherlab (Android Scanner/)
+- ✅ Camera barcode scanning: ZXing.Net.Maui + ICameraBarcodeScannerService (Android & iOS)
+- ✅ Scanner service abstraction (IScannerService, platform interfaces)
+- ✅ Platform-specific implementations (Platforms/Android/Scanner/, Platforms/iOS/Services/)
+- ✅ QR code and barcode support
 
 ### 10. Printing Functionality
-- ✅ Printer service interface (IPrinter)
-- ✅ Multiple printer implementations
-- ✅ Print orders, invoices, payments
-- ✅ Print inventory reports
-- ✅ Print EOD reports
-- ✅ Print consignment documents
-- ✅ Print client statements
+- ✅ Printer service interface (IPrinter) and PrinterProvider
+- ✅ 97+ printer implementations (Printers/New Printer Structure/: Zebra, Text, Custom Printers per client)
+- ✅ Print orders, invoices, payments, inventory reports, EOD reports, consignment documents, client statements
+- ✅ Setup Printer page (SetupPrinterPage) for configuration
 
-### 11. PDF Generation
+### 11. PDF Generation & Viewing
 - ✅ PDF generation service (IPdfProvider)
-- ✅ Multiple PDF generator implementations:
-  - DefaultPdfGenerator
-  - StevenFoodsPdfGenerator
-  - GlenWillsPdfGenerator
-  - MamaLychaPdfGenerator
-  - NoDiscountPdfGenerator
-- ✅ Order PDFs
-- ✅ Invoice PDFs
-- ✅ Report PDFs
-- ✅ Consignment PDFs
+- ✅ Multiple PDF generator implementations (PdfUtilities):
+  - DefaultPdfGenerator, StevenFoodsPdfGenerator, GlenWillsPdfGenerator, MamaLychaPdfGenerator, NoDiscountPdfGenerator
+  - ABFirePdfGenerator, AlwaysShowHeaderPdfGenerator, EcoSkyWaterPdfGenerator, EMSPdfGenerator, ExportReportGenerator
+  - GevaCoffeePdfGenerator, FineFoodPdf, FromHtmlPdf, MilagroBillOfLadingfPdfGenerator
+- ✅ Order PDFs, Invoice PDFs, Report PDFs, Consignment PDFs
+- ✅ In-app PDF viewer (PdfViewer in UtilDlls, route `pdfviewer`) via Maui.PDFView
 
 ### 12. Product Catalog
 - ✅ Product catalog page
@@ -157,27 +157,28 @@ DSDMiagration/
 - ✅ Route returns
 
 ### 14. Additional Features
-- ✅ Time sheet tracking
-- ✅ Goal management
-- ✅ Configuration/settings page
-- ✅ Printer setup
-- ✅ Scanner setup
-- ✅ Sent orders tracking
-- ✅ Sent payments tracking
-- ✅ View order status
-- ✅ Self-service checkout
-- ✅ Self-service catalog
-- ✅ Self-service categories
-- ✅ Self-service payment collection
+- ✅ Time sheet tracking (TimeSheetPage)
+- ✅ Goal management (SelectGoalPage, GoalFilterPage, GoalDetailsPage)
+- ✅ Configuration/settings page (ConfigurationPage)
+- ✅ Printer setup (SetupPrinterPage), Scanner setup (SetupScannerPage)
+- ✅ Sent orders tracking (SentOrdersPage, SentOrdersOrdersListPage)
+- ✅ Sent payments tracking (SentPaymentsPage, SentPaymentsInPackagePage)
+- ✅ View order status (ViewOrderStatusPage, ViewOrderStatusDetailsPage)
+- ✅ Log viewer (LogViewerPage)
+- ✅ Self-service: select company, client list, checkout, template, catalog, categories, collect payment, credit template
+- ✅ Navigation state restoration (ActivityStateRestorationService, LaceupAppService)
+- ✅ Custom tab bar (CustomTabBarRenderer), Android CollectionView ripple effect
+- ✅ Price level selection (SelectPriceLevelPage, SelectRetailPriceLevelPage), Terms selection (SelectTermsPage)
+- ✅ Manage departments (ManageDepartmentsPage), Sort-by dialog (SortByDialogPage)
 
 ### 15. Business Logic Layer
-- ✅ 304 business classes migrated
-- ✅ Data access layer
-- ✅ Configuration management
-- ✅ Session management
-- ✅ Product inventory management
-- ✅ Order processing logic
-- ✅ Payment processing logic
+- ✅ 300+ business classes in LaceupMigration.Business (Orders, Clients, Products, Config, DataAccess, Printers, PdfUtilities, Invoice, Payment, Route, Goal, Inventory, etc.)
+- ✅ Data access layer (DataAccess, DataAccessEx, NetAccess)
+- ✅ Configuration (Config, ConfigFilePaths, ConfigKeys, ConfigProperties)
+- ✅ Session management (Session, SalesmanSession, SessionDetails)
+- ✅ Product inventory, order processing, payment processing logic
+- ✅ Invoice ID providers, Order discount structure, Custom code decoders
+- ✅ 97+ printer implementations (IPrinter, PrinterProvider, custom printers per client)
 
 ## Configuration Keys
 
@@ -626,7 +627,9 @@ The following TODO items have been identified in the codebase and need to be com
 
 ### Summary Statistics
 
-- **Total TODO Items**: ~159
+*Note: TODO counts are from a codebase audit; actual grep matches may vary (e.g. ~110 TODO/FIXME/HACK matches across 33 files).*
+
+- **Total TODO Items**: ~159 (from audit)
 - **Printing TODOs**: ~15
 - **Email/PDF TODOs**: ~20
 - **Reports TODOs**: ~18
@@ -699,10 +702,10 @@ When working on this project:
 
 ## Support
 
-For issues or questions, contact the development team or refer to the original Xamarin project documentation in the `XAMARIN` folder.
+For issues or questions, contact the development team. Additional project documentation: see `GUIA_PROYECTO_MAUI.md` for navigation, data flow, and architecture details.
 
 ---
 
-**Last Updated**: [Current Date]
+**Last Updated**: January 30, 2026  
 **Project Status**: In Development - Testing Phase
 
