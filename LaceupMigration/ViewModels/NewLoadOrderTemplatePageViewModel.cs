@@ -910,7 +910,7 @@ namespace LaceupMigration.ViewModels
 
             // Show confirmation dialog (matches Xamarin)
             var result = await _dialogService.ShowConfirmAsync(
-                "Send load order back to office?",
+                "This will send your load order to the back office, and prevent additional changes. Continue?",
                 "Warning",
                 "Yes",
                 "No");

@@ -33,5 +33,15 @@ namespace LaceupMigration.Views
             // If not initialized yet, InitializeAsync will handle the loading
             await _viewModel.OnAppearingAsync();
         }
+        
+        protected override bool OnBackButtonPressed()
+        {
+            if (BindingContext is ClientImagesPageViewModel vm)
+            {
+                vm.GoBackCommand.Execute(null);
+                return true; // Prevent default back behavior
+            }
+            return base.OnBackButtonPressed();
+        }
     }
 }

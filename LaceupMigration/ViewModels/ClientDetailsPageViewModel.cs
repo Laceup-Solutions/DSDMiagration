@@ -1913,7 +1913,7 @@ namespace LaceupMigration.ViewModels
                     options.Add(new MenuOption("Create Invoice", () => ClockInForBatchAsync()));
                 }
 
-                options.Add(new MenuOption("No Service", () => CreateNoServiceAsync()));
+                options.Add(new MenuOption("No Service/Sales", () => CreateNoServiceAsync()));
 
                 if (Config.PreSaleConsigment && Config.UseFullConsignment)
                 {

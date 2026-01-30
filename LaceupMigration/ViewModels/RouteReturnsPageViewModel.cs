@@ -762,9 +762,7 @@ namespace LaceupMigration.ViewModels
         {
             var password = await _dialogService.ShowPromptAsync("Enter Password", "Enter password to validate returns",
                 "OK", "Cancel", "Password", -1, "", Keyboard.Default);
-
-            if (string.IsNullOrEmpty(password)) return;
-
+            
             if (string.Compare(password, Config.AddInventoryPassword, StringComparison.CurrentCultureIgnoreCase) != 0)
             {
                 await _dialogService.ShowAlertAsync("Invalid password.", "Alert", "OK");

@@ -13,6 +13,7 @@ namespace LaceupMigration.ViewModels
 {
     public partial class GoalDetailsPageViewModel : ObservableObject
     {
+        private static readonly Color GoalRed = Color.FromRgb(229, 115, 115);
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
         private List<GoalDetailItemViewModel> _allDetails = new();
@@ -40,6 +41,16 @@ namespace LaceupMigration.ViewModels
         
         // Show Include Sales Orders checkbox (hidden for Payment criteria, matching Xamarin line 573)
         public bool ShowIncludeSalesOrders => _goal?.Criteria != GoalCriteria.Payment;
+        
+        //Filter popup height to be 80% of the screen
+        public double PopupHeight
+        {
+            get
+            {
+                var screenHeight = DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density;
+                return screenHeight * 0.8;
+            }
+        }
         
         // Include Device Orders text (changes for Payment criteria, matching Xamarin line 574)
         public string IncludeDeviceOrdersText
@@ -247,7 +258,7 @@ namespace LaceupMigration.ViewModels
                 ProgressValue = Percentage == 0 ? 1.0 : Math.Min(1.0, Percentage / 100.0);
                 
                 // Progress color: red when < 100%, green when >= 100% (matching Xamarin lines 504-515)
-                ProgressColor = Percentage >= 100 ? Colors.DarkGreen : Colors.Red;
+                ProgressColor = Percentage >= 100 ? Colors.DarkGreen : GoalRed;
                 
                 ProgressPercentage = Percentage / 100.0;
                 ProgressText = $"{sold:F0} / {_goal.QuantityOrAmount:F0} ({ProgressPercentage:P0})";
@@ -531,7 +542,7 @@ namespace LaceupMigration.ViewModels
         private string _dailySalesText = "0";
         private string _percentageText = "0%";
         private double _progressValue = 0;
-        private Color _progressColor = Colors.Red;
+        private Color _progressColor = Color.FromRgb(229, 115, 115);
         private string _goalAmountLabel = "Goal Amount";
         private string _soldLabel = "Sold";
         private string _dailySalesLabel = "Daily Sales To Goal";
@@ -760,7 +771,7 @@ namespace LaceupMigration.ViewModels
             
             // Progress bar value and color (matching Xamarin lines 954-967)
             ProgressValue = percent == 0 ? 1.0 : Math.Min(1.0, percent / 100.0); // Full bar when 0% to show red
-            ProgressColor = percent >= 100 ? Colors.DarkGreen : Colors.Red;
+            ProgressColor = percent >= 100 ? Colors.DarkGreen : Color.FromRgb(229, 115, 115);
         }
         
         // GoalToString method (matching Xamarin line 321-329)
@@ -771,6 +782,6 @@ namespace LaceupMigration.ViewModels
             else
                 return value.ToCustomString();
         }
-    }
+     }
 }
 

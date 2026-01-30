@@ -1190,35 +1190,6 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // No Service
-            if (!Config.PreSale && orders.Count == 0)
-            {
-                options.Add(new MenuOption("No Service", async () =>
-                {
-                    if (orders.Count != 0)
-                    {
-                        await _dialogService.ShowAlertAsync("No service is only available when there are no orders in the batch.", "Alert");
-                        return;
-                    }
-
-                    var result = await _dialogService.ShowConfirmAsync(
-                        "Do you want to record no service for this client?",
-                        "Alert",
-                        "Yes",
-                        "No");
-
-                    if (result)
-                    {
-                        // Navigate to no service page
-                        var noServiceOrder = new Order(_batch.Client) { OrderType = OrderType.NoService };
-                        noServiceOrder.BatchId = _batch.Id;
-                        CompanyInfo.AssignCompanyToOrder(noServiceOrder);
-                        noServiceOrder.Save();
-                        await Shell.Current.GoToAsync($"noservice?orderId={noServiceOrder.OrderId}");
-                    }
-                }));
-            }
-
             // Work Order
             if (Config.AllowWorkOrder)
             {
@@ -1356,7 +1327,7 @@ namespace LaceupMigration.ViewModels
                         return;
                     }
 
-                    await Shell.Current.GoToAsync($"clientimages?orderId={selectedOrders[0].OrderId}");
+                    await Shell.Current.GoToAsync($"viewcapturedimages?orderId={selectedOrders[0].OrderId}");
                 }));
             }
 

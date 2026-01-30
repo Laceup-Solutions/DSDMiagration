@@ -22,6 +22,7 @@ namespace LaceupMigration.ViewModels
         private Client? _client;
         private Order? _order;
         private bool _initialized;
+        private int? _clientId;
         private int? _orderId;
         private int? _categoryId;
         private string? _productSearch;
@@ -69,15 +70,68 @@ namespace LaceupMigration.ViewModels
             _cameraBarcodeScanner = cameraBarcodeScanner;
         }
 
+        /// <summary>
+        /// Sets navigation query parameters synchronously and resolves _order/_client from IDs immediately.
+        /// Call this from the page's ApplyQueryAttributes before dispatching InitializeAsync. This ensures
+        /// that when LoadCategories() or LoadProducts() runs (from any code path), the parameters have
+        /// been applied and _order/_client are already resolved from the query attributes.
+        /// </summary>
+        public void SetNavigationQuery(int? clientId = null, int? orderId = null, int? categoryId = null, string? productSearch = null,
+            bool comingFromSearch = false, bool asCreditItem = false, bool asReturnItem = false, int? productId = null,
+            bool consignmentCounting = false, string? comingFrom = null)
+        {
+            _clientId = clientId;
+            _orderId = orderId;
+            _categoryId = categoryId;
+            _productSearch = productSearch;
+            _comingFromSearch = comingFromSearch;
+            _asCreditItem = asCreditItem;
+            _asReturnItem = asReturnItem;
+            _productId = productId;
+            _consignmentCounting = consignmentCounting;
+            _comingFrom = comingFrom;
+
+            // Resolve _order and _client immediately so LoadCategories/LoadProducts always have them when IDs were passed
+            if (_orderId.HasValue)
+                _order = Order.Orders.FirstOrDefault(x => x.OrderId == _orderId.Value);
+            else
+                _order = null;
+
+            if (_clientId.HasValue)
+                _client = Client.Clients.FirstOrDefault(x => x.ClientId == _clientId.Value);
+            else if (_order != null)
+                _client = _order.Client;
+            else
+                _client = null;
+        }
+
         public async Task InitializeAsync(int? clientId = null, int? orderId = null, int? categoryId = null, 
             string? productSearch = null, bool comingFromSearch = false, bool asCreditItem = false, 
             bool asReturnItem = false, int? productId = null, bool consignmentCounting = false, string? comingFrom = null)
         {
-            
+            // When called with no explicit params (e.g. from OnAppearingAsync before dispatched InitializeAsync ran),
+            // use the params already set by SetNavigationQuery so we don't overwrite them with null.
+            bool hasExplicitParams = clientId.HasValue || orderId.HasValue || (categoryId.HasValue && categoryId.Value > 0)
+                || !string.IsNullOrEmpty(productSearch) || comingFromSearch || asCreditItem || asReturnItem
+                || productId.HasValue || consignmentCounting || !string.IsNullOrEmpty(comingFrom);
+            if (!hasExplicitParams && (_orderId.HasValue || _clientId.HasValue))
+            {
+                clientId = _clientId;
+                orderId = _orderId;
+                categoryId = _categoryId;
+                productSearch = _productSearch;
+                comingFromSearch = _comingFromSearch;
+                asCreditItem = _asCreditItem;
+                asReturnItem = _asReturnItem;
+                productId = _productId;
+                consignmentCounting = _consignmentCounting;
+                comingFrom = _comingFrom;
+            }
+
             if (!string.IsNullOrEmpty(productSearch))
                 productSearch = Uri.UnescapeDataString(productSearch);
             
-            
+            _clientId = clientId;
             _orderId = orderId;
             _categoryId = categoryId;
             _productSearch = productSearch;
@@ -301,6 +355,22 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
+            // When there is an order: show only categories that contain at least one product from GetProductListForOrder
+            // Resolve _order from _orderId when needed (LoadCategories can run before InitializeAsync has set _order)
+            HashSet<int>? categoryIdsWithProducts = null;
+            if (_orderId.HasValue)
+            {
+                var order = _order ?? Order.Orders.FirstOrDefault(x => x.OrderId == _orderId.Value);
+                if (order != null)
+                {
+                    var productsForOrder = Product.GetProductListForOrder(order, _asCreditItem, 0, false);
+                    categoryIdsWithProducts = productsForOrder.Select(p => p.CategoryId).Where(id => id > 0).Distinct().ToHashSet();
+                    categoryList = categoryList.Where(item =>
+                        categoryIdsWithProducts.Contains(item.Category.CategoryId) ||
+                        item.Subcategories.Any(sub => categoryIdsWithProducts.Contains(sub.CategoryId))).ToList();
+                }
+            }
+
             // Apply search filter (matches Xamarin RefreshListView lines 221-222 exactly)
             // Note: In Xamarin, templateCriteria is set to e.NewText (not lowercased) in QueryTextChange
             // but the comparison uses ToLowerInvariant() on both sides
@@ -315,8 +385,13 @@ namespace LaceupMigration.ViewModels
             Categories.Clear();
             foreach (var item in categoryList.OrderBy(x => x.Category.Name))
             {
-                var subcategoriesText = item.Subcategories.Count > 0
-                    ? $"Subcategories: {string.Join(", ", item.Subcategories.Select(s => s.Name))}"
+                // When order is set, only show subcategories that have at least one product in the order list
+                var visibleSubcategories = categoryIdsWithProducts != null
+                    ? item.Subcategories.Where(s => categoryIdsWithProducts.Contains(s.CategoryId)).ToList()
+                    : item.Subcategories.ToList();
+
+                var subcategoriesText = visibleSubcategories.Count > 0
+                    ? $"Subcategories: {string.Join(", ", visibleSubcategories.Select(s => s.Name))}"
                     : string.Empty;
 
                 var viewModel = new CategoryViewModel
@@ -328,8 +403,8 @@ namespace LaceupMigration.ViewModels
                     IsExpanded = item.Category.Expanded // Use category's expanded state
                 };
                 
-                // Add subcategories to the view model
-                foreach (var subcat in item.Subcategories)
+                // Add subcategories to the view model (only those with products when order is set)
+                foreach (var subcat in visibleSubcategories)
                 {
                     viewModel.Subcategories.Add(subcat);
                 }
@@ -653,6 +728,10 @@ namespace LaceupMigration.ViewModels
         private void LoadProducts()
         {
             List<Product> products;
+
+            // Resolve _order from _orderId when needed (LoadProducts can run before InitializeAsync has set _order)
+            if (_order == null && _orderId.HasValue)
+                _order = Order.Orders.FirstOrDefault(x => x.OrderId == _orderId.Value);
             
             if (_order != null)
             {
