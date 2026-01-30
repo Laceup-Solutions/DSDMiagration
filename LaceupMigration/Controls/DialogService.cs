@@ -2634,6 +2634,23 @@ public class DialogService : IDialogService
             };
 
         await page.Navigation.PushModalAsync(dialog);
+        
+        // Auto-focus the Qty/Weight field when dialog appears and select all text
+        // If weight entry is shown, focus that instead (since qty is disabled in that case)
+        Entry fieldToFocus = weightEntry != null ? weightEntry : qtyEntry;
+        if (fieldToFocus != null)
+        {
+            // Use a small delay to ensure the dialog is fully rendered before focusing
+            await Task.Delay(100);
+            fieldToFocus.Focus();
+            // Select all text so typing replaces the value (matching Xamarin: SetSelectAllOnFocus)
+            if (!string.IsNullOrEmpty(fieldToFocus.Text))
+            {
+                fieldToFocus.CursorPosition = 0;
+                fieldToFocus.SelectionLength = fieldToFocus.Text.Length;
+            }
+        }
+        
         return await tcs.Task;
     }
 
