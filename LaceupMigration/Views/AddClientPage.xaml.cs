@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class AddClientPage : IQueryAttributable
+    public partial class AddClientPage : LaceupContentPage, IQueryAttributable
     {
         private readonly AddClientPageViewModel _viewModel;
 
@@ -35,13 +35,6 @@ namespace LaceupMigration.Views
                 }
             }
             Helpers.NavigationHelper.SaveNavigationState(route);
-        }
-
-        protected override bool OnBackButtonPressed()
-        {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
-            Helpers.NavigationHelper.RemoveNavigationState("addclient");
-            return false; // Allow navigation
         }
     }
 }

@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using LaceupMigration.Helpers;
 
 namespace LaceupMigration.ViewModels
 {
@@ -264,6 +265,9 @@ namespace LaceupMigration.ViewModels
                 Client.Save();
 
                 await _dialogService.ShowAlertAsync("Client added successfully.", "Success", "OK");
+                
+                NavigationHelper.RemoveNavigationState("addclient");
+
                 await Shell.Current.GoToAsync("..");
             }
             catch (Exception ex)

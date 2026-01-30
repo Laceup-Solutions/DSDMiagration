@@ -53,6 +53,8 @@ namespace LaceupMigration.ViewModels
         private const int SearchDebounceMs = 300;
         private string? _comingFrom; // e.g. "LoadOrderTemplate" — when set, pop to return to NewLoadOrderTemplatePage
         private int _loadOrderReturnDepth = 2; // When comingFrom=LoadOrderTemplate: 1=direct from template, 2=via fullcategory
+        private int? _lastAppliedOrderId; // Dedupe: avoid re-initializing when ApplyQueryAttributes is called multiple times (Shell/restoration)
+        private int? _lastAppliedCategoryId;
 
         public ObservableCollection<AdvancedCatalogItemViewModel> Items { get; } = new();
         public ObservableCollection<AdvancedCatalogItemViewModel> FilteredItems { get; } = new();
@@ -222,6 +224,13 @@ namespace LaceupMigration.ViewModels
             {
                 _loadOrderReturnDepth = 2; // Default when from FullCategory redirect
             }
+
+            // Dedupe: Shell/activity restoration can call ApplyQueryAttributes multiple times with the same query.
+            // Only schedule InitializeAsync once per distinct (orderId, categoryId) to avoid duplicate loads and bad behavior.
+            if (orderId == _lastAppliedOrderId && categoryId == _lastAppliedCategoryId)
+                return;
+            _lastAppliedOrderId = orderId;
+            _lastAppliedCategoryId = categoryId;
 
             MainThread.BeginInvokeOnMainThread(async () =>
                 await InitializeAsync(orderId, categoryId, search, itemType));
@@ -2540,6 +2549,12 @@ namespace LaceupMigration.ViewModels
                 }
 
                 DataProvider.SendTheOrders(new Batch[] { batch });
+
+                if (_order.AsPresale && _order.Client != null && _order.Client.ClientId <= 0)
+                {
+                    _order.Client.Editable = false;
+                    Client.Save();
+                }
 
                 await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Order sent successfully.", "Success");
