@@ -607,9 +607,9 @@ namespace LaceupMigration.ViewModels
                     },
                     ColumnDefinitions = new ColumnDefinitionCollection
                     {
-                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
-                        new ColumnDefinition { Width = GridLength.Auto },
-                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+                        new ColumnDefinition { Width = new GridLength(0.1, GridUnitType.Star) },
+                        new ColumnDefinition { Width = new GridLength(0.8, GridUnitType.Star)},
+                        new ColumnDefinition { Width = new GridLength(0.1, GridUnitType.Star) }
                     }
                 };
 

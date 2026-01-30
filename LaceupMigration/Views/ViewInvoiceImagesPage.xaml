@@ -30,16 +30,15 @@
                                     IsVisible="{Binding ShowImages}">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="vm:InvoiceImageViewModel">
-                                <Grid Padding="8" Margin="0,0,0,8" InputTransparent="True">
+                                <Grid Padding="8" Margin="0,0,0,8">
                                     <Image Source="{Binding ImagePath}"
                                            Aspect="AspectFill"
                                            HeightRequest="200"
-                                           WidthRequest="200">
-                                        <Image.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ViewInvoiceImagesPageViewModel}}, Path=ViewImageCommand}"
-                                                                   CommandParameter="{Binding .}" />
-                                        </Image.GestureRecognizers>
-                                    </Image>
+                                           WidthRequest="200" />
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ViewInvoiceImagesPageViewModel}}, Path=ViewImageCommand}"
+                                                               CommandParameter="{Binding .}" />
+                                    </Grid.GestureRecognizers>
                                 </Grid>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>

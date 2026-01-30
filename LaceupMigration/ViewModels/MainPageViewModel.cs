@@ -185,6 +185,43 @@ namespace LaceupMigration.ViewModels
 		}
 
 		[RelayCommand]
+		private async Task ViewSentTransactions()
+		{
+			_appService.RecordEvent("mainMenuViewSentTransactions menu");
+			
+			if (Config.AuthorizationFailed)
+			{
+				await _dialogService.ShowAlertAsync("Not authorized.", "Alert", "OK");
+				return;
+			}
+
+			// Show submenu with Sent Orders and Sent Payments options
+			var subMenuOptions = new List<string>();
+			
+			// Always show Sent Orders when View Sent Transactions is available
+			subMenuOptions.Add("Sent Orders");
+			
+			// Show Sent Payments if not hidden
+			if (!Config.HidePriceInTransaction)
+				subMenuOptions.Add("Sent Payments");
+
+			if (subMenuOptions.Count == 0)
+				return;
+
+			var choice = await _dialogService.ShowActionSheetAsync("View Sent Transactions", "", "Cancel", subMenuOptions.ToArray());
+
+			switch (choice)
+			{
+				case "Sent Orders":
+					await SentOrders();
+					break;
+				case "Sent Payments":
+					await SentPayments();
+					break;
+			}
+		}
+
+		[RelayCommand]
 		private async Task ProductCatalog()
 		{
 			_appService.RecordEvent("mainMenuProductCatalog menu");
@@ -359,14 +396,12 @@ namespace LaceupMigration.ViewModels
 			if (Config.ShowOrderStatus)
 				menuItems.Add("View Order Status");
 			
-			// 13. Sent Orders
+			// 13. View Sent Transactions (with submenu: Sent Orders, Sent Payments)
 			if (Config.ShowSentTransactions)
-				menuItems.Add("Sent Orders");
+				menuItems.Add("View Sent Transactions");
 			
-			// 14. Sent Payments
-			if (Config.ShowSentTransactions && !Config.HidePriceInTransaction)
-				menuItems.Add("Sent Payments");
-			else if (!Config.ShowSentTransactions && !Config.HidePriceInTransaction)
+			// 14. Sent Payments (only show if ShowSentTransactions is false but HidePriceInTransaction is false)
+			if (!Config.ShowSentTransactions && !Config.HidePriceInTransaction)
 				menuItems.Add("Sent Payments");
 			
 			// 15. Show Reports
@@ -435,6 +470,9 @@ namespace LaceupMigration.ViewModels
 					break;
 				case "View Order Status":
 					await ViewOrderStatus();
+					break;
+				case "View Sent Transactions":
+					await ViewSentTransactions();
 					break;
 				case "Sent Orders":
 					await SentOrders();
@@ -827,7 +865,7 @@ namespace LaceupMigration.ViewModels
 
 			if (orders.Count == 0)
 			{
-				await _dialogService.ShowAlertAsync("No orders to be sent.", "Alert", "OK");
+				await _dialogService.ShowAlertAsync("There are no orders in the system to be sent.", "Alert", "OK");
 				return;
 			}
 
