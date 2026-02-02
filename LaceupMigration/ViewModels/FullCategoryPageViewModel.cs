@@ -832,7 +832,9 @@ namespace LaceupMigration.ViewModels
                 
                 // Get UoM information
                 var familyUoms = product.UnitOfMeasures;
-                var showUom = familyUoms != null && familyUoms.Count > 0;
+                // Check if product has UoMFamily (even if UnitOfMeasures list is empty, it might still have UOMs)
+                var hasUoMFamily = !string.IsNullOrEmpty(product.UoMFamily);
+                var showUom = (familyUoms != null && familyUoms.Count > 0) || hasUoMFamily;
                 var showUom1 = false;
                 var showPrice1 = false;
                 var showOnHand1 = false;
@@ -843,51 +845,70 @@ namespace LaceupMigration.ViewModels
                 decimal basePrice = price;
                 double displayInventory = rawInventory;
                 
+                var uomRows = new ObservableCollection<UomRowViewModel>();
+                double weightFactor = 1;
+                if (Config.IncludeAvgWeightInCatalogPrice && product.Weight > 0)
+                    weightFactor = product.Weight;
+                
                 if (showUom)
                 {
-                    if (familyUoms.Count == 1)
+                    // If familyUoms is null or empty but has UoMFamily, try to get UOMs from UnitOfMeasure.List
+                    List<UnitOfMeasure> uomsToShow = new List<UnitOfMeasure>();
+                    if (familyUoms != null && familyUoms.Count > 0)
                     {
-                        var tempUom = familyUoms.FirstOrDefault(x => x.IsBase);
-                        if (tempUom != null)
+                        uomsToShow = familyUoms.ToList();
+                    }
+                    else if (hasUoMFamily)
+                    {
+                        // Get UOMs from the global list by FamilyId
+                        uomsToShow = UnitOfMeasure.List.Where(x => x.FamilyId == product.UoMFamily).ToList();
+                    }
+                    
+                    if (uomsToShow.Count > 0)
+                    {
+                        // Create a row for each UOM (show all active UOMs, including single UOM)
+                        var activeUoms = uomsToShow.Where(x => x.IsActive).ToList();
+                        if (activeUoms.Count == 0)
                         {
-                            uom = tempUom.Name;
-                            // Adjust price and inventory for UoM
-                            basePrice = price * (decimal)tempUom.Conversion;
-                            displayInventory = rawInventory / tempUom.Conversion;
+                            // If no active UOMs, show all UOMs (in case IsActive isn't set)
+                            activeUoms = uomsToShow.ToList();
+                        }
+                        
+                        foreach (var uomItem in activeUoms)
+                        {
+                            var uomPrice = price * (decimal)(uomItem.Conversion * weightFactor);
+                            var uomInventory = rawInventory / uomItem.Conversion;
+                            
+                            uomRows.Add(new UomRowViewModel
+                            {
+                                OhText = $"OH: {Math.Round(uomInventory, 0)}",
+                                UomText = $"UoM: {uomItem.Name}",
+                                PriceText = $"Price: {uomPrice.ToString("C")}"
+                            });
                         }
                     }
-                    else
+                    
+                    // For backward compatibility, set first UOM values
+                    var firstUom = familyUoms.FirstOrDefault(x => x.IsBase) ?? familyUoms.FirstOrDefault();
+                    if (firstUom != null)
                     {
-                        var baseUom = familyUoms.FirstOrDefault(x => x.IsBase);
-                        var bigUom = familyUoms.OrderByDescending(x => x.Conversion).FirstOrDefault();
+                        uom = firstUom.Name;
+                        basePrice = price * (decimal)(firstUom.Conversion * weightFactor);
+                        displayInventory = rawInventory / firstUom.Conversion;
                         
-                        double weightFactor = 1;
-                        if (Config.IncludeAvgWeightInCatalogPrice && product.Weight > 0)
-                            weightFactor = product.Weight;
-                        
-                        if (bigUom != null && bigUom != baseUom)
+                        // If multiple UOMs, set second UOM for backward compatibility
+                        if (familyUoms.Count > 1)
                         {
-                            // Show both UoMs
-                            showUom1 = true;
-                            showPrice1 = true;
-                            showOnHand1 = true;
-                            
-                            uom = bigUom.Name;
-                            uom1 = baseUom?.Name ?? string.Empty;
-                            
-                            // Big UoM price and inventory
-                            basePrice = price * (decimal)(bigUom.Conversion * weightFactor);
-                            displayInventory = rawInventory / bigUom.Conversion;
-                            
-                            // Base UoM price and inventory
-                            price1 = (price * (decimal)weightFactor).ToString("C");
-                            onHand1 = Math.Round(rawInventory / (baseUom?.Conversion ?? 1), 2).ToString();
-                        }
-                        else if (baseUom != null)
-                        {
-                            uom = baseUom.Name;
-                            basePrice = price * (decimal)(baseUom.Conversion * weightFactor);
-                            displayInventory = rawInventory / baseUom.Conversion;
+                            var secondUom = familyUoms.Where(x => x != firstUom).FirstOrDefault();
+                            if (secondUom != null)
+                            {
+                                showUom1 = true;
+                                showPrice1 = true;
+                                showOnHand1 = true;
+                                uom1 = secondUom.Name;
+                                price1 = (price * (decimal)(secondUom.Conversion * weightFactor)).ToString("C");
+                                onHand1 = Math.Round(rawInventory / secondUom.Conversion, 2).ToString();
+                            }
                         }
                     }
                 }
@@ -916,7 +937,8 @@ namespace LaceupMigration.ViewModels
                     ShowUom1 = showUom1,
                     ShowPrice1 = showPrice1,
                     ShowOnHand1 = showOnHand1,
-                    ShowPrice = !Config.HidePriceInTransaction
+                    ShowPrice = !Config.HidePriceInTransaction,
+                    UomRows = uomRows
                 });
             }
 
@@ -1211,7 +1233,22 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showPrice = true;
 
+        [ObservableProperty]
+        private ObservableCollection<UomRowViewModel> _uomRows = new();
+
         public Product Product { get; set; } = null!;
+    }
+
+    public partial class UomRowViewModel : ObservableObject
+    {
+        [ObservableProperty]
+        private string _ohText = string.Empty;
+
+        [ObservableProperty]
+        private string _uomText = string.Empty;
+
+        [ObservableProperty]
+        private string _priceText = string.Empty;
     }
 }
 

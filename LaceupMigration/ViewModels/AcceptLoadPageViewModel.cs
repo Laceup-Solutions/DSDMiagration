@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using LaceupMigration.Helpers;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Graphics;
 
@@ -118,6 +119,7 @@ namespace LaceupMigration.ViewModels
             {
                 await _dialogService.ShowAlertAsync("Load order not found.", "Error", "OK");
                 // Navigate back if order not found
+                NavigationHelper.RemoveNavigationState("acceptload");
                 await Shell.Current.GoToAsync("..");
             }
         }
@@ -472,6 +474,7 @@ namespace LaceupMigration.ViewModels
         {
             // Match Xamarin: Cancel_Click - delete pending loads when canceling
             DeletePendingLoads();
+            NavigationHelper.RemoveNavigationState("acceptload");
             await Shell.Current.GoToAsync("..");
         }
 

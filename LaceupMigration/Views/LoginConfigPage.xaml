@@ -68,14 +68,14 @@
 							TextColor="White" />
 				</Grid>
 				
-				<Label Text="Need help?"
+				<Button Text="Need help?"
 					   HorizontalOptions="Center"
 					   TextColor="{StaticResource colorLaceupDark}"
-					   Margin="0,15,0,0">
-					<Label.GestureRecognizers>
-						<TapGestureRecognizer Command="{Binding NeedHelpCommand}" />
-					</Label.GestureRecognizers>
-				</Label>
+					   Command="{Binding NeedHelpCommand}"
+					   Margin="0,15,0,0"
+					   BackgroundColor="Transparent"
+					   >
+				</Button>
 			</VerticalStackLayout>
 		</ScrollView>
 	</Grid>

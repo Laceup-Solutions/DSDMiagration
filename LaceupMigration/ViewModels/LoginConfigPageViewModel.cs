@@ -83,7 +83,7 @@ namespace LaceupMigration.ViewModels
 			switch (choice)
 			{
 				case "Send log file":
-					TryRun(SendLog);
+					await SendLogAsync();
 					break;
 				case "Export data":
 					TryRun(ExportData);
@@ -452,10 +452,46 @@ namespace LaceupMigration.ViewModels
 
 		private static void TryRun(Action action)
 		{
-			try { action(); } catch (Exception ex) { Logger.CreateLog(ex); }
+			try
+			{
+				action();
+
+			}
+			catch (Exception ex)
+			{
+				Logger.CreateLog(ex);
+			}
 		}
 
-		private static void SendLog() => LaceupActivityHelper.SendLog();
+		private static async Task TryRunAsync(Func<Task> action)
+		{
+			try
+			{
+				await action();
+			}
+			catch (Exception ex)
+			{
+				Logger.CreateLog(ex);
+				// Show error to user if action didn't already show one
+				// This ensures user always gets feedback
+				try
+				{
+					await MainThread.InvokeOnMainThreadAsync(async () =>
+					{
+						await DialogHelper._dialogService.ShowAlertAsync(
+							$"An error occurred: {ex.Message}", 
+							"Error", 
+							"OK");
+					});
+				}
+				catch
+				{
+					// If we can't show alert, at least it's logged
+				}
+			}
+		}
+
+		private static async Task SendLogAsync() => await LaceupActivityHelper.SendLogAsync();
 		private static void ExportData() => LaceupActivityHelper.ExportData();
 		private static async Task RemoteControl() => await LaceupActivityHelper.RemoteControl();
 
