@@ -80,6 +80,8 @@ namespace LaceupMigration
         void UpdateInventoryBySite();
         void UpdateInventoryBySite(int siteId);
         void GetInventoryInBackground(bool isPresale = false);
+        /// <summary>Runs inventory fetch synchronously (for presale update flow). Call from background thread.</summary>
+        void RunInventorySync(bool forSite, bool isPresale);
         List<InventorySettlementRow> ExtendedSendTheLeftOverInventory(bool fromSend = false, bool fromInventorySummary = false);
         void UpdateInventory();
         void UpdateInventory(bool isPresale = false);

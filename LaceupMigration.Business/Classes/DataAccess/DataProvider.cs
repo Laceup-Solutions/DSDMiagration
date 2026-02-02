@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -71,6 +71,10 @@ namespace LaceupMigration
 
         public static bool MustEndOfDay()
         {
+            //in case called before Initialize()
+            if (dataAccessInstance == null)
+                return false;
+            
             return dataAccessInstance.MustEndOfDay();
         }
 
@@ -279,6 +283,12 @@ namespace LaceupMigration
         public static void GetInventoryInBackground(bool isPresale = false)
         {
             dataAccessInstance.GetInventoryInBackground(isPresale);
+        }
+
+        /// <summary>Runs inventory fetch synchronously (for presale update flow). Call from background thread.</summary>
+        public static void RunInventorySync(bool forSite, bool isPresale)
+        {
+            dataAccessInstance.RunInventorySync(forSite, isPresale);
         }
 
         public static List<InventorySettlementRow> ExtendedSendTheLeftOverInventory(bool fromSend = false, bool fromInventorySummary = false)
