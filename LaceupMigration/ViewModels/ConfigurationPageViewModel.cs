@@ -1121,8 +1121,8 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SendLog()
         {
+            // SendLogAsync already shows success/error alerts, no need to show duplicate
             await _appService.SendLogAsync();
-            await _dialogService.ShowAlertAsync("Log sent.", "Info", "OK");
         }
 
         [RelayCommand]

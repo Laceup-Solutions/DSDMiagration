@@ -24,7 +24,55 @@ public class DialogService : IDialogService
         var page = GetCurrentPage();
         if (page != null)
         {
-            await page.DisplayAlert(title, message, acceptText);
+            try
+            {
+                await page.DisplayAlert(title, message, acceptText);
+            }
+            catch (Exception ex)
+            {
+                // Log the error and try fallback
+                System.Diagnostics.Debug.WriteLine($"Error showing alert on page: {ex.Message}");
+                // Try using Application.Current.MainPage as fallback
+                if (Application.Current?.MainPage != null && Application.Current.MainPage != page)
+                {
+                    try
+                    {
+                        await Application.Current.MainPage.DisplayAlert(title, message, acceptText);
+                    }
+                    catch
+                    {
+                        // If both fail, log it
+                        System.Diagnostics.Debug.WriteLine($"Failed to show alert on MainPage as well");
+                        throw;
+                    }
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+        else
+        {
+            // If GetCurrentPage returns null, try Application.Current.MainPage as fallback
+            if (Application.Current?.MainPage != null)
+            {
+                try
+                {
+                    await Application.Current.MainPage.DisplayAlert(title, message, acceptText);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error showing alert on MainPage: {ex.Message}");
+                    throw;
+                }
+            }
+            else
+            {
+                // No page available - log error
+                System.Diagnostics.Debug.WriteLine($"Cannot show alert: No current page available. Title: {title}, Message: {message}");
+                throw new InvalidOperationException("No current page available to show alert");
+            }
         }
     }
 

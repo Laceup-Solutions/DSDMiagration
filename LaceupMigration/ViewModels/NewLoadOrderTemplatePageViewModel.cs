@@ -38,6 +38,9 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private ObservableCollection<LaceupMigration.SiteEx> _sites = new();
         [ObservableProperty] private LaceupMigration.SiteEx _selectedSite;
         [ObservableProperty] private bool _isNotReadOnly = true;
+        
+        // Property to determine if using advanced catalog template
+        public bool IsAdvancedCatalogTemplate => Config.UseLaceupAdvancedCatalog;
 
         public NewLoadOrderTemplatePageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService, LaceupMigration.Business.Interfaces.ICameraBarcodeScannerService cameraBarcodeScanner)
         {
@@ -527,6 +530,117 @@ namespace LaceupMigration.ViewModels
                 det.Comments = result.comments ?? string.Empty;
                 det.UnitOfMeasure = result.selectedUoM ?? item.UoM;
 
+                _lastDetail = det;
+            }
+
+            _loadOrder.Save();
+            RefreshOrderDetails();
+        }
+
+        [RelayCommand]
+        private async Task IncrementQuantity(LoadOrderDetailViewModel item)
+        {
+            if (item == null || _readOnly)
+                return;
+
+            var currentQty = item.OrderDetail?.Qty ?? 0;
+            var newQty = currentQty + 1;
+
+            // Check inventory if configured
+            if (Config.CheckInventoryInLoad && item.OrderDetail != null)
+            {
+                var inventory = item.OrderDetail.Product.CurrentWarehouseInventory;
+                if (item.UoM != null && inventory > 0)
+                    inventory /= item.UoM.Conversion;
+
+                if (inventory < newQty)
+                {
+                    await _dialogService.ShowAlertAsync("Not enough inventory.", "Alert", "OK");
+                    return;
+                }
+            }
+
+            await SetQuantity(item, newQty);
+        }
+
+        [RelayCommand]
+        private async Task DecrementQuantity(LoadOrderDetailViewModel item)
+        {
+            if (item == null || _readOnly)
+                return;
+
+            var currentQty = item.OrderDetail?.Qty ?? 0;
+            if (currentQty <= 0)
+                return;
+
+            var newQty = currentQty - 1;
+            await SetQuantity(item, newQty);
+        }
+
+        [RelayCommand]
+        private async Task EditQuantity(LoadOrderDetailViewModel item)
+        {
+            if (item == null || _readOnly)
+                return;
+
+            var currentQty = item.OrderDetail?.Qty ?? 0;
+            var qtyText = await _dialogService.ShowPromptAsync("Enter Quantity", "Quantity", "OK", "Cancel", "", -1,
+                currentQty > 0 ? currentQty.ToString() : "1");
+
+            if (string.IsNullOrEmpty(qtyText) || !decimal.TryParse(qtyText, out var qty))
+                return;
+
+            if (qty < 0)
+                qty = 0;
+
+            await SetQuantity(item, (float)qty);
+        }
+
+        private async Task SetQuantity(LoadOrderDetailViewModel item, float qty)
+        {
+            if (qty == 0)
+            {
+                // Remove the detail
+                if (item.OrderDetail != null)
+                {
+                    item.OrderDetail.Deleted = true;
+                    _loadOrder.Details.Remove(item.OrderDetail);
+                }
+            }
+            else
+            {
+                // Add or update the detail
+                var det = item.OrderDetail;
+
+                if (det == null)
+                {
+                    det = new OrderDetail(item.Product, 0, _loadOrder)
+                    {
+                        LoadStarting = -1,
+                        UnitOfMeasure = item.UoM
+                    };
+                    _loadOrder.Details.Add(det);
+                    item.OrderDetail = det;
+                }
+
+                // Check inventory if configured
+                if (Config.CheckInventoryInLoad)
+                {
+                    var inventory = det.Product.CurrentWarehouseInventory;
+                    if (item.UoM != null && inventory > 0)
+                        inventory /= item.UoM.Conversion;
+
+                    if (inventory < qty)
+                    {
+                        await _dialogService.ShowAlertAsync("Not enough inventory.", "Alert", "OK");
+                        return;
+                    }
+                }
+
+                if (det.LoadStarting == -1 && det.Qty != qty)
+                    det.LoadStarting = 0;
+
+                det.Qty = qty;
                 _lastDetail = det;
             }
 
@@ -1104,10 +1218,15 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _truckInventoryText;
         [ObservableProperty] private bool _showInventory = true;
         [ObservableProperty] private bool _isEnabled = true;
+        [ObservableProperty] private string _productImagePath = string.Empty;
+        [ObservableProperty] private bool _hasImage = false;
 
         public OrderDetail OrderDetail { get; set; }
         public Product Product => _odLine.Product;
         public UnitOfMeasure UoM => _odLine.UoM;
+        
+        // Property to determine if product image should be shown (always when advanced catalog template, matches Xamarin pattern with placeholder)
+        public bool ShowProductImage => Config.UseLaceupAdvancedCatalog;
 
         public LoadOrderDetailViewModel(OdLine odLine, Order loadOrder)
         {
@@ -1136,6 +1255,12 @@ namespace LaceupMigration.ViewModels
             TruckInventoryText = $"Truck Inventory: {Math.Round(inventory, Config.Round)}";
 
             ShowInventory = !Config.HideProdOnHand;
+
+            // Product Image - use GetProductImageWithPlaceholder to get image or placeholder (matches Xamarin pattern)
+            var imagePath = ProductImage.GetProductImage(odLine.Product.ProductId);
+            HasImage = !string.IsNullOrEmpty(imagePath);
+            // Use GetProductImageWithPlaceholder for display (returns placeholder.png when no image)
+            ProductImagePath = ProductImage.GetProductImageWithPlaceholder(odLine.Product.ProductId);
         }
     }
 }

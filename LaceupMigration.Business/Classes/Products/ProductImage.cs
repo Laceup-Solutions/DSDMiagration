@@ -65,6 +65,19 @@ namespace LaceupMigration
             // UIImage image = new UIImage (Path.Combine (Config.ImageStorePath, path));
             // return image;
         }
+
+        /// <summary>
+        /// Gets the product image path, or returns placeholder.png if no image exists.
+        /// This matches the Xamarin pattern where placeholder is shown when product has no image.
+        /// </summary>
+        public static string GetProductImageWithPlaceholder(int productId)
+        {
+            var imagePath = GetProductImage(productId);
+            if (string.IsNullOrEmpty(imagePath))
+                return "placeholder.png";
+            
+            return imagePath;
+        }
     }
 }
 

@@ -2,6 +2,7 @@
 <local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:views="clr-namespace:LaceupMigration.Views"
              x:Class="LaceupMigration.Views.NewLoadOrderTemplatePage"
              x:DataType="vm:NewLoadOrderTemplatePageViewModel"
              Shell.NavBarIsVisible="True"
@@ -13,14 +14,14 @@
     <ContentPage.Content>
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Padding="5">
             <!-- Action Buttons Row (Save, Prod, Cats, Search, Set Date) -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*,*" ColumnSpacing="5">
+            <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*,1.2*" ColumnSpacing="5">
                 <Button Grid.Column="0"
                         Text="Save"
                         Command="{Binding SaveCommand}"
                         BackgroundColor="{StaticResource Primary}"
                         TextColor="White"
                         FontSize="14"
-                        Padding="8,12"
+                        Padding="2,10"
                         BorderWidth="0" />
                 <Button Grid.Column="1"
                         Text="Prod"
@@ -101,7 +102,7 @@
 
             <!-- Order Summary (Driver, Ship Date, Term) -->
             <VerticalStackLayout Grid.Row="3" Padding="10,8" Spacing="4">
-                <Grid ColumnDefinitions="*,*">
+                <StackLayout Orientation="Horizontal">
                     <Label Grid.Column="0"
                            Text="{Binding DriverText}"
                            FontSize="14"
@@ -111,7 +112,7 @@
                            Text="{Binding ShipDateText}"
                            FontSize="14"
                            TextColor="{StaticResource Gray700}" />
-                </Grid>
+                </StackLayout>
                 <Label Text="{Binding TermText}"
                        FontSize="14"
                        TextColor="{StaticResource Gray700}"
@@ -130,54 +131,131 @@
             <CollectionView Grid.Row="5"
                             ItemsSource="{Binding OrderDetails}"
                             SelectionMode="None"
-                            Margin="0,10,0,0">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="vm:LoadOrderDetailViewModel">
+                            Margin="0,10,0,0"
+                            x:Name="OrderDetailsCollectionView">
+                <CollectionView.Resources>
+                    <!-- Standard Template (original style, when NOT advanced catalog) -->
+                    <DataTemplate x:Key="StandardLoadOrderTemplate" x:DataType="vm:LoadOrderDetailViewModel">
                         <Grid Style="{StaticResource CollectionViewItemStyle}">
-                            <Frame Padding="12" Margin="8,4" HasShadow="False" CornerRadius="8" 
-                                   BackgroundColor="{StaticResource Gray50}" BorderColor="{StaticResource Gray200}">
-                                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
-                                <!-- Product Name -->
-                                <Label Grid.Row="0" Grid.Column="0"
-                                       Text="{Binding ProductName}"
-                                       FontSize="14"
-                                       FontAttributes="Bold"
-                                       TextColor="{StaticResource PrimaryDark}"
-                                       VerticalOptions="Center" />
-                                
-                                <!-- Quantity Button -->
-                                <Button Grid.Row="0" Grid.Column="1"
-                                        Text="{Binding QuantityText}"
-                                        Clicked="QtyButton_Clicked"
-                                        IsEnabled="{Binding IsEnabled}"
-                                        BackgroundColor="{StaticResource Gray300}"
-                                        TextColor="Black"
-                                        FontSize="14"
-                                        WidthRequest="60"
-                                        HeightRequest="40"
-                                        Padding="0" />
-                                
-                                <!-- Inventory Info (OH and Truck Inventory) -->
-                                <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                      ColumnDefinitions="*,*"
-                                      Margin="5,4,0,0"
-                                      IsVisible="{Binding ShowInventory}">
-                                    <Label Grid.Column="0"
-                                           Text="{Binding OnHandText}"
-                                           FontSize="13"
+                            <Frame Padding="12" Margin="8,4" HasShadow="False" CornerRadius="8" BorderColor="{StaticResource Gray200}">
+                                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="5">
+                                    <!-- Product Name -->
+                                    <Label Grid.Row="0" Grid.Column="0"
+                                           Text="{Binding ProductName}"
+                                           FontSize="14"
                                            FontAttributes="Bold"
-                                           TextColor="{StaticResource PrimaryDark}" />
-                                    <Label Grid.Column="1"
-                                           Text="{Binding TruckInventoryText}"
-                                           FontSize="13"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource PrimaryDark}" />
-                                </Grid>
+                                           TextColor="{StaticResource PrimaryDark}"
+                                           VerticalOptions="Center" />
+                                    
+                                    <!-- Simple Quantity Button -->
+                                    <Button Grid.Row="1" Grid.Column="1"
+                                            Text="{Binding QuantityText}"
+                                            Clicked="QtyButton_Clicked"
+                                            IsEnabled="{Binding IsEnabled}"
+                                            BackgroundColor="{StaticResource Gray300}"
+                                            VerticalOptions="Center"
+                                            TextColor="Black"
+                                            FontSize="14"
+                                            WidthRequest="60"
+                                            HeightRequest="40"
+                                            Padding="0" />
+                                    
+                                    <!-- Inventory Info (OH and Truck Inventory) -->
+                                    <Grid Grid.Row="1" Grid.Column="0" HorizontalOptions="Fill" ColumnSpacing="15"
+                                          ColumnDefinitions="*,*"
+                                          Margin="0,4,0,0"
+                                          IsVisible="{Binding ShowInventory}">
+                                        <Label Grid.Column="0" 
+                                               Text="{Binding OnHandText}"
+                                               FontSize="13"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource PrimaryDark}" />
+                                        <Label Grid.Column="1"
+                                               Text="{Binding TruckInventoryText}"
+                                               FontSize="13"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource PrimaryDark}" />
+                                    </Grid>
                                 </Grid>
                             </Frame>
                         </Grid>
                     </DataTemplate>
-                </CollectionView.ItemTemplate>
+
+                    <!-- Advanced Catalog Template (matches AdvancedCatalogPage style) -->
+                    <DataTemplate x:Key="AdvancedCatalogLoadOrderTemplate" x:DataType="vm:LoadOrderDetailViewModel">
+                        <Grid Style="{StaticResource CollectionViewItemStyle}">
+                            <Frame Padding="12" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12">
+                                    <!-- Product Image (shows placeholder when no image, handled by ProductImage.GetProductImageWithPlaceholder) -->
+                                    <Image Source="{Binding ProductImagePath}"
+                                           WidthRequest="60"
+                                           HeightRequest="60"
+                                           Grid.Row="0" Grid.Column="0"
+                                           Grid.RowSpan="2"
+                                           Aspect="AspectFill"
+                                           IsVisible="{Binding ShowProductImage}">
+                                        <Image.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="ProductImage_Tapped" />
+                                        </Image.GestureRecognizers>
+                                    </Image>
+
+                                    <!-- Product Info -->
+                                    <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="4">
+                                        <Label Text="{Binding ProductName}"
+                                               FontSize="14"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource Gray900}" />
+                                        <Label Text="{Binding OnHandText}"
+                                               FontSize="12"
+                                               TextColor="Green" />
+                                        <Label Text="{Binding TruckInventoryText}"
+                                               FontSize="12"
+                                               TextColor="{StaticResource Gray600}"
+                                               IsVisible="{Binding ShowInventory}" />
+                                    </VerticalStackLayout>
+
+                                    <!-- Quantity Controls (Advanced Catalog Style) -->
+                                    <Grid Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" 
+                                          ColumnDefinitions="*,Auto,Auto,Auto" 
+                                          ColumnSpacing="8"
+                                          VerticalOptions="Center">
+                                        <Button Text="-"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewLoadOrderTemplatePageViewModel}}, Path=DecrementQuantityCommand}"
+                                                CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding IsEnabled}"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                FontSize="18"
+                                                VerticalOptions="Center"
+                                                Grid.Column="1" />
+                                        <Label Text="{Binding QuantityText}"
+                                               FontSize="16"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource PrimaryDark}"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center"
+                                               Grid.Column="2"
+                                               Padding="12,0">
+                                            <Label.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewLoadOrderTemplatePageViewModel}}, Path=EditQuantityCommand}"
+                                                                      CommandParameter="{Binding .}" />
+                                            </Label.GestureRecognizers>
+                                        </Label>
+                                        <Button Text="+"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewLoadOrderTemplatePageViewModel}}, Path=IncrementQuantityCommand}"
+                                                CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding IsEnabled}"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                FontSize="18"
+                                                VerticalOptions="Center"
+                                                Grid.Column="3" />
+                                    </Grid>
+                                </Grid>
+                            </Frame>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.Resources>
             </CollectionView>
         </Grid>
     </ContentPage.Content>

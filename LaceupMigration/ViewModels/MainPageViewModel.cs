@@ -398,7 +398,7 @@ namespace LaceupMigration.ViewModels
 			
 			// 13. View Sent Transactions (with submenu: Sent Orders, Sent Payments)
 			if (Config.ShowSentTransactions)
-				menuItems.Add("View Sent Transactions");
+				menuItems.Add("View Sent Transactions →"); // Arrow indicates it opens a submenu
 			
 			// 14. Sent Payments (only show if ShowSentTransactions is false but HidePriceInTransaction is false)
 			if (!Config.ShowSentTransactions && !Config.HidePriceInTransaction)
@@ -430,6 +430,10 @@ namespace LaceupMigration.ViewModels
 			menuItems.Add("About Laceup Solutions");
 
 			var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", menuItems.ToArray());
+			
+			// Strip arrow indicator if present (for menu items that open submenus)
+			if (!string.IsNullOrEmpty(choice))
+				choice = choice.Replace(" →", "").Trim();
 			
 			switch (choice)
 			{
@@ -471,7 +475,7 @@ namespace LaceupMigration.ViewModels
 				case "View Order Status":
 					await ViewOrderStatus();
 					break;
-				case "View Sent Transactions":
+				case "View Sent Transactions": // Handles both with and without arrow
 					await ViewSentTransactions();
 					break;
 				case "Sent Orders":

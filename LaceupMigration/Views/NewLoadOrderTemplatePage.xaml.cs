@@ -1,4 +1,5 @@
 using LaceupMigration.ViewModels;
+using Microsoft.Maui.Controls;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -22,6 +23,33 @@ namespace LaceupMigration.Views
             if (menuItem != null)
             {
                 menuItem.Command = _viewModel.ShowMenuCommand;
+            }
+            
+            // Set the appropriate template based on IsAdvancedCatalogTemplate
+            UpdateItemTemplate();
+            
+            // Subscribe to property changes to update template if it changes
+            _viewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(_viewModel.IsAdvancedCatalogTemplate))
+                {
+                    UpdateItemTemplate();
+                }
+            };
+        }
+        
+        private void UpdateItemTemplate()
+        {
+            if (OrderDetailsCollectionView == null)
+                return;
+                
+            if (_viewModel.IsAdvancedCatalogTemplate)
+            {
+                OrderDetailsCollectionView.ItemTemplate = (DataTemplate)OrderDetailsCollectionView.Resources["AdvancedCatalogLoadOrderTemplate"];
+            }
+            else
+            {
+                OrderDetailsCollectionView.ItemTemplate = (DataTemplate)OrderDetailsCollectionView.Resources["StandardLoadOrderTemplate"];
             }
         }
 
@@ -88,6 +116,16 @@ namespace LaceupMigration.Views
             if (sender is Button button && button.BindingContext is LoadOrderDetailViewModel item)
             {
                 await _viewModel.QtyButtonCommand.ExecuteAsync(item);
+            }
+        }
+
+        private async void ProductImage_Tapped(object sender, EventArgs e)
+        {
+            // Get the LoadOrderDetailViewModel from the Image's BindingContext
+            if (sender is Image image && image.BindingContext is LoadOrderDetailViewModel item && item.Product != null)
+            {
+                // Navigate to ProductImagePage to expand the image (matches FullCategoryPage pattern)
+                await Shell.Current.GoToAsync($"productimage?productId={item.Product.ProductId}");
             }
         }
     }

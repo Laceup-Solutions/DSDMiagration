@@ -266,33 +266,50 @@ namespace LaceupMigration.ViewModels
             await Shell.Current.GoToAsync("..");
         }
 
-        private void UpdateRoute(bool close)
+        // private void UpdateRoute(bool close)
+        // {
+        //     if (!Config.CloseRouteInPresale)
+        //         return;
+        //
+        //     if (_order == null)
+        //         return;
+        //
+        //     var stop = RouteEx.Routes.FirstOrDefault(x => 
+        //         x.Date.Date == DateTime.Today && 
+        //         x.Client != null && 
+        //         x.Client.ClientId == _order.Client.ClientId);
+        //
+        //     if (stop != null)
+        //     {
+        //         if (close)
+        //         {
+        //             stop.Closed = true;
+        //             stop.When = DateTime.Now;
+        //             stop.Latitude = Config.LastLatitude;
+        //             stop.Longitude = Config.LastLongitude;
+        //         }
+        //
+        //         if (_order.UniqueId != null)
+        //             stop.AddOrderToStop(_order.UniqueId);
+        //
+        //         RouteEx.Save();
+        //     }
+        // }
+
+        void UpdateRoute(bool close)
         {
             if (!Config.CloseRouteInPresale)
                 return;
 
-            if (_order == null)
-                return;
-
-            var stop = RouteEx.Routes.FirstOrDefault(x => 
-                x.Date.Date == DateTime.Today && 
-                x.Client != null && 
-                x.Client.ClientId == _order.Client.ClientId);
-
+            var stop = RouteEx.Routes.FirstOrDefault(x =>
+                x.Date.Date == DateTime.Today && x.Client != null && x.Client.ClientId == _order.Client.ClientId);
             if (stop != null)
             {
                 if (close)
-                {
-                    stop.Closed = true;
-                    stop.When = DateTime.Now;
-                    stop.Latitude = Config.LastLatitude;
-                    stop.Longitude = Config.LastLongitude;
-                }
-
-                if (_order.UniqueId != null)
                     stop.AddOrderToStop(_order.UniqueId);
+                else
+                    stop.RemoveOrderFromStop(_order.UniqueId);
 
-                RouteEx.Save();
             }
         }
 

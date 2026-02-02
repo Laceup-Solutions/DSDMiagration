@@ -18,7 +18,7 @@ namespace LaceupMigration.Helpers
         /// <summary>
         /// Sends the log file. Matches LaceupActivity.SendLog() logic exactly.
         /// </summary>
-        public static void SendLog()
+        public static async Task SendLogAsync()
         {
             // Ensure log file exists (create empty if it doesn't) - same behavior as when Logger writes to it
             if (!File.Exists(Config.LogFile))
@@ -34,69 +34,81 @@ namespace LaceupMigration.Helpers
             }
 
             if (Config.SendLogByEmail)
+            {
                 try
                 {
-                    SendLogByEmail();
+                    await SendLogByEmailAsync();
                 }
                 catch
                 {
-                    NetAccess access = new NetAccess();
-
-                    access.OpenConnection("app.laceupsolutions.com", 9999);
-                    access.WriteStringToNetwork("SendLogFile");
-
-                    var serializedConfig = Config.SerializeConfig().Replace(System.Environment.NewLine, "<br>");
-                    serializedConfig = serializedConfig.Replace("'", "");
-                    serializedConfig = serializedConfig.Replace("'", "");
-
-                    access.WriteStringToNetwork(serializedConfig);
-
-                    access.SendFile(Config.LogFile);
-                    access.WriteStringToNetwork("Goodbye");
-                    Thread.Sleep(1000);
-                    access.CloseConnection();
-
-                    DialogHelper._dialogService.ShowAlertAsync("Log Sent", "Info", "OK");
+                    await SendLogByNetworkAsync();
                 }
+            }
             else
-                try
-                {
-                    NetAccess access = new NetAccess();
+            {
+                await SendLogByNetworkAsync();
+            }
+        }
 
-                    access.OpenConnection("app.laceupsolutions.com", 9999);
-                    access.WriteStringToNetwork("SendLogFile");
+        /// <summary>
+        /// Sends log file via network connection. Matches Xamarin network send logic.
+        /// </summary>
+        private static async Task SendLogByNetworkAsync()
+        {
+            try
+            {
+                await DialogHelper._dialogService.ShowLoadingAsync("Sending Log File...");
 
-                    //fix for statwide
-                    var serializedConfig = Config.SerializeConfig().Replace(System.Environment.NewLine, "<br>");
-                    serializedConfig = serializedConfig.Replace("'", "");
-                    serializedConfig = serializedConfig.Replace("'", "");
+                var access = new NetAccess();
 
-                    access.WriteStringToNetwork(serializedConfig);
+                access.OpenConnection("app.laceupsolutions.com", 9999);
+                access.WriteStringToNetwork("SendLogFile");
 
-                    access.SendFile(Config.LogFile);
-                    access.WriteStringToNetwork("Goodbye");
-                    Thread.Sleep(1000);
-                    access.CloseConnection();
+                //fix for statwide
+                var serializedConfig = Config.SerializeConfig().Replace(System.Environment.NewLine, "<br>");
+                serializedConfig = serializedConfig.Replace("'", "");
+                serializedConfig = serializedConfig.Replace("'", "");
 
-                    DialogHelper._dialogService.ShowAlertAsync("Log Sent", "Info", "OK");
-                }
-                catch (Exception ee)
-                {
-                    DialogHelper._dialogService.ShowAlertAsync("Error sending log file: " + ee.Message, "Alert", "OK");
-                }
+                access.WriteStringToNetwork(serializedConfig);
+                
+                if (!File.Exists(Config.LogFile))
+                    File.Create(Config.LogFile).Close();
+
+                Logger.CreateLog("Sending LOG FILE from Login");
+                
+                access.SendFile(Config.LogFile);
+
+                access.WriteStringToNetwork("Goodbye");
+                Thread.Sleep(1000);
+                access.CloseConnection();
+
+                await DialogHelper._dialogService.HideLoadingAsync();
+
+                await DialogHelper._dialogService.ShowAlertAsync("Log sent successfully.", "Info", "OK");
+            }
+            catch (Exception ee)
+            {
+                Logger.CreateLog(ee);
+
+                await DialogHelper._dialogService.ShowAlertAsync("Error sending log file: " + ee.Message, "Alert",
+                    "OK");
+            }
         }
 
         /// <summary>
         /// Sends log by email. Matches LaceupActivity.SendLogByEmail() logic.
         /// </summary>
-        private static void SendLogByEmail()
+        private static async Task SendLogByEmailAsync()
         {
             try
             {
+                // Determine platform-specific subject
+                var platformSubject = DeviceInfo.Platform == DevicePlatform.iOS ? "iOS Log File" : "Android Log File";
+                
                 var emailMessage = new EmailMessage
                 {
                     To = new List<string> { "iphonelog@laceupsolutions.com" },
-                    Subject = "Android Log File",
+                    Subject = platformSubject,
                     Body = Config.SerializeConfig()
                 };
 
@@ -117,11 +129,11 @@ namespace LaceupMigration.Helpers
 
                 // Try to send email - this will open the email client
                 // If it fails, the catch block will fall back to network send
-                MainThread.BeginInvokeOnMainThread(() =>
+                await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     try
                     {
-                        Email.ComposeAsync(emailMessage).GetAwaiter().GetResult();
+                        await Email.ComposeAsync(emailMessage);
                     }
                     catch
                     {

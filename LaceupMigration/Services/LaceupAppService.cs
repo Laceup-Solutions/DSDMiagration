@@ -71,19 +71,16 @@ namespace LaceupMigration.Services
 			}
 		}
 
-		public Task SendLogAsync()
+		public async Task SendLogAsync()
 		{
-			return Task.Run(() =>
+			try
 			{
-				try
-				{
-					Logger.SendLogFile();
-				}
-				catch (Exception ex)
-				{
-					Logger.CreateLog(ex);
-				}
-			});
+				await Logger.SendLogFileAsync();
+			}
+			catch (Exception ex)
+			{
+				Logger.CreateLog(ex);
+			}
 		}
 
 		public Task ExportDataAsync(string subject = "")

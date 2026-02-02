@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Maui.ApplicationModel.Communication;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
 
 namespace LaceupMigration
 {
@@ -112,35 +113,31 @@ namespace LaceupMigration
             catch { }
         }
 
-        public static void SendLogFile()
+        public static async Task SendLogFileAsync()
         {
             if (Config.SendLogByEmail)
                 try
                 {
-                    SendLogByEmail();
+                    await SendLogByEmailAsync();
                 }
                 catch
                 {
-                    NetAccess access = new NetAccess();
-
-                    access.OpenConnection("app.laceupsolutions.com", 9999);
-                    access.WriteStringToNetwork("SendLogFile");
-
-                    var serializedConfig = Config.SerializeConfig().Replace(System.Environment.NewLine, "<br>");
-                    serializedConfig = serializedConfig.Replace("'", "");
-                    serializedConfig = serializedConfig.Replace("'", "");
-
-                    access.WriteStringToNetwork(serializedConfig);
-
-                    access.SendFile(Config.LogFile);
-                    access.WriteStringToNetwork("Goodbye");
-                    Thread.Sleep(1000);
-                    access.CloseConnection();
-
-                    DialogHelper._dialogService.ShowAlertAsync("Log Sent");
+                    await SendLogByNetworkAsync();
                 }
             else
-                try
+            {
+                await SendLogByNetworkAsync();
+            }
+        }
+
+        /// <summary>
+        /// Sends log file via network connection. Matches Xamarin network send logic.
+        /// </summary>
+        private static async Task SendLogByNetworkAsync()
+        {
+            try
+            {
+                await Task.Run(() =>
                 {
                     NetAccess access = new NetAccess();
 
@@ -158,23 +155,54 @@ namespace LaceupMigration
                     access.WriteStringToNetwork("Goodbye");
                     Thread.Sleep(1000);
                     access.CloseConnection();
+                });
 
-                    DialogHelper._dialogService.ShowAlertAsync("Log Sent");
-                }
-                catch (Exception ee)
+                // Ensure alert is shown on main thread with proper error handling
+                await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
-                    DialogHelper._dialogService.ShowAlertAsync("Error sending log " + ee.Message);
-                }
+                    try
+                    {
+                        await DialogHelper._dialogService.ShowAlertAsync("Log Sent", "Info", "OK");
+                    }
+                    catch (Exception alertEx)
+                    {
+                        // If alert fails, log it but don't throw - at least the log was sent
+                        Logger.CreateLog($"Failed to show success alert: {alertEx.Message}");
+                    }
+                });
+            }
+            catch (Exception ee)
+            {
+                Logger.CreateLog(ee);
+                // Ensure error alert is shown on main thread with proper error handling
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    try
+                    {
+                        await DialogHelper._dialogService.ShowAlertAsync("Error sending log: " + ee.Message, "Alert", "OK");
+                    }
+                    catch (Exception alertEx)
+                    {
+                        // If alert fails, log it - user won't see it but at least we tried
+                        Logger.CreateLog($"Failed to show error alert: {alertEx.Message}");
+                        // Re-throw so caller can handle it
+                        throw;
+                    }
+                });
+            }
         }
 
-        private static void SendLogByEmail()
+        private static async Task SendLogByEmailAsync()
         {
             try
             {
+                // Determine platform-specific subject
+                var platformSubject = DeviceInfo.Platform == DevicePlatform.iOS ? "iOS Log File" : "Android Log File";
+                
                 var emailMessage = new EmailMessage
                 {
                     To = new List<string> { "iphonelog@laceupsolutions.com" },
-                    Subject = "Android Log File",
+                    Subject = platformSubject,
                     Body = Config.SerializeConfig()
                 };
 
@@ -195,12 +223,11 @@ namespace LaceupMigration
 
                 // Try to send email - this will open the email client
                 // If it fails, the catch block will fall back to network send
-                // Use GetAwaiter().GetResult() to make it synchronous like Xamarin
-                MainThread.BeginInvokeOnMainThread(() =>
+                await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     try
                     {
-                        Email.ComposeAsync(emailMessage).GetAwaiter().GetResult();
+                        await Email.ComposeAsync(emailMessage);
                     }
                     catch
                     {
