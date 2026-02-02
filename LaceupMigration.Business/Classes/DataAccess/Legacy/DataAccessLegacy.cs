@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
@@ -13343,6 +13343,15 @@ namespace LaceupMigration
             var CheckInternetThread = new Thread(delegate () { GetInventoryInBackground(isPresale); });
             CheckInternetThread.IsBackground = true;
             CheckInternetThread.Start();
+        }
+
+        /// <summary>Runs inventory fetch synchronously (for presale update flow). Call from background thread.</summary>
+        public void RunInventorySync(bool forSite, bool isPresale)
+        {
+            if (forSite)
+                GetInventoryInBackgroundForSite();
+            else
+                GetInventoryInBackground(isPresale);
         }
 
         #endregion

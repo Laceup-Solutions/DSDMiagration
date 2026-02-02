@@ -397,6 +397,12 @@ namespace LaceupMigration.ViewModels
             if (!_initialized)
                 return;
 
+            // Xamarin: when creating Activity, if UpdateInventoryInPresale && AsPresale run inventory update then refresh, else just refresh
+            if (_order != null && Config.UpdateInventoryInPresale && _order.AsPresale)
+            {
+                await RunPresaleInventoryUpdateAsync();
+            }
+
             await RefreshAsync();
         }
 
@@ -1146,6 +1152,39 @@ namespace LaceupMigration.ViewModels
             _searchDebounceTimer?.Dispose();
             _searchDebounceTimer = new Timer(_ => { MainThread.BeginInvokeOnMainThread(() => { Filter(); }); }, null,
                 SearchDebounceMs, Timeout.Infinite);
+        }
+
+        /// <summary>Runs presale inventory update in background (matches Xamarin when creating Activity). Shows "Updating Inventory" dialog. Caller refreshes list after.</summary>
+        private async Task RunPresaleInventoryUpdateAsync()
+        {
+            if (Connectivity.NetworkAccess != NetworkAccess.Internet)
+                return;
+            await _dialogService.ShowLoadingAsync("Updating Inventory");
+            try
+            {
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        var forSite = ((Config.SalesmanCanChangeSite || Config.SelectWarehouseForSales) && Config.SalesmanSelectedSite > 0) || Config.PresaleUseInventorySite;
+                        DataProvider.RunInventorySync(forSite, true);
+                        var validOrders = Order.Orders.Where(x => x.AsPresale && (x.OrderType == OrderType.Order || x.OrderType == OrderType.Return || x.OrderType == OrderType.Credit)).ToList();
+                        foreach (var order in validOrders)
+                        {
+                            foreach (var o in order.Details)
+                                order.UpdateInventory(o, -1);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog(ex.ToString());
+                    }
+                });
+            }
+            finally
+            {
+                await _dialogService.HideLoadingAsync();
+            }
         }
 
         private void RefreshTotals()

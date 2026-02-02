@@ -919,7 +919,7 @@ namespace LaceupMigration
             ParLevelHistoryNumVisit = Preferences.Get(ParLevelHistoryNumVisitKey, 0);
             AutoGenerateLoadOrder = Preferences.Get(AutoGenerateLoadOrderKey, false);
             ApplyDiscountAfterTaxes = Preferences.Get(ApplyDiscountAfterTaxesKey, false);
-            UseCatalog = Preferences.Get(UseCatalogKey, false);
+            UseCatalog = Preferences.Get(UseCatalogKey, true);
 
             var autoEndInventory = Preferences.Get(AutoEndInventoryKey, false);
             if (autoEndInventory)
@@ -1806,7 +1806,7 @@ namespace LaceupMigration
             SortClient = string.Empty;
             TrackTermsPaymentBotton = string.Empty;
             SalesReportTotalCreditsSubstracted = false;
-            UseCatalog = false;
+            UseCatalog = true;
             ShowWarehouseInvInSummary = false;
             HidePriceInSelfService = true;
             HideOHinSelfService = true;
@@ -6662,6 +6662,8 @@ namespace LaceupMigration
                 }
             }
 
+            Config.UseCatalog = true;
+            
             if (Config.UseCatalogWithFullTemplate && Config.UseFullTemplate) UseCatalog = true;
 
             if (UseVisitsTemplateInSales) UseLaceupAdvancedCatalog = true;

@@ -659,6 +659,10 @@ namespace LaceupMigration.ViewModels
                     continue;
 
                 item.Product.UpdateInventory(item.Real, item.UoM, item.Product.UseLot ? item.Lot : "", item.Expiration, 1, item.Weight);
+                
+                //sub the inventory in wh (not working before)
+                item.Product.UpdateWarehouseInventory(item.Real, item.UoM, item.Product.UseLot ? item.Lot : "", item.Expiration, -1, item.Weight);
+                
                 item.Product.AddRequestedInventory(item.Starting, item.UoM, item.Product.UseLot ? item.Lot : "", item.Expiration, item.Weight);
                 item.Product.AddLoadedInventory(item.Real, item.UoM, item.Product.UseLot ? item.Lot : "", item.Expiration, item.Weight);
             }
