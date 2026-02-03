@@ -19,7 +19,7 @@
                                Placeholder="Search categories or products..."
                                TextChanged="SearchBar_TextChanged"
                                SearchButtonPressed="SearchBar_SearchButtonPressed"
-                               BackgroundColor="Transparent"
+                               BackgroundColor="White"
                                Margin="0" />
                     <ImageButton Grid.Column="1"
                                  Source="{mi:MaterialOutlined Icon=QrCodeScanner, IconColor=Black}"

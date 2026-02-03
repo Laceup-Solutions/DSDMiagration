@@ -17,7 +17,7 @@
 
 		<!-- Versions -->
 		<ApplicationDisplayVersion>1.15</ApplicationDisplayVersion>
-		<ApplicationVersion>9</ApplicationVersion>
+		<ApplicationVersion>10</ApplicationVersion>
 		<WindowsPackageType>None</WindowsPackageType>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
@@ -25,12 +25,8 @@
 		
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-ios|AnyCPU'">
-		<!-- Change from "Full" to "SdkOnly" -->
-		<MtouchLink>SdkOnly</MtouchLink>
-
-		<!-- OR disable linking entirely to test -->
-		<!-- <MtouchLink>None</MtouchLink> -->
+	<PropertyGroup Condition="'$(Configuration)'=='Release' AND '$(TargetFramework)'=='net9.0-ios'">
+		<MtouchLink>None</MtouchLink>
 	</PropertyGroup>
 	
 	<PropertyGroup Condition=" '$(Configuration)' == 'Release' ">

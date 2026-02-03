@@ -17,6 +17,7 @@
             <SearchBar Grid.Column="0" 
                        Placeholder="Search payments..."
                        Text="{Binding SearchText}"
+                       BackgroundColor="White"
                        TextChanged="OnSearchTextChanged"/>
             <CheckBox Grid.Column="1" 
                       IsChecked="{Binding IsSelectAllChecked}"

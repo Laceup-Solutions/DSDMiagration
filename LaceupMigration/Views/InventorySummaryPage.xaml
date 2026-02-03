@@ -42,7 +42,7 @@
                 <SearchBar Grid.Column="0"
                            Text="{Binding SearchQuery}"
                            Placeholder="Enter product name..."
-                           BackgroundColor="Transparent"
+                           BackgroundColor="White"
                            Margin="0" />
                 <Button Grid.Column="1"
                         Text="{Binding FilterButtonText}"

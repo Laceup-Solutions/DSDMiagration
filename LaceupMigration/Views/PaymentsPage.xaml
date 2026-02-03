@@ -123,6 +123,7 @@
                 <SearchBar Grid.Column="0"
                            Placeholder="Search payments"
                            FontSize="14"
+                           BackgroundColor="White"
                            Text="{Binding SearchQuery}"
                            SearchButtonPressed="SearchBar_SearchButtonPressed" />
                 <Button Grid.Column="1"

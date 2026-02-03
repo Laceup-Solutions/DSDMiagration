@@ -29,6 +29,7 @@
         <SearchBar Grid.Row="1"
                    Text="{Binding SearchText}"
                    Placeholder="Search products..."
+                   BackgroundColor="White"
                    Margin="8,0"
                    TextChanged="OnSearchTextChanged"
                    IsEnabled="{Binding IsSaved, Converter={StaticResource InvertedBoolConverter}}" />

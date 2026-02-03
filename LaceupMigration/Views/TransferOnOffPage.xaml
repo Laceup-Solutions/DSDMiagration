@@ -41,7 +41,7 @@
                 <SearchBar Grid.Column="0"
                            Text="{Binding SearchQuery}"
                            Placeholder="Search products..."
-                           BackgroundColor="Transparent"
+                           BackgroundColor="White"
                            Margin="0"
                            IsEnabled="{Binding ReadOnly, Converter={StaticResource InvertedBoolConverter}}" />
                 <ImageButton Grid.Column="1"

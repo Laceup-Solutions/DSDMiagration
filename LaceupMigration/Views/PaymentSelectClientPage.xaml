@@ -17,6 +17,7 @@
                     Margin="0,0,0,12">
                 <SearchBar Placeholder="Search clients"
                            FontSize="14"
+                           BackgroundColor="White"
                            Text="{Binding SearchQuery}"
                            SearchButtonPressed="SearchBar_SearchButtonPressed" />
             </Border>
