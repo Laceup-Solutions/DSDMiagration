@@ -9,6 +9,7 @@
         <SearchBar Grid.Row="0"
                    Text="{Binding SearchText}"
                    Placeholder="Search clients..."
+                   BackgroundColor="White"
                    Margin="8"
                    TextChanged="OnSearchTextChanged" />
 

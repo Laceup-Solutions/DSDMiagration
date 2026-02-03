@@ -9,6 +9,7 @@
         <SearchBar Grid.Row="0"
                    Text="{Binding SearchQuery}"
                    Placeholder="Search product name..."
+                   BackgroundColor="White"
                    Margin="16,8" />
 
         <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="16,0">

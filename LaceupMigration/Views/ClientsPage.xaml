@@ -122,6 +122,7 @@
             <SearchBar Placeholder="Search customers"
                        FontSize="14"
                        HeightRequest="36"
+                       BackgroundColor="White"
                        Text="{Binding SearchQuery}"
                        SearchButtonPressed="SearchBar_SearchButtonPressed" />
         </Border>

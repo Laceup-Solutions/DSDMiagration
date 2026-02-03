@@ -16,7 +16,7 @@
                     <SearchBar Grid.Column="0"
                                Text="{Binding SearchQuery}"
                                Placeholder="Search products..."
-                               BackgroundColor="Transparent"
+                               BackgroundColor="White"
                                Margin="0" />
                     <ImageButton Grid.Column="1"
                                  Source="{mi:MaterialOutlined Icon=QrCodeScanner, IconColor=Black}"

@@ -24,6 +24,10 @@ namespace LaceupMigration
 				.ConfigureMauiHandlers(handlers =>
 				{
 					handlers.AddHandler(typeof(Shell), typeof(CustomTabBarRenderer));
+#if IOS
+					// Map SearchBar to add Done button and white background
+					Microsoft.Maui.Handlers.SearchBarHandler.Mapper.AppendToMapping("CustomSearchBar", Platforms.iOS.Handlers.SearchBarHandlerMapper.MapSearchBar);
+#endif
 #if ANDROID
 					// Map CollectionView to apply Gray100 ripple to RecyclerView items
 					Microsoft.Maui.Controls.Handlers.Items.CollectionViewHandler.Mapper.AppendToMapping("RippleEffect", Platforms.Android.Handlers.CollectionViewRippleMapper.MapCollectionView);

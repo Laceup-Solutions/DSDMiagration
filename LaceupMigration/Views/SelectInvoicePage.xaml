@@ -35,6 +35,7 @@
                         StrokeShape="RoundRectangle 12">
                     <SearchBar Placeholder="Search invoices"
                                FontSize="14"
+                               BackgroundColor="White"
                                Text="{Binding SearchQuery}"
                                SearchButtonPressed="SearchBar_SearchButtonPressed" />
                 </Border>

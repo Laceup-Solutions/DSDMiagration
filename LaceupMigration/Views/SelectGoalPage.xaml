@@ -15,7 +15,7 @@
                 Padding="12,2"
                 StrokeShape="RoundRectangle 12">
             <SearchBar Text="{Binding SearchText}"
-                       BackgroundColor="Transparent"
+                       BackgroundColor="White"
                        TextChanged="OnSearchTextChanged" />
         </Border>
         

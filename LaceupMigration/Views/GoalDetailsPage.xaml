@@ -16,7 +16,7 @@
                 StrokeShape="RoundRectangle 12">
             <SearchBar Text="{Binding SearchText}"
                        Placeholder="Search Product Name"
-                       BackgroundColor="Transparent"
+                       BackgroundColor="White"
                        TextChanged="OnSearchTextChanged" />
         </Border>
 

@@ -104,6 +104,18 @@ public class DialogService : IDialogService
             // Fallback to default implementation on error
             System.Diagnostics.Debug.WriteLine($"Error showing custom action sheet: {ex.Message}");
         }
+#elif IOS
+        // Use custom iOS implementation to remove top cancel button
+        try
+        {
+            return await LaceupMigration.Platforms.iOS.ActionSheetService.ShowActionSheetAsync(
+                title, message, cancelText, buttons);
+        }
+        catch (Exception ex)
+        {
+            // Fallback to default implementation on error
+            System.Diagnostics.Debug.WriteLine($"Error showing custom action sheet: {ex.Message}");
+        }
 #endif
         // Default implementation for other platforms or fallback
         var page = GetCurrentPage();

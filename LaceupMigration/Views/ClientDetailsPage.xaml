@@ -113,6 +113,7 @@
                        FontSize="14"
                        TextColor="{StaticResource Gray400}" />
                 <SearchBar Placeholder="Search invoice number" Margin="0,0,0,5"
+                           BackgroundColor="White"
                            Text="{Binding InvoiceSearchQuery}"
                            SearchButtonPressed="SearchBar_SearchButtonPressed"/>
                 <CollectionView x:Name="InvoicesCollectionView"

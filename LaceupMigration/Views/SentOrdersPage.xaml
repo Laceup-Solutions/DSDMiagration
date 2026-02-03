@@ -23,6 +23,7 @@
         <SearchBar Grid.Row="0"
                    Text="{Binding SearchQuery}"
                    Placeholder="Search by client name or invoice number..."
+                   BackgroundColor="White"
                    Margin="8,8,8,0" />
 
         <!-- Filters -->

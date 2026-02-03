@@ -23,6 +23,7 @@
         <SearchBar Grid.Row="1"
                    Text="{Binding SearchText}"
                    Placeholder="Search products..."
+                   BackgroundColor="White"
                    Margin="8,0"
                    TextChanged="OnSearchTextChanged" />
 

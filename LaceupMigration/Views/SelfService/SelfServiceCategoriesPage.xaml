@@ -17,6 +17,7 @@
             <SearchBar Grid.Column="0" 
                        Placeholder="Search categories..."
                        Text="{Binding SearchText}"
+                       BackgroundColor="White"
                        TextChanged="OnSearchTextChanged"/>
             <Button Grid.Column="1" 
                     Text="Filter"

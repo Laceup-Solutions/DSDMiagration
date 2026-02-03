@@ -9,6 +9,7 @@
         <SearchBar Grid.Row="0"
                    Text="{Binding SearchText}"
                    Placeholder="Search retail price levels..."
+                   BackgroundColor="White"
                    Margin="8,0"
                    TextChanged="OnSearchTextChanged" />
 
