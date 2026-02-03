@@ -46,6 +46,14 @@
 	<string>We need access to Bluetooth to find available mobile printers and to pair scanners.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>We use the local network to discover and connect to devices (printers/scanners) on your network.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>This app does not directly access your calendar. This permission may be required by system frameworks or third-party libraries used in the app.</string>
+	<key>NSSiriUsageDescription</key>
+	<string>This app does not directly use Siri. This permission may be required by system frameworks or third-party libraries used in the app.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>This app does not directly access your contacts. This permission may be required by system frameworks or third-party libraries used in the app.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>This app does not directly access your Apple Music library. This permission may be required by system frameworks or third-party libraries used in the app.</string>
 	<key>UISupportedExternalAccessoryProtocols</key>
 	<array>
 		<string>com.zebra.rawport</string>
