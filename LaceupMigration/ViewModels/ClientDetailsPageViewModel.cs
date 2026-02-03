@@ -1433,8 +1433,14 @@ namespace LaceupMigration.ViewModels
             var clientCompanies = SalesmanAvailableCompany.GetCompanies(Config.SalesmanId, _client.ClientId);
             if (clientCompanies.Count > 1)
             {
-                var companyNames = clientCompanies.Select(x => x.CompanyName).ToArray();
-                var selectedIndex = await _dialogService.ShowSelectionAsync("Select Company", companyNames);
+                var companyOptions = clientCompanies.Select(c =>
+                {
+                    var subtitleParts = new[] { c.CompanyAddress1, c.CompanyAddress2, c.CompanyPhone }
+                        .Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+                    var subtitle = subtitleParts.Length > 0 ? string.Join("\n", subtitleParts) : null;
+                    return (c.CompanyName ?? string.Empty, subtitle);
+                }).ToArray();
+                var selectedIndex = await _dialogService.ShowSingleChoiceDialogAsync("Select Company", companyOptions, 0);
                 if (selectedIndex >= 0 && selectedIndex < clientCompanies.Count)
                 {
                     CompanyInfo.SelectedCompany = clientCompanies[selectedIndex];

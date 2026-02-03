@@ -1022,14 +1022,15 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task ShowMenuAsync()
         {
-            var options = new[] { "Send by Email", "Advanced Options" };
+            // Send by Email commented out - only Advanced Options in Full Categories menu
+            var options = new[] { /* "Send by Email", */ "Advanced Options" };
             var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options);
             
             switch (choice)
             {
-                case "Send by Email":
-                    await SendByEmailAsync();
-                    break;
+                // case "Send by Email":
+                //     await SendByEmailAsync();
+                //     break;
                 case "Advanced Options":
                     await ShowAdvancedOptionsAsync();
                     break;

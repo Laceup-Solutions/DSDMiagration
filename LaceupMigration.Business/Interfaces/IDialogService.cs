@@ -1,4 +1,4 @@
-﻿using Microsoft.Maui;
+using Microsoft.Maui;
 using System.Collections.Generic;
 
 namespace LaceupMigration;
@@ -11,6 +11,10 @@ public interface IDialogService
     Task<string> ShowPromptAsync(string title, string message, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", int maxLength = -1, string initialValue = "", Keyboard keyboard = null, bool showScanIcon = false, Func<Task<string>> scanAction = null);
     Task<bool> ShowConfirmAsync(string message, string title = "Confirm", string acceptText = "Yes", string cancelText = "No");
     Task<int> ShowSelectionAsync(string title, string[] options);
+    /// <summary>Single-choice dialog with radio buttons. Returns selected index or -1 if canceled.</summary>
+    Task<int> ShowSingleChoiceDialogAsync(string title, string[] options, int selectedIndex = 0);
+    /// <summary>Single-choice dialog with radio buttons and optional subtitle per option. Returns selected index or -1 if canceled.</summary>
+    Task<int> ShowSingleChoiceDialogAsync(string title, (string Title, string Subtitle)[] options, int selectedIndex = 0);
     Task<DateTime?> ShowDatePickerAsync(string title, DateTime? initialDate = null, DateTime? minimumDate = null, DateTime? maximumDate = null);
     
     Task ShowLoadingAsync(string message = "Loading...");
