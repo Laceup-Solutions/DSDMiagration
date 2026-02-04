@@ -114,68 +114,58 @@ namespace LaceupMigration.Views
             base.GoBack();
         }
 
-        private async void EditPayment_Clicked(object sender, EventArgs e)
+        private static PaymentComponentViewModel? GetComponentFromSender(object sender)
         {
-            PaymentComponentViewModel? component = null;
-            
-            if (sender is Button button)
-            {
-                component = button.BindingContext as PaymentComponentViewModel;
-            }
-            else if (sender is Frame frame)
-            {
-                component = frame.BindingContext as PaymentComponentViewModel;
-            }
-            
-            if (component != null)
-            {
-                await _viewModel.EditPayment(component);
-            }
+            if (sender is BindableObject bo)
+                return bo.BindingContext as PaymentComponentViewModel;
+            return null;
         }
 
-        private async void OnImageTapped(object sender, EventArgs e)
+        private async void PaymentMethod_Clicked(object sender, EventArgs e)
         {
-            if (sender is TapGestureRecognizer recognizer)
-            {
-                var frame = recognizer.Parent as Frame;
-                if (frame != null)
-                {
-                    var component = frame.BindingContext as PaymentComponentViewModel;
-                    if (component != null)
-                    {
-                        await _viewModel.EditPayment(component);
-                    }
-                }
-            }
+            var component = GetComponentFromSender(sender);
+            if (component != null) await _viewModel.EditPaymentMethodAsync(component);
         }
 
-        private async void DeleteButton_Clicked(object sender, EventArgs e)
+        private async void Amount_Clicked(object sender, EventArgs e)
         {
-            // Fallback handler: manually invoke the method if command binding doesn't work
-            // This ensures the delete functionality works even if command binding fails
-            System.Diagnostics.Debug.WriteLine("DeleteButton_Clicked: Event fired!");
-            System.Diagnostics.Debug.WriteLine($"DeleteButton_Clicked: sender = {sender?.GetType().Name}");
-            System.Diagnostics.Debug.WriteLine($"DeleteButton_Clicked: Button.IsEnabled = {(sender as Button)?.IsEnabled}");
-            
-            if (_viewModel != null)
-            {
-                System.Diagnostics.Debug.WriteLine("DeleteButton_Clicked: ViewModel is not null, calling DeleteEntirePayment");
-                System.Diagnostics.Debug.WriteLine($"DeleteButton_Clicked: CanDeletePayment = {_viewModel.CanDeletePayment}");
-                try
-                {
-                    await _viewModel.DeleteEntirePayment();
-                    System.Diagnostics.Debug.WriteLine("DeleteButton_Clicked: DeleteEntirePayment completed");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"DeleteButton_Clicked: Exception: {ex.Message}");
-                    System.Diagnostics.Debug.WriteLine($"DeleteButton_Clicked: StackTrace: {ex.StackTrace}");
-                }
-            }
+            var component = GetComponentFromSender(sender);
+            if (component != null) await _viewModel.EditAmountAsync(component);
+        }
+
+        private async void Comments_Clicked(object sender, EventArgs e)
+        {
+            var component = GetComponentFromSender(sender);
+            if (component != null) await _viewModel.EditCommentsAsync(component);
+        }
+
+        private async void Ref_Clicked(object sender, EventArgs e)
+        {
+            var component = GetComponentFromSender(sender);
+            if (component != null) await _viewModel.EditRefAsync(component);
+        }
+
+        private async void PostedDate_Clicked(object sender, EventArgs e)
+        {
+            var component = GetComponentFromSender(sender);
+            if (component != null) await _viewModel.EditPostedDateAsync(component);
+        }
+
+        private async void Bank_Clicked(object sender, EventArgs e)
+        {
+            var component = GetComponentFromSender(sender);
+            if (component != null) await _viewModel.EditBankAsync(component);
+        }
+
+        private async void AddImage_Clicked(object sender, EventArgs e)
+        {
+            var button = sender as Button;
+            var component = button?.BindingContext as PaymentComponentViewModel;
+            if (component == null) return;
+            if (component.HasImage)
+                await _viewModel.ViewPaymentImageAsync(component);
             else
-            {
-                System.Diagnostics.Debug.WriteLine("DeleteButton_Clicked: ViewModel is null!");
-            }
+                await _viewModel.AddPaymentImageAsync(component);
         }
     }
 }

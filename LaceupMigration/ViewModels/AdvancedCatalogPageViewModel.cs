@@ -33,6 +33,8 @@ namespace LaceupMigration.ViewModels
         private bool _isScanning = false;
         private int _lastScannedProductId = 0;
         private List<int> _relatedLines = new();
+        private bool inventoryUpdated = false;
+
         
         // WhatToViewInList enum and field (matches AdvancedTemplateActivity)
         private enum WhatToViewInList
@@ -398,8 +400,9 @@ namespace LaceupMigration.ViewModels
                 return;
 
             // Xamarin: when creating Activity, if UpdateInventoryInPresale && AsPresale run inventory update then refresh, else just refresh
-            if (_order != null && Config.UpdateInventoryInPresale && _order.AsPresale)
+            if (!inventoryUpdated && _order != null && Config.UpdateInventoryInPresale && _order.AsPresale)
             {
+                inventoryUpdated = true;
                 await RunPresaleInventoryUpdateAsync();
             }
 

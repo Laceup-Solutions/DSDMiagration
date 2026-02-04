@@ -1553,14 +1553,9 @@ namespace LaceupMigration.ViewModels
                 {
                     await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
                 }
-                else if (Config.UseCatalog)
-                {
-                    await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=0");
-                }
                 else
-                {
-                    await Shell.Current.GoToAsync($"orderdetails?orderId={order.OrderId}&asPresale=0");
-                }
+                    await Shell.Current.GoToAsync($"ordercredit?orderId={order.OrderId}&asPresale=0&fromOneDoc=0");
+                
                 return;
             }
 
@@ -1586,15 +1581,7 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // If UseCatalog is TRUE (and UseLaceupAdvancedCatalog is FALSE)
-            if (Config.UseCatalog)
-            {
-                await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=0");
-                return;
-            }
-            
-            // Default: Navigate to OrderDetailsPage
-            await Shell.Current.GoToAsync($"orderdetails?orderId={order.OrderId}&asPresale=0");
+            await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=0");
         }
 
         private async Task ShowAdvancedOptionsAsync()

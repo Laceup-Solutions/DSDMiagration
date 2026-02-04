@@ -564,7 +564,7 @@ namespace LaceupMigration.ViewModels
             }
 
             // Check if order is presale and show dialog with 3 options (only for non-empty orders)
-            if (_order.AsPresale)
+            if (_order.AsPresale && !_fromOneDoc)
             {
                 // Show action options dialog (matching Xamarin PreviouslyOrderedTemplateActivity logic)
                 var options = new[]
