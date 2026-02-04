@@ -20,6 +20,8 @@ namespace LaceupMigration.ViewModels
         internal Order? _order;
         private bool _asPresale;
         private bool _initialized;
+        
+        private bool inventoryUpdated = false;
         private int _lastDetailCount = 0;
         private int? _lastDetailId = null;
         private SortDetails.SortCriteria _sortCriteria = SortDetails.SortCriteria.ProductName;
@@ -234,8 +236,9 @@ namespace LaceupMigration.ViewModels
             }
 
             // Xamarin PreviouslyOrderedTemplateActivity: when creating Activity, if UpdateInventoryInPresale && AsPresale run inventory update then refresh, else just refresh
-            if (_order != null && Config.UpdateInventoryInPresale && _order.AsPresale)
+            if (!inventoryUpdated && _order != null && Config.UpdateInventoryInPresale && _order.AsPresale)
             {
+                inventoryUpdated = true;
                 await RunPresaleInventoryUpdateAsync();
             }
 

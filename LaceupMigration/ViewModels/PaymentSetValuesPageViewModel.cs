@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Media;
 
 namespace LaceupMigration.ViewModels
 {
@@ -33,6 +34,7 @@ namespace LaceupMigration.ViewModels
         private string _invoicesId = string.Empty;
         private string _ordersId = string.Empty;
         private string _tempFile = string.Empty;
+        private bool _initializationComplete = false;
 
         [ObservableProperty]
         private ObservableCollection<PaymentComponentViewModel> _paymentComponents = new();
@@ -174,6 +176,7 @@ namespace LaceupMigration.ViewModels
 
         private async Task InitializeAsync()
         {
+            _initializationComplete = false;
             if (_paymentId > 0)
             {
                 _invoicePayment = InvoicePayment.List.FirstOrDefault(x => x.Id == _paymentId);
@@ -275,6 +278,7 @@ namespace LaceupMigration.ViewModels
             // If _paymentId > 0 and _invoicePayment exists, CanDeletePayment was already set above based on Printed status
 
             RefreshLabels();
+            _initializationComplete = true;
         }
 
         private void LoadExistingPaymentData()
@@ -651,42 +655,172 @@ namespace LaceupMigration.ViewModels
             SaveState(); // Save state after adding payment
         }
 
-        public async Task EditPayment(PaymentComponentViewModel component)
+        /// <summary>Payment method options for picker (matches Xamarin GetInvoicePaymentMethodNames: no ACH).</summary>
+        private static string[] GetPaymentMethodOptions()
         {
-            if (component == null)
-                return;
-
-            var paymentMethods = Enum.GetNames(typeof(InvoicePaymentMethod))
-                .Select(x => x.Replace("_", " "))
-                .ToArray();
-
-            var methodChoice = await _dialogService.ShowActionSheetAsync("Select Payment Method", "", "Cancel", paymentMethods);
-            if (string.IsNullOrEmpty(methodChoice) || methodChoice == "Cancel")
-                return;
-
-            var method = Enum.Parse<InvoicePaymentMethod>(methodChoice.Replace(" ", "_"));
-
-            var amountStr = await _dialogService.ShowPromptAsync("Enter Amount", "Amount", "OK", "Cancel", component.Amount.ToString("F2"), keyboard: Keyboard.Numeric);
-            if (string.IsNullOrEmpty(amountStr) || !double.TryParse(amountStr, out var amount))
-                return;
-
-            var refNumber = string.Empty;
-            if (method != InvoicePaymentMethod.Cash)
+            var result = new List<string>
             {
-                refNumber = await _dialogService.ShowPromptAsync("Enter Reference Number", 
-                    method == InvoicePaymentMethod.Check ? "Check Number" : "Card/Reference Number", 
-                    "OK", "Cancel", component.Ref ?? string.Empty);
+                InvoicePaymentMethod.Cash.ToString().Replace("_", " "),
+                InvoicePaymentMethod.Check.ToString().Replace("_", " ")
+            };
+            if (Config.ExtendedPaymentOptions)
+            {
+                result.Add(InvoicePaymentMethod.Credit_Card.ToString().Replace("_", " "));
+                result.Add(InvoicePaymentMethod.Money_Order.ToString().Replace("_", " "));
+                result.Add(InvoicePaymentMethod.Transfer.ToString().Replace("_", " "));
+                result.Add(InvoicePaymentMethod.Zelle_Transfer.ToString().Replace("_", " "));
             }
+            return result.ToArray();
+        }
 
-            var comments = await _dialogService.ShowPromptAsync("Enter Comments", "Comments", "OK", "Cancel", component.Comments ?? string.Empty);
-
+        /// <summary>Edit only payment method (matches Xamarin spinner selection).</summary>
+        public async Task EditPaymentMethodAsync(PaymentComponentViewModel component)
+        {
+            if (component == null) return;
+            var options = GetPaymentMethodOptions();
+            var choice = await _dialogService.ShowActionSheetAsync("Select Payment Method", "Cancel", null, options);
+            if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+            var method = Enum.Parse<InvoicePaymentMethod>(choice.Replace(" ", "_"));
             component.PaymentMethod = method;
-            component.Amount = amount;
-            component.Ref = refNumber ?? string.Empty;
-            component.Comments = comments ?? string.Empty;
-
+            if (method == InvoicePaymentMethod.Check && component.PostedDate == DateTime.MinValue)
+                component.PostedDate = DateTime.Now.Date;
+            else if (method != InvoicePaymentMethod.Check)
+                component.PostedDate = DateTime.MinValue;
             RefreshLabels();
-            SaveState(); // Save state after editing payment
+            SaveState();
+        }
+
+        /// <summary>Edit only amount (matches Xamarin amountButton_Click).</summary>
+        public async Task EditAmountAsync(PaymentComponentViewModel component)
+        {
+            if (component == null) return;
+            var amountStr = await _dialogService.ShowPromptAsync("Set Payment Amount", string.Empty, "Set", "Cancel", string.Empty, -1, component.Amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture), Keyboard.Numeric);
+            if (string.IsNullOrEmpty(amountStr)) return;
+            if (!double.TryParse(amountStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amount))
+            {
+                await _dialogService.ShowAlertAsync("Not a valid number.", "Alert", "OK");
+                return;
+            }
+            amount = Math.Round(amount, 2);
+            var sumOthers = PaymentComponents.Where(x => x != component).Sum(x => x.Amount);
+            if (!_creditAccount && !Config.CanPayMoreThanOwned && sumOthers + amount > _amount)
+            {
+                await _dialogService.ShowAlertAsync($"Invalid amount. Maximum: {(_amount - sumOthers).ToCustomString()}", "Alert", "OK");
+                return;
+            }
+            component.Amount = amount;
+            RefreshLabels();
+            SaveState();
+        }
+
+        /// <summary>Edit only ref/check/card number (matches Xamarin RefLabel_Click; label title from component).</summary>
+        public async Task EditRefAsync(PaymentComponentViewModel component)
+        {
+            if (component == null) return;
+            var title = component.RefLabelText;
+            var initial = component.Ref ?? string.Empty;
+            var promptTitle = title;
+            var refStr = await _dialogService.ShowPromptAsync(promptTitle, string.Empty, "Set", "Cancel", string.Empty, 20, initial, Keyboard.Numeric);
+            if (refStr == null) return;
+            component.Ref = refStr.Trim();
+            SaveState();
+        }
+
+        /// <summary>Edit only comments (matches Xamarin CommentsLabel_Click).</summary>
+        public async Task EditCommentsAsync(PaymentComponentViewModel component)
+        {
+            if (component == null) return;
+            var comments = await _dialogService.ShowPromptAsync("Set Comments", string.Empty, "Set", "Cancel", string.Empty, -1, component.Comments ?? string.Empty);
+            if (comments == null) return;
+            component.Comments = comments ?? string.Empty;
+            SaveState();
+        }
+
+        /// <summary>Edit only posted date (matches Xamarin Date_Click).</summary>
+        public async Task EditPostedDateAsync(PaymentComponentViewModel component)
+        {
+            if (component == null) return;
+            var dt = component.PostedDate == DateTime.MinValue ? DateTime.Now : component.PostedDate;
+            // Use a simple date prompt; if no date picker in dialog, use prompt with short date string
+            var dateStr = await _dialogService.ShowPromptAsync("Posted Date", "Enter date (M/d/yyyy)", "Set", "Cancel", "M/d/yyyy", -1, dt.ToString("d"), Keyboard.Default);
+            if (string.IsNullOrEmpty(dateStr)) return;
+            if (DateTime.TryParse(dateStr, out var newDate))
+            {
+                component.PostedDate = newDate.Date;
+                SaveState();
+            }
+            else
+                await _dialogService.ShowAlertAsync("Invalid date.", "Alert", "OK");
+        }
+
+        /// <summary>Edit only bank (matches Xamarin bank spinner).</summary>
+        public async Task EditBankAsync(PaymentComponentViewModel component)
+        {
+            if (component == null) return;
+            var banks = BankAccount.List.Select(x => x.Name).ToList();
+            banks.Insert(0, "None");
+            var choice = await _dialogService.ShowActionSheetAsync("Select Bank", "Cancel", null, banks.ToArray());
+            if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+            component.BankName = choice == "None" ? string.Empty : choice;
+            SaveState();
+        }
+
+        /// <summary>Add image to payment component (matches Xamarin PaymentImage_Click / TakePhoto / PickFromGallery / ProcessImage).</summary>
+        public async Task AddPaymentImageAsync(PaymentComponentViewModel component)
+        {
+            if (component == null) return;
+            var choice = await _dialogService.ShowActionSheetAsync("Select Image Source", "Cancel", null, new[] { "Take Photo", "Choose from Gallery" });
+            if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+            try
+            {
+                FileResult? photo = null;
+                if (choice == "Take Photo")
+                {
+                    if (!MediaPicker.IsCaptureSupported)
+                    {
+                        await _dialogService.ShowAlertAsync("Camera is not available on this device.", "Error", "OK");
+                        return;
+                    }
+                    photo = await MediaPicker.CapturePhotoAsync();
+                }
+                else
+                {
+                    photo = await MediaPicker.PickPhotoAsync();
+                }
+                if (photo == null) return;
+                await ProcessPaymentImageAsync(photo, component);
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error with image: " + ex.Message, "Error", "OK");
+            }
+        }
+
+        private async Task ProcessPaymentImageAsync(FileResult photo, PaymentComponentViewModel component)
+        {
+            var imageId = Guid.NewGuid().ToString("N");
+            var targetPath = Path.Combine(Config.PaymentImagesPath, imageId);
+            var dir = Path.GetDirectoryName(targetPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+            using (var sourceStream = await photo.OpenReadAsync())
+            using (var fileStream = File.Create(targetPath))
+            {
+                await sourceStream.CopyToAsync(fileStream);
+            }
+            component.Component.ExtraFields = UDFHelper.SyncSingleUDF("Image", imageId, component.Component.ExtraFields ?? string.Empty);
+            component.RefreshImageDisplay();
+            RefreshLabels();
+            SaveState();
+        }
+
+        /// <summary>View full-screen payment image (matches Xamarin PaymentImageView_Click).</summary>
+        public async Task ViewPaymentImageAsync(PaymentComponentViewModel component)
+        {
+            if (component == null || string.IsNullOrEmpty(component.PaymentImagePath) || !File.Exists(component.PaymentImagePath))
+                return;
+            await Shell.Current.GoToAsync($"viewimage?imagePath={Uri.EscapeDataString(component.PaymentImagePath)}");
         }
 
         [RelayCommand]
@@ -704,13 +838,13 @@ namespace LaceupMigration.ViewModels
             }
         }
 
+        /// <summary>
+        /// Saves the payment only (no navigation). Use SaveAndClose to save and exit.
+        /// </summary>
         [RelayCommand]
         private async Task SavePayment()
         {
-            // Match Xamarin SavePayment_Click: only finish/navigate when save succeeded
-            if (!await SavePaymentInternal())
-                return;
-            await FinishProcessAsync();
+            await SavePaymentInternal();
         }
 
         private async Task<bool> SavePaymentInternal()
@@ -794,11 +928,15 @@ namespace LaceupMigration.ViewModels
             return true;
         }
 
+        /// <summary>
+        /// Saves the payment and then navigates back (exit screen).
+        /// </summary>
         [RelayCommand]
         private async Task SaveAndClose()
         {
-            // SavePayment already calls FinishProcessAsync() on success; do not call it again or we pop twice (e.g. back to BatchPage instead of FinalizeBatch)
-            await SavePayment();
+            if (!await SavePaymentInternal())
+                return;
+            await FinishProcessAsync();
         }
 
         [RelayCommand]
@@ -947,23 +1085,83 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task PrintPayment()
         {
+            // Save first if needed (save only — do not exit)
             if (_invoicePayment == null || !_invoicePayment.Printed)
             {
                 var confirmed = await _dialogService.ShowConfirmationAsync("Print Before Finalize", 
                     "You must save the payment before printing. Save now?", "Yes", "No");
                 if (confirmed)
                 {
-                    await SavePayment();
+                    if (!await SavePaymentInternal())
+                        return;
                 }
                 else
                     return;
             }
 
+            await SelectCompanyAndPrint();
+        }
+
+        /// <summary>
+        /// Select company for printing (matches Xamarin PaymentSetValuesActivity.SelectCompany).
+        /// Uses client-assigned companies when available (like ClientDetailsPage): only shows picker
+        /// when this client has more than one company assigned; otherwise uses the single company or global fallback.
+        /// </summary>
+        private async Task SelectCompanyAndPrint()
+        {
+            List<CompanyInfo> companiesToUse = null;
+            if (_client != null)
+            {
+                var clientCompanies = SalesmanAvailableCompany.GetCompanies(Config.SalesmanId, _client.ClientId);
+                if (clientCompanies.Count > 0)
+                    companiesToUse = clientCompanies;
+            }
+
+            if (companiesToUse == null)
+                companiesToUse = CompanyInfo.Companies.ToList();
+
+            if (companiesToUse.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("No company available for printing.", "Alert", "OK");
+                return;
+            }
+
+            if (companiesToUse.Count == 1 || !Config.PickCompany)
+            {
+                CompanyInfo.SelectedCompany = companiesToUse[0];
+                await DoPrintPaymentAsync();
+                return;
+            }
+
+            // Multiple companies for this client and PickCompany: show picker (match ClientDetailsPage)
+            var options = companiesToUse
+                .Select(c => string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}\n{1}\n{2}\n{3}",
+                    c.CompanyName ?? string.Empty,
+                    c.CompanyAddress1 ?? string.Empty,
+                    c.CompanyAddress2 ?? string.Empty,
+                    c.CompanyPhone ?? string.Empty))
+                .ToArray();
+
+            var choice = await _dialogService.ShowActionSheetAsync("Select Company", "Cancel", null, options);
+            if (string.IsNullOrEmpty(choice) || choice == "Cancel")
+                return;
+
+            var index = Array.FindIndex(options, o => string.Equals(o, choice, StringComparison.Ordinal));
+            if (index < 0)
+                index = Array.FindIndex(options, o => (o.Split('\n')[0].Trim()) == (choice.Split('\n')[0].Trim()));
+            if (index < 0)
+                index = 0;
+
+            CompanyInfo.SelectedCompany = companiesToUse[index];
+            await DoPrintPaymentAsync();
+        }
+
+        private async Task DoPrintPaymentAsync()
+        {
             try
             {
                 PrinterProvider.PrintDocument((int copies) =>
                 {
-                    CompanyInfo.SelectedCompany = CompanyInfo.Companies[0];
                     IPrinter printer = PrinterProvider.CurrentPrinter();
                     bool allWent = true;
 
@@ -975,7 +1173,7 @@ namespace LaceupMigration.ViewModels
 
                     if (!allWent)
                         return "Error printing payment";
-                    
+
                     _invoicePayment!.Printed = true;
                     _invoicePayment.Save();
                     return string.Empty;
@@ -1004,14 +1202,24 @@ namespace LaceupMigration.ViewModels
             if (_goBackToMain)
             {
                 if (_fromPaymentTab)
+                {
+                    Helpers.NavigationHelper.RemoveNavigationState("paymentsetvalues");
                     await Shell.Current.GoToAsync("paymentselectclient");
+                }
                 else if (_fromClientDetails)
+                {
+                    Helpers.NavigationHelper.RemoveNavigationState("paymentsetvalues");
                     await Shell.Current.GoToAsync("..");
+                }
                 else
+                {
+                    Helpers.NavigationHelper.RemoveNavigationState("paymentsetvalues");
                     await Shell.Current.GoToAsync("..");
+                }
             }
             else
             {
+                Helpers.NavigationHelper.RemoveNavigationState("paymentsetvalues");
                 await Shell.Current.GoToAsync("..");
             }
         }
@@ -1029,6 +1237,9 @@ namespace LaceupMigration.ViewModels
         public void SaveState()
         {
             if (string.IsNullOrEmpty(_tempFile))
+                return;
+            // Avoid overwriting temp file before InitializeAsync has finished (e.g. when OnAppearing runs before init).
+            if (!_initializationComplete)
                 return;
 
             lock (FileOperationsLocker.lockFilesObject)
@@ -1233,6 +1444,20 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showBank;
 
+        /// <summary>Label for ref field: "Check Number", "Card Number", or "Ref Number" (matches Xamarin RefName).</summary>
+        [ObservableProperty]
+        private string _refLabelText = "Ref Number";
+
+        /// <summary>Display value for ref (formatted for credit card as XXXX XXXX XXXX XXXX).</summary>
+        [ObservableProperty]
+        private string _refDisplayText = string.Empty;
+
+        [ObservableProperty]
+        private bool _hasImage;
+
+        [ObservableProperty]
+        private string _paymentImagePath = string.Empty;
+
         public PaymentComponentViewModel(PaymentComponent component, PaymentSetValuesPageViewModel parent)
         {
             _component = component;
@@ -1244,6 +1469,14 @@ namespace LaceupMigration.ViewModels
             BankName = component.BankName ?? string.Empty;
             PostedDate = component.PostedDate;
             UpdateProperties();
+            RefreshImageDisplay();
+        }
+
+        public void RefreshImageDisplay()
+        {
+            var id = UDFHelper.GetSingleUDF("Image", _component.ExtraFields ?? string.Empty);
+            HasImage = !string.IsNullOrEmpty(id);
+            PaymentImagePath = HasImage ? Path.Combine(Config.PaymentImagesPath, id) : string.Empty;
         }
 
         partial void OnPaymentMethodChanged(InvoicePaymentMethod value)
@@ -1257,11 +1490,6 @@ namespace LaceupMigration.ViewModels
             _component.Amount = value;
             AmountText = value.ToCustomString();
             _parent.OnComponentAmountChanged();
-        }
-
-        partial void OnRefChanged(string value)
-        {
-            _component.Ref = value;
         }
 
         partial void OnCommentsChanged(string value)
@@ -1289,6 +1517,31 @@ namespace LaceupMigration.ViewModels
             ShowRef = PaymentMethod != InvoicePaymentMethod.Cash;
             ShowPostedDate = PaymentMethod == InvoicePaymentMethod.Check;
             ShowBank = PaymentMethod == InvoicePaymentMethod.Check || PaymentMethod == InvoicePaymentMethod.Credit_Card;
+            RefLabelText = PaymentMethod == InvoicePaymentMethod.Check ? "Check Number" :
+                PaymentMethod == InvoicePaymentMethod.Credit_Card ? "Card Number" : "Ref Number";
+            RefDisplayText = FormatRefForDisplay(Ref);
+            RefreshImageDisplay();
+        }
+
+        private string FormatRefForDisplay(string refValue)
+        {
+            if (string.IsNullOrEmpty(refValue)) return string.Empty;
+            if (PaymentMethod != InvoicePaymentMethod.Credit_Card) return refValue;
+            var digits = new string(refValue.Where(char.IsDigit).ToArray());
+            if (digits.Length <= 4) return refValue;
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < digits.Length; i++)
+            {
+                if (i > 0 && i % 4 == 0) sb.Append(' ');
+                sb.Append(digits[i]);
+            }
+            return sb.ToString();
+        }
+
+        partial void OnRefChanged(string value)
+        {
+            _component.Ref = value;
+            RefDisplayText = FormatRefForDisplay(value);
         }
     }
 }
