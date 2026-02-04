@@ -31,10 +31,16 @@ namespace LaceupMigration.Views
         private void UpdateToolbar()
         {
             ToolbarItems.Clear();
-            // On Categories view never show Add To Order (user said no need)
+            // Categories view from Create Load Order: show Menu (Advanced Options, etc.) only
             if (_viewModel.IsFromLoadOrder && _viewModel.ShowCategories)
             {
-                // Categories page from load order: no toolbar action
+                ToolbarItems.Add(new ToolbarItem
+                {
+                    Text = "MENU",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = 0,
+                    Command = new Command(() => _ = _viewModel.ShowMenuCommand.ExecuteAsync(null))
+                });
                 return;
             }
             if (_viewModel.IsFromLoadOrder)

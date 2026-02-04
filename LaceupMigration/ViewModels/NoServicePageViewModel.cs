@@ -208,6 +208,34 @@ namespace LaceupMigration.ViewModels
             }
         }
 
+        /// <summary>Opens full-screen image view - matches Xamarin NoServiceActivity.ShowImage.</summary>
+        [RelayCommand]
+        private async Task ViewImageAsync(NoServiceImageViewModel? item)
+        {
+            if (item == null || string.IsNullOrEmpty(item.ImagePath) || !File.Exists(item.ImagePath))
+                return;
+            await Shell.Current.GoToAsync($"viewimage?imagePath={Uri.EscapeDataString(item.ImagePath)}");
+        }
+
+        [RelayCommand]
+        private async Task DeleteImageAsync(NoServiceImageViewModel? item)
+        {
+            if (item == null || _order == null)
+                return;
+            var confirmed = await _dialogService.ShowConfirmAsync("Are you sure you want to delete this image?", "Warning", "Yes", "No");
+            if (!confirmed)
+                return;
+            var imageId = Path.GetFileName(item.ImagePath);
+            var index = _order.ImageList.IndexOf(imageId);
+            if (index >= 0)
+            {
+                _order.ImageList.RemoveAt(index);
+                _order.Save();
+            }
+            Images.Remove(item);
+            UpdateCanDone();
+        }
+
         [RelayCommand]
         private async Task DoneAsync()
         {
@@ -263,6 +291,7 @@ namespace LaceupMigration.ViewModels
             UpdateRoute(true);
             BackgroundDataSync.SyncFinalizedOrders();
 
+            Helpers.NavigationHelper.RemoveNavigationState("noservice");
             await Shell.Current.GoToAsync("..");
         }
 
@@ -314,45 +343,41 @@ namespace LaceupMigration.ViewModels
         }
 
         /// <summary>
-        /// Handles back navigation - if order is not completed, delete it.
+        /// Matches Xamarin NoServiceActivity.IsOrderEmpty() - order is empty when it has no printed ID, no comments, and no images.
+        /// </summary>
+        private bool IsOrderEmpty()
+        {
+            if (_order == null)
+                return true;
+            return string.IsNullOrEmpty(_order.PrintedOrderId)
+                && string.IsNullOrEmpty(_order.Comments)
+                && _order.ImageList.Count == 0;
+        }
+
+        /// <summary>
+        /// Handles back navigation - matches Xamarin: if order has data Back = Done; if empty delete order and go back.
         /// This matches Xamarin NoServiceActivity behavior - going back without completing shouldn't create a NoService order.
         /// </summary>
         public async Task GoBackAsync()
         {
             if (_order == null)
             {
+                Helpers.NavigationHelper.RemoveNavigationState("noservice");
                 await Shell.Current.GoToAsync("..");
                 return;
             }
 
-            // Check if order was actually completed (has PrintedOrderId set)
-            // If not, delete it to prevent creating an incomplete NoService order
-            if (string.IsNullOrEmpty(_order.PrintedOrderId))
+            // Xamarin: if order has any data, Back = Done (try to complete)
+            if (!IsOrderEmpty())
             {
-                // Order was not completed - delete it and clean up batch if needed
-                var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
-                
-                // Delete the order
-                _order.Delete();
-
-                // If batch has no other orders, delete the batch too
-                if (batch != null)
-                {
-                    var otherOrders = Order.Orders.Where(x => x.BatchId == batch.Id && x.OrderId != _order.OrderId).ToList();
-                    if (otherOrders.Count == 0)
-                    {
-                        batch.Delete();
-                    }
-                }
-
-                // Update route if needed
-                UpdateRoute(false);
+                await DoneAsync();
+                return;
             }
 
-            // Remove navigation state
-            Helpers.NavigationHelper.RemoveNavigationState("noservice");
+            // Xamarin: order is empty - delete order only, no batch delete, no UpdateRoute(false)
+            _order.Delete();
 
-            // Navigate back
+            Helpers.NavigationHelper.RemoveNavigationState("noservice");
             await Shell.Current.GoToAsync("..");
         }
     }

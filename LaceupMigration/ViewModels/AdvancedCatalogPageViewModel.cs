@@ -2962,8 +2962,33 @@ namespace LaceupMigration.ViewModels
                     await ShowCommentsDialogAsync();
                 }));
                 
+                // Signature (presale) - Xamarin order: Ordered By before Send (presaleMenu.xml)
+                options.Add(new MenuOption("Ordered By", async () =>
+                {
+                    await SignAsync();
+                }));
+
+                // Send Order (presale)
+                options.Add(new MenuOption("Send", async () =>
+                {
+                    await SendOrderAsync();
+                }));
+
+                // Email (presale) - Xamarin: Send by Email visible when !isSplitClient
+                if (!isSplitClient)
+                {
+                    options.Add(new MenuOption("Send by Email", async () =>
+                    {
+                        await SendByEmailAsync();
+                    }));
+                }
                 
-                // Other Charges
+                options.Add(new MenuOption("Select Driver", async () =>
+                {
+                    await SelectSalesmanAsync();
+                }));
+                
+                // Other Charges - Xamarin order: after Select Driver (presaleMenu.xml)
                 if (!string.IsNullOrEmpty(asset) || Config.AllowOtherCharges)
                 {
                     options.Add(new MenuOption("Other Charges", async () =>
@@ -2972,51 +2997,10 @@ namespace LaceupMigration.ViewModels
                     }));
                 }
                 
-                // Signature (presale)
-                options.Add(new MenuOption("Ordered By", async () =>
-                {
-                    await SignAsync();
-                }));
-
-                
-               
-                // Send Order (presale)
-                options.Add(new MenuOption("Send", async () =>
-                {
-                    await SendOrderAsync();
-                }));
-
-                
-                // Email/Share PDF (presale)
-                if (!isSplitClient)
-                {
-                    if (Config.ShowBillOfLadingPdf)
-                    {
-                        options.Add(new MenuOption("Share PDF", async () =>
-                        {
-                            await SharePdfAsync();
-                        }));
-                    }
-                    else
-                    {
-                        options.Add(new MenuOption("Send by Email", async () =>
-                        {
-                            await SendByEmailAsync();
-                        }));
-                    }
-                }
-                
-                
-                options.Add(new MenuOption("Select Driver", async () =>
-                {
-                    await SelectSalesmanAsync();
-                }));
-                
-                options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added All" : "Just Ordered", async () =>
+                options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added/All" : "Just Ordered", async () =>
                 {
                     await WhatToViewClickedAsync();
                 }));
-                
                 
                 // Offers vs Order Discount (presale)
                 if (!hasOrderDiscounts)
@@ -3042,6 +3026,14 @@ namespace LaceupMigration.ViewModels
                     }
                 }
                 
+                // Discount (presale) - Xamarin order: Add Discount before Print (presaleMenu.xml)
+                if (allowDiscount)
+                {
+                    options.Add(new MenuOption("Add Discount", async () =>
+                    {
+                        await ApplyDiscountAsync();
+                    }));
+                }
                 
                 // Print (presale)
                 if (Config.PrinterAvailable)
@@ -3052,24 +3044,22 @@ namespace LaceupMigration.ViewModels
                     }));
                 }
                 
-                // Delete Order (presale)
-                options.Add(new MenuOption("Delete Order", async () =>
+                // Delete (presale) - Xamarin shows "Delete" (deleteLabel)
+                options.Add(new MenuOption("Delete", async () =>
                 {
                     await DeleteOrderAsync();
                 }));
-                
-                // Discount (presale)
-                if (allowDiscount)
+
+                // Share (presale) - Xamarin: Share visible when !isSplitClient (presaleMenu.xml order after Delete)
+                if (!isSplitClient)
                 {
-                    options.Add(new MenuOption("Add Discount", async () =>
+                    options.Add(new MenuOption("Share", async () =>
                     {
-                        await ApplyDiscountAsync();
+                        await SharePdfAsync();
                     }));
                 }
 
-
-
-                // Ship Via (presale)
+                // Ship Via (presale) - Config.ShowShipVia
                 if (Config.ShowShipVia)
                 {
                     options.Add(new MenuOption("Ship Via", async () =>
@@ -3078,7 +3068,16 @@ namespace LaceupMigration.ViewModels
                     }));
                 }
                 
-                // Convert Quote to Sales Order
+                // Select Company (presale) - Xamarin: visible when CompanyInfo.Companies.Count > 1 (presaleMenu.xml after Ship Via)
+                if (CompanyInfo.Companies.Count > 1)
+                {
+                    options.Add(new MenuOption("Select Company", async () =>
+                    {
+                        await SelectCompanyAsync();
+                    }));
+                }
+                
+                // Convert Quote to Sales Order - Config.CanModifyQuotes && IsQuote && !IsDelivery
                 if (Config.CanModifyQuotes && _order.IsQuote && !_order.IsDelivery)
                 {
                     options.Add(new MenuOption("Convert to Order", async () =>
@@ -3087,7 +3086,7 @@ namespace LaceupMigration.ViewModels
                     }));
                 }
                 
-                // View Captures
+                // View Captures / Take Picture (presale) - Config.CaptureImages && !(finalized && MustAddImageToFinalized)
                 bool isVisible_ = true;
                 if (finalized && Config.MustAddImageToFinalized)
                     isVisible_ = false;
@@ -3101,7 +3100,7 @@ namespace LaceupMigration.ViewModels
             }
             else
             {
-                
+                // Non-presale menu order matches Xamarin previouslyOrderedMenu.xml
                 // Print (non-presale)
                 if (!Config.LockOrderAfterPrinted)
                 {
@@ -3137,26 +3136,23 @@ namespace LaceupMigration.ViewModels
                         }
                     }
                 }
-                
-                
+
                 // What To View (non-presale)
                 if (!finalized)
                 {
-                    options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added All" : "Just Ordered", async () =>
+                    options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added/All" : "Just Ordered", async () =>
                     {
                         await WhatToViewClickedAsync();
                     }));
                 }
-                
-                
-                // Comments (non-presale)
+
+                // Add Comments (non-presale)
                 options.Add(new MenuOption("Add Comments", async () =>
                 {
                     await ShowCommentsDialogAsync();
                 }));
-                
-                
-                // Other Charges
+
+                // Other Charges (non-presale)
                 if (!string.IsNullOrEmpty(asset) || Config.AllowOtherCharges)
                 {
                     options.Add(new MenuOption("Other Charges", async () =>
@@ -3164,8 +3160,8 @@ namespace LaceupMigration.ViewModels
                         await OtherChargesAsync();
                     }));
                 }
-                
-                // Discount (non-presale)
+
+                // Add Discount (non-presale)
                 if (!finalized && allowDiscount && !locked)
                 {
                     options.Add(new MenuOption("Add Discount", async () =>
@@ -3174,24 +3170,27 @@ namespace LaceupMigration.ViewModels
                     }));
                 }
 
-                
-                // Email/Share PDF (non-presale)
+                // Email/Share (non-presale) - Xamarin: both visible when !isSplitClient
                 if (!isSplitClient)
                 {
                     options.Add(new MenuOption("Send by Email", async () =>
                     {
                         await SendByEmailAsync();
                     }));
-
-                    if (Config.ShowBillOfLadingPdf)
+                    options.Add(new MenuOption("Share", async () =>
                     {
-                        options.Add(new MenuOption("Share PDF", async () =>
-                        {
-                            await SharePdfAsync();
-                        }));
-                    }
+                        await SharePdfAsync();
+                    }));
                 }
-                
+
+                // Select Company (non-presale) - Xamarin: visible when CompanyInfo.Companies.Count > 1
+                if (CompanyInfo.Companies.Count > 1)
+                {
+                    options.Add(new MenuOption("Select Company", async () =>
+                    {
+                        await SelectCompanyAsync();
+                    }));
+                }
 
                 // Service Report (non-presale)
                 if (!finalized && Config.ShowServiceReport)
@@ -3201,8 +3200,8 @@ namespace LaceupMigration.ViewModels
                         await GoToServiceReportAsync();
                     }));
                 }
-                
-                // View Captures
+
+                // View Captures (non-presale)
                 bool isVisible_ = true;
                 if (finalized && Config.MustAddImageToFinalized)
                     isVisible_ = false;

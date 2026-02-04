@@ -1,7 +1,8 @@
-﻿
 
 
 
+
+using System.Collections.Generic;
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
@@ -33,16 +34,20 @@ namespace LaceupMigration
 
             AppCompatDelegate.DefaultNightMode = AppCompatDelegate.ModeNightNo;
             
-            if (ContextCompat.CheckSelfPermission(this, Android.Manifest.Permission.BluetoothConnect) != (int)Permission.Granted || ContextCompat.CheckSelfPermission(this, Android.Manifest.Permission.WriteExternalStorage) != (int)Permission.Granted ||
-                ContextCompat.CheckSelfPermission(this, Android.Manifest.Permission.ReadExternalStorage) != (int)Permission.Granted)
+            var permissionsToRequest = new List<string>();
+            if (ContextCompat.CheckSelfPermission(this, Android.Manifest.Permission.BluetoothConnect) != (int)Permission.Granted)
+                permissionsToRequest.Add(Android.Manifest.Permission.BluetoothConnect);
+            if (ContextCompat.CheckSelfPermission(this, Android.Manifest.Permission.WriteExternalStorage) != (int)Permission.Granted)
+                permissionsToRequest.Add(Android.Manifest.Permission.WriteExternalStorage);
+            if (ContextCompat.CheckSelfPermission(this, Android.Manifest.Permission.ReadExternalStorage) != (int)Permission.Granted)
+                permissionsToRequest.Add(Android.Manifest.Permission.ReadExternalStorage);
+            // Required on Android 10+ for WifiManager.getConnectionInfo().getSSID() to return real SSID instead of "<unknown ssid>"
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.Q && ContextCompat.CheckSelfPermission(this, Android.Manifest.Permission.AccessFineLocation) != (int)Permission.Granted)
+                permissionsToRequest.Add(Android.Manifest.Permission.AccessFineLocation);
+
+            if (permissionsToRequest.Count > 0)
             {
-                // If not, request both permissions at once
-                ActivityCompat.RequestPermissions(this, new string[]
-                {
-                    Android.Manifest.Permission.WriteExternalStorage,
-                    Android.Manifest.Permission.ReadExternalStorage,
-                    Android.Manifest.Permission.BluetoothConnect
-                }, RequestStoragePermissionsCode);
+                ActivityCompat.RequestPermissions(this, permissionsToRequest.ToArray(), RequestStoragePermissionsCode);
             }
         }
         

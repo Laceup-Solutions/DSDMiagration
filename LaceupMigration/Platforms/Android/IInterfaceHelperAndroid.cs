@@ -1,4 +1,4 @@
-﻿
+
 using System.Linq;
 using Android.Net.Wifi;
 using Android.Preferences;
@@ -148,6 +148,9 @@ public class InterfaceHelper : IInterfaceHelper
         }
 
         string ssid = info.SSID;
+        // Android 10+ returns "<unknown ssid>" when ACCESS_FINE_LOCATION is not granted or location is off
+        if (string.Equals(ssid, "<unknown ssid>", StringComparison.OrdinalIgnoreCase))
+            return string.Empty;
         return ssid;
     }
 
