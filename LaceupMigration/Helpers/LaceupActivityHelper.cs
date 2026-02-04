@@ -20,33 +20,59 @@ namespace LaceupMigration.Helpers
         /// </summary>
         public static async Task SendLogAsync()
         {
-            // Ensure log file exists (create empty if it doesn't) - same behavior as when Logger writes to it
-            if (!File.Exists(Config.LogFile))
+            try
             {
-                try
+                // Ensure log file exists (create empty if it doesn't) - same behavior as when Logger writes to it
+                if (!File.Exists(Config.LogFile))
                 {
-                    var logDir = Path.GetDirectoryName(Config.LogFile);
-                    if (!string.IsNullOrEmpty(logDir) && !Directory.Exists(logDir))
-                        Directory.CreateDirectory(logDir);
-                    File.Create(Config.LogFile).Close();
+                    try
+                    {
+                        var logDir = Path.GetDirectoryName(Config.LogFile);
+                        if (!string.IsNullOrEmpty(logDir) && !Directory.Exists(logDir))
+                            Directory.CreateDirectory(logDir);
+                        File.Create(Config.LogFile).Close();
+                    }
+                    catch { }
                 }
-                catch { }
-            }
 
-            if (Config.SendLogByEmail)
-            {
-                try
+                if (Config.SendLogByEmail)
                 {
-                    await SendLogByEmailAsync();
+                    try
+                    {
+                        await SendLogByEmailAsync();
+                    }
+                    catch
+                    {
+                        await SendLogByNetworkAsync();
+                    }
                 }
-                catch
+                else
                 {
                     await SendLogByNetworkAsync();
                 }
+                
+                // Hide any loading popup and show success message on main thread
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    if (DialogHelper._dialogService != null)
+                    {
+                        await DialogHelper._dialogService.HideLoadingAsync();
+                        await DialogHelper._dialogService.ShowAlertAsync("Log sent.", "Info", "OK");
+                    }
+                });
             }
-            else
+            catch (Exception ex)
             {
-                await SendLogByNetworkAsync();
+                Logger.CreateLog(ex);
+                // Hide any loading popup and show error message on main thread
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    if (DialogHelper._dialogService != null)
+                    {
+                        await DialogHelper._dialogService.HideLoadingAsync();
+                        await DialogHelper._dialogService.ShowAlertAsync($"Error sending log file: {ex.Message}", "Error", "OK");
+                    }
+                });
             }
         }
 
@@ -83,15 +109,19 @@ namespace LaceupMigration.Helpers
                 access.CloseConnection();
 
                 await DialogHelper._dialogService.HideLoadingAsync();
-
-                await DialogHelper._dialogService.ShowAlertAsync("Log sent successfully.", "Info", "OK");
+                // Success - no popup here, let caller handle it
             }
             catch (Exception ee)
             {
                 Logger.CreateLog(ee);
-
-                await DialogHelper._dialogService.ShowAlertAsync("Error sending log file: " + ee.Message, "Alert",
-                    "OK");
+                // Hide loading before re-throwing so caller can handle error popup
+                try
+                {
+                    await DialogHelper._dialogService.HideLoadingAsync();
+                }
+                catch { }
+                // Re-throw exception so caller can handle error popup
+                throw;
             }
         }
 

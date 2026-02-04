@@ -127,8 +127,8 @@
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:ProductViewModel">
                         <Grid Style="{StaticResource CollectionViewItemStyle}">
-                            <Frame Padding="0" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" BorderColor="{StaticResource Gray200}">
-                                <Grid Padding="12">
+                            <Frame Padding="0" Margin="2,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" BorderColor="{StaticResource Gray200}">
+                                <Grid Padding="5,12,5,12">
                                 <Grid.GestureRecognizers>
                                     <TapGestureRecognizer Tapped="ProductCell_Tapped" />
                                 </Grid.GestureRecognizers>
@@ -157,63 +157,60 @@
                                 
                                 <!-- All details in a column -->
                                 <!-- All details in a 2-column grid -->
-                                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="4">
+                                <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="4" RowSpacing="4">
                                     <!-- UPC (left, row 0) -->
-                                    <Label Grid.Column="0" Grid.Row="0"
+                                    <Label Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2"
                                            Text="{Binding Upc, StringFormat='UPC: {0}'}"
                                            FontSize="13"
                                            TextColor="{StaticResource colorLaceupDark}"
-                                           HorizontalOptions="Start" />
+                                           HorizontalOptions="Start"/>
     
                                     <!-- Packaging (right, row 0) -->
-                                    <Label Grid.Column="1" Grid.Row="0"
+                                    <Label Grid.Column="2" Grid.Row="0"
                                            Text="{Binding Packaging, StringFormat='Packaging: {0}'}"
                                            FontSize="13"
                                            TextColor="{StaticResource colorLaceupDark}"
                                            HorizontalOptions="Start" />
     
+                                    <!-- OH (On Hand) (right, row 1) -->
+                                    <Label Grid.Column="0" Grid.Row="1" 
+                                           Text="{Binding OnHandText, StringFormat='OH: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource colorLaceupDark}"
+                                           HorizontalOptions="Start" />
+                                    
+                                    <!-- UoM (Primary) - if single UoM (left, row 2) -->
+                                    <Label Grid.Column="1" Grid.Row="1"
+                                           Text="{Binding Uom, StringFormat='UoM: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource colorLaceupDark}"
+                                           IsVisible="{Binding ShowUom}"
+                                           HorizontalOptions="Start" />
+                                    
                                     <!-- Price (left, row 1) -->
-                                    <Label Grid.Column="0" Grid.Row="1"
+                                    <Label Grid.Column="2" Grid.Row="1"
                                            Text="{Binding Price, StringFormat='Price: {0}'}"
                                            FontSize="13"
                                            TextColor="{StaticResource colorLaceupDark}"
                                            IsVisible="{Binding ShowPrice}"
                                            HorizontalOptions="Start" />
     
-                                    <!-- OH (On Hand) (right, row 1) -->
-                                    <Label Grid.Column="1" Grid.Row="1"
-                                           Text="{Binding OnHandText, StringFormat='OH: {0}'}"
-                                           FontSize="13"
-                                           TextColor="{StaticResource colorLaceupDark}"
-                                           HorizontalOptions="Start" />
-    
-                                    <!-- UoM (Primary) - if single UoM (left, row 2) -->
-                                    <Label Grid.Column="0" Grid.Row="2"
-                                           Text="{Binding Uom, StringFormat='UoM: {0}'}"
-                                           FontSize="13"
-                                           TextColor="{StaticResource colorLaceupDark}"
-                                           IsVisible="{Binding ShowUom}"
-                                           HorizontalOptions="Start" />
-    
                                     <!-- Secondary UoM details (if multiple UoMs) (spans both columns, row 3) -->
-                                    <VerticalStackLayout Grid.Column="0" Grid.Row="3" Grid.ColumnSpan="2" 
-                                                         Spacing="4" IsVisible="{Binding ShowUom1}" Margin="0,4,0,0">
-                                        <Label Text="{Binding Price1, StringFormat='Price: {0}'}"
-                                               FontSize="13"
-                                               TextColor="{StaticResource colorLaceupDark}"
-                                               IsVisible="{Binding ShowPrice1}"
-                                               HorizontalOptions="Start" />
-                                        <Label Text="{Binding OnHand1, StringFormat='OH: {0}'}"
+                                        <Label Grid.Column="0" Grid.Row="2" Text="{Binding OnHand1, StringFormat='OH: {0}'}" 
                                                FontSize="13"
                                                TextColor="{StaticResource colorLaceupDark}"
                                                IsVisible="{Binding ShowOnHand1}"
                                                HorizontalOptions="Start" />
-                                        <Label Text="{Binding Uom1, StringFormat='UoM: {0}'}"
+                                        <Label Grid.Column="1" Grid.Row="2"  Text="{Binding Uom1, StringFormat='UoM: {0}'}"
                                                FontSize="13"
                                                TextColor="{StaticResource colorLaceupDark}"
                                                IsVisible="{Binding ShowUom1}"
                                                HorizontalOptions="Start" />
-                                    </VerticalStackLayout>
+                                        <Label Grid.Column="2" Grid.Row="2"  Text="{Binding Price1, StringFormat='Price: {0}'}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource colorLaceupDark}"
+                                               IsVisible="{Binding ShowPrice1}"
+                                               HorizontalOptions="Start" />
                                 </Grid>
                             </VerticalStackLayout>
                                 </Grid>

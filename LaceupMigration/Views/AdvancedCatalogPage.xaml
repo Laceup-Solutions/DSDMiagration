@@ -187,13 +187,23 @@
                                      HorizontalOptions="Center" />
                     </Grid>
                 </Frame>
-                <Button Grid.Row="1" Padding="2" 
-                        Text="{Binding SortByText}"
-                        Command="{Binding SortCommand}" 
-                        BackgroundColor="Transparent" 
-                        FontAttributes="Bold" 
-                        HorizontalOptions="End" 
-                        TextColor="{StaticResource colorLaceupDark}"/>
+                <Grid Grid.Row="1" ColumnDefinitions="auto, *" Margin="0,5">
+                    <Button Grid.Column="0" 
+                            Text="{Binding WhatToViewButtonText}" 
+                            Command="{Binding WhatToViewClickedCommand}"
+                            IsVisible="{Binding ShowWhatToViewButton}"
+                            Padding="5,2" 
+                            BackgroundColor="{StaticResource colorLaceupDark}" 
+                            FontAttributes="Bold"></Button>
+                    <Button Grid.Column="1" Padding="2" 
+                            Text="{Binding SortByText}"
+                            Command="{Binding SortCommand}" 
+                            BackgroundColor="Transparent" 
+                            FontAttributes="Bold" 
+                            HorizontalOptions="End" 
+                            TextColor="{StaticResource colorLaceupDark}"/>
+                </Grid>
+
                         
                         
             </Grid>
