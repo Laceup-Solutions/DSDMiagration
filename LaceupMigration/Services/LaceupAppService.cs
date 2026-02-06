@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Maui.ApplicationModel;
 using ICSharpCode.SharpZipLib.Zip;
 
 namespace LaceupMigration.Services
@@ -76,10 +77,28 @@ namespace LaceupMigration.Services
 			try
 			{
 				await Logger.SendLogFileAsync();
+				// Hide any loading popup and show success message on main thread
+				await MainThread.InvokeOnMainThreadAsync(async () =>
+				{
+					if (DialogHelper._dialogService != null)
+					{
+						await DialogHelper._dialogService.HideLoadingAsync();
+						await DialogHelper._dialogService.ShowAlertAsync("Log sent.", "Info", "OK");
+					}
+				});
 			}
 			catch (Exception ex)
 			{
 				Logger.CreateLog(ex);
+				// Hide any loading popup and show error message on main thread
+				await MainThread.InvokeOnMainThreadAsync(async () =>
+				{
+					if (DialogHelper._dialogService != null)
+					{
+						await DialogHelper._dialogService.HideLoadingAsync();
+						await DialogHelper._dialogService.ShowAlertAsync($"Error sending log file: {ex.Message}", "Error", "OK");
+					}
+				});
 			}
 		}
 

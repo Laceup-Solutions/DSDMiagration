@@ -156,39 +156,13 @@ namespace LaceupMigration
                     Thread.Sleep(1000);
                     access.CloseConnection();
                 });
-
-                // Ensure alert is shown on main thread with proper error handling
-                await MainThread.InvokeOnMainThreadAsync(async () =>
-                {
-                    try
-                    {
-                        await DialogHelper._dialogService.ShowAlertAsync("Log Sent", "Info", "OK");
-                    }
-                    catch (Exception alertEx)
-                    {
-                        // If alert fails, log it but don't throw - at least the log was sent
-                        Logger.CreateLog($"Failed to show success alert: {alertEx.Message}");
-                    }
-                });
+                // Success - no popup here, let caller handle it
             }
             catch (Exception ee)
             {
                 Logger.CreateLog(ee);
-                // Ensure error alert is shown on main thread with proper error handling
-                await MainThread.InvokeOnMainThreadAsync(async () =>
-                {
-                    try
-                    {
-                        await DialogHelper._dialogService.ShowAlertAsync("Error sending log: " + ee.Message, "Alert", "OK");
-                    }
-                    catch (Exception alertEx)
-                    {
-                        // If alert fails, log it - user won't see it but at least we tried
-                        Logger.CreateLog($"Failed to show error alert: {alertEx.Message}");
-                        // Re-throw so caller can handle it
-                        throw;
-                    }
-                });
+                // Re-throw exception so caller can handle error popup
+                throw;
             }
         }
 

@@ -68,14 +68,17 @@ namespace LaceupMigration.Services
 					{
 						await _dialogService.ShowLoadingAsync("Sending log file...");
 						await _appService.SendLogAsync();
-						await _dialogService.HideLoadingAsync();
-						await _dialogService.ShowAlertAsync("Log sent.", "Info", "OK");
+						// SendLogAsync already hides loading and shows success/error alerts, no need to do anything else
 					}
 					catch (Exception ex)
 					{
 						await _dialogService.HideLoadingAsync();
 						Logger.CreateLog(ex);
-						await _dialogService.ShowAlertAsync("Error sending log file.", "Error", "OK");
+						// SendLogAsync already shows error alerts, but show fallback if it didn't
+						if (!ex.Message.Contains("Error sending log file"))
+						{
+							await _dialogService.ShowAlertAsync("Error sending log file.", "Error", "OK");
+						}
 					}
 					break;
 

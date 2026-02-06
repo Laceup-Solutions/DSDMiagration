@@ -199,11 +199,11 @@ namespace LaceupMigration.ViewModels
 			var subMenuOptions = new List<string>();
 			
 			// Always show Sent Orders when View Sent Transactions is available
-			subMenuOptions.Add("Sent Orders");
+			subMenuOptions.Add("View Sent Orders");
 			
 			// Show Sent Payments if not hidden
 			if (!Config.HidePriceInTransaction)
-				subMenuOptions.Add("Sent Payments");
+				subMenuOptions.Add("View Sent Payments");
 
 			if (subMenuOptions.Count == 0)
 				return;

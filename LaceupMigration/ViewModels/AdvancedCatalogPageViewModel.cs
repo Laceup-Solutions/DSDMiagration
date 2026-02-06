@@ -156,6 +156,12 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty] private string _filterText = "Filter";
 
+        /// <summary>Text for the WhatToView button: "Added/All" or "Just Ordered"</summary>
+        public string WhatToViewButtonText => _whatToViewInList == WhatToViewInList.All ? "Added/All" : "Just Ordered";
+
+        /// <summary>Visibility for the WhatToView button: always visible for presale, only when not finalized for non-presale</summary>
+        public bool ShowWhatToViewButton => _order != null && (_order.AsPresale || !_order.Finished);
+
         [ObservableProperty] private bool _showPrices = true;
         partial void OnShowPricesChanged(bool value) => OnPropertyChanged(nameof(ShowPriceAndHistoryInCells));
         partial void OnIsFromLoadOrderChanged(bool value) => OnPropertyChanged(nameof(ShowPriceAndHistoryInCells));
@@ -326,6 +332,8 @@ namespace LaceupMigration.ViewModels
             {
                 _whatToViewInList = WhatToViewInList.Selected; // Show only ordered items if order has details
             }
+            OnPropertyChanged(nameof(WhatToViewButtonText)); // Notify UI that button text changed
+            OnPropertyChanged(nameof(ShowWhatToViewButton)); // Notify UI that button visibility changed
 
             // Company info
             if (!string.IsNullOrEmpty(_order.CompanyName))
@@ -2727,6 +2735,7 @@ namespace LaceupMigration.ViewModels
                             _order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(_order);
 
                         _order.Finished = true;
+                        OnPropertyChanged(nameof(ShowWhatToViewButton)); // Notify UI that button visibility changed
                         _order.Void();
                         _order.Save();
                         return true; // Allow navigation
@@ -2997,10 +3006,11 @@ namespace LaceupMigration.ViewModels
                     }));
                 }
                 
-                options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added/All" : "Just Ordered", async () =>
-                {
-                    await WhatToViewClickedAsync();
-                }));
+                // What To View option moved to button in Search and Sort section
+                // options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added/All" : "Just Ordered", async () =>
+                // {
+                //     await WhatToViewClickedAsync();
+                // }));
                 
                 // Offers vs Order Discount (presale)
                 if (!hasOrderDiscounts)
@@ -3137,14 +3147,14 @@ namespace LaceupMigration.ViewModels
                     }
                 }
 
-                // What To View (non-presale)
-                if (!finalized)
-                {
-                    options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added/All" : "Just Ordered", async () =>
-                    {
-                        await WhatToViewClickedAsync();
-                    }));
-                }
+                // What To View (non-presale) - moved to button in Search and Sort section
+                // if (!finalized)
+                // {
+                //     options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added/All" : "Just Ordered", async () =>
+                //     {
+                //         await WhatToViewClickedAsync();
+                //     }));
+                // }
 
                 // Add Comments (non-presale)
                 options.Add(new MenuOption("Add Comments", async () =>
@@ -3571,11 +3581,13 @@ namespace LaceupMigration.ViewModels
             await Shell.Current.GoToAsync($"productcatalog?orderId={_order.OrderId}&isShowingSuggested=1&comingFrom=AdvancedCatalog");
         }
 
+        [RelayCommand]
         private async Task WhatToViewClickedAsync()
         {
             _whatToViewInList = _whatToViewInList == WhatToViewInList.All ? WhatToViewInList.Selected : WhatToViewInList.All;
             // Clear cache to force reload with new filter
             _cachedItems = null;
+            OnPropertyChanged(nameof(WhatToViewButtonText)); // Notify UI that button text changed
             await RefreshAsync();
         }
 
