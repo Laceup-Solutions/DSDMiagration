@@ -151,10 +151,17 @@ namespace LaceupMigration.Views
             if (component != null) await _viewModel.EditPostedDateAsync(component);
         }
 
-        private async void Bank_Clicked(object sender, EventArgs e)
+        private void Bank_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            // The Picker's SelectedIndexChanged is already bound to SelectedBankIndex
+            // which triggers OnSelectedBankIndexChanged in the ViewModel
+            // No additional action needed here
+        }
+
+        private async void AddBank_Clicked(object sender, EventArgs e)
         {
             var component = GetComponentFromSender(sender);
-            if (component != null) await _viewModel.EditBankAsync(component);
+            if (component != null) await _viewModel.AddBankAsync(component);
         }
 
         private async void AddImage_Clicked(object sender, EventArgs e)

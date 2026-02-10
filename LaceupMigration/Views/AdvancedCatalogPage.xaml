@@ -236,7 +236,12 @@
                                     <Label Text="{Binding ProductDisplayName}"
                                            FontSize="14"
                                            FontAttributes="Bold"
-                                           TextColor="{StaticResource Gray900}" />
+                                           TextColor="{StaticResource Gray900}">
+                                        <Label.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=ViewProductDetailsCommand}"
+                                                                  CommandParameter="{Binding .}" />
+                                        </Label.GestureRecognizers>
+                                    </Label>
                                     <Label Text="{Binding OnHandText}"
                                            FontSize="12"
                                            TextColor="Green" />

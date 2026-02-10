@@ -32,7 +32,7 @@
                     <Button Grid.Column="2"
                             Text="Send By Email" 
                             Command="{Binding SendByEmailCommand}" 
-                            IsEnabled="{Binding CanSavePayment}"
+                            IsEnabled="True"
                             Style="{StaticResource PrimaryButton}"
                             Padding="8,0"
                             FontSize="14" />
@@ -135,6 +135,7 @@
                                                     Padding="12,10" HeightRequest="48" StrokeShape="RoundRectangle 6">
                                                 <Button Text="{Binding PaymentMethodText}"
                                                         Clicked="PaymentMethod_Clicked"
+                                                        IsEnabled="{Binding IsEditable}"
                                                         BackgroundColor="Transparent"
                                                         TextColor="#263238"
                                                         FontSize="14"
@@ -145,13 +146,14 @@
                                             </Border>
                                         </Grid>
 
-                                        <Grid ColumnDefinitions="0.3*,0.4*,0.3*" ColumnSpacing="5">
+                                        <Grid ColumnDefinitions="0.4*,0.5*,0.2*" ColumnSpacing="5">
                                             <VerticalStackLayout Grid.Column="0" Spacing="2">
                                                 <Label Text="Amount:" FontSize="14" />
                                                 <Border Stroke="#B0BEC5" StrokeThickness="1" BackgroundColor="#ECEFF1"
                                                         Padding="12,10" HeightRequest="44" StrokeShape="RoundRectangle 6">
                                                     <Button Text="{Binding AmountText}"
                                                             Clicked="Amount_Clicked"
+                                                            IsEnabled="{Binding IsEditable}"
                                                             BackgroundColor="Transparent"
                                                             TextColor="#263238"
                                                             FontSize="14"
@@ -168,6 +170,7 @@
                                                         Padding="12,10" HeightRequest="44" StrokeShape="RoundRectangle 6">
                                                     <Button Text="{Binding Comments}"
                                                             Clicked="Comments_Clicked"
+                                                            IsEnabled="{Binding IsEditable}"
                                                             BackgroundColor="Transparent"
                                                             TextColor="#263238"
                                                             FontSize="14"
@@ -180,8 +183,8 @@
 
                                             <!-- Add Image: Button so BindingContext is available in Clicked (sender.BindingContext) -->
                                             <VerticalStackLayout Grid.Column="2" Spacing="2">
-                                                <Label Text="Add Image:" FontSize="14" />
-                                                <Grid HeightRequest="44" WidthRequest="64" HorizontalOptions="Start">
+                                                <Label Text="Add Image:" FontSize="14" HorizontalOptions="End"/>
+                                                <Grid HeightRequest="44" WidthRequest="64" HorizontalOptions="End">
                                                     <Border Stroke="#B0BEC5" StrokeThickness="1" BackgroundColor="#ECEFF1"
                                                             StrokeShape="RoundRectangle 6" Padding="0">
                                                         <Grid>
@@ -198,6 +201,7 @@
                                                         </Grid>
                                                     </Border>
                                                     <Button Clicked="AddImage_Clicked"
+                                                            IsEnabled="{Binding IsEditable}"
                                                             BackgroundColor="Transparent"
                                                             Opacity="0.01"
                                                             HorizontalOptions="Fill" VerticalOptions="Fill"
@@ -213,6 +217,7 @@
                                                         Padding="12,10" HeightRequest="44" StrokeShape="RoundRectangle 6">
                                                     <Button Text="{Binding RefDisplayText}"
                                                             Clicked="Ref_Clicked"
+                                                            IsEnabled="{Binding IsEditable}"
                                                             BackgroundColor="Transparent"
                                                             TextColor="#263238"
                                                             FontSize="14"
@@ -229,6 +234,7 @@
                                                         Padding="12,10" HeightRequest="44" StrokeShape="RoundRectangle 6">
                                                     <Button Text="{Binding PostedDate, StringFormat='{0:d}'}"
                                                             Clicked="PostedDate_Clicked"
+                                                            IsEnabled="{Binding IsEditable}"
                                                             BackgroundColor="Transparent"
                                                             TextColor="#263238"
                                                             FontSize="14"
@@ -240,20 +246,30 @@
                                             </VerticalStackLayout>
                                         </Grid>
 
-                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="5" IsVisible="{Binding ShowBank}">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" IsVisible="{Binding ShowBank}">
                                             <Label Grid.Column="0" Text="Bank:" FontSize="14" VerticalOptions="Center" />
                                             <Border Grid.Column="1" Stroke="#B0BEC5" StrokeThickness="1" BackgroundColor="#ECEFF1"
                                                     Padding="12,10" HeightRequest="44" StrokeShape="RoundRectangle 6">
-                                                <Button Text="{Binding BankName}"
-                                                        Clicked="Bank_Clicked"
+                                                <Picker ItemsSource="{Binding BankList}"
+                                                        SelectedIndex="{Binding SelectedBankIndex}"
+                                                        SelectedIndexChanged="Bank_SelectedIndexChanged"
+                                                        IsEnabled="{Binding IsEditable}"
+                                                        FontSize="14"
                                                         BackgroundColor="Transparent"
                                                         TextColor="#263238"
-                                                        FontSize="14"
                                                         HorizontalOptions="Fill"
                                                         VerticalOptions="Fill"
-                                                        Padding="0"
                                                         Margin="-12,-10" />
                                             </Border>
+                                            <Button Grid.Column="2"
+                                                    Text="Add"
+                                                    Clicked="AddBank_Clicked"
+                                                    IsEnabled="{Binding IsEditable}"
+                                                    FontSize="14"
+                                                    HeightRequest="44"
+                                                    WidthRequest="60"
+                                                    Style="{StaticResource PrimaryButton}"
+                                                    Margin="5,0,0,0" />
                                         </Grid>
                                     </VerticalStackLayout>
                                 </Frame>

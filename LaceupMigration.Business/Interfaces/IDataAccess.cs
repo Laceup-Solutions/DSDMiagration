@@ -73,6 +73,7 @@ namespace LaceupMigration
         void SendEmailSequenceNotification(string text);
         void SaveRoute(string filename);
         void SendTransfer(string transferFile);
+        void SendDeposit();
         #endregion
 
         #region Inventory Operations

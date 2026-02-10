@@ -12919,6 +12919,90 @@ namespace LaceupMigration
             }
         }
 
+        public void SendDeposit()
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("SendBankDepositCommand");
+                    access.WriteStringToNetwork(Config.SalesmanId.ToString());
+                    access.SendFile(Config.BankDepositPath);
+
+                    var deposit = BankDeposit.currentDeposit;
+                    if (deposit != null && !string.IsNullOrEmpty(deposit.ImageId))
+                    {
+                        access.WriteStringToNetwork("image");
+
+                        var images = SerializeDepositImages();
+                        access.SendFile(images);
+                    }
+                    else
+                        access.WriteStringToNetwork("no image");
+
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.CreateLog(e);
+                    throw;
+                }
+            }
+        }
+
+        private string SerializeDepositImages()
+        {
+            try
+            {
+                var tempPathFile = Path.Combine(Path.GetTempPath(), "depositImages.zip");
+
+                if (File.Exists(tempPathFile))
+                    File.Delete(tempPathFile);
+
+                string tempPathFolder = Path.Combine(Path.GetTempPath(), "DepositImages");
+
+                if (Directory.Exists(tempPathFolder))
+                    Directory.Delete(tempPathFolder, true);
+
+                Directory.CreateDirectory(tempPathFolder);
+
+                DirectoryInfo dir = new DirectoryInfo(Config.DepositImagesPath);
+                if (!dir.Exists)
+                {
+                    Logger.CreateLog(Config.DepositImagesPath + " directory not found");
+                    return string.Empty;
+                }
+
+                // Get the files in the directory and copy them to the new location.
+                FileInfo[] files = dir.GetFiles();
+                foreach (FileInfo file in files)
+                {
+                    string temppath = Path.Combine(tempPathFolder, file.Name);
+                    file.CopyTo(temppath, false);
+                }
+
+                var fastZip = new FastZip();
+                fastZip.CreateZip(tempPathFile, tempPathFolder, true, null);
+
+                return tempPathFile;
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+                return string.Empty;
+            }
+        }
+
         public void SendTransfer(string transferFile)
         {
             try

@@ -49,6 +49,7 @@ namespace LaceupMigration.Services
             { "InvoiceDetailsActivity", "invoicedetails" },
             { "PaymentSelectClientActivity", "paymentselectclient" },
             { "PaymentSetValuesActivity", "paymentsetvalues" },
+            { "CreateDepositActivity", "createdeposit" },
             
             // Catalog pages
             { "AdvancedCatalogActivity", "advancedcatalog" },

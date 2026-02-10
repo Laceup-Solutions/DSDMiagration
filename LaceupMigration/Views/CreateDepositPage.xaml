@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.CreateDepositPage"
+             x:DataType="vm:CreateDepositPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Create Deposit">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="10" Spacing="10">
+                <!-- Action Buttons at Top -->
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
+                    <Button Grid.Column="0"
+                            Text="Print"
+                            Command="{Binding PrintCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Margin="0" />
+                    <Button Grid.Column="1"
+                            Text="Delete"
+                            Command="{Binding DeleteCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Margin="0" />
+                    <Button Grid.Column="2"
+                            Text="Send By Email"
+                            Command="{Binding SendByEmailCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Margin="0" />
+                    <Button Grid.Column="3"
+                            Text="Send"
+                            Command="{Binding SendCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Margin="0" />
+                </Grid>
+
+                <!-- Deposit Summary Section -->
+                <Frame BorderColor="Gray"
+                        Padding="15"
+                        Margin="0,5,0,0">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="{Binding InvoicesText}"
+                               FontSize="15"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource PrimaryDark}" />
+                        <Label Text="{Binding UserText}"
+                               FontSize="15"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource PrimaryDark}" />
+                        <Label Text="{Binding DepositTotalText}"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               HorizontalOptions="End"
+                               TextColor="{StaticResource PrimaryDark}" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Comments and Bank Section -->
+                <Frame BorderColor="Gray"
+                        Padding="15"
+                        Margin="0,10,0,0">
+                    <VerticalStackLayout Spacing="8">
+                        <!-- Comments -->
+                        <Grid ColumnDefinitions="*,3*" ColumnSpacing="5">
+                            <Label Grid.Column="0"
+                                   Text="Comments:"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   VerticalOptions="Center"
+                                   HorizontalOptions="Center" />
+                            <Entry Grid.Column="1"
+                                   Text="{Binding Comments}"
+                                   FontSize="15"
+                                   HeightRequest="45"
+                                   Placeholder="Enter comments..." />
+                        </Grid>
+
+                        <!-- Bank Selection -->
+                        <Grid ColumnDefinitions="*,3*" ColumnSpacing="5"
+                              HeightRequest="45">
+                            <Label Grid.Column="0"
+                                   Text="Bank:"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   VerticalOptions="Center"
+                                   HorizontalOptions="Center" />
+                            <Picker Grid.Column="1"
+                                    ItemsSource="{Binding BankList}"
+                                    SelectedIndex="{Binding SelectedBankIndex}"
+                                    FontSize="15"
+                                    VerticalOptions="Center" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Image Section -->
+                <Frame BorderColor="Gray"
+                        Padding="8"
+                        Margin="0,10,0,0">
+                    <VerticalStackLayout Spacing="8">
+                        <!-- Add and Delete Buttons -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <Button Grid.Column="0"
+                                    Text="Add"
+                                    Command="{Binding AddImageCommand}"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Margin="0" />
+                            <Button Grid.Column="1"
+                                    Text="Delete"
+                                    Command="{Binding DeleteImageCommand}"
+                                    IsEnabled="{Binding HasImages}"
+                                    BackgroundColor="Red"
+                                    TextColor="White"
+                                    Margin="0" />
+                        </Grid>
+
+                        <!-- Image Count -->
+                        <Label Text="{Binding ImageRangeText}"
+                               FontSize="15"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"
+                               Margin="0,0,0,5" />
+
+                        <!-- Image with Navigation Arrows -->
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="0">
+                            <Button Grid.Column="0"
+                                    Text="◀"
+                                    Command="{Binding PreviousImageCommand}"
+                                    IsEnabled="{Binding HasImages}"
+                                    WidthRequest="30"
+                                    HeightRequest="30"
+                                    FontSize="16"
+                                    BackgroundColor="Transparent"
+                                    TextColor="{StaticResource PrimaryDark}"
+                                    Padding="0" />
+                            
+                            <Image Grid.Column="1"
+                                   Source="{Binding CurrentImage}"
+                                   HeightRequest="300"
+                                   Aspect="AspectFit"
+                                   BackgroundColor="LightGray" />
+                            
+                            <Button Grid.Column="2"
+                                    Text="▶"
+                                    Command="{Binding NextImageCommand}"
+                                    IsEnabled="{Binding HasImages}"
+                                    WidthRequest="30"
+                                    HeightRequest="30"
+                                    FontSize="16"
+                                    BackgroundColor="Transparent"
+                                    TextColor="{StaticResource PrimaryDark}"
+                                    Padding="0" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Frame>
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</local:LaceupContentPage>

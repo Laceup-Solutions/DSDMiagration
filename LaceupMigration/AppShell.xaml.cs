@@ -28,6 +28,7 @@ namespace LaceupMigration
             Routing.RegisterRoute("selectinvoice", typeof(SelectInvoicePage));
             Routing.RegisterRoute("paymentselectclient", typeof(PaymentSelectClientPage));
             Routing.RegisterRoute("paymentsetvalues", typeof(PaymentSetValuesPage));
+            Routing.RegisterRoute("createdeposit", typeof(CreateDepositPage));
             Routing.RegisterRoute("invoicedetails", typeof(InvoiceDetailsPage));
             Routing.RegisterRoute("editclient", typeof(EditClientPage));
 

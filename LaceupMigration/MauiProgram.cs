@@ -90,6 +90,8 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.PaymentSelectClientPageViewModel>();
 		builder.Services.AddTransient<PaymentSetValuesPage>();
 		builder.Services.AddTransient<ViewModels.PaymentSetValuesPageViewModel>();
+		builder.Services.AddTransient<CreateDepositPage>();
+		builder.Services.AddTransient<ViewModels.CreateDepositPageViewModel>();
 		builder.Services.AddTransient<InvoiceDetailsPage>();
 		builder.Services.AddTransient<ViewModels.InvoiceDetailsPageViewModel>();
 		builder.Services.AddTransient<EditClientPage>();
