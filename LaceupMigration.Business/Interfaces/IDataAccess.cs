@@ -36,6 +36,7 @@ namespace LaceupMigration
         bool GetPendingLoadOrders(DateTime date, bool getAll = false);
         string GetClientImages(int clientId);
         string GetExternalInvoiceImages(string invoiceNumber);
+        void GetExternalInvoiceSignature(Invoice invoice);
         string GetInvoiceDetails(int invoiceId, int clientId);
         void AddDeliveryClient(Client client);
         DriverRoute GetRouteForDriverShipDate(int driverId, DateTime date);

@@ -19,6 +19,8 @@ namespace LaceupMigration.UtilDlls
         private string _pdfPath = string.Empty;
         private int? _orderId;
         private Order _order;
+        private string _invoiceNumber;
+        private string _clientEmailForInvoice;
 
         public PdfViewer()
         {
@@ -40,6 +42,11 @@ namespace LaceupMigration.UtilDlls
                 _orderId = orderId;
                 _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId);
             }
+
+            if (query.TryGetValue("invoiceNumber", out var invoiceNumberValue) && invoiceNumberValue != null)
+                _invoiceNumber = Uri.UnescapeDataString(invoiceNumberValue.ToString());
+            if (query.TryGetValue("clientEmail", out var clientEmailValue) && clientEmailValue != null)
+                _clientEmailForInvoice = Uri.UnescapeDataString(clientEmailValue.ToString());
         }
 
         protected override async void OnAppearing()
@@ -150,6 +157,18 @@ namespace LaceupMigration.UtilDlls
                     return;
                 }
 
+              
+                if (!string.IsNullOrEmpty(_invoiceNumber))
+                {
+                    var body1 = "Invoice Number " + _invoiceNumber + " Attached";
+                    var subject1 = "Invoice Number " + _invoiceNumber + " Attached";
+                    
+                    Config.helper?.SendOrderByEmail(_pdfPath, subject1, body1, new List<string>());
+                    return;
+                }
+
+
+                
                 // Handle catalog PDF (no order) - matches Xamarin ProductCatalogPdfViewerActivity
                 if (_order == null)
                 {

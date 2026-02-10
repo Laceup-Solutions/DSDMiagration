@@ -39,6 +39,8 @@ namespace LaceupMigration.ViewModels
         private string _tempFile = string.Empty;
         private bool _initializationComplete = false;
         private bool _hasInitialized = false;
+        /// <summary>True when user has made changes that are not yet saved (prompt on back).</summary>
+        private bool _hasUnsavedChanges = false;
 
         [ObservableProperty]
         private ObservableCollection<PaymentComponentViewModel> _paymentComponents = new();
@@ -282,6 +284,7 @@ namespace LaceupMigration.ViewModels
             if (PaymentComponents.Count == 0 && _amount > 0 && _paymentId == 0)
             {
                 PaymentComponents.Add(new PaymentComponentViewModel(new PaymentComponent { Amount = _amount }, this));
+                MarkUnsavedChanges(); // New payment with default component has unsaved changes
             }
 
             // Set CanDeletePayment only if not already set above (for existing payments)
@@ -648,10 +651,8 @@ namespace LaceupMigration.ViewModels
             // Disable Add Payment button if:
             // 1. Payment is already printed (can't modify)
             // 2. There's no open amount left to collect (unless it's a credit account)
-            // 3. There are empty payment components that need to be filled first
-            var hasEmptyComponents = PaymentComponents.Any(x => x.Amount == 0);
-            CanAddPayment = !hasEmptyComponents && 
-                           (_creditAccount || ((_invoicePayment == null || !_invoicePayment.Printed) && open > 0));
+            // Add button is enabled as long as Open amount > 0 (mirror PaymentSetvaluesActivity)
+            CanAddPayment = _creditAccount || ((_invoicePayment == null || !_invoicePayment.Printed) && open > 0);
         }
 
         [RelayCommand]
@@ -671,6 +672,7 @@ namespace LaceupMigration.ViewModels
                 qty = 0;
 
             PaymentComponents.Add(new PaymentComponentViewModel(new PaymentComponent { Amount = qty }, this));
+            MarkUnsavedChanges();
             RefreshLabels();
             SaveState(); // Save state after adding payment
         }
@@ -706,6 +708,7 @@ namespace LaceupMigration.ViewModels
                 component.PostedDate = DateTime.Now.Date;
             else if (method != InvoicePaymentMethod.Check)
                 component.PostedDate = DateTime.MinValue;
+            MarkUnsavedChanges();
             RefreshLabels();
             SaveState();
         }
@@ -729,6 +732,8 @@ namespace LaceupMigration.ViewModels
                 return;
             }
             component.Amount = amount;
+            MarkUnsavedChanges();
+            // If amount is 0, the line is removed in OnComponentAmountChanged (triggered by Amount set above)
             RefreshLabels();
             SaveState();
         }
@@ -743,6 +748,7 @@ namespace LaceupMigration.ViewModels
             var refStr = await _dialogService.ShowPromptAsync(promptTitle, string.Empty, "Set", "Cancel", string.Empty, 20, initial, Keyboard.Numeric);
             if (refStr == null) return;
             component.Ref = refStr.Trim();
+            MarkUnsavedChanges();
             SaveState();
         }
 
@@ -753,6 +759,7 @@ namespace LaceupMigration.ViewModels
             var comments = await _dialogService.ShowPromptAsync("Set Comments", string.Empty, "Set", "Cancel", string.Empty, -1, component.Comments ?? string.Empty);
             if (comments == null) return;
             component.Comments = comments ?? string.Empty;
+            MarkUnsavedChanges();
             SaveState();
         }
 
@@ -766,6 +773,7 @@ namespace LaceupMigration.ViewModels
             if (selectedDate.HasValue)
             {
                 component.PostedDate = selectedDate.Value.Date;
+                MarkUnsavedChanges();
                 SaveState();
             }
         }
@@ -792,6 +800,7 @@ namespace LaceupMigration.ViewModels
                     
                     // Set the newly added bank as selected for the component that added it
                     component.BankName = bankName;
+                    MarkUnsavedChanges();
                     SaveState();
                 }
                 else
@@ -835,6 +844,12 @@ namespace LaceupMigration.ViewModels
 
         private async Task ProcessPaymentImageAsync(FileResult photo, PaymentComponentViewModel component)
         {
+            // When replacing, delete the old image file first
+            if (component.HasImage && !string.IsNullOrEmpty(component.PaymentImagePath) && File.Exists(component.PaymentImagePath))
+            {
+                try { File.Delete(component.PaymentImagePath); } catch { /* best effort */ }
+            }
+
             var imageId = Guid.NewGuid().ToString("N");
             var targetPath = Path.Combine(Config.PaymentImagesPath, imageId);
             var dir = Path.GetDirectoryName(targetPath);
@@ -847,7 +862,26 @@ namespace LaceupMigration.ViewModels
             }
             component.Component.ExtraFields = UDFHelper.SyncSingleUDF("Image", imageId, component.Component.ExtraFields ?? string.Empty);
             component.RefreshImageDisplay();
+            MarkUnsavedChanges();
             RefreshLabels();
+            SaveState();
+        }
+
+        /// <summary>Remove the image from this payment component (delete file and clear UDF).</summary>
+        public async Task RemovePaymentImageAsync(PaymentComponentViewModel component)
+        {
+            if (component == null || !component.HasImage) return;
+            var confirmed = await _dialogService.ShowConfirmationAsync("Remove image?", "Remove the photo from this payment?", "Yes", "No");
+            if (!confirmed) return;
+            var imageId = UDFHelper.GetSingleUDF("Image", component.Component.ExtraFields ?? string.Empty);
+            if (!string.IsNullOrEmpty(imageId))
+            {
+                var oldPath = Path.Combine(Config.PaymentImagesPath, imageId);
+                try { if (File.Exists(oldPath)) File.Delete(oldPath); } catch { /* best effort */ }
+            }
+            component.Component.ExtraFields = UDFHelper.RemoveSingleUDF("Image", component.Component.ExtraFields ?? string.Empty);
+            component.RefreshImageDisplay();
+            MarkUnsavedChanges();
             SaveState();
         }
 
@@ -947,6 +981,7 @@ namespace LaceupMigration.ViewModels
             }
 
             _invoicePayment.Save();
+            _hasUnsavedChanges = false;
 
             if (_invoicePayment.Components.All(x => x.Amount == 0))
             {
@@ -1282,8 +1317,37 @@ namespace LaceupMigration.ViewModels
             }
         }
 
+        /// <summary>Marks that the user has made changes (prompt on back).</summary>
+        private void MarkUnsavedChanges()
+        {
+            _hasUnsavedChanges = true;
+        }
+
+        /// <summary>Called when back is pressed (physical or nav bar). Returns true to prevent navigation, false to allow.</summary>
+        public async Task<bool> OnBackButtonPressed()
+        {
+            if (!_hasUnsavedChanges)
+                return false;
+            var confirmed = await _dialogService.ShowConfirmationAsync(
+                "Warning",
+                "You will lose any change that you did in this screen, continue?",
+                "Yes",
+                "No");
+            if (!confirmed)
+                return true; // Prevent navigation
+            return false;
+        }
+
         public void OnComponentAmountChanged()
         {
+            // Remove any component with amount 0 (mirror PaymentSetvaluesActivity: setting amount to 0 removes the line)
+            var toRemove = PaymentComponents.Where(x => x.Amount == 0).ToList();
+            if (toRemove.Count > 0)
+            {
+                foreach (var c in toRemove)
+                    PaymentComponents.Remove(c);
+                MarkUnsavedChanges();
+            }
             RefreshLabels();
             SaveState(); // Save state when component amounts change
         }
@@ -1529,6 +1593,10 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private string _paymentImagePath = string.Empty;
 
+        /// <summary>ImageSource for thumbnail binding (file path can fail to load on some platforms).</summary>
+        [ObservableProperty]
+        private ImageSource? _paymentImageSource;
+
         public PaymentComponentViewModel(PaymentComponent component, PaymentSetValuesPageViewModel parent)
         {
             _component = component;
@@ -1550,7 +1618,9 @@ namespace LaceupMigration.ViewModels
         {
             var id = UDFHelper.GetSingleUDF("Image", _component.ExtraFields ?? string.Empty);
             HasImage = !string.IsNullOrEmpty(id);
-            PaymentImagePath = HasImage ? Path.Combine(Config.PaymentImagesPath, id) : string.Empty;
+            var path = HasImage ? Path.Combine(Config.PaymentImagesPath, id) : string.Empty;
+            PaymentImagePath = path;
+            PaymentImageSource = HasImage && !string.IsNullOrEmpty(path) && File.Exists(path) ? ImageSource.FromFile(path) : null;
         }
 
         partial void OnPaymentMethodChanged(InvoicePaymentMethod value)

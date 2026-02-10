@@ -324,12 +324,25 @@ namespace LaceupMigration.Helpers
                 baseRoute = baseRoute.TrimStart('/');
             }
 
+            // If route is a full path (e.g. "//MainPage/Orders/ordercredit/productcatalog"), use the last segment for lookup
+            // so we correctly remove the current page's state (e.g. ProductCatalog when going back from productcatalog)
+            if (baseRoute.Contains("/"))
+            {
+                var segments = baseRoute.Split('/');
+                baseRoute = segments[segments.Length - 1];
+            }
+
             if (RouteToActivityTypeMap.TryGetValue(baseRoute, out var activityType))
             {
                 var state = ActivityState.GetState(activityType);
                 if (state != null)
                 {
                     ActivityState.RemoveState(state);
+                    System.Diagnostics.Debug.WriteLine($"[NavigationHelper] RemoveNavigationState: removed {baseRoute} (ActivityType={activityType}), stack count now {ActivityState.States?.Count ?? 0}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[NavigationHelper] RemoveNavigationState: {baseRoute} (ActivityType={activityType}) had no state in stack, nothing removed");
                 }
             }
         }

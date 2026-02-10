@@ -76,19 +76,9 @@ namespace LaceupMigration.Views
         /// </summary>
         protected override void GoBack()
         {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
-            var currentRoute = Shell.Current.CurrentState?.Location?.OriginalString ?? "";
-            if (currentRoute.Contains("productcatalog"))
-            {
-                Helpers.NavigationHelper.RemoveNavigationState(currentRoute);
-            }
-            else
-            {
-                // Fallback: try to remove by route name
-                Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
-            }
-            
-            // Navigate back
+            // [ACTIVITY STATE]: Remove current page's state so back doesn't re-push (e.g. from OrderCredit > ProductCatalog, back must remove ProductCatalog state)
+            Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
+            System.Diagnostics.Debug.WriteLine("[ProductCatalog] GoBack (page): removing state productcatalog, popping");
             Shell.Current.GoToAsync("..");
         }
 

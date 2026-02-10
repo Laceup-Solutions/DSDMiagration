@@ -107,9 +107,12 @@ namespace LaceupMigration.Views
             }
         }
 
-        /// <summary>Both physical and nav bar back use this; remove state then navigate.</summary>
-        protected override void GoBack()
+        /// <summary>Both physical and nav bar back use this; prompt if unsaved, then remove state and navigate.</summary>
+        protected override async void GoBack()
         {
+            bool preventNavigation = await _viewModel.OnBackButtonPressed();
+            if (preventNavigation)
+                return;
             Helpers.NavigationHelper.RemoveNavigationState("paymentsetvalues");
             base.GoBack();
         }
@@ -166,13 +169,27 @@ namespace LaceupMigration.Views
 
         private async void AddImage_Clicked(object sender, EventArgs e)
         {
-            var button = sender as Button;
-            var component = button?.BindingContext as PaymentComponentViewModel;
+            // Sender can be Button (add box) or Image (tap on thumbnail via TapGestureRecognizer)
+            var component = GetComponentFromSender(sender);
             if (component == null) return;
             if (component.HasImage)
                 await _viewModel.ViewPaymentImageAsync(component);
             else
                 await _viewModel.AddPaymentImageAsync(component);
+        }
+
+        private async void ChangeImage_Clicked(object sender, EventArgs e)
+        {
+            var component = GetComponentFromSender(sender);
+            if (component != null)
+                await _viewModel.AddPaymentImageAsync(component);
+        }
+
+        private async void RemoveImage_Clicked(object sender, EventArgs e)
+        {
+            var component = GetComponentFromSender(sender);
+            if (component != null)
+                await _viewModel.RemovePaymentImageAsync(component);
         }
     }
 }

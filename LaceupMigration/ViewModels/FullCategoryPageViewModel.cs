@@ -212,6 +212,7 @@ namespace LaceupMigration.ViewModels
                             route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
                         if (_comingFrom == "LoadOrderTemplate")
                             route += "&loadOrderReturnDepth=2";
+                        route += "&viaFullCategory=1";
                         await Shell.Current.GoToAsync(route);
                         return;
                     }
@@ -590,6 +591,7 @@ namespace LaceupMigration.ViewModels
                     route += "&asCreditItem=1";
                 if (_asReturnItem)
                     route += "&asReturnItem=1";
+                route += "&viaFullCategory=1";
                 await Shell.Current.GoToAsync(route);
                 return;
             }
@@ -651,6 +653,7 @@ namespace LaceupMigration.ViewModels
                 var route = $"productcatalog?orderId={_order.OrderId}&productId={item.Product.ProductId}";
                 if (_categoryId.HasValue)
                     route += $"&categoryId={_categoryId.Value}";
+                route += "&viaFullCategory=1";
                 await Shell.Current.GoToAsync(route);
                 return;
             }

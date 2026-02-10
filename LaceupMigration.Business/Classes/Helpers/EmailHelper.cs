@@ -547,10 +547,14 @@ namespace LaceupMigration
             }
         }
 
+        /// <summary>Send single invoice by email (matches Xamarin EmailHelper.SendInvoiceByEmail: subject/body "Invoice Number X Attached").</summary>
         public static async Task SendInvoiceByEmail(Invoice invoice)
         {
             try
             {
+                if (invoice.Signature == null)
+                    DataProvider.GetExternalInvoiceSignature(invoice);
+
                 string pdfFile = GetInvoicePdf(invoice);
 
                 if (string.IsNullOrEmpty(pdfFile))
@@ -558,8 +562,15 @@ namespace LaceupMigration
                     return;
                 }
 
-                // Navigate to PDF viewer with the PDF path
-                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}");
+                // Navigate to PDF viewer; pass invoice number so "Send by email" there pre-fills subject/body (matches Xamarin)
+                var route = $"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}&invoiceNumber={Uri.EscapeDataString(invoice.InvoiceNumber ?? "")}";
+                if (invoice.Client?.ExtraProperties != null)
+                {
+                    var emailExtra = invoice.Client.ExtraProperties.FirstOrDefault(x => x.Item1.ToUpperInvariant() == "EMAIL");
+                    if (emailExtra != null && !string.IsNullOrEmpty(emailExtra.Item2))
+                        route += "&clientEmail=" + Uri.EscapeDataString(emailExtra.Item2);
+                }
+                await Shell.Current.GoToAsync(route);
             }
             catch (Exception ex)
             {
@@ -571,6 +582,12 @@ namespace LaceupMigration
         {
             try
             {
+                foreach (var inv in invoices)
+                {
+                    if (inv.Signature == null)
+                        DataProvider.GetExternalInvoiceSignature(inv);
+                }
+
                 string pdfFile = GetInvoicesPdf(invoices);
 
                 if (string.IsNullOrEmpty(pdfFile))
@@ -578,8 +595,8 @@ namespace LaceupMigration
                     return;
                 }
 
-                // Use platform-specific implementation (matches Xamarin SendInvoicesByEmail)
-                Config.helper?.SendReportByEmail(pdfFile);
+                // Use platform-specific implementation (matches Xamarin SendInvoicesByEmail: subject "Invoices Attached")
+                Config.helper?.SendOrderByEmail(pdfFile, "Invoices Attached", "Invoices Attached", null);
             }
             catch (Exception ex)
             {
