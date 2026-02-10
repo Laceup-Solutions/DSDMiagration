@@ -14,6 +14,8 @@ namespace LaceupMigration.Views
             BindingContext = _viewModel;
         }
 
+        protected override string? GetRouteName() => "selectpricelevel";
+
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
             _viewModel.ApplyQueryAttributes(query);

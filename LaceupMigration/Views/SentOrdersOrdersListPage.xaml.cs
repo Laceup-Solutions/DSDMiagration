@@ -14,6 +14,8 @@ namespace LaceupMigration.Views
             BindingContext = _viewModel;
         }
 
+        protected override string? GetRouteName() => "sentordersorderslist";
+
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
             if (query.TryGetValue("packagePath", out var packagePathValue) && 

@@ -31,15 +31,10 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        /// <summary>
-        /// Override GoBack to handle cleanup when user navigates back without completing the NoService order.
-        /// This matches Xamarin NoServiceActivity behavior - if order is not completed, delete it.
-        /// This is called by both the physical back button and navigation bar back button.
-        /// </summary>
+        protected override string? GetRouteName() => "noservice";
+
         protected override void GoBack()
         {
-            // Call ViewModel's GoBackAsync which handles cleanup logic
-            // This is async, but GoBack() is synchronous, so we fire and forget
             _ = _viewModel.GoBackAsync();
         }
 

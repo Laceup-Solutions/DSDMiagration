@@ -15,6 +15,8 @@ namespace LaceupMigration.Views
             BindingContext = _viewModel;
         }
 
+        protected override string? GetRouteName() => "inventorysummary";
+
         protected override async void OnAppearing()
         {
             base.OnAppearing();

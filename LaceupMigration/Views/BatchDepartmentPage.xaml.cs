@@ -22,6 +22,8 @@ namespace LaceupMigration.Views
             }
         }
 
+        protected override string? GetRouteName() => "batchdepartment";
+
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
             int clientId = 0;

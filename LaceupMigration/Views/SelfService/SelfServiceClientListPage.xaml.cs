@@ -10,6 +10,8 @@ namespace LaceupMigration.Views.SelfService
             BindingContext = viewModel;
         }
 
+        protected override string? GetRouteName() => "selfservice/clientlist";
+
         protected override void OnAppearing()
         {
             base.OnAppearing();

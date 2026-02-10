@@ -6,6 +6,8 @@ namespace LaceupMigration.Views
     {
         private readonly SetupPrinterPageViewModel _viewModel;
 
+        protected override string? GetRouteName() => "setupprinter";
+
         public SetupPrinterPage(SetupPrinterPageViewModel viewModel)
         {
             InitializeComponent();

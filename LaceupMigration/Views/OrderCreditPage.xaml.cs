@@ -74,17 +74,11 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        /// <summary>
-        /// Override GoBack to handle order finalization before navigating away.
-        /// This is called by both the physical back button and navigation bar back button.
-        /// </summary>
+        protected override string? GetRouteName() => "ordercredit";
+
         protected override void GoBack()
         {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
-            Helpers.NavigationHelper.RemoveNavigationState("ordercredit");
-            
-            // Call ViewModel's DoneAsync which handles finalization logic
-            // This is async, but GoBack() is synchronous, so we fire and forget
+            RemoveNavigationState();
             _ = _viewModel.DoneAsync();
         }
     }

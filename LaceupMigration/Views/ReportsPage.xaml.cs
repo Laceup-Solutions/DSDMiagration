@@ -9,6 +9,8 @@ namespace LaceupMigration.Views
             InitializeComponent();
             BindingContext = viewModel;
         }
+
+        protected override string? GetRouteName() => "reports";
     }
 }
 

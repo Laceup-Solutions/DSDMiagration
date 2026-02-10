@@ -14,6 +14,8 @@ namespace LaceupMigration.Views
 			BindingContext = _viewModel;
 		}
 
+		protected override string? GetRouteName() => "createdeposit";
+
 		protected override async void OnAppearing()
 		{
 			base.OnAppearing();

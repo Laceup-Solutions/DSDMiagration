@@ -53,6 +53,7 @@ namespace LaceupMigration.Helpers
             { "batchdepartment", "BatchDepartmentActivity" },
             { "workorder", "WorkOrderActivity" },
             { "consignment", "ConsignmentActivity" },
+            { "createdeposit", "CreateDepositActivity" },
             { "noservice", "NoServiceActivity" },
             { "clientdetails", "ClientDetailsActivity" },
             { "editclient", "EditClientActivity" },
@@ -106,7 +107,9 @@ namespace LaceupMigration.Helpers
             { "sentpaymentsinpackage", "SentPaymentsInPackageActivity" },
             { "vieworderstatus", "ViewOrderStatusActivity" },
             { "vieworderstatusdetails", "ViewOrderStatusDetailsActivity" },
+            { "viewcapturedimages", "ViewCapturedImagesActivity" },
             { "goals", "GoalsActivity" },
+            { "goalfilter", "GoalFilterActivity" },
             { "goaldetails", "GoalDetailsActivity" },
             { "selectpricelevel", "SelectPriceLevelActivity" },
             { "selectretailpricelevel", "SelectRetailPriceLevelActivity" },
@@ -345,6 +348,28 @@ namespace LaceupMigration.Helpers
                     System.Diagnostics.Debug.WriteLine($"[NavigationHelper] RemoveNavigationState: {baseRoute} (ActivityType={activityType}) had no state in stack, nothing removed");
                 }
             }
+        }
+
+        /// <summary>
+        /// Removes the given route's ActivityState and pops one level (GoToAsync("..")).
+        /// Use this from ViewModels or any "exit this screen" logic so back and programmatic exit both update state consistently.
+        /// </summary>
+        public static async Task GoBackFromAsync(string routeName)
+        {
+            RemoveNavigationState(routeName ?? string.Empty);
+            await Shell.Current.GoToAsync("..");
+        }
+
+        /// <summary>
+        /// Removes state for the given routes (in order) and pops once per route.
+        /// Use when leaving a page that was pushed on top of another (e.g. ProductCatalog on FullCategory: pass "productcatalog", "fullcategory").
+        /// </summary>
+        public static async Task GoBackFromAsync(string routeToRemoveFirst, string routeToRemoveSecond)
+        {
+            RemoveNavigationState(routeToRemoveFirst);
+            await Shell.Current.GoToAsync("..");
+            RemoveNavigationState(routeToRemoveSecond);
+            await Shell.Current.GoToAsync("..");
         }
 
         /// <summary>

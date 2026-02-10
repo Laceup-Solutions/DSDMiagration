@@ -29,11 +29,11 @@ namespace LaceupMigration.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
-            // Only call OnAppearingAsync if already initialized (to avoid duplicate loading)
-            // If not initialized yet, InitializeAsync will handle the loading
             await _viewModel.OnAppearingAsync();
         }
-        
+
+        protected override string? GetRouteName() => "clientimages";
+
         protected override bool OnBackButtonPressed()
         {
             if (BindingContext is ClientImagesPageViewModel vm)

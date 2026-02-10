@@ -34,5 +34,7 @@ namespace LaceupMigration.Views
             _viewModel.SetNavigationQuery(orderId);
             Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(orderId, fromSelfService));
         }
+
+        protected override string? GetRouteName() => "viewcapturedimages";
     }
 }

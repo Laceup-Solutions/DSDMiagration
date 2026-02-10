@@ -5,7 +5,7 @@ using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.Views
 {
-    public partial class GoalFilterPage : ContentPage, IQueryAttributable
+    public partial class GoalFilterPage : LaceupContentPage, IQueryAttributable
     {
         private SelectGoalPageViewModel _parentViewModel;
         private DialogService _dialogService;
@@ -22,6 +22,8 @@ namespace LaceupMigration.Views
             _dialogService = dialogService;
             InitializeCheckboxHandlers();
         }
+
+        protected override string? GetRouteName() => "goalfilter";
 
         private void InitializeCheckboxHandlers()
         {

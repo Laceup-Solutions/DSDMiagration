@@ -22,6 +22,8 @@ namespace LaceupMigration.Views
             }
         }
 
+        protected override string? GetRouteName() => "consignment";
+
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
             if (query.TryGetValue("orderId", out var value) && value != null)

@@ -10,6 +10,8 @@ namespace LaceupMigration.Views.SelfService
             BindingContext = viewModel;
         }
 
+        protected override string? GetRouteName() => "selfservice/categories";
+
         protected override void OnAppearing()
         {
             base.OnAppearing();

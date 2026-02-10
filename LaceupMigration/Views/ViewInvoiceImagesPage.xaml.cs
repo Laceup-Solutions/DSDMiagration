@@ -14,6 +14,8 @@ namespace LaceupMigration.Views
             BindingContext = _viewModel;
         }
 
+        protected override string? GetRouteName() => "viewinvoiceimages";
+
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
             if (query.TryGetValue("invoiceNumber", out var value) && value != null)

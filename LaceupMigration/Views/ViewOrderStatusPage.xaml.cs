@@ -13,6 +13,8 @@ namespace LaceupMigration.Views
             BindingContext = _viewModel;
         }
 
+        protected override string? GetRouteName() => "vieworderstatus";
+
         protected override async void OnAppearing()
         {
             base.OnAppearing();

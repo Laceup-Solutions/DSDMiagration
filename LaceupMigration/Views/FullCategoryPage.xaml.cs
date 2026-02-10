@@ -196,16 +196,7 @@ namespace LaceupMigration.Views
             UpdateToolbar();
         }
 
-        /// <summary>
-        /// Use base GoBack so back removes this page from navigation state (same as LaceupContentPage).
-        /// Base RemoveNavigationState() correctly derives the current route from Shell location
-        /// (e.g. fullcategory?categoryId=X -> fullcategory), so state is removed whether we're
-        /// on categories or products. Custom logic was passing full location and failed to remove.
-        /// </summary>
-        protected override void GoBack()
-        {
-            base.GoBack();
-        }
+        protected override string? GetRouteName() => "fullcategory";
 
         private void SearchBar_TextChanged(object sender, TextChangedEventArgs e)
         {

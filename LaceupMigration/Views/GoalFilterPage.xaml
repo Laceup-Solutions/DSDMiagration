@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<local:LaceupContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:local="clr-namespace:LaceupMigration.Views"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.Views.GoalFilterPage"
@@ -102,4 +103,4 @@
             </Grid>
         </VerticalStackLayout>
     </ScrollView>
-</ContentPage>
+</local:LaceupContentPage>

@@ -36,6 +36,8 @@ namespace LaceupMigration.Views
             }
             Helpers.NavigationHelper.SaveNavigationState(route);
         }
+
+        protected override string? GetRouteName() => "addclient";
     }
 }
 

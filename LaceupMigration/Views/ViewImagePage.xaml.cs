@@ -48,11 +48,6 @@ namespace LaceupMigration.Views
             Helpers.NavigationHelper.SaveNavigationState(route);
         }
 
-        /// <summary>Both physical and nav bar back use this; remove state then navigate.</summary>
-        protected override void GoBack()
-        {
-            Helpers.NavigationHelper.RemoveNavigationState("viewimage");
-            base.GoBack();
-        }
+        protected override string? GetRouteName() => "viewimage";
     }
 }

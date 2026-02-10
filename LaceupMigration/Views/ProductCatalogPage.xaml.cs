@@ -70,17 +70,7 @@ namespace LaceupMigration.Views
             UpdateToolbar();
         }
 
-        /// <summary>
-        /// Override GoBack to remove navigation state when navigating away.
-        /// This is called by both the physical back button and navigation bar back button.
-        /// </summary>
-        protected override void GoBack()
-        {
-            // [ACTIVITY STATE]: Remove current page's state so back doesn't re-push (e.g. from OrderCredit > ProductCatalog, back must remove ProductCatalog state)
-            Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
-            System.Diagnostics.Debug.WriteLine("[ProductCatalog] GoBack (page): removing state productcatalog, popping");
-            Shell.Current.GoToAsync("..");
-        }
+        protected override string? GetRouteName() => "productcatalog";
 
         private async void OnCellTapped(object sender, EventArgs e)
         {

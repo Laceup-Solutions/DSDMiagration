@@ -51,12 +51,7 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        protected override bool OnBackButtonPressed()
-        {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
-            Helpers.NavigationHelper.RemoveNavigationState("editclient");
-            return false; // Allow navigation
-        }
+        protected override string? GetRouteName() => "editclient";
     }
 }
 

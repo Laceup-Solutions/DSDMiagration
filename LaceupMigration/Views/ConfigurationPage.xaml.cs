@@ -16,6 +16,8 @@ namespace LaceupMigration.Views
             UseCustomMenu = true;
         }
 
+        protected override string? GetRouteName() => "configuration";
+
         protected override async void OnAppearing()
         {
             base.OnAppearing();

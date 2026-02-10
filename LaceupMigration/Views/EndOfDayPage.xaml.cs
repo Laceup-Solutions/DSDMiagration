@@ -27,25 +27,15 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        /// <summary>
-        /// Override GoBack to handle back navigation logic for both physical and navigation bar back buttons.
-        /// This includes checking if the user can leave the screen and removing navigation state.
-        /// </summary>
+        protected override string? GetRouteName() => "endofday";
+
         protected override void GoBack()
         {
-            // Xamarin EndOfDayActivity OnKeyDown logic (lines 1049-1064)
-            // Prevent back navigation if canLeaveScreen is false
             if (!_viewModel.CanLeaveScreen)
             {
-                // Show dialog asynchronously (fire and forget)
                 _ = _viewModel.ShowCannotLeaveDialog();
-                return; // Prevent navigation
+                return;
             }
-            
-            // [ACTIVITY STATE]: Remove state when properly exiting
-            Helpers.NavigationHelper.RemoveNavigationState("endofday");
-            
-            // Navigate back
             base.GoBack();
         }
     }

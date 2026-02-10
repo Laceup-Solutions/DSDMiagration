@@ -22,6 +22,8 @@ namespace LaceupMigration.Views
             }
         }
 
+        protected override string? GetRouteName() => "orderdetails";
+
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
             int orderId = 0;
