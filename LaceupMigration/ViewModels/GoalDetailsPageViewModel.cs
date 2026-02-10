@@ -216,8 +216,11 @@ namespace LaceupMigration.ViewModels
                     return;
                 }
 
+                // Always refresh calculations when page appears (matching Xamarin OnResume lines 106-110)
+                // This ensures device orders are recalculated if orders were added while away from the page
                 UpdateProgress();
-                FilterDetails(string.Empty);
+                RefreshDetails();
+                FilterDetails(SearchText);
             }
             catch (Exception ex)
             {
@@ -246,10 +249,157 @@ namespace LaceupMigration.ViewModels
                     sold += _goal.CreditInvoice;
                 
                 // Include Device Orders if checked (matching Xamarin lines 342-498)
-                // This is complex logic that depends on goal criteria and type
-                // For now, we'll implement the basic structure - full implementation would require
-                // iterating through Order.Orders and calculating based on criteria
-                // TODO: Implement full IncludeDeviceOrders logic if needed
+                if (IncludeDeviceOrders)
+                {
+                    var list = _allGoalDetails;
+                    
+                    if (_goal.Criteria == GoalCriteria.Product || _goal.Criteria == GoalCriteria.Route)
+                    {
+                        var validOrders = Order.Orders.Where(x => !x.Voided && !x.Reshipped).ToList();
+                        double qty = 0;
+                        foreach (var o in validOrders)
+                        {
+                            var details = o.Details.Where(x => !x.IsCredit);
+
+                            if (_goal.Type == GoalType.Qty)
+                            {
+                                foreach (var d in details)
+                                {
+                                    var det = list.FirstOrDefault(x => x.ProductId == d.Product?.ProductId);
+
+                                    if (det != null)
+                                    {
+                                        if (d.UnitOfMeasure != null && det.UoM != null && det.UoM != d.UnitOfMeasure)
+                                        {
+                                            var defaultUOM = d.Product?.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+
+                                            if (defaultUOM != null && det.UoM.Conversion < defaultUOM.Conversion)
+                                            {
+                                                qty += (d.Qty * defaultUOM.Conversion);
+                                            }
+                                            else
+                                            {
+                                                var baseIsDefault = false;
+                                                if (defaultUOM != null && defaultUOM.IsBase)
+                                                    baseIsDefault = true;
+                                                if (baseIsDefault)
+                                                    qty += d.Qty / det.UoM.Conversion;
+                                                else
+                                                    qty += (d.Qty / defaultUOM.Conversion);
+                                            }
+                                        }
+                                        else
+                                            qty += d.Qty;
+                                    }
+                                }
+                            }
+                            else if (_goal.Type == GoalType.Amount)
+                            {
+                                foreach (var d in details)
+                                {
+                                    var det = list.FirstOrDefault(x => x.ProductId == d.Product?.ProductId);
+
+                                    if (det != null)
+                                        qty += d.QtyPrice;
+                                }
+                            }
+                        }
+
+                        sold += qty;
+                    }
+                    else if (_goal.Criteria == GoalCriteria.Payment)
+                    {
+                        foreach (var line in list)
+                        {
+                            double paidInDevice = 0;
+                            var payments = InvoicePayment.List.Where(x => x.Invoices().Any(i => i.InvoiceId == line.ExternalInvoice?.InvoiceId));
+
+                            foreach (var p in payments)
+                            {
+                                foreach (var i in p.Invoices())
+                                {
+                                    if (i.InvoiceId == line.ExternalInvoice?.InvoiceId)
+                                    {
+                                        foreach (var component in p.Components)
+                                        {
+                                            if (i.Balance == 0)
+                                                continue;
+
+                                            double usedInThisInvoice = component.Amount;
+
+                                            if (i.Balance < 0)
+                                                usedInThisInvoice = i.Balance;
+                                            else
+                                            {
+                                                if (component.Amount > i.Balance)
+                                                    usedInThisInvoice = i.Balance;
+                                            }
+
+                                            paidInDevice += usedInThisInvoice;
+                                        }
+                                    }
+                                }
+                            }
+
+                            sold += paidInDevice;
+                        }
+                    }
+                    else if (_goal.Criteria == GoalCriteria.Customer || _goal.Criteria == GoalCriteria.ProductsByCustomer)
+                    {
+                        foreach (var line in list)
+                        {
+                            var product = Product.Find(line.ProductId ?? 0);
+
+                            var validOrders = Order.Orders.Where(x => !x.Voided && !x.Reshipped && x.Client?.ClientId == line.ClientId).ToList();
+                            if (product != null)
+                            {
+                                foreach (var o in validOrders)
+                                {
+                                    if (line.Type == GoalType.Qty)
+                                    {
+                                        var details = o.Details.Where(x => x.Product == product && !x.IsCredit);
+                                        foreach (var d in details)
+                                        {
+                                            if (d.UnitOfMeasure != null && line.UoM != null && line.UoM != d.UnitOfMeasure)
+                                            {
+                                                var defaultUOM = d.Product?.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+
+                                                if (defaultUOM != null && line.UoM.Conversion < defaultUOM.Conversion)
+                                                {
+                                                    sold += (d.Qty * defaultUOM.Conversion);
+                                                }
+                                                else
+                                                {
+                                                    var baseIsDefault = false;
+                                                    if (defaultUOM != null && defaultUOM.IsBase)
+                                                        baseIsDefault = true;
+                                                    if (baseIsDefault)
+                                                        sold += d.Qty / line.UoM.Conversion;
+                                                    else
+                                                        sold += (d.Qty / defaultUOM.Conversion);
+                                                }
+                                            }
+                                            else
+                                                sold += d.Qty;
+                                        }
+                                    }
+                                    else if (line.Type == GoalType.Amount)
+                                        sold += (o.Details.Where(x => x.Product == product && !x.IsCredit).Sum(x => x.QtyPrice));
+                                }
+                            }
+                            else
+                            {
+                                foreach (var o in validOrders)
+                                {
+                                    if (line.Type == GoalType.Qty)
+                                        sold += (o.Details.Where(x => !x.IsCredit).Sum(x => x.Qty));
+                                    else if (line.Type == GoalType.Amount)
+                                        sold += (o.Details.Where(x => !x.IsCredit).Sum(x => x.QtyPrice));
+                                }
+                            }
+                        }
+                    }
+                }
                 
                 // Calculate percentage (matching Xamarin line 500)
                 Percentage = Math.Round(((_goal.QuantityOrAmount > 0 ? sold / _goal.QuantityOrAmount : 0) * 100), Config.Round);
@@ -745,8 +895,189 @@ namespace LaceupMigration.ViewModels
             salesOrder *= uomFactor;
             sold += salesOrder;
             
-            // Add device orders if checked (simplified - full logic would require iterating Order.Orders)
-            // TODO: Implement full IncludeDeviceOrders logic if needed
+            // Add device orders if checked (matching Xamarin GetView lines 736-917)
+            double qtyInDevice = 0;
+            
+            if (parent.IncludeDeviceOrders && (goal.Criteria == GoalCriteria.Route || goal.Criteria == GoalCriteria.Product))
+            {
+                var validOrders = Order.Orders.Where(x => !x.Voided && !x.Reshipped).ToList();
+                if (product != null)
+                {
+                    foreach (var o in validOrders)
+                    {
+                        if (line.Type == GoalType.Qty)
+                        {
+                            var details = o.Details.Where(x => x.Product == product && !x.IsCredit);
+                            foreach (var d in details)
+                            {
+                                if (d.UnitOfMeasure != null)
+                                {
+                                    if (line.ChangedUoM != null)
+                                    {
+                                        if (line.ChangedUoM != d.UnitOfMeasure)
+                                        {
+                                            qtyInDevice += (d.Qty * uomFactor);
+                                        }
+                                        else
+                                            qtyInDevice += d.Qty;
+                                    }
+                                    else
+                                    {
+                                        if (line.UoM != null && line.UoM == d.UnitOfMeasure)
+                                            qtyInDevice += d.Qty;
+                                        else if (line.UoM != null)
+                                        {
+                                            var defaultUOM = d.Product?.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+
+                                            if (defaultUOM != null)
+                                            {
+                                                if (line.UoM.Conversion < d.UnitOfMeasure.Conversion)
+                                                {
+                                                    qtyInDevice += (d.Qty * d.UnitOfMeasure.Conversion);
+                                                }
+                                                else
+                                                {
+                                                    if (defaultUOM.IsBase)
+                                                        qtyInDevice += (d.Qty / line.UoM.Conversion);
+                                                    else
+                                                        qtyInDevice += (d.Qty / defaultUOM.Conversion);
+                                                }
+                                            }
+                                            else
+                                                qtyInDevice += d.Qty;
+                                        }
+                                        else
+                                            qtyInDevice += d.Qty;
+                                    }
+                                }
+                                else
+                                    qtyInDevice += d.Qty;
+                            }
+                        }
+                        else if (line.Type == GoalType.Amount)
+                            qtyInDevice += (o.Details.Where(x => x.Product == product && !x.IsCredit).Sum(x => x.QtyPrice));
+                    }
+                }
+                else
+                {
+                    foreach (var o in validOrders)
+                    {
+                        if (line.Type == GoalType.Qty)
+                            qtyInDevice += (o.Details.Where(x => !x.IsCredit).Sum(x => x.Qty));
+                        else if (line.Type == GoalType.Amount)
+                            qtyInDevice += (o.Details.Where(x => !x.IsCredit).Sum(x => x.QtyPrice));
+                    }
+                }
+            }
+
+            if (parent.IncludeDeviceOrders && goal.Criteria == GoalCriteria.Payment && line.ExternalInvoice != null)
+            {
+                double paidInDevice = 0;
+                var payments = InvoicePayment.List.Where(x => x.Invoices().Any(i => i.InvoiceId == line.ExternalInvoice.InvoiceId));
+
+                foreach (var p in payments)
+                {
+                    foreach (var i in p.Invoices())
+                    {
+                                    if (i.InvoiceId == line.ExternalInvoice?.InvoiceId)
+                        {
+                            foreach (var component in p.Components)
+                            {
+                                if (i.Balance == 0)
+                                    continue;
+
+                                double usedInThisInvoice = component.Amount;
+
+                                if (i.Balance < 0)
+                                    usedInThisInvoice = i.Balance;
+                                else
+                                {
+                                    if (component.Amount > i.Balance)
+                                        usedInThisInvoice = i.Balance;
+                                }
+
+                                paidInDevice += usedInThisInvoice;
+                            }
+                        }
+                    }
+                }
+
+                qtyInDevice = paidInDevice;
+            }
+
+            if (parent.IncludeDeviceOrders && (goal.Criteria == GoalCriteria.Customer || goal.Criteria == GoalCriteria.ProductsByCustomer))
+            {
+                var validOrders = Order.Orders.Where(x => !x.Voided && !x.Reshipped && x.Client?.ClientId == line.ClientId).ToList();
+                if (product != null)
+                {
+                    foreach (var o in validOrders)
+                    {
+                        if (line.Type == GoalType.Qty)
+                        {
+                            var details = o.Details.Where(x => x.Product == product && !x.IsCredit);
+                            foreach (var d in details)
+                            {
+                                if (d.UnitOfMeasure != null)
+                                {
+                                    if (line.ChangedUoM != null)
+                                    {
+                                        if (line.ChangedUoM != d.UnitOfMeasure)
+                                        {
+                                            qtyInDevice += (d.Qty * uomFactor);
+                                        }
+                                        else
+                                            qtyInDevice += d.Qty;
+                                    }
+                                    else
+                                    {
+                                        if (line.UoM != null && line.UoM == d.UnitOfMeasure)
+                                            qtyInDevice += d.Qty;
+                                        else if (line.UoM != null)
+                                        {
+                                            var defaultUOM = d.Product?.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+
+                                            if (defaultUOM != null)
+                                            {
+                                                if (line.UoM.Conversion < d.UnitOfMeasure.Conversion)
+                                                {
+                                                    qtyInDevice += (d.Qty * d.UnitOfMeasure.Conversion);
+                                                }
+                                                else
+                                                {
+                                                    if (defaultUOM.IsBase)
+                                                        qtyInDevice += (d.Qty / line.UoM.Conversion);
+                                                    else
+                                                        qtyInDevice += (d.Qty / defaultUOM.Conversion);
+                                                }
+                                            }
+                                            else
+                                                qtyInDevice += d.Qty;
+                                        }
+                                        else
+                                            qtyInDevice += d.Qty;
+                                    }
+                                }
+                                else
+                                    qtyInDevice += d.Qty;
+                            }
+                        }
+                        else if (line.Type == GoalType.Amount)
+                            qtyInDevice += (o.Details.Where(x => x.Product == product && !x.IsCredit).Sum(x => x.QtyPrice));
+                    }
+                }
+                else
+                {
+                    foreach (var o in validOrders)
+                    {
+                        if (line.Type == GoalType.Qty)
+                            qtyInDevice += (o.Details.Where(x => !x.IsCredit).Sum(x => x.Qty));
+                        else if (line.Type == GoalType.Amount)
+                            qtyInDevice += (o.Details.Where(x => !x.IsCredit).Sum(x => x.QtyPrice));
+                    }
+                }
+            }
+            
+            sold += qtyInDevice;
             
             // Calculate Goal Amount (matching Xamarin line 920)
             double goalAmount = (line.QuantityOrAmountValue / factor) * uomFactor;

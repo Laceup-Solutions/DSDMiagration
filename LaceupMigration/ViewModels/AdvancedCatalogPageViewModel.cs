@@ -2304,6 +2304,21 @@ namespace LaceupMigration.ViewModels
         }
 
         [RelayCommand]
+        private async Task ViewProductDetailsAsync(AdvancedCatalogItemViewModel? item)
+        {
+            if (item == null || item.Product == null)
+                return;
+
+            // Match Xamarin's ProductNameClickedHandler behavior - navigate to ProductDetailsActivity
+            var route = $"productdetails?productId={item.Product.ProductId}";
+            if (_order?.Client != null)
+            {
+                route += $"&clientId={_order.Client.ClientId}";
+            }
+            await Shell.Current.GoToAsync(route);
+        }
+
+        [RelayCommand]
         private async Task AddProductAsync()
         {
             if (_order == null)

@@ -835,7 +835,14 @@ namespace LaceupMigration
             try
             {
                 string pdfFile = GetDepositPdf(deposit);
-                
+
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    return;
+                }
+
+                // Use platform-specific implementation (matches Xamarin SendDepositByEmail)
+                Config.helper?.SendReportByEmail(pdfFile);
             }
             catch (Exception ex)
             {

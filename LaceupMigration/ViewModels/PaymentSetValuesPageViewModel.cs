@@ -20,6 +20,9 @@ namespace LaceupMigration.ViewModels
         private readonly ILaceupAppService _appService;
         private Client? _client;
         private InvoicePayment? _invoicePayment;
+
+        /// <summary>Gets whether the current payment is printed (for use by PaymentComponentViewModel, matches Xamarin line 1787).</summary>
+        internal bool GetIsPaymentPrinted() => _invoicePayment?.Printed ?? false;
         private List<Invoice> _invoices = new();
         private List<Order> _orders = new();
         private double _amount = 0;
@@ -35,6 +38,7 @@ namespace LaceupMigration.ViewModels
         private string _ordersId = string.Empty;
         private string _tempFile = string.Empty;
         private bool _initializationComplete = false;
+        private bool _hasInitialized = false;
 
         [ObservableProperty]
         private ObservableCollection<PaymentComponentViewModel> _paymentComponents = new();
@@ -101,6 +105,13 @@ namespace LaceupMigration.ViewModels
         {
             if (query == null)
                 return;
+            
+            // Prevent re-initialization after first initialization
+            if (_hasInitialized)
+            {
+                System.Diagnostics.Debug.WriteLine("OnNavigatedTo: Already initialized, skipping re-initialization");
+                return;
+            }
 
             // Parse paymentId
             if (query.TryGetValue("paymentId", out var paymentIdValue) && paymentIdValue != null)
@@ -209,7 +220,10 @@ namespace LaceupMigration.ViewModels
                 PaymentComponents.Clear();
                 foreach (var component in _invoicePayment.Components)
                 {
-                    PaymentComponents.Add(new PaymentComponentViewModel(component, this));
+                    var componentVm = new PaymentComponentViewModel(component, this);
+                    // Ensure IsEditable is set correctly based on printed status (matches Xamarin line 1787)
+                    componentVm.IsEditable = !_invoicePayment.Printed;
+                    PaymentComponents.Add(componentVm);
                 }
 
                 if (_invoicePayment.Printed)
@@ -220,8 +234,9 @@ namespace LaceupMigration.ViewModels
                 }
                 else
                 {
-                    // Only set CanDeletePayment if payment is not printed
-                    CanDeletePayment = _paymentId > 0;
+                    // Delete button is enabled by default (matches Xamarin - only disabled when printed)
+                    // The delete command will check if payment exists before deleting
+                    CanDeletePayment = true;
                 }
             }
             else if (!string.IsNullOrEmpty(_invoicesId) || !string.IsNullOrEmpty(_ordersId))
@@ -270,15 +285,20 @@ namespace LaceupMigration.ViewModels
             }
 
             // Set CanDeletePayment only if not already set above (for existing payments)
-            // For new payments or when _invoicePayment is null, set it here
+            // Match Xamarin: Delete button is enabled by default, only disabled when printed
+            // For new payments or when _invoicePayment is null, enable delete button
+            // The delete command will check if payment exists before actually deleting
             if (_paymentId == 0 || (_paymentId > 0 && _invoicePayment == null))
             {
-                CanDeletePayment = false; // Can't delete a payment that doesn't exist yet
+                // Enable delete button by default (matches Xamarin behavior)
+                // Delete command handles the case where payment doesn't exist yet
+                CanDeletePayment = true;
             }
             // If _paymentId > 0 and _invoicePayment exists, CanDeletePayment was already set above based on Printed status
 
             RefreshLabels();
             _initializationComplete = true;
+            _hasInitialized = true;
         }
 
         private void LoadExistingPaymentData()
@@ -741,28 +761,44 @@ namespace LaceupMigration.ViewModels
         {
             if (component == null) return;
             var dt = component.PostedDate == DateTime.MinValue ? DateTime.Now : component.PostedDate;
-            // Use a simple date prompt; if no date picker in dialog, use prompt with short date string
-            var dateStr = await _dialogService.ShowPromptAsync("Posted Date", "Enter date (M/d/yyyy)", "Set", "Cancel", "M/d/yyyy", -1, dt.ToString("d"), Keyboard.Default);
-            if (string.IsNullOrEmpty(dateStr)) return;
-            if (DateTime.TryParse(dateStr, out var newDate))
+            // Use date picker dialog
+            var selectedDate = await _dialogService.ShowDatePickerAsync("Posted Date", dt);
+            if (selectedDate.HasValue)
             {
-                component.PostedDate = newDate.Date;
+                component.PostedDate = selectedDate.Value.Date;
                 SaveState();
             }
-            else
-                await _dialogService.ShowAlertAsync("Invalid date.", "Alert", "OK");
         }
 
-        /// <summary>Edit only bank (matches Xamarin bank spinner).</summary>
-        public async Task EditBankAsync(PaymentComponentViewModel component)
+        /// <summary>Handles Add Bank button click (matches Xamarin AddBank_Click).</summary>
+        public async Task AddBankAsync(PaymentComponentViewModel component)
         {
             if (component == null) return;
-            var banks = BankAccount.List.Select(x => x.Name).ToList();
-            banks.Insert(0, "None");
-            var choice = await _dialogService.ShowActionSheetAsync("Select Bank", "Cancel", null, banks.ToArray());
-            if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
-            component.BankName = choice == "None" ? string.Empty : choice;
-            SaveState();
+            
+            // Prompt for new bank name (matches Xamarin AddBank_Click dialog)
+            var bankName = await _dialogService.ShowPromptAsync("Enter new bank:", "Enter bank name:", "OK", "Cancel", "Ex: Wells Fargo, Chase, Bank of America", -1, string.Empty);
+            if (!string.IsNullOrWhiteSpace(bankName))
+            {
+                // Check if bank already exists (matches Xamarin AddBank_Click validation)
+                if (!BankAccount.bankListInDevice.Any(x => x.Equals(bankName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    BankAccount.AddSavedBank(bankName);
+                    
+                    // Update bank lists for all components that show bank (matches Xamarin RefreshList after adding bank)
+                    foreach (var comp in PaymentComponents.Where(c => c.ShowBank))
+                    {
+                        comp.UpdateBankList();
+                    }
+                    
+                    // Set the newly added bank as selected for the component that added it
+                    component.BankName = bankName;
+                    SaveState();
+                }
+                else
+                {
+                    await _dialogService.ShowAlertAsync("Bank already exists.", "Alert", "OK");
+                }
+            }
         }
 
         /// <summary>Add image to payment component (matches Xamarin PaymentImage_Click / TakePhoto / PickFromGallery / ProcessImage).</summary>
@@ -958,9 +994,16 @@ namespace LaceupMigration.ViewModels
 
                     _invoicePayment!.Printed = true;
                     _invoicePayment.Save();
+                    // Match Xamarin DisableForm() after sending by email
                     CanAddPayment = false;
                     CanSavePayment = false;
                     CanDeletePayment = false;
+                    // Disable all payment component fields (matches Xamarin line 1787)
+                    foreach (var component in PaymentComponents)
+                    {
+                        component.IsEditable = false;
+                    }
+                    // Note: Print and Send By Email remain enabled (not disabled in Xamarin DisableForm())
                     RefreshLabels();
 
                     // Proceed to send email after saving
@@ -1134,25 +1177,19 @@ namespace LaceupMigration.ViewModels
             }
 
             // Multiple companies for this client and PickCompany: show picker (match ClientDetailsPage)
-            var options = companiesToUse
-                .Select(c => string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}\n{1}\n{2}\n{3}",
-                    c.CompanyName ?? string.Empty,
-                    c.CompanyAddress1 ?? string.Empty,
-                    c.CompanyAddress2 ?? string.Empty,
-                    c.CompanyPhone ?? string.Empty))
-                .ToArray();
+            var companyOptions = companiesToUse.Select(c =>
+            {
+                var subtitleParts = new[] { c.CompanyAddress1, c.CompanyAddress2, c.CompanyPhone }
+                    .Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+                var subtitle = subtitleParts.Length > 0 ? string.Join("\n", subtitleParts) : null;
+                return (c.CompanyName ?? string.Empty, subtitle);
+            }).ToArray();
 
-            var choice = await _dialogService.ShowActionSheetAsync("Select Company", "Cancel", null, options);
-            if (string.IsNullOrEmpty(choice) || choice == "Cancel")
+            var selectedIndex = await _dialogService.ShowSingleChoiceDialogAsync("Select Company", companyOptions, 0);
+            if (selectedIndex < 0 || selectedIndex >= companiesToUse.Count)
                 return;
 
-            var index = Array.FindIndex(options, o => string.Equals(o, choice, StringComparison.Ordinal));
-            if (index < 0)
-                index = Array.FindIndex(options, o => (o.Split('\n')[0].Trim()) == (choice.Split('\n')[0].Trim()));
-            if (index < 0)
-                index = 0;
-
-            CompanyInfo.SelectedCompany = companiesToUse[index];
+            CompanyInfo.SelectedCompany = companiesToUse[selectedIndex];
             await DoPrintPaymentAsync();
         }
 
@@ -1176,6 +1213,27 @@ namespace LaceupMigration.ViewModels
 
                     _invoicePayment!.Printed = true;
                     _invoicePayment.Save();
+                    
+                    //Update UI - Match Xamarin DisableForm() after printing
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        // CRITICAL: Update _paymentId so re-initialization works correctly
+                        _paymentId = _invoicePayment.Id;
+                        
+                        // Disable Save, Add, and Delete buttons (matches Xamarin DisableForm())
+                        CanSavePayment = false;
+                        CanAddPayment = false;
+                        CanDeletePayment = false;
+                        // Disable all payment component fields (matches Xamarin line 1787)
+                        foreach (var component in PaymentComponents)
+                        {
+                            component.IsEditable = false;
+                        }
+                        // Note: Print and Send By Email remain enabled (not disabled in Xamarin DisableForm())
+                        RefreshLabels();
+                    });
+
+                    
                     return string.Empty;
                 });
             }
@@ -1407,6 +1465,7 @@ namespace LaceupMigration.ViewModels
     public partial class PaymentComponentViewModel : ObservableObject
     {
         private readonly PaymentSetValuesPageViewModel _parent;
+        private bool _isUpdatingBankIndex = false;
         
         [ObservableProperty]
         private PaymentComponent _component;
@@ -1444,6 +1503,18 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showBank;
 
+        /// <summary>Whether the payment component fields are editable (disabled when payment is printed, matches Xamarin line 1787).</summary>
+        [ObservableProperty]
+        private bool _isEditable = true;
+
+        /// <summary>List of banks for the Picker (matches Xamarin bank spinner).</summary>
+        [ObservableProperty]
+        private ObservableCollection<string> _bankList = new();
+
+        /// <summary>Selected bank index in the Picker (matches Xamarin bank spinner selection).</summary>
+        [ObservableProperty]
+        private int _selectedBankIndex = -1;
+
         /// <summary>Label for ref field: "Check Number", "Card Number", or "Ref Number" (matches Xamarin RefName).</summary>
         [ObservableProperty]
         private string _refLabelText = "Ref Number";
@@ -1468,8 +1539,11 @@ namespace LaceupMigration.ViewModels
             Comments = component.Comments ?? string.Empty;
             BankName = component.BankName ?? string.Empty;
             PostedDate = component.PostedDate;
+            // Set IsEditable based on whether payment is printed (matches Xamarin line 1787)
+            IsEditable = !_parent.GetIsPaymentPrinted();
             UpdateProperties();
             RefreshImageDisplay();
+            // UpdateBankList is called in UpdateProperties when ShowBank is true
         }
 
         public void RefreshImageDisplay()
@@ -1503,6 +1577,21 @@ namespace LaceupMigration.ViewModels
                 _component.ExtraFields = UDFHelper.SyncSingleUDF("BankName", value, _component.ExtraFields);
             else
                 _component.ExtraFields = UDFHelper.RemoveSingleUDF("BankName", _component.ExtraFields);
+            
+            // Update selected index when BankName changes
+            UpdateSelectedBankIndex();
+        }
+
+        /// <summary>Handles bank Picker selection changed (matches Xamarin bank spinner ItemSelected).</summary>
+        partial void OnSelectedBankIndexChanged(int value)
+        {
+            // Prevent recursive updates when we programmatically set the index
+            if (_isUpdatingBankIndex) return;
+            if (value < 0 || value >= BankList.Count) return;
+            
+            var selectedBank = BankList[value];
+            BankName = selectedBank == "None" ? string.Empty : selectedBank;
+            _parent.SaveState();
         }
 
         partial void OnPostedDateChanged(DateTime value)
@@ -1521,6 +1610,49 @@ namespace LaceupMigration.ViewModels
                 PaymentMethod == InvoicePaymentMethod.Credit_Card ? "Card Number" : "Ref Number";
             RefDisplayText = FormatRefForDisplay(Ref);
             RefreshImageDisplay();
+            
+            // Update bank list when ShowBank changes (matches Xamarin bank spinner adapter)
+            if (ShowBank)
+            {
+                UpdateBankList();
+            }
+        }
+
+        /// <summary>Updates the bank list for the Picker (matches Xamarin bank spinner adapter setup).</summary>
+        public void UpdateBankList()
+        {
+            BankList.Clear();
+            // Use bankListInDevice (from Config.SavedBanks) like Xamarin, not BankAccount.List
+            // bankListInDevice already includes "None" at index 0
+            foreach (var bank in BankAccount.bankListInDevice)
+            {
+                BankList.Add(bank);
+            }
+            
+            // Set selected index based on current BankName
+            UpdateSelectedBankIndex();
+        }
+
+        /// <summary>Updates the selected bank index based on current BankName (matches Xamarin bank spinner selection).</summary>
+        private void UpdateSelectedBankIndex()
+        {
+            _isUpdatingBankIndex = true;
+            try
+            {
+                if (string.IsNullOrEmpty(BankName))
+                {
+                    SelectedBankIndex = 0; // "None" is at index 0
+                }
+                else
+                {
+                    var index = BankList.IndexOf(BankName);
+                    SelectedBankIndex = index >= 0 ? index : 0;
+                }
+            }
+            finally
+            {
+                _isUpdatingBankIndex = false;
+            }
         }
 
         private string FormatRefForDisplay(string refValue)

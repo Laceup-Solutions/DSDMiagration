@@ -266,6 +266,11 @@ namespace LaceupMigration
         {
             dataAccessInstance.SendTransfer(transferFile);
         }
+
+        public static void SendDeposit()
+        {
+            dataAccessInstance.SendDeposit();
+        }
         #endregion
 
         #region Inventory Operations
