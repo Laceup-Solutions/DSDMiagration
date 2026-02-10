@@ -31,6 +31,7 @@ namespace LaceupMigration.ViewModels
         private int? _productId;
         private bool _consignmentCounting;
         private string? _comingFrom; // "Credit", "PreviouslyOrdered", or "LoadOrderTemplate"
+        private bool _viaFullCategory; // True when we were navigated from FullCategoryPage (stack has FullCategory below us)
         private int _loadOrderReturnDepth = 1; // When comingFrom=LoadOrderTemplate: pops to return (1=direct from template, 2=via fullcategory)
         private string _searchCriteria = string.Empty;
         private bool _isCreating = false;
@@ -138,6 +139,12 @@ namespace LaceupMigration.ViewModels
                 _comingFrom = fromValue.ToString();
             }
 
+            if (query.TryGetValue("viaFullCategory", out var viaFullValue) && viaFullValue != null)
+            {
+                _viaFullCategory = viaFullValue.ToString() == "1" || string.Equals(viaFullValue.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+            }
+            System.Diagnostics.Debug.WriteLine($"[ProductCatalog] ApplyQueryAttributes: comingFrom={_comingFrom ?? "(null)"}, viaFullCategory={_viaFullCategory}, loadOrderReturnDepth={_loadOrderReturnDepth}");
+
             if (query.TryGetValue("loadOrderReturnDepth", out var depthValue) && depthValue != null)
             {
                 if (int.TryParse(depthValue.ToString(), out var d) && d >= 1)
@@ -177,6 +184,8 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
             {
                 await _dialogService.ShowAlertAsync("Order not found.", "Error", "OK");
+                Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
+                System.Diagnostics.Debug.WriteLine("[ProductCatalog] InitializeAsync order not found: removing state productcatalog, popping");
                 await Shell.Current.GoToAsync("..");
                 return;
             }
@@ -1091,10 +1100,20 @@ namespace LaceupMigration.ViewModels
 
             _order.Save();
 
-            // Pop ProductCatalog and Categories pages from navigation stack
-            // This will return us to the source page (OrderCreditPage or PreviouslyOrderedTemplatePage)
+            // Pop: only pop twice (and remove fullcategory state) when we actually came via FullCategory
+            Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
+            System.Diagnostics.Debug.WriteLine("[ProductCatalog] ConfirmOrder: removing state productcatalog, popping once");
             await Shell.Current.GoToAsync(".."); // Pop ProductCatalog
-            await Shell.Current.GoToAsync(".."); // Pop Categories (FullCategory)
+            if (_viaFullCategory)
+            {
+                Helpers.NavigationHelper.RemoveNavigationState("fullcategory");
+                System.Diagnostics.Debug.WriteLine("[ProductCatalog] ConfirmOrder: viaFullCategory=true, removing state fullcategory, popping again");
+                await Shell.Current.GoToAsync(".."); // Pop FullCategory
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[ProductCatalog] ConfirmOrder: viaFullCategory=false, not popping again (direct to ProductCatalog)");
+            }
         }
 
         private async Task AddToLoadOrderAsync()
@@ -1140,8 +1159,17 @@ namespace LaceupMigration.ViewModels
             // Return to NewLoadOrderTemplatePage when we came from load order (Categories/Products from template)
             if (_comingFrom == "LoadOrderTemplate")
             {
+                Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
+                System.Diagnostics.Debug.WriteLine($"[ProductCatalog] AddToLoadOrderAsync: removing state productcatalog, popping {_loadOrderReturnDepth} time(s)");
                 for (int i = 0; i < _loadOrderReturnDepth; i++)
+                {
+                    if (i == 1)
+                    {
+                        Helpers.NavigationHelper.RemoveNavigationState("fullcategory");
+                        System.Diagnostics.Debug.WriteLine("[ProductCatalog] AddToLoadOrderAsync: removing state fullcategory (i==1)");
+                    }
                     await Shell.Current.GoToAsync("..");
+                }
                 return;
             }
 
@@ -1303,6 +1331,8 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task GoBackAsync()
         {
+            Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
+            System.Diagnostics.Debug.WriteLine("[ProductCatalog] GoBackAsync: removing state productcatalog, popping");
             await Shell.Current.GoToAsync("..");
         }
 

@@ -2943,11 +2943,12 @@ namespace LaceupMigration.ViewModels
             
             if (isReadOnly)
             {
-                // Only allow Print when read-only
+                // Only allow Print and Advanced Options when read-only
                 options.Add(new MenuOption("Print", async () =>
                 {
                     await PrintAsync();
                 }));
+                options.Add(new MenuOption("Advanced Options", async () => await ShowAdvancedOptionsAsync()));
                 return options;
             }
 
@@ -3185,6 +3186,12 @@ namespace LaceupMigration.ViewModels
                         await OtherChargesAsync();
                     }));
                 }
+                
+                // Set PO (presale)
+                options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO", async () =>
+                {
+                    await GetPONumberAsync();
+                }));
 
                 // Add Discount (non-presale)
                 if (!finalized && allowDiscount && !locked)
@@ -3329,6 +3336,9 @@ namespace LaceupMigration.ViewModels
                     await ResetOrderAsync();
                 }));
             }
+
+            // Advanced Options - same as LaceupContentPage.GetCommonMenuOptions(), so it appears when using custom menu
+            options.Add(new MenuOption("Advanced Options", async () => await ShowAdvancedOptionsAsync()));
 
             return options;
         }

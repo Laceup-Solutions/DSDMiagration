@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System;
 using System.Globalization;
 using System.IO;
@@ -748,10 +748,10 @@ namespace LaceupMigration
             Table tableLayout = new Table(UnitValue.CreatePercentArray(headers)).UseAllAvailableWidth();
 
             //Add header
-            AddCellToHeader(tableLayout, "Salesman");
-            AddCellToHeader(tableLayout, "Email");
-            AddCellToHeader(tableLayout, "Date");
-            AddCellToHeader(tableLayout, "Invoiced Date");
+            AddCellToHeader(tableLayout, "Salesperson");
+            AddCellToHeader(tableLayout, "Terms");
+            AddCellToHeader(tableLayout, "Invoice Date");
+            AddCellToHeader(tableLayout, "Invoice Time");
 
             var salesman = Salesman.List != null ? Salesman.List.FirstOrDefault(x => x.Id == Config.SalesmanId) : null;
 
@@ -1137,14 +1137,10 @@ namespace LaceupMigration
 
             //Add header
             AddCellToHeader(tableLayout, "Purchase Order");
-            AddCellToHeader(tableLayout, "Salesman");
-            AddCellToHeader(tableLayout, "Email");
-
-            var dateLabel = order.AsPresale ? "Date" : "Date";
-            var timeLabel = order.AsPresale ? "Time" : "Invoiced Date";
-
-            AddCellToHeader(tableLayout, dateLabel);
-            AddCellToHeader(tableLayout, timeLabel);
+            AddCellToHeader(tableLayout, "Salesperson");
+            AddCellToHeader(tableLayout, "Terms");
+            AddCellToHeader(tableLayout, "Invoice Date");
+            AddCellToHeader(tableLayout, "Invoice Time");
 
             var salesman = Salesman.List != null ? Salesman.List.FirstOrDefault(x => x.Id == order.SalesmanId) : null;
 
@@ -1740,14 +1736,10 @@ namespace LaceupMigration
             Table tableLayout = new Table(UnitValue.CreatePercentArray(headers)).UseAllAvailableWidth();
 
             //Add header
-            AddCellToHeader(tableLayout, "Salesman");
-            AddCellToHeader(tableLayout, "Email");
-
-            var dateLabel = order.AsPresale ? "Date" : "Date";
-            var timeLabel = order.AsPresale ? "Time" : "Invoiced Date";
-
-            AddCellToHeader(tableLayout, dateLabel);
-            AddCellToHeader(tableLayout, timeLabel);
+            AddCellToHeader(tableLayout, "Salesperson");
+            AddCellToHeader(tableLayout, "Terms");
+            AddCellToHeader(tableLayout, "Invoice Date");
+            AddCellToHeader(tableLayout, "Invoice Time");
 
             var salesman = Salesman.List != null ? Salesman.List.FirstOrDefault(x => x.Id == Config.SalesmanId) : null;
 

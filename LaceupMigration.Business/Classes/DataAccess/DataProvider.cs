@@ -16,7 +16,7 @@ namespace LaceupMigration
         {
             if (dataAccessInstance == null)
             {
-                var version = NetAccess.GetCommunicatorVersion();
+                // var version = NetAccess.GetCommunicatorVersion();
 
                 dataAccessInstance = new DataAccessLegacy();
                 dataAccessInstance.Initialize();
@@ -115,6 +115,11 @@ namespace LaceupMigration
         public static string GetExternalInvoiceImages(string invoiceNumber)
         {
             return dataAccessInstance.GetExternalInvoiceImages(invoiceNumber);
+        }
+
+        public static void GetExternalInvoiceSignature(Invoice invoice)
+        {
+            dataAccessInstance.GetExternalInvoiceSignature(invoice);
         }
 
         public static string GetInvoiceDetails(int invoiceId, int clientId)

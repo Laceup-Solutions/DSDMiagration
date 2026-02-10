@@ -22,6 +22,8 @@ namespace LaceupMigration.Services
 			{
 				try
 				{
+					DataProvider.Initialize();
+
 					Config.Initialize();
 					CompanyInfo.Load();
 					BackgroundDataSync.CallMe();
@@ -29,7 +31,6 @@ namespace LaceupMigration.Services
 					PlatformAppCenter.InitializeAndHookCrash();
 
 					Logger.CreateLog("Initialized in MAUI");
-					DataProvider.Initialize();
 					ActivityState.Load();
 					
 					// Note: Empty orders and batches are no longer deleted on initialization

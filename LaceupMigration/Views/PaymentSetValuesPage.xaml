@@ -146,7 +146,8 @@
                                             </Border>
                                         </Grid>
 
-                                        <Grid ColumnDefinitions="0.4*,0.5*,0.2*" ColumnSpacing="5">
+                                        <!-- Amount and Comments row -->
+                                        <Grid ColumnDefinitions="0.5*,0.5*" ColumnSpacing="5">
                                             <VerticalStackLayout Grid.Column="0" Spacing="2">
                                                 <Label Text="Amount:" FontSize="14" />
                                                 <Border Stroke="#B0BEC5" StrokeThickness="1" BackgroundColor="#ECEFF1"
@@ -180,25 +181,20 @@
                                                             Margin="-12,-10" />
                                                 </Border>
                                             </VerticalStackLayout>
+                                        </Grid>
 
-                                            <!-- Add Image: Button so BindingContext is available in Clicked (sender.BindingContext) -->
-                                            <VerticalStackLayout Grid.Column="2" Spacing="2">
-                                                <Label Text="Add Image:" FontSize="14" HorizontalOptions="End"/>
-                                                <Grid HeightRequest="44" WidthRequest="64" HorizontalOptions="End">
+                                        <!-- Image row: full width, Add / View / Change / Remove -->
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                            <Label Grid.Column="0" Text="Image:" FontSize="14" VerticalOptions="Center" />
+                                            <HorizontalStackLayout Grid.Column="1" Spacing="10" VerticalOptions="Center">
+                                                <!-- No image: Add Image box -->
+                                                <Grid HeightRequest="56" WidthRequest="56" IsVisible="{Binding HasImage, Converter={StaticResource InvertedBoolConverter}}">
                                                     <Border Stroke="#B0BEC5" StrokeThickness="1" BackgroundColor="#ECEFF1"
                                                             StrokeShape="RoundRectangle 6" Padding="0">
-                                                        <Grid>
-                                                            <Image Source="{Binding PaymentImagePath}"
-                                                                   Aspect="AspectFill"
-                                                                   HeightRequest="28" WidthRequest="28"
-                                                                   HorizontalOptions="Center" VerticalOptions="Center"
-                                                                   IsVisible="{Binding HasImage}" />
-                                                            <Image Source="{mi:MaterialOutlined Icon=AddPhotoAlternate, IconColor=#546E7A}"
-                                                                   Aspect="AspectFit"
-                                                                   HeightRequest="28" WidthRequest="28"
-                                                                   HorizontalOptions="Center" VerticalOptions="Center"
-                                                                   IsVisible="{Binding HasImage, Converter={StaticResource InvertedBoolConverter}}" />
-                                                        </Grid>
+                                                        <Image Source="{mi:MaterialOutlined Icon=AddPhotoAlternate, IconColor=#546E7A}"
+                                                               Aspect="AspectFit"
+                                                               HeightRequest="32" WidthRequest="32"
+                                                               HorizontalOptions="Center" VerticalOptions="Center" />
                                                     </Border>
                                                     <Button Clicked="AddImage_Clicked"
                                                             IsEnabled="{Binding IsEditable}"
@@ -207,7 +203,32 @@
                                                             HorizontalOptions="Fill" VerticalOptions="Fill"
                                                             Padding="0" Margin="0" />
                                                 </Grid>
-                                            </VerticalStackLayout>
+                                                <!-- Has image: thumbnail + Change + Remove -->
+                                                <HorizontalStackLayout Spacing="10" IsVisible="{Binding HasImage}">
+                                                  
+                                                        <Image Source="{Binding PaymentImageSource}"
+                                                               Aspect="AspectFill"
+                                                               HeightRequest="52" WidthRequest="52"
+                                                               HorizontalOptions="Center" VerticalOptions="Center">
+                                                            <Image.GestureRecognizers>
+                                                                <TapGestureRecognizer Tapped="AddImage_Clicked"></TapGestureRecognizer>
+                                                            </Image.GestureRecognizers>
+                                                        </Image>
+                                                        
+                                                    <Grid ColumnSpacing="6" VerticalOptions="Center" ColumnDefinitions="auto,auto">
+                                                        <Button Grid.Column="0" Text="Change" Clicked="ChangeImage_Clicked"
+                                                                IsEnabled="{Binding IsEditable}"
+                                                                FontSize="13" Padding="12,6"
+                                                                BackgroundColor="#E3F2FD" TextColor="#1976D2"
+                                                                CornerRadius="4" />
+                                                        <Button Grid.Column="1" Text="Remove" Clicked="RemoveImage_Clicked"
+                                                                IsEnabled="{Binding IsEditable}"
+                                                                FontSize="13" Padding="12,6"
+                                                                BackgroundColor="#FFEBEE" TextColor="#C62828"
+                                                                CornerRadius="4" />
+                                                    </Grid>
+                                                </HorizontalStackLayout>
+                                            </HorizontalStackLayout>
                                         </Grid>
 
                                         <Grid ColumnDefinitions="0.6*,0.4*" ColumnSpacing="5" IsVisible="{Binding ShowRef}">

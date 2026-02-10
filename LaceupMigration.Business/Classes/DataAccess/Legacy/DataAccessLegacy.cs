@@ -5353,6 +5353,74 @@ namespace LaceupMigration
             zip.ExtractZip(logosZip, Config.CompanyLogosPath, null);
         }
 
+        public void GetExternalInvoiceSignature(Invoice invoice)
+        {
+            try
+            {
+                Logger.CreateLog("GetExternalInvoiceSignature");
+
+                using (NetAccess netaccess = new NetAccess())
+                {
+                    try
+                    {
+                        netaccess.OpenConnection();
+                    }
+                    catch (Exception ee)
+                    {
+                        Logger.CreateLog(ee);
+                        throw;
+                    }
+
+                    netaccess.WriteStringToNetwork("HELO");
+                    netaccess.WriteStringToNetwork(Config.GetAuthString());
+
+                    netaccess.WriteStringToNetwork("ExternalInvoiceSignatureCommand");
+                    netaccess.WriteStringToNetwork(invoice.ClientId + "," + invoice.InvoiceNumber);
+
+                    var reply = netaccess.ReadStringFromNetwork();
+                    if (reply != "nosignature")
+                    {
+                        var tempFile = Path.GetTempFileName() + ".png";
+                        netaccess.ReceiveFile(tempFile);
+
+                        using (var reader = new FileStream(tempFile, FileMode.Open))
+                        {
+                            var converter = new BitmapConvertor();
+                            using SKBitmap signature = SKBitmap.Decode(tempFile);
+
+                            var rawBytes = converter.convertBitmap(signature);
+                            double widthInBytes = ((signature.Width / 32) * 32) / 8;
+                            int height = signature.Height / 32 * 32;
+
+                            string ZPLImageDataString = BitConverter.ToString(rawBytes);
+                            ZPLImageDataString = ZPLImageDataString.Replace("-", string.Empty);
+
+                            using MemoryStream stream = new MemoryStream();
+                            signature.Encode(stream, SKEncodedImageFormat.Png, 100);
+                            byte[] byteArray = stream.ToArray();
+
+                            invoice.SignatureAsBase64 = Convert.ToBase64String(byteArray);
+                            invoice.Signature = ZPLImageDataString;
+                            invoice.SignatureWidth = widthInBytes;
+                            invoice.SignatureHeight = height;
+                            invoice.SignatureSize = rawBytes.Length;
+                        }
+                    }
+                    else
+                        invoice.Signature = "";
+
+                    netaccess.WriteStringToNetwork("Goodbye");
+                    netaccess.CloseConnection();
+
+                    Logger.CreateLog("Done ExternalInvoiceSignatureCommand");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.CreateLog(ex);
+            }
+        }
+
         void GetDeliverySignature(Order order)
         {
             try
