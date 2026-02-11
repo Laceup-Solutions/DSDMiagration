@@ -6,6 +6,8 @@ namespace LaceupMigration.Views
     {
         private readonly SetupScannerPageViewModel _viewModel;
 
+        protected override string? GetRouteName() => "setupscanner";
+
         public SetupScannerPage(SetupScannerPageViewModel viewModel)
         {
             InitializeComponent();

@@ -12,6 +12,8 @@ namespace LaceupMigration.Views
             _viewModel = viewModel;
             BindingContext = _viewModel;
         }
+
+        protected override string? GetRouteName() => "salesmencommissionreport";
     }
 }
 

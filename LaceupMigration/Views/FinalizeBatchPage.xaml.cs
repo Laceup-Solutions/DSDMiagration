@@ -71,13 +71,8 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        /// <summary>
-        /// Override GoBack so the navigation bar back runs the same "can't leave until finalizing" check as the physical back button.
-        /// When payment was collected or printing was done, block and show "You must click Done to leave this screen."
-        /// </summary>
-        /// <summary>
-        /// Both physical and nav bar back use this. Block when payment/printed; otherwise remove state and navigate.
-        /// </summary>
+        protected override string? GetRouteName() => "finalizebatch";
+
         protected override void GoBack()
         {
             if (!_viewModel.CanLeaveScreen)
@@ -85,7 +80,6 @@ namespace LaceupMigration.Views
                 _ = _viewModel.ShowCannotLeaveDialog();
                 return;
             }
-            Helpers.NavigationHelper.RemoveNavigationState("finalizebatch");
             base.GoBack();
         }
     }

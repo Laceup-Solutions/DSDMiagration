@@ -52,6 +52,8 @@ namespace LaceupMigration.Views
             Helpers.NavigationHelper.SaveNavigationState(route);
         }
 
+        protected override string? GetRouteName() => "batch";
+
         protected override async void OnAppearing()
         {
             base.OnAppearing();

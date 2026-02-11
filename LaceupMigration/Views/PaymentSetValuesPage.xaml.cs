@@ -107,13 +107,12 @@ namespace LaceupMigration.Views
             }
         }
 
-        /// <summary>Both physical and nav bar back use this; prompt if unsaved, then remove state and navigate.</summary>
+        protected override string? GetRouteName() => "paymentsetvalues";
+
         protected override async void GoBack()
         {
-            bool preventNavigation = await _viewModel.OnBackButtonPressed();
-            if (preventNavigation)
+            if (await _viewModel.OnBackButtonPressed())
                 return;
-            Helpers.NavigationHelper.RemoveNavigationState("paymentsetvalues");
             base.GoBack();
         }
 

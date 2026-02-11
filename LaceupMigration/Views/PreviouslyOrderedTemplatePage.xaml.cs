@@ -114,6 +114,8 @@ namespace LaceupMigration.Views
             Helpers.NavigationHelper.SaveNavigationState(route);
         }
 
+        protected override string? GetRouteName() => "previouslyorderedtemplate";
+
         protected override async void OnAppearing()
         {
             base.OnAppearing();

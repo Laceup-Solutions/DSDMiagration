@@ -10,6 +10,8 @@ namespace LaceupMigration.Views
             BindingContext = viewModel;
         }
 
+        protected override string? GetRouteName() => "logviewer";
+
         protected override async void OnAppearing()
         {
             base.OnAppearing();

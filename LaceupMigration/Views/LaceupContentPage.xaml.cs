@@ -51,17 +51,48 @@ namespace LaceupMigration.Views
         }
 
         /// <summary>
+        /// Returns the Shell route name for this page (e.g. "ordercredit", "productcatalog").
+        /// Used to remove the correct ActivityState when navigating back.
+        /// Override in subclasses to return a constant so back logic is consistent regardless of query params.
+        /// Return null to skip state removal for this page.
+        /// </summary>
+        protected virtual string? GetRouteName()
+        {
+            try
+            {
+                var currentState = Shell.Current?.CurrentState;
+                if (currentState?.Location == null)
+                    return null;
+                var location = currentState.Location.OriginalString;
+                var routeParts = location.Split('/')
+                    .Where(p => !string.IsNullOrEmpty(p) && !p.StartsWith("//"))
+                    .ToList();
+                if (routeParts.Count == 0)
+                    return null;
+                var lastRoute = routeParts.LastOrDefault();
+                if (string.IsNullOrEmpty(lastRoute))
+                    return null;
+                var baseRoute = lastRoute.Split('?')[0];
+                var tabRoutes = new[] { "MainPage", "Clients", "Invoices", "Orders", "Payments" };
+                if (tabRoutes.Contains(baseRoute, StringComparer.OrdinalIgnoreCase))
+                    return null;
+                return baseRoute;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Virtual method for pages to override and provide custom back navigation logic.
         /// Default implementation removes state and navigates back.
         /// Called by both physical back button (via OnBackButtonPressed) and navigation bar back button (via BackButtonBehavior).
+        /// Override for "confirm before leaving" (call base.GoBack() when user confirms) or custom navigation (call RemoveNavigationState() then your navigation).
         /// </summary>
         protected virtual void GoBack()
         {
-            // [ACTIVITY STATE]: Automatically remove state when navigating away via back button
-            // This works for both physical back button and navigation bar back button
             RemoveNavigationState();
-            
-            // Navigate back
             Shell.Current.GoToAsync("..");
         }
 
@@ -76,48 +107,19 @@ namespace LaceupMigration.Views
         }
 
         /// <summary>
-        /// Removes the navigation state for the current page.
-        /// Automatically detects the route from the current Shell state.
+        /// Removes the navigation state for the current page using GetRouteName().
+        /// Call this before any programmatic navigation away from this page (e.g. from ViewModel "Done" flow).
         /// </summary>
         protected virtual void RemoveNavigationState()
         {
             try
             {
-                // Get current route from Shell state
-                var currentState = Shell.Current.CurrentState;
-                if (currentState?.Location != null)
-                {
-                    var location = currentState.Location.OriginalString;
-                    
-                    // Extract the last route part (the current page)
-                    // Location format: "//MainPage/Clients/clientdetails?clientId=123"
-                    var routeParts = location.Split('/')
-                        .Where(p => !string.IsNullOrEmpty(p) && !p.StartsWith("//"))
-                        .ToList();
-                    
-                    if (routeParts.Count > 0)
-                    {
-                        // Get the last route part (current page)
-                        var lastRoute = routeParts.LastOrDefault();
-                        if (!string.IsNullOrEmpty(lastRoute))
-                        {
-                            // Remove query parameters to get base route
-                            var baseRoute = lastRoute.Split('?')[0];
-                            
-                            // Skip tab routes (they're part of Shell structure, not navigation destinations)
-                            var tabRoutes = new[] { "MainPage", "Clients", "Invoices", "Orders", "Payments" };
-                            if (!tabRoutes.Contains(baseRoute, StringComparer.OrdinalIgnoreCase))
-                            {
-                                // Remove state for this route
-                                Helpers.NavigationHelper.RemoveNavigationState(baseRoute);
-                            }
-                        }
-                    }
-                }
+                var route = GetRouteName();
+                if (!string.IsNullOrEmpty(route))
+                    Helpers.NavigationHelper.RemoveNavigationState(route);
             }
             catch (Exception ex)
             {
-                // Log error but don't prevent navigation
                 System.Diagnostics.Debug.WriteLine($"[LaceupContentPage] Error removing navigation state: {ex.Message}");
             }
         }

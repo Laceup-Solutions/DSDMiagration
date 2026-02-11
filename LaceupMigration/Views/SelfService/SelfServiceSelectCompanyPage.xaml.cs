@@ -10,6 +10,8 @@ namespace LaceupMigration.Views.SelfService
             BindingContext = viewModel;
         }
 
+        protected override string? GetRouteName() => "selfservice/selectcompany";
+
         private async void OnCompanySelected(object sender, SelectionChangedEventArgs e)
         {
             if (e.CurrentSelection.FirstOrDefault() is SelfServiceCompany company && BindingContext is SelfServiceSelectCompanyPageViewModel vm)

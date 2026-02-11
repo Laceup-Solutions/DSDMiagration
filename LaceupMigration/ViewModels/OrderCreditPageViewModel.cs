@@ -404,11 +404,15 @@ namespace LaceupMigration.ViewModels
 
             if (lastDetail != null)
             {
-                var route = $"fullcategory?orderId={_order.OrderId}&categoryId={lastDetail.Product.CategoryId}&productId={lastDetail.Product.ProductId}&asCreditItem=1&comingFrom=Credit";
+                var route = $"productcatalog?orderId={_order.OrderId}&categoryId={lastDetail.Product.CategoryId}";
+                route += "&asCreditItem=1";
+                
                 if ((Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order)) && !lastDetail.Damaged)
                 {
                     route += "&asReturnItem=1";
                 }
+                
+                route += "&viaFullCategory=0";
                 await Shell.Current.GoToAsync(route);
             }
             else

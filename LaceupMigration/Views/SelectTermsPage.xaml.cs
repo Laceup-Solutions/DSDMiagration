@@ -13,6 +13,8 @@ namespace LaceupMigration.Views
             BindingContext = _viewModel;
         }
 
+        protected override string? GetRouteName() => "selectterms";
+
         protected override async void OnAppearing()
         {
             base.OnAppearing();

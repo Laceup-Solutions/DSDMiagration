@@ -122,26 +122,11 @@ namespace LaceupMigration.Views
             }
         }
 
-        /// <summary>
-        /// Override GoBack to handle order finalization before navigating away.
-        /// This is called by both the physical back button and navigation bar back button.
-        /// </summary>
+        protected override string? GetRouteName() => "advancedcatalog";
+
         protected override void GoBack()
         {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
-            var currentRoute = Shell.Current.CurrentState?.Location?.OriginalString ?? "";
-            if (currentRoute.Contains("advancedcatalog"))
-            {
-                Helpers.NavigationHelper.RemoveNavigationState(currentRoute);
-            }
-            else
-            {
-                // Fallback: try to remove by route name
-                Helpers.NavigationHelper.RemoveNavigationState("advancedcatalog");
-            }
-            
-            // Call ViewModel's GoBackAsync which handles finalization logic
-            // This is async, but GoBack() is synchronous, so we fire and forget
+            RemoveNavigationState();
             _ = _viewModel.GoBackAsync();
         }
 

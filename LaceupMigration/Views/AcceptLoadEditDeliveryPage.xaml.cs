@@ -62,24 +62,7 @@ namespace LaceupMigration.Views
             Helpers.NavigationHelper.SaveNavigationState(route);
         }
 
-        protected override bool OnBackButtonPressed()
-        {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
-            // Build route from current state or use saved route
-            var currentRoute = Shell.Current.CurrentState?.Location?.OriginalString ?? "";
-            if (currentRoute.Contains("acceptloadeditdelivery"))
-            {
-                Helpers.NavigationHelper.RemoveNavigationState(currentRoute);
-            }
-            else
-            {
-                // Fallback: try to remove by route name (will remove any acceptloadeditdelivery state)
-                Helpers.NavigationHelper.RemoveNavigationState("acceptloadeditdelivery");
-            }
-            
-            // Match Xamarin OnKeyDown logic - navigation handled in ViewModel
-            return base.OnBackButtonPressed();
-        }
+        protected override string? GetRouteName() => "acceptloadeditdelivery";
     }
 }
 

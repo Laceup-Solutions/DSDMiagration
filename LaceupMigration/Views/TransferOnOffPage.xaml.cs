@@ -15,54 +15,24 @@ namespace LaceupMigration.Views
             InitializeComponent();
             _viewModel = viewModel;
             BindingContext = _viewModel;
-            
-            // Set up back button override - works for both physical back button and navigation bar back button
-            BackButtonOverride();
-        }
-
-        /// <summary>
-        /// Override back button behavior for both physical back button and navigation bar back button.
-        /// </summary>
-        private void BackButtonOverride()
-        {
-            var backCommand = new Command(GoBack);
-
-            // Set the back button behavior for this specific page
-            Shell.SetBackButtonBehavior(this, new BackButtonBehavior
-            {
-                Command = backCommand
-            });
         }
 
         protected override List<MenuOption> GetPageSpecificMenuOptions()
         {
-            // Get menu options from ViewModel - BuildMenuOptions returns List<MenuOption>
-            // But the ViewModel uses a private record MenuOption, so we need to convert it
-            // Actually, let's check if BuildMenuOptions is accessible and returns the right type
             return _viewModel.BuildMenuOptions();
         }
 
-        /// <summary>
-        /// Handle back navigation logic for both physical and navigation bar back buttons.
-        /// </summary>
-        private void GoBack()
+        protected override string? GetRouteName() => "transferonoff";
+
+        protected override void GoBack()
         {
-            // If transfer was saved (ReadOnly = true), ensure temp file is deleted
-            // This prevents ExistPendingTransfer from being true after saving and going back
             if (_viewModel.ReadOnly && !string.IsNullOrEmpty(_viewModel.GetTempFilePath()))
             {
                 var tempFile = _viewModel.GetTempFilePath();
                 if (System.IO.File.Exists(tempFile))
-                {
                     System.IO.File.Delete(tempFile);
-                }
             }
-            
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
-            Helpers.NavigationHelper.RemoveNavigationState("transferonoff");
-            
-            // Navigate back
-            Shell.Current.GoToAsync("..");
+            base.GoBack();
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)

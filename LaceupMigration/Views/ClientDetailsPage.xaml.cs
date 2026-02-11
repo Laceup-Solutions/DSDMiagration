@@ -27,19 +27,7 @@ namespace LaceupMigration.Views
             InvoicesCollectionView.SelectionChanged += InvoicesCollectionView_SelectionChanged;
         }
 
-        /// <summary>
-        /// Override GoBack to clear navigation state when navigating away.
-        /// This is called by both the physical back button and navigation bar back button.
-        /// </summary>
-        protected override void GoBack()
-        {
-            // [ACTIVITY STATE]: Remove state when navigating away via back button
-            // This prevents the app from restoring to ClientDetailsPage after closing it
-            Helpers.NavigationHelper.RemoveNavigationState("clientdetails");
-            
-            // Navigate back
-            base.GoBack();
-        }
+        protected override string? GetRouteName() => "clientdetails";
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {

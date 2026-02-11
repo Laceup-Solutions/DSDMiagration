@@ -14,6 +14,8 @@ namespace LaceupMigration.Views
             BindingContext = _viewModel;
         }
 
+        protected override string? GetRouteName() => "inventory";
+
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
             // Match Xamarin: Intent.Extras.Get(actionIntent) - check for actionIntent parameter

@@ -19,6 +19,8 @@ namespace LaceupMigration.Views
             _viewModel.OnNavigatedTo(query);
         }
 
+        protected override string? GetRouteName() => "goaldetails";
+
         protected override async void OnAppearing()
         {
             base.OnAppearing();

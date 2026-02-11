@@ -58,12 +58,7 @@ namespace LaceupMigration.Views
             await _viewModel.OnAppearingAsync();
         }
 
-        /// <summary>Both physical and nav bar back use this; remove state then navigate.</summary>
-        protected override void GoBack()
-        {
-            Helpers.NavigationHelper.RemoveNavigationState("invoicedetails");
-            base.GoBack();
-        }
+        protected override string? GetRouteName() => "invoicedetails";
     }
 }
 

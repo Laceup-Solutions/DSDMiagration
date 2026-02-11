@@ -85,6 +85,8 @@ namespace LaceupMigration.Views
             Helpers.NavigationHelper.SaveNavigationState(route);
         }
 
+        protected override string? GetRouteName() => "acceptload";
+
         protected override async void OnAppearing()
         {
             base.OnAppearing();
