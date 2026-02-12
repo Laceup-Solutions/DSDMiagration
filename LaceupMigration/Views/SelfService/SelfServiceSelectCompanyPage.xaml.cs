@@ -18,6 +18,11 @@ namespace LaceupMigration.Views.SelfService
             {
                 await vm.SelectCompanyAsync(company);
             }
+
+            if (sender is CollectionView collectionView)
+            {
+                collectionView.SelectedItem = null;
+            }
         }
     }
 }

@@ -110,18 +110,8 @@ namespace LaceupMigration
             Routing.RegisterRoute("addclientbillto", typeof(AddClientBillToPage));
             Routing.RegisterRoute("logviewer", typeof(LogViewerPage));
 
-            // Self Service routes
-            Routing.RegisterRoute("selfservice/selectcompany", typeof(Views.SelfService.SelfServiceSelectCompanyPage));
-            Routing.RegisterRoute("selfservice/clientlist", typeof(Views.SelfService.SelfServiceClientListPage));
-            Routing.RegisterRoute("selfservice/checkout", typeof(Views.SelfService.SelfServiceCheckOutPage));
-            Routing.RegisterRoute("selfservice/template", typeof(Views.SelfService.SelfServiceTemplatePage));
-            Routing.RegisterRoute("selfservice/catalog", typeof(Views.SelfService.SelfServiceCatalogPage));
-            Routing.RegisterRoute("selfservice/categories", typeof(Views.SelfService.SelfServiceCategoriesPage));
-            Routing.RegisterRoute("selfservice/collectpayment",
-                typeof(Views.SelfService.SelfServiceCollectPaymentPage));
-            Routing.RegisterRoute("selfservice/credittemplate",
-                typeof(Views.SelfService.SelfServiceCreditTemplatePage));
-            
+            // Self Service routes are only registered in SelfServiceShell (dedicated shell for self service module)
+
             // Sort By Dialog
             Routing.RegisterRoute("sortbydialog", typeof(SortByDialogPage));
             

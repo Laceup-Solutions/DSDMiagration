@@ -23,7 +23,28 @@ public interface IDialogService
     Task<(string qty, string comments, UnitOfMeasure selectedUoM)> ShowAddItemDialogAsync(string productName, Product product, string initialQty = "1", string initialComments = "", UnitOfMeasure initialUoM = null);
     Task<(string qty, UnitOfMeasure selectedUoM)> ShowTransferQtyDialogAsync(string productName, Product product, string initialQty = "1", UnitOfMeasure initialUoM = null, string buttonText = "Add");
     Task<(int? priceLevelId, string price, string comments)> ShowPriceLevelDialogAsync(string productName, Product product, Order order, UnitOfMeasure uom, int currentPriceLevelSelected, string initialPrice = "", string initialComments = "");
-    Task<(List<int> selectedCategoryIds, bool selectAll, bool showPrice, bool showUPC, bool showUoM)?> ShowCatalogFilterDialogAsync(List<Category> categories);
+    /// <param name="hideCategorySection">When true, hide the Categories section (you're already in a category); only "Show In PDF" is shown and OK uses categoryIdsWhenCategorySectionHidden.</param>
+    /// <param name="categoryIdsWhenCategorySectionHidden">When hideCategorySection is true, these category IDs are returned as selectedCategoryIds when user taps OK.</param>
+    Task<(List<int> selectedCategoryIds, bool selectAll, bool showPrice, bool showUPC, bool showUoM)?> ShowCatalogFilterDialogAsync(List<Category> categories, bool hideCategorySection = false, IReadOnlyList<int>? categoryIdsWhenCategorySectionHidden = null);
+    /// <summary>Full add/edit item dialog (quantity, UoM, price, weight, lot, etc.). Same as PreviouslyOrderedTemplate row tap / quantity button.</summary>
+    Task<RestOfTheAddDialogResult> ShowRestOfTheAddDialogAsync(Product product, Order order, OrderDetail existingDetail = null, bool isCredit = false, bool isDamaged = false, bool isDelivery = false);
+}
+
+/// <summary>Result of ShowRestOfTheAddDialogAsync (add/edit item popup).</summary>
+public class RestOfTheAddDialogResult
+{
+    public float Qty { get; set; }
+    public float Weight { get; set; }
+    public string Lot { get; set; } = string.Empty;
+    public DateTime? LotExpiration { get; set; }
+    public string Comments { get; set; } = string.Empty;
+    public double Price { get; set; }
+    public UnitOfMeasure? SelectedUoM { get; set; }
+    public bool IsFreeItem { get; set; }
+    public bool UseLastSoldPrice { get; set; }
+    public int ReasonId { get; set; }
+    public int PriceLevelSelected { get; set; }
+    public bool Cancelled { get; set; }
 }
 
 public class DialogHelper

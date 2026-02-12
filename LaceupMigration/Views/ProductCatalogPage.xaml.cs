@@ -20,7 +20,17 @@ namespace LaceupMigration.Views
         private void UpdateToolbar()
         {
             ToolbarItems.Clear();
-            if (_viewModel.IsFromLoadOrder)
+            if (_viewModel.IsFromSelfService && _viewModel.SelfServiceOrderId is int orderId)
+            {
+                ToolbarItems.Add(new ToolbarItem
+                {
+                    Text = "Checkout",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = 0,
+                    Command = new Command(async () => await Shell.Current.GoToAsync($"//selfservice/checkout?orderId={orderId}"))
+                });
+            }
+            else if (_viewModel.IsFromLoadOrder)
             {
                 ToolbarItems.Add(new ToolbarItem
                 {

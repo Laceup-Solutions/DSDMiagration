@@ -111,7 +111,7 @@ namespace LaceupMigration.ViewModels.SelfService
             if (_order == null || !CanEdit)
                 return;
 
-            await Shell.Current.GoToAsync($"selfservice/template?orderId={_order.OrderId}");
+            await Shell.Current.GoToAsync($"selfservice/checkout?orderId={_order.OrderId}");
         }
 
         [RelayCommand(CanExecute = nameof(CanEdit))]

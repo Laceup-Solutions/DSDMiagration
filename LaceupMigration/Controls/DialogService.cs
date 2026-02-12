@@ -1445,7 +1445,7 @@ public class DialogService : IDialogService
         }
     }
     
-    public async Task<(List<int> selectedCategoryIds, bool selectAll, bool showPrice, bool showUPC, bool showUoM)?> ShowCatalogFilterDialogAsync(List<Category> categories)
+    public async Task<(List<int> selectedCategoryIds, bool selectAll, bool showPrice, bool showUPC, bool showUoM)?> ShowCatalogFilterDialogAsync(List<Category> categories, bool hideCategorySection = false, IReadOnlyList<int>? categoryIdsWhenCategorySectionHidden = null)
     {
         var page = GetCurrentPage();
         if (page == null)
@@ -1462,7 +1462,7 @@ public class DialogService : IDialogService
             Margin = new Thickness(0, 10, 0, 8)
         };
 
-        // Create checkboxes for categories
+        // Create checkboxes for categories (not used when hideCategorySection)
         var categoryCheckboxes = new List<(CheckBox checkbox, Label label, int categoryId)>();
         var allCategoriesCheckbox = new CheckBox
         {
@@ -1520,8 +1520,8 @@ public class DialogService : IDialogService
             VerticalOptions = LayoutOptions.Center
         };
 
-        // Check if filters should be visible (matches Xamarin: DataAccess.CheckCommunicatorVersion >= "46.2.0")
-        bool filtersVisible = Config.CheckCommunicatorVersion("46.2.0");
+        // Show In PDF section: visible when communicator supports it, or when we hid the category section (already in a category)
+        bool filtersVisible = Config.CheckCommunicatorVersion("46.2.0") || hideCategorySection;
 
         // Handle price checkbox visibility/state (matches Xamarin logic)
         if (Config.DisableSendCatalogWithPrices || Config.HidePriceInTransaction)
@@ -1531,11 +1531,12 @@ public class DialogService : IDialogService
             showPriceCheckbox.IsVisible = false;
         }
 
-        // Category selection layout
+        // Category selection layout (hidden when already inside a category - no need to re-select)
         var categoryLayout = new VerticalStackLayout
         {
             Spacing = 0,
-            Padding = new Thickness(20, 0, 20, 0)
+            Padding = new Thickness(20, 0, 20, 0),
+            IsVisible = !hideCategorySection
         };
         
         categoryLayout.Children.Add(categoriesLabel);
@@ -1614,29 +1615,44 @@ public class DialogService : IDialogService
             }
         };
 
-        // Scrollable content
-        var scrollContent = new ScrollView
+        // Separator between category and filters (hidden when category section is hidden)
+        var categoryFiltersSeparator = new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0, 10), IsVisible = !hideCategorySection };
+        // Content: when category section hidden use only filters (sizes to content); otherwise use ScrollView for full list
+        View row2Content;
+        if (hideCategorySection)
         {
-            Content = new VerticalStackLayout
+            row2Content = new VerticalStackLayout
             {
                 Spacing = 0,
-                Children =
+                Padding = new Thickness(0, 10, 0, 10),
+                Children = { filtersLayout }
+            };
+        }
+        else
+        {
+            row2Content = new ScrollView
+            {
+                Content = new VerticalStackLayout
                 {
-                    categoryLayout,
-                    new BoxView { HeightRequest = 1, Color = Color.FromArgb("#E0E0E0"), Margin = new Thickness(0, 10) },
-                    filtersLayout
+                    Spacing = 0,
+                    Children =
+                    {
+                        categoryLayout,
+                        categoryFiltersSeparator,
+                        filtersLayout
+                    }
                 }
-            }
-        };
+            };
+        }
 
-        // Main container - Use Grid to ensure buttons are always visible
+        // Main container - When category section is hidden, use Auto for content row so dialog shrinks to fit
         var mainContainer = new Grid
         {
             RowDefinitions = new RowDefinitionCollection
             {
                 new RowDefinition { Height = GridLength.Auto }, // Header
                 new RowDefinition { Height = GridLength.Auto }, // Separator
-                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }, // Scrollable content
+                new RowDefinition { Height = hideCategorySection ? GridLength.Auto : new GridLength(1, GridUnitType.Star) }, // Scrollable content
                 new RowDefinition { Height = GridLength.Auto }, // Separator
                 new RowDefinition { Height = GridLength.Auto }  // Buttons
             },
@@ -1661,8 +1677,8 @@ public class DialogService : IDialogService
         Grid.SetRow(headerSeparator, 1);
         mainContainer.Children.Add(headerSeparator);
 
-        Grid.SetRow(scrollContent, 2);
-        mainContainer.Children.Add(scrollContent);
+        Grid.SetRow(row2Content, 2);
+        mainContainer.Children.Add(row2Content);
 
         // Buttons
         var cancelButton = new Button
@@ -1790,19 +1806,32 @@ public class DialogService : IDialogService
         {
             await SafePopModalAsync();
             
-            bool selectAll = allCategoriesCheckbox.IsChecked;
-            List<int> selectedCategoryIds = new List<int>();
-
-            if (!selectAll)
+            bool selectAll;
+            List<int> selectedCategoryIds;
+            if (hideCategorySection && categoryIdsWhenCategorySectionHidden != null)
             {
-                foreach (var (checkbox, label, categoryId) in categoryCheckboxes)
+                // Already in a category: use the passed-in category ID(s)
+                selectedCategoryIds = categoryIdsWhenCategorySectionHidden.ToList();
+                selectAll = false;
+            }
+            else
+            {
+                selectAll = allCategoriesCheckbox.IsChecked;
+                selectedCategoryIds = new List<int>();
+                if (!selectAll)
                 {
-                    if (checkbox.IsChecked)
-                        selectedCategoryIds.Add(categoryId);
+                    foreach (var (checkbox, label, categoryId) in categoryCheckboxes)
+                    {
+                        if (checkbox.IsChecked)
+                            selectedCategoryIds.Add(categoryId);
+                    }
                 }
             }
 
-            tcs.SetResult((selectedCategoryIds, selectAll, showPriceCheckbox.IsChecked, showUPCCheckbox.IsChecked, showUoMCheckbox.IsChecked));
+            bool showPrice = showPriceCheckbox.IsChecked;
+            bool showUPC = showUPCCheckbox.IsChecked;
+            bool showUoM = showUoMCheckbox.IsChecked;
+            tcs.SetResult((selectedCategoryIds, selectAll, showPrice, showUPC, showUoM));
         };
 
         cancelButton.Clicked += async (s, e) =>
@@ -2351,23 +2380,6 @@ public class DialogService : IDialogService
 
         await page.Navigation.PushModalAsync(dialog);
         return await tcs.Task;
-    }
-
-    // Result class for RestOfTheAddDialog
-    public class RestOfTheAddDialogResult
-    {
-        public float Qty { get; set; }
-        public float Weight { get; set; }
-        public string Lot { get; set; } = string.Empty;
-        public DateTime? LotExpiration { get; set; }
-        public string Comments { get; set; } = string.Empty;
-        public double Price { get; set; }
-        public UnitOfMeasure? SelectedUoM { get; set; }
-        public bool IsFreeItem { get; set; }
-        public bool UseLastSoldPrice { get; set; }
-        public int ReasonId { get; set; }
-        public int PriceLevelSelected { get; set; }
-        public bool Cancelled { get; set; }
     }
 
     public async Task<RestOfTheAddDialogResult> ShowRestOfTheAddDialogAsync(

@@ -98,8 +98,8 @@ namespace LaceupMigration.ViewModels.SelfService
             if (categoryItem == null || _order == null)
                 return;
 
-            // Navigate to catalog with category filter
-            await Shell.Current.GoToAsync($"selfservice/catalog?orderId={_order.OrderId}&categoryId={categoryItem.Category.CategoryId}");
+            // Reuse ProductCatalogPage (same as PreviouslyOrderedTemplate flow)
+            await Shell.Current.GoToAsync($"productcatalog?orderId={_order.OrderId}&clientId={_order.Client.ClientId}&categoryId={categoryItem.Category.CategoryId}&comingFrom=SelfService");
         }
 
         partial void OnSearchTextChanged(string value)

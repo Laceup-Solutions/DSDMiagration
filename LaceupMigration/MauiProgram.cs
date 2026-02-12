@@ -68,8 +68,9 @@ namespace LaceupMigration
 			builder.Services.AddSingleton<Services.AdvancedOptionsService>();
 			builder.Services.AddSingleton<Services.IActivityStateRestorationService, Services.ActivityStateRestorationService>();
 
-			// Register AppShell
+			// Register AppShell and SelfServiceShell (separate shell for self service module)
 			builder.Services.AddSingleton<AppShell>();
+			builder.Services.AddSingleton<Views.SelfService.SelfServiceShell>();
 
 			// Views + ViewModels
 			builder.Services.AddTransient<SplashPage>();

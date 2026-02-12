@@ -22,6 +22,20 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private bool _canEdit = true;
 
+        [ObservableProperty]
+        private string _linesText = "Lines: 0";
+
+        [ObservableProperty]
+        private string _qtyText = "Qty: 0";
+
+        [ObservableProperty]
+        private string _termText = "Term: ";
+
+        [ObservableProperty]
+        private string _sortByText = "Sort By: Product Name";
+
+        public int? OrderId => _order?.OrderId;
+
         public SelfServiceTemplatePageViewModel(IDialogService dialogService, ILaceupAppService appService)
         {
             _dialogService = dialogService;
@@ -58,6 +72,10 @@ namespace LaceupMigration.ViewModels.SelfService
 
             ClientName = _order.Client.ClientName;
             _order.Client.EnsurePreviouslyOrdered();
+
+            LinesText = $"Lines: {_order.Details.Count}";
+            QtyText = $"Qty: {_order.Details.Sum(x => x.Qty)}";
+            TermText = $"Term: {_order.Term}";
 
             TemplateItems.Clear();
             if (_order.Client.OrderedList != null)
@@ -113,6 +131,36 @@ namespace LaceupMigration.ViewModels.SelfService
             _order.Save();
 
             await Shell.Current.GoToAsync($"selfservice/checkout?orderId={_order.OrderId}");
+        }
+
+        [RelayCommand]
+        private async Task GoToRecentlyOrdered()
+        {
+            if (OrderId == null) return;
+            await Shell.Current.GoToAsync($"//selfservice/template?orderId={OrderId}");
+        }
+
+        [RelayCommand]
+        private async Task GoToCatalog()
+        {
+            if (OrderId == null) return;
+            await Shell.Current.GoToAsync($"selfservice/categories?orderId={OrderId}");
+        }
+
+        [RelayCommand]
+        private async Task GoToSearch()
+        {
+            if (OrderId == null) return;
+            await Shell.Current.GoToAsync($"selfservice/catalog?orderId={OrderId}");
+        }
+
+        [RelayCommand]
+        private async Task GoToMore()
+        {
+            var options = new[] { "Select Company", "Help" };
+            var choice = await _dialogService.ShowActionSheetAsync("More", null, "Cancel", options);
+            if (choice == "Select Company")
+                await Shell.Current.GoToAsync("//selfservice/selectcompany");
         }
     }
 

@@ -202,7 +202,7 @@ namespace LaceupMigration.ViewModels.SelfService
 
                     if (Client.Clients.Count > 1)
                     {
-                        await Shell.Current.GoToAsync("selfservice/clientlist");
+                        await Shell.Current.GoToAsync("//selfservice/clientlist");
                     }
                     else
                     {
@@ -227,8 +227,7 @@ namespace LaceupMigration.ViewModels.SelfService
 
                         UpdateOrderPrices();
 
-                        var route = order.Details.Count == 0 ? "//selfservice/template" : "//selfservice/checkout";
-                        await Shell.Current.GoToAsync($"{route}?orderId={order.OrderId}");
+                        await Shell.Current.GoToAsync($"//selfservice/checkout?orderId={order.OrderId}");
                     }
                 }
                 catch (Exception ex)

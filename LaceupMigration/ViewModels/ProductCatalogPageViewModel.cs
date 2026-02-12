@@ -61,6 +61,12 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _isFromLoadOrder;
 
+        [ObservableProperty]
+        private bool _isFromSelfService;
+
+        /// <summary>When from self service, order ID to navigate back to checkout.</summary>
+        public int? SelfServiceOrderId => _order?.OrderId;
+
         public ProductCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService, IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner, AdvancedOptionsService advancedOptionsService)
         {
             _dialogService = dialogService;
@@ -197,6 +203,7 @@ namespace LaceupMigration.ViewModels
 
             _initialized = true;
             IsFromLoadOrder = _comingFrom == "LoadOrderTemplate";
+            IsFromSelfService = _comingFrom == "SelfService";
             PrepareProductList();
             Filter();
         }

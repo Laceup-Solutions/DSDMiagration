@@ -1,3 +1,4 @@
+using System.Linq;
 using LaceupMigration.ViewModels.SelfService;
 
 namespace LaceupMigration.Views.SelfService
@@ -8,6 +9,7 @@ namespace LaceupMigration.Views.SelfService
         {
             InitializeComponent();
             BindingContext = viewModel;
+            UseCustomMenu = true; // Single Menu toolbar item only (Sync Data, Advanced Options, Sign Out when 1 client)
         }
 
         protected override string? GetRouteName() => "selfservice/clientlist";
@@ -21,19 +23,25 @@ namespace LaceupMigration.Views.SelfService
             }
         }
 
-        private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+        protected override void OnDisappearing()
         {
-            if (BindingContext is SelfServiceClientListPageViewModel vm)
+            base.OnDisappearing();
+            var collectionView = this.FindByName<CollectionView>("ClientCollectionView");
+            if (collectionView != null)
             {
-                vm.SearchText = e.NewTextValue;
+                collectionView.SelectedItem = null;
             }
         }
 
-        private async void OnClientSelected(object sender, SelectionChangedEventArgs e)
+        private async void OnClientSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (e.CurrentSelection.FirstOrDefault() is ClientItemViewModel clientItem && BindingContext is SelfServiceClientListPageViewModel vm)
+            if (e.CurrentSelection.FirstOrDefault() is ClientItemViewModel item && BindingContext is SelfServiceClientListPageViewModel vm)
             {
-                await vm.SelectClientAsync(clientItem);
+                await vm.HandleClientSelectionAsync(item);
+            }
+            if (sender is CollectionView collectionView)
+            {
+                collectionView.SelectedItem = null;
             }
         }
     }
