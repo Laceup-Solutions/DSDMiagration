@@ -46,7 +46,10 @@
 					  WidthRequest="300"
 					  HorizontalOptions="Center">
 					<Border Grid.Row="0" Padding="0">
-					<Entry
+						<Border.StrokeShape>
+							<RoundRectangle CornerRadius="5" />
+						</Border.StrokeShape>
+						<Entry
 					       Text="{Binding ServerAddress}"
 					       Placeholder="Server Address"
 					       Focused="VisualElement_OnFocused"

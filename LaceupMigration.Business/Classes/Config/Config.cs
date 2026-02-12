@@ -6753,6 +6753,10 @@ namespace LaceupMigration
             sb.Append(LanAddress);
             sb.Append(Environment.NewLine);
 
+            //ssid not showing if the app hasnt tried to connect to anything
+            if (string.IsNullOrEmpty(SSID) && helper != null)
+                SSID = helper.GetSSID();
+            
             sb.Append(SSIDKey);
             sb.Append("=");
             sb.Append(SSID);

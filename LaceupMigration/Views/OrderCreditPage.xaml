@@ -131,6 +131,10 @@
                                     <Label Text="{Binding ListPriceText}"
                                            FontSize="13"
                                            TextColor="{StaticResource Gray600}" />
+                                    <Label Text="{Binding UomText}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}"
+                                           IsVisible="{Binding UomText, Converter={StaticResource IsStringNotEmptyConverter}}" />
                                     <Label Text="{Binding TypeText}"
                                            IsVisible="{Binding ShowType}"
                                            FontSize="12"

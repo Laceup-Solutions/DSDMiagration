@@ -2,7 +2,9 @@
 <local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             xmlns:lm="clr-namespace:LaceupMigration"
              xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             xmlns:laceupMigration="clr-namespace:LaceupMigration;assembly=LaceupMigration.Business"
              x:Class="LaceupMigration.Views.ProductCatalogPage"
              x:DataType="vm:ProductCatalogPageViewModel"
              Shell.NavBarIsVisible="True"
@@ -29,7 +31,7 @@
                 </Grid>
             </Frame>
 
-            <!-- Product List -->
+            <!-- Product List: main line with + only, sublines (order details) below per product -->
             <CollectionView Grid.Row="1"
                             ItemsSource="{Binding FilteredProducts}"
                             SelectionMode="None">
@@ -37,85 +39,92 @@
                     <DataTemplate x:DataType="vm:CatalogItemViewModel">
                         <Grid Style="{StaticResource CollectionViewItemStyle}">
                             <Frame Padding="12" Margin="8,2" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
-                                <Frame.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnCellTapped" />
-                                </Frame.GestureRecognizers>
-                                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="4">
-                                <!-- Product Image (if available) -->
-                                <Image Source="dotnet_bot.png"
-                                       WidthRequest="60"
-                                       HeightRequest="60"
-                                       Grid.Row="0" Grid.Column="0"
-                                       Grid.RowSpan="4"
-                                       IsVisible="{Binding HasImage}" />
-
-                                <!-- Product Name and OH -->
-                                <Label Grid.Column="1" Grid.Row="0"
-                                       Text="{Binding ProductName}"
-                                       FontSize="16"
-                                       FontAttributes="Bold"
-                                       TextColor="{Binding ProductNameColor}" />
-                                <Label Grid.Column="2" Grid.Row="0"
-                                       Text="{Binding OnHandText}"
-                                       FontSize="14"
-                                       TextColor="{StaticResource PrimaryDark}"
-                                       HorizontalOptions="End" />
-                                
-                                <!-- Product Details (Left) -->
-                                <VerticalStackLayout Grid.Column="1" Grid.Row="1" Spacing="2">
-                                    <Label Text="{Binding ListPriceText}"
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray600}" />
-                                    
-                                    <!-- Values (existing order details with Price, Type) -->
-                                    <!-- Show first value with Qty > 0 -->
-                                    <VerticalStackLayout Spacing="2" IsVisible="{Binding HasValues}">
-                                        <Label FontSize="12" TextColor="{StaticResource Gray600}">
-                                            <Label.Text>
-                                                <Binding Path="PriceText" />
-                                            </Label.Text>
-                                        </Label>
-                                        <Label FontSize="12" 
-                                               FontAttributes="Bold"
-                                               TextColor="Orange"
-                                               TextDecorations="Underline"
-                                               IsVisible="{Binding ShowTypeText}">
-                                            <Label.Text>
-                                                <Binding Path="TypeText" />
-                                            </Label.Text>
-                                        </Label>
-                                    </VerticalStackLayout>
-                                    
-                                    <Label Text="{Binding TotalText}"
-                                           FontSize="14"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource PrimaryDark}"
-                                           IsVisible="{Binding HasValues}" />
-                                </VerticalStackLayout>
-                                
-                                <!-- Quantity Button (Right) -->
-                                <Button Grid.Column="2" Grid.Row="1"
-                                        Text="{Binding QuantityButtonText}"
-                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ProductCatalogPageViewModel}}, Path=AddButtonClickCommand}"
-                                        CommandParameter="{Binding .}"
-                                        WidthRequest="90"
-                                        HeightRequest="50"
-                                        BackgroundColor="{StaticResource PrimaryDark}"
-                                        TextColor="White"
-                                        FontSize="18"
-                                        FontAttributes="Bold"
-                                        CornerRadius="4"
-                                        VerticalOptions="Start"
-                                        HorizontalOptions="End" />
-
-                                <!-- Suggested Products Label (Green, at bottom) -->
-                                <Label Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="3"
-                                       Text="{Binding SuggestedLabelText}"
-                                       FontSize="12"
-                                       FontAttributes="Bold"
-                                       TextColor="{StaticResource colorLaceupGreen}"
-                                       IsVisible="{Binding IsSuggested}"
-                                       Margin="0,4,0,0" />
+                                <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
+                                    <!-- Main line: product name, OH, list price, total, + button only (for adding) -->
+                                    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                        <Image Source="dotnet_bot.png"
+                                               WidthRequest="60"
+                                               HeightRequest="60"
+                                               Grid.Column="0"
+                                               IsVisible="{Binding HasImage}" />
+                                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                            <Label Text="{Binding ProductName}"
+                                                   FontSize="16"
+                                                   FontAttributes="Bold"
+                                                   TextColor="{Binding ProductNameColor}" />
+                                            <Label Text="{Binding OnHandText}"
+                                                   FontSize="13"
+                                                   TextColor="{StaticResource Gray600}" />
+                                            <Label Text="{Binding ListPriceText}"
+                                                   FontSize="13"
+                                                   TextColor="{StaticResource Gray600}" />
+                                            <Label Text="{Binding TotalText}"
+                                                   FontSize="14"
+                                                   FontAttributes="Bold"
+                                                   TextColor="{StaticResource PrimaryDark}"
+                                                   IsVisible="{Binding HasValues}" />
+                                            <Label Text="{Binding SuggestedLabelText}"
+                                                   FontSize="12"
+                                                   FontAttributes="Bold"
+                                                   TextColor="{StaticResource colorLaceupGreen}"
+                                                   IsVisible="{Binding IsSuggested}"
+                                                   Margin="0,2,0,0" />
+                                        </VerticalStackLayout>
+                                        <!-- Plus button: add via RestOfTheAddDialog -->
+                                        <Button Grid.Column="2"
+                                                Text="{Binding QuantityButtonText}"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ProductCatalogPageViewModel}}, Path=AddButtonClickCommand}"
+                                                CommandParameter="{Binding .}"
+                                                WidthRequest="56"
+                                                HeightRequest="56"
+                                                FontSize="28"
+                                                FontAttributes="Bold"
+                                                BackgroundColor="{StaticResource PrimaryDark}"
+                                                TextColor="White"
+                                                CornerRadius="5"
+                                                VerticalOptions="Center"
+                                                HorizontalOptions="End" />
+                                    </Grid>
+                                    <!-- Sublines: each order detail (same product, different UoM/price/type) - tap to edit -->
+                                    <CollectionView Grid.Row="1"
+                                                    ItemsSource="{Binding Values}"
+                                                    SelectionMode="None"
+                                                    IsVisible="{Binding HasValues}"
+                                                    Margin="0,4,0,0">
+                                        <CollectionView.ItemTemplate>
+                                            <DataTemplate x:DataType="laceupMigration:OdLine">
+                                                <Frame Padding="8,6" Margin="0,2" HasShadow="False" BorderColor="{StaticResource Gray200}" BackgroundColor="{StaticResource Gray50}">
+                                                    <Frame.GestureRecognizers>
+                                                        <TapGestureRecognizer
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ProductCatalogPageViewModel}}, Path=EditSublineCommand}"
+                                                            CommandParameter="{Binding .}" />
+                                                    </Frame.GestureRecognizers>
+                                                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                                                        <Label Grid.Column="2" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource Gray700}" VerticalOptions="Center">
+                                                            <Label.Text>
+                                                                <Binding Path="UoM.Name" TargetNullValue="" />
+                                                            </Label.Text>
+                                                        </Label>
+                                                        <Label Grid.Column="3" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource Gray700}" VerticalOptions="Center">
+                                                            <Label.Text>
+                                                                <Binding Path="Price" StringFormat="{}{0:C2}" />
+                                                            </Label.Text>
+                                                        </Label>
+                                                        <Label Grid.Column="1" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" VerticalOptions="Center">
+                                                            <Label.Text>
+                                                                <Binding Path="Qty" StringFormat="{}Qty: {0:F0}" />
+                                                            </Label.Text>
+                                                        </Label>
+                                                        <Label Grid.Column="0" FontSize="17" FontAttributes="Bold" TextColor="Orange" VerticalOptions="Center" IsVisible="{Binding IsCredit}">
+                                                            <Label.Text>
+                                                                <Binding Path="Damaged" Converter="{StaticResource CreditTypeConverter}" />
+                                                            </Label.Text>
+                                                        </Label>
+                                                    </Grid>
+                                                </Frame>
+                                            </DataTemplate>
+                                        </CollectionView.ItemTemplate>
+                                    </CollectionView>
                                 </Grid>
                             </Frame>
                         </Grid>

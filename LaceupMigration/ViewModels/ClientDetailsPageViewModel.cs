@@ -1549,7 +1549,7 @@ namespace LaceupMigration.ViewModels
         {
             if (_client == null)
                 return;
-            await Shell.Current.GoToAsync($"fullcategory?clientId={_client.ClientId}");
+            await Shell.Current.GoToAsync($"fullcategory?clientId={_client.ClientId}&showSendByEmail=1");
         }
 
         private async Task SendSelfServiceInvitationAsync()

@@ -258,6 +258,10 @@
                                            FontAttributes="Bold"
                                            TextColor="{Binding TypeColor}"
                                            IsVisible="{Binding ShowTypeInCell}" />
+                                    <Label Text="{Binding OrgQtyText}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}"
+                                           IsVisible="{Binding ShowOrgQty}" />
                                 </VerticalStackLayout>
 
                                 <!-- Price (hidden when load order - cells show only OH + Truck Inventory) -->
