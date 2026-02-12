@@ -361,7 +361,8 @@
                                            VerticalOptions="Center"
                                            HorizontalOptions="Center"
                                            Grid.Column="2"
-                                           Padding="12,0">
+                                           Padding="12,0"
+                                           IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}">
                                         <Label.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=EditQuantityCommand}"
                                                                   CommandParameter="{Binding FreeItemDetail}" />
@@ -411,7 +412,8 @@
                                            VerticalOptions="Center"
                                            HorizontalOptions="Center"
                                            Grid.Column="2"
-                                           Padding="12,0">
+                                           Padding="12,0"
+                                           IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}">
                                         <Label.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=EditQuantityCommand}"
                                                                   CommandParameter="{Binding PrimaryDetail}" />

@@ -400,6 +400,18 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
+            // No Service: show reason (from ReasonId or Comments when no predefined reasons)
+            string reasonText = string.Empty;
+            var showReason = false;
+            if (order.OrderType == OrderType.NoService)
+            {
+                var reason = Reason.Find(order.ReasonId);
+                reasonText = reason != null ? reason.Description : (order.Comments ?? string.Empty);
+                showReason = !string.IsNullOrEmpty(reasonText);
+                if (showReason)
+                    reasonText = $"Reason: {reasonText}";
+            }
+
             // Keep checkbox enabled at all times, including for voided orders
             var canSelect = true;
 
@@ -419,6 +431,8 @@ namespace LaceupMigration.ViewModels
                 ShowPONumber = !string.IsNullOrEmpty(poNumberText),
                 AssetText = assetText,
                 ShowAsset = !string.IsNullOrEmpty(assetText),
+                ReasonText = reasonText,
+                ShowReason = showReason,
                 CanSelect = canSelect,
                 IsSelected = false,
                 ClientName = order.Client?.ClientName ?? "Unknown Client",
@@ -506,12 +520,12 @@ namespace LaceupMigration.ViewModels
                 // Print available whenever there are any orders, including when all are voided
                 CanPrint = allOrders.Count > 0 && !Config.HidePrintBatch;
 
-                // Clock Out logic:
-                // Disabled if there are no orders
-                // Enabled when all orders are finalized or voided
+                // Clock Out logic (matches Xamarin BatchView.UpdateStates):
+                // Enabled when no active orders (empty batch, or all voided/finished) and batch not clocked out
+                // Disabled when there are active orders
                 if (allOrders.Count == 0)
                 {
-                    CanClockOut = false; // Disabled when no orders
+                    CanClockOut = true; // Enable when empty batch - matches Xamarin
                 }
                 else if (allOrders.All(x => x.Voided || x.Finished))
                 {
@@ -528,6 +542,7 @@ namespace LaceupMigration.ViewModels
                     CanFinalize = false;
                     CanPick = false;
                     CanPrintLabel = false;
+                    CanPrint = false;
                     CanClockOut = true;
                 }
             }
@@ -785,6 +800,7 @@ namespace LaceupMigration.ViewModels
         {
             // Xamarin OnKeyDown: Shows alert if orders are not finalized/voided or batch not clocked out
             var allOrders = Orders.Select(x => x.Order).ToList();
+            var validOrders = allOrders.Where(x => x.OrderType != OrderType.NoService).ToList();
             
             if (allOrders.Count == 0)
             {
@@ -798,7 +814,8 @@ namespace LaceupMigration.ViewModels
                 return;
             }
             
-            if (_batch != null && _batch.ClockedOut == DateTime.MinValue)
+            // Xamarin: clock out required only when validOrders.Count > 0 (excludes No_Service)
+            if (_batch != null && _batch.ClockedOut == DateTime.MinValue && validOrders.Count > 0)
             {
                 await _dialogService.ShowAlertAsync("You must clock out before leaving.", "Alert", "OK");
                 return;
@@ -1161,6 +1178,7 @@ namespace LaceupMigration.ViewModels
             var hasActiveOrders = orders.Any(x => !x.Voided && !x.Finished);
             var isLocked = _batch.Status == BatchStatus.Locked;
             bool isClockedOut = _batch.ClockedOut != DateTime.MinValue && (DateTime.Now.Year - _batch.ClockedOut.Year < 2);
+            bool batchHasNoService = orders.Any(x => x.OrderType == OrderType.NoService);
 
             var useFullTemplate = Config.UseFullTemplateForClient(_batch.Client);
 
@@ -1177,7 +1195,8 @@ namespace LaceupMigration.ViewModels
                     consignmentForClient = false;
             }
 
-            if (consignmentForClient && Config.Consignment)
+            // Xamarin: when batch has No Service (e.g. finalized), hide Sales Invoice, Credit Invoice, Consignment, etc.
+            if (!batchHasNoService && consignmentForClient && Config.Consignment)
             {
                 if (!Config.UseFullConsignment)
                 {
@@ -1220,8 +1239,8 @@ namespace LaceupMigration.ViewModels
             }
 
             // 4. Bill (not implemented in MAUI)
-            // 5. Sales Invoice/Order (hidden when batch is clocked out)
-            if (!isClockedOut)
+            // 5. Sales Invoice/Order (hidden when batch is clocked out or has No Service - matches Xamarin)
+            if (!isClockedOut && !batchHasNoService)
             {
                 options.Add(new MenuOption(useFullTemplate ? "Create Invoice" : "Sales Invoice", async () =>
                 {
@@ -1250,8 +1269,8 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // 6. Credit Invoice (hidden when batch is clocked out; Credit Invoice doesn't check credit limit - it's a credit that reduces balance)
-            if (Config.AllowCreditOrders && !useFullTemplate && !isClockedOut)
+            // 6. Credit Invoice (hidden when batch is clocked out or has No Service; Credit Invoice doesn't check credit limit - it's a credit that reduces balance)
+            if (!batchHasNoService && Config.AllowCreditOrders && !useFullTemplate && !isClockedOut)
             {
                 options.Add(new MenuOption("Credit Invoice", async () =>
                 {
@@ -1270,8 +1289,8 @@ namespace LaceupMigration.ViewModels
                 }));
             }
             
-            // 7. Return Invoice (Note: Return Invoice doesn't check credit limit in Xamarin - it's a credit, so allowed)
-            if (Config.UseReturnInvoice && !useFullTemplate)
+            // 7. Return Invoice (hidden when batch has No Service; Note: Return Invoice doesn't check credit limit in Xamarin - it's a credit, so allowed)
+            if (!batchHasNoService && Config.UseReturnInvoice && !useFullTemplate)
             {
                 options.Add(new MenuOption("Return Invoice", async () =>
                 {
@@ -1290,8 +1309,8 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // Work Order
-            if (Config.AllowWorkOrder)
+            // Work Order (hidden when batch has No Service)
+            if (!batchHasNoService && Config.AllowWorkOrder)
             {
                 options.Add(new MenuOption("Work Order", async () =>
                 {
@@ -1309,8 +1328,8 @@ namespace LaceupMigration.ViewModels
                 }));
             }
 
-            // Par Level Invoice
-            if (Config.ClientDailyPL && !Config.ParInConsignment)
+            // Par Level Invoice (hidden when batch has No Service)
+            if (!batchHasNoService && Config.ClientDailyPL && !Config.ParInConsignment)
             {
                 options.Add(new MenuOption("Par Level Invoice", async () =>
                 {
@@ -1346,17 +1365,21 @@ namespace LaceupMigration.ViewModels
             // 12. Scan Based Trading (not implemented in MAUI)
             // 13. Asset Tracking (not implemented in MAUI)
 
-            // 14. No Service
-            if (!Config.PreSale && orders.Count == 0)
+            // 14. No Service - hidden when batch already has No Service (matches Xamarin: options disabled after No Service finalized)
+            var existingNoService = orders.FirstOrDefault(x => x.OrderType == OrderType.NoService && !x.Voided);
+            var showNoServiceOption = !batchHasNoService && !Config.PreSale && (orders.Count == 0 || existingNoService != null);
+            if (showNoServiceOption)
             {
                 options.Add(new MenuOption("No Service/Sales", async () =>
                 {
-                    if (orders.Count != 0)
+                    if (existingNoService != null)
                     {
-                        await _dialogService.ShowAlertAsync("No service is only available when there are no orders in the batch.", "Alert");
+                        // Already have No Service - navigate to edit it
+                        await Shell.Current.GoToAsync($"noservice?orderId={existingNoService.OrderId}");
                         return;
                     }
 
+                    // No orders yet - create new No Service
                     var result = await _dialogService.ShowConfirmAsync(
                         "Do you want to record no service for this client?",
                         "Alert",
@@ -1365,7 +1388,6 @@ namespace LaceupMigration.ViewModels
 
                     if (result)
                     {
-                        // Navigate to no service page
                         var noServiceOrder = new Order(_batch.Client) { OrderType = OrderType.NoService };
                         noServiceOrder.BatchId = _batch.Id;
                         CompanyInfo.AssignCompanyToOrder(noServiceOrder);
@@ -1644,6 +1666,13 @@ namespace LaceupMigration.ViewModels
             if (_batch == null)
                 return;
 
+            // Handle NoService orders - navigate to No Service page (view/edit finalized or in-progress)
+            if (order.OrderType == OrderType.NoService)
+            {
+                await Shell.Current.GoToAsync($"noservice?orderId={order.OrderId}");
+                return;
+            }
+
             // Handle Credit or Return orders - navigate to advancedcatalog, previouslyorderedtemplate, or orderdetails
             if (order.OrderType == OrderType.Credit || order.OrderType == OrderType.Return)
             {
@@ -1740,6 +1769,12 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private bool _showAsset;
+
+        [ObservableProperty]
+        private string _reasonText = string.Empty;
+
+        [ObservableProperty]
+        private bool _showReason;
 
         [ObservableProperty]
         private bool _canSelect = true;
