@@ -9560,13 +9560,13 @@ namespace LaceupMigration
 
         static string WhichAddressToUse()
         {
-            string currentSSID = GetSSID().Replace("\"", "").Trim().ToUpperInvariant();
-            Logger.CreateLog("Connected to: [" + (currentSSID ?? "not connected") + "]");
-            var ssid = Config.SSID ?? string.Empty;
-            ssid = ssid.Replace("\"", "").Trim().ToUpperInvariant();
-            if (!string.IsNullOrEmpty(ssid) &&
-                string.Compare(currentSSID, ssid, StringComparison.OrdinalIgnoreCase) == 0)
-                return LanAddress;
+            // string currentSSID = GetSSID().Replace("\"", "").Trim().ToUpperInvariant();
+            // Logger.CreateLog("Connected to: [" + (currentSSID ?? "not connected") + "]");
+            // var ssid = Config.SSID ?? string.Empty;
+            // ssid = ssid.Replace("\"", "").Trim().ToUpperInvariant();
+            // if (!string.IsNullOrEmpty(ssid) &&
+            //     string.Compare(currentSSID, ssid, StringComparison.OrdinalIgnoreCase) == 0)
+            //     return LanAddress;
             return IPAddressGateway;
         }
 

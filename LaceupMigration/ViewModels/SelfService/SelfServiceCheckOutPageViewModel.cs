@@ -1,9 +1,13 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Microsoft.Maui.Graphics;
 using LaceupMigration.Services;
 using LaceupMigration;
+using LaceupMigration.Helpers;
+using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.ViewModels.SelfService
 {
@@ -11,7 +15,10 @@ namespace LaceupMigration.ViewModels.SelfService
     {
         private readonly IDialogService _dialogService;
         private readonly ILaceupAppService _appService;
+        private readonly AdvancedOptionsService _advancedOptionsService;
+        private readonly MainPageViewModel _mainPageViewModel;
         private Order _order;
+        private List<SelfServiceOrderProductViewModel> _mergedList = new();
 
         [ObservableProperty]
         private string _clientName = string.Empty;
@@ -20,10 +27,16 @@ namespace LaceupMigration.ViewModels.SelfService
         private string _linesText = "Lines: 0";
 
         [ObservableProperty]
+        private string _qtySoldText = "Qty Sold: 0";
+
+        [ObservableProperty]
         private string _qtyText = "Qty: 0";
 
         [ObservableProperty]
         private string _termText = "Term: ";
+
+        [ObservableProperty]
+        private string _termsText = "Terms: ";
 
         [ObservableProperty]
         private string _subtotalText = "Subtotal: $0.00";
@@ -40,13 +53,50 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private bool _canSendOrder;
 
+        /// <summary>Collapsible order summary (like AdvancedCatalogPage). Collapsed by default.</summary>
         [ObservableProperty]
-        private ObservableCollection<OrderDetailItemViewModel> _orderDetails = new();
+        private bool _isOrderSummaryExpanded = false;
 
-        public SelfServiceCheckOutPageViewModel(IDialogService dialogService, ILaceupAppService appService)
+        /// <summary>Show total in header when summary is collapsed.</summary>
+        public bool ShowTotalInHeader => !IsOrderSummaryExpanded;
+
+        [RelayCommand]
+        private void ToggleOrderSummary()
+        {
+            IsOrderSummaryExpanded = !IsOrderSummaryExpanded;
+            OnPropertyChanged(nameof(ShowTotalInHeader));
+        }
+
+        /// <summary>Merged list (order details + previously ordered). Same design as PreviouslyOrderedTemplatePage.</summary>
+        [ObservableProperty]
+        private ObservableCollection<SelfServiceOrderProductViewModel> _displayProducts = new();
+
+        /// <summary>When true, show full merged list (recently ordered + in order); when false, show only items in order.</summary>
+        [ObservableProperty]
+        private bool _showRecentlyOrdered = true;
+
+        [ObservableProperty]
+        private string _searchQuery = string.Empty;
+
+        [ObservableProperty]
+        private string _sortByText = "Sort By: Product Name";
+
+        [ObservableProperty]
+        private ObservableCollection<SelfServiceSearchProductViewModel> _searchResultItems = new();
+
+        [RelayCommand]
+        private void SortBy()
+        {
+            SortMergedList();
+            RefilterDisplay();
+        }
+
+        public SelfServiceCheckOutPageViewModel(IDialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService, MainPageViewModel mainPageViewModel)
         {
             _dialogService = dialogService;
             _appService = appService;
+            _advancedOptionsService = advancedOptionsService;
+            _mainPageViewModel = mainPageViewModel;
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -65,36 +115,398 @@ namespace LaceupMigration.ViewModels.SelfService
         {
             if (_order != null)
             {
-                Refresh();
+                LoadMergedList();
+                RefilterDisplay();
+                RefreshTotals();
             }
         }
 
         private void LoadOrder()
         {
             if (_order == null) return;
-
             ClientName = _order.Client.ClientName;
-            Refresh();
+            _order.Client.EnsurePreviouslyOrdered();
+            LoadMergedList();
+            RefilterDisplay();
+            RefreshTotals();
         }
 
-        private void Refresh()
+        partial void OnShowRecentlyOrderedChanged(bool value)
         {
+            RefilterDisplay();
+        }
+
+        partial void OnIsOrderSummaryExpandedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowTotalInHeader));
+        }
+
+        /// <summary>Build merged list: order details first (with qty), then previously ordered not in order (qty 0). Same logic as PreviouslyOrderedTemplatePageViewModel.LoadOrderData.</summary>
+        private void LoadMergedList()
+        {
+            _mergedList.Clear();
             if (_order == null) return;
 
+            var productIdsInOrder = new HashSet<int>();
+            foreach (var orderDetail in _order.Details)
+            {
+                if (orderDetail.Product == null) continue;
+                productIdsInOrder.Add(orderDetail.Product.ProductId);
+                var vm = CreateRowFromOrderDetail(orderDetail);
+                _mergedList.Add(vm);
+            }
+
+            if (_order.Client.OrderedList != null)
+            {
+                foreach (var orderedItem in _order.Client.OrderedList.OrderByDescending(x => x.Last.Date).Take(100))
+                {
+                    if (orderedItem.Last?.Product == null) continue;
+                    if (productIdsInOrder.Contains(orderedItem.Last.ProductId)) continue;
+                    var vm = CreateRowFromPreviouslyOrdered(orderedItem);
+                    _mergedList.Add(vm);
+                }
+            }
+
+            SortMergedList();
+        }
+
+        private SelfServiceOrderProductViewModel CreateRowFromOrderDetail(OrderDetail orderDetail)
+        {
+            var product = orderDetail.Product;
+            var onHand = _order != null ? product.GetInventory(_order.AsPresale, false) : 0;
+            var listPrice = Product.GetPriceForProduct(product, _order, false, false);
+            LastTwoDetails orderedItem = null;
+            if (_order?.Client?.OrderedList != null)
+                orderedItem = _order.Client.OrderedList.FirstOrDefault(x => x.Last?.ProductId == product.ProductId);
+            var lastVisitText = string.Empty;
+            var showLastVisit = false;
+            if (orderedItem?.Last != null && orderedItem.Last.Date != DateTime.MinValue)
+            {
+                lastVisitText = $"Last Visit: {orderedItem.Last.Date:MM/dd}, {orderedItem.Last.Quantity}, {orderedItem.Last.Price.ToCustomString()}";
+                showLastVisit = true;
+            }
+            var total = orderDetail.Qty * orderDetail.Price;
+            var uomText = orderDetail.UnitOfMeasure != null ? orderDetail.UnitOfMeasure.Name : string.Empty;
+            return new SelfServiceOrderProductViewModel(this)
+            {
+                Product = product,
+                ProductName = product.Name,
+                OnHandText = $"OH: {onHand:F0}",
+                ListPriceText = $"List Price: {listPrice.ToCustomString()}",
+                LastVisitText = lastVisitText,
+                ShowLastVisit = showLastVisit,
+                PriceText = $"Price: {orderDetail.Price.ToCustomString()}",
+                TotalText = $"Total: {total.ToCustomString()}",
+                UomText = uomText,
+                ExistingDetail = orderDetail,
+                OrderedItem = orderedItem,
+                Quantity = (double)orderDetail.Qty,
+                OrderId = _order.OrderId
+            };
+        }
+
+        private SelfServiceOrderProductViewModel CreateRowFromPreviouslyOrdered(LastTwoDetails orderedItem)
+        {
+            var product = orderedItem.Last.Product;
+            var onHand = _order != null ? product.GetInventory(_order.AsPresale, false) : 0;
+            var listPrice = Product.GetPriceForProduct(product, _order, false, false);
+            var lastVisitText = string.Empty;
+            var showLastVisit = false;
+            if (orderedItem.Last != null && orderedItem.Last.Date != DateTime.MinValue)
+            {
+                lastVisitText = $"Last Visit: {orderedItem.Last.Date:MM/dd}, {orderedItem.Last.Quantity}, {orderedItem.Last.Price.ToCustomString()}";
+                showLastVisit = true;
+            }
+            var isSuggested = _order != null && _order.Client != null && Product.IsSuggestedForClient(_order.Client, product);
+            var suggestedLabelText = isSuggested ? (string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) ? "Suggested Products" : $"{Config.ProductCategoryNameIdentifier} Products") : string.Empty;
+            return new SelfServiceOrderProductViewModel(this)
+            {
+                Product = product,
+                ProductName = product.Name,
+                OnHandText = $"OH: {onHand:F0}",
+                ListPriceText = $"List Price: {listPrice.ToCustomString()}",
+                LastVisitText = lastVisitText,
+                ShowLastVisit = showLastVisit,
+                PriceText = $"Price: {listPrice.ToCustomString()}",
+                TotalText = "Total: $0.00",
+                UomText = string.Empty,
+                ExistingDetail = null,
+                OrderedItem = orderedItem,
+                Quantity = 0,
+                OrderId = _order.OrderId,
+                IsSuggested = isSuggested,
+                SuggestedLabelText = suggestedLabelText
+            };
+        }
+
+        private void SortMergedList()
+        {
+            _mergedList = _mergedList.OrderBy(x => x.ProductName).ToList();
+        }
+
+        private void RefilterDisplay()
+        {
+            DisplayProducts.Clear();
+            var toShow = ShowRecentlyOrdered ? _mergedList : _mergedList.Where(x => x.ExistingDetail != null).ToList();
+            foreach (var item in toShow)
+                DisplayProducts.Add(item);
+        }
+
+        private void BuildSearchResults()
+        {
+            SearchResultItems.Clear();
+            if (_order == null || string.IsNullOrWhiteSpace(SearchQuery)) return;
+
+            var products = Product.GetProductListForOrder(_order, false, 0).ToList();
+            var searchLower = SearchQuery.Trim().ToLowerInvariant();
+            var filtered = products.Where(p =>
+                (p.Name?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                (p.Upc?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                (p.Sku?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                (p.Description?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                (p.Code?.ToLowerInvariant().Contains(searchLower) ?? false)
+            ).Take(100).ToList();
+
+            foreach (var product in filtered)
+                SearchResultItems.Add(new SelfServiceSearchProductViewModel(product, _order));
+        }
+
+        [RelayCommand]
+        private void AddFromDisplayProduct(SelfServiceOrderProductViewModel item)
+        {
+            if (item?.Product == null || _order == null) return;
+            var product = item.Product;
+            var addQty = item.ExistingDetail == null && item.OrderedItem?.Last != null ? (float)item.OrderedItem.Last.Quantity : 1f;
+            if (addQty <= 0) addQty = 1f;
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
+            if (existingDetail != null)
+                existingDetail.Qty += addQty;
+            else
+            {
+                var detail = new OrderDetail(product, 0, _order);
+                double expectedPrice = Product.GetPriceForProduct(product, _order, false, false);
+                double price = 0;
+                if (Offer.ProductHasSpecialPriceForClient(product, _order.Client, out price))
+                {
+                    detail.Price = price;
+                    detail.FromOfferPrice = true;
+                }
+                else
+                {
+                    detail.Price = expectedPrice;
+                    detail.FromOfferPrice = false;
+                }
+                detail.ExpectedPrice = expectedPrice;
+                detail.UnitOfMeasure = product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.Qty = addQty;
+                detail.CalculateOfferDetail();
+                _order.AddDetail(detail);
+            }
+            OrderDetail.UpdateRelated(existingDetail ?? _order.Details.Last(), _order);
+            _order.RecalculateDiscounts();
+            _order.Save();
+            LoadMergedList();
+            RefilterDisplay();
+            RefreshTotals();
+        }
+
+        /// <summary>Show the same add/edit quantity popup as PreviouslyOrderedTemplatePage (ShowRestOfTheAddDialogAsync). Use for both row tap and quantity button.</summary>
+        [RelayCommand]
+        private async Task ShowAddItemPopup(SelfServiceOrderProductViewModel item)
+        {
+            if (item?.Product == null || _order == null) return;
+
+            // When adding new item: restrict if no inventory (same as PreviouslyOrderedTemplatePageViewModel)
+            if (item.ExistingDetail == null && !_order.AsPresale && !Config.CanGoBelow0)
+            {
+                var oh = item.Product.GetInventory(_order.AsPresale, false);
+                if (oh <= 0)
+                {
+                    await _dialogService.ShowAlertAsync("Not enough inventory.", "Alert");
+                    return;
+                }
+            }
+
+            OrderDetail existingDetail = item.ExistingDetail != null && !item.ExistingDetail.IsCredit ? item.ExistingDetail : null;
+            var result = await _dialogService.ShowRestOfTheAddDialogAsync(
+                item.Product,
+                _order,
+                existingDetail,
+                isCredit: false,
+                isDamaged: false,
+                isDelivery: _order.IsDelivery);
+
+            if (result.Cancelled) return;
+
+            if (result.Qty == 0)
+            {
+                if (existingDetail != null)
+                {
+                    _order.DeleteDetail(existingDetail);
+                    _order.Save();
+                }
+                LoadMergedList();
+                RefilterDisplay();
+                RefreshTotals();
+                return;
+            }
+
+            // Inventory check when adding (same as PreviouslyOrderedTemplatePageViewModel)
+            if (!_order.AsPresale && !Config.CanGoBelow0)
+            {
+                var currentOH = item.Product.GetInventory(_order.AsPresale, false);
+                var resultBaseQty = (double)result.Qty;
+                if (result.SelectedUoM != null)
+                    resultBaseQty *= result.SelectedUoM.Conversion;
+                var totalBaseQtyInOrder = _order.Details
+                    .Where(d => d.Product.ProductId == item.Product.ProductId && !d.IsCredit && d != existingDetail)
+                    .Sum(d =>
+                    {
+                        var q = (double)d.Qty;
+                        if (d.UnitOfMeasure != null)
+                            q *= d.UnitOfMeasure.Conversion;
+                        return q;
+                    });
+                if (totalBaseQtyInOrder + resultBaseQty > currentOH)
+                {
+                    await _dialogService.ShowAlertAsync("Not enough inventory.", "Alert");
+                    return;
+                }
+            }
+
+            OrderDetail updatedDetail = null;
+            if (existingDetail != null)
+            {
+                existingDetail.Qty = result.Qty;
+                existingDetail.Weight = result.Weight;
+                existingDetail.Lot = result.Lot;
+                if (result.LotExpiration.HasValue)
+                    existingDetail.LotExpiration = result.LotExpiration.Value;
+                existingDetail.Comments = result.Comments;
+                existingDetail.Price = result.Price;
+                existingDetail.UnitOfMeasure = result.SelectedUoM;
+                existingDetail.IsFreeItem = result.IsFreeItem;
+                existingDetail.ReasonId = result.ReasonId;
+                if (result.PriceLevelSelected > 0)
+                {
+                    existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
+                }
+                updatedDetail = existingDetail;
+            }
+            else
+            {
+                var detail = new OrderDetail(item.Product, 0, _order);
+                double expectedPrice = Product.GetPriceForProduct(item.Product, _order, false, false);
+                double price = result.Price;
+                if (result.UseLastSoldPrice && _order.Client != null)
+                {
+                    var clientHistory = InvoiceDetail.ClientProduct(_order.Client.ClientId, item.Product.ProductId);
+                    if (clientHistory != null && clientHistory.Count > 0)
+                    {
+                        var lastInvoiceDetail = clientHistory.OrderByDescending(x => x.Date).FirstOrDefault();
+                        if (lastInvoiceDetail != null)
+                            price = lastInvoiceDetail.Price;
+                    }
+                }
+                else if (price == 0)
+                {
+                    double offerPrice = 0;
+                    if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out offerPrice))
+                    {
+                        detail.Price = offerPrice;
+                        detail.FromOfferPrice = true;
+                    }
+                    else
+                    {
+                        detail.Price = expectedPrice;
+                        detail.FromOfferPrice = false;
+                    }
+                }
+                else
+                {
+                    detail.Price = price;
+                    detail.FromOfferPrice = false;
+                }
+                detail.ExpectedPrice = expectedPrice;
+                detail.UnitOfMeasure = result.SelectedUoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.Qty = result.Qty;
+                detail.Weight = result.Weight;
+                detail.Lot = result.Lot;
+                if (result.LotExpiration.HasValue)
+                    detail.LotExpiration = result.LotExpiration.Value;
+                detail.Comments = result.Comments;
+                detail.IsFreeItem = result.IsFreeItem;
+                detail.ReasonId = result.ReasonId;
+                if (result.PriceLevelSelected > 0)
+                {
+                    detail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), detail.ExtraFields);
+                }
+                detail.CalculateOfferDetail();
+                _order.AddDetail(detail);
+                updatedDetail = detail;
+            }
+
+            if (updatedDetail != null)
+            {
+                OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, updatedDetail);
+                OrderDetail.UpdateRelated(updatedDetail, _order);
+                _order.RecalculateDiscounts();
+            }
+            _order.Save();
+            LoadMergedList();
+            RefilterDisplay();
+            RefreshTotals();
+        }
+
+        [RelayCommand]
+        private void AddFromSearchProduct(SelfServiceSearchProductViewModel searchItem)
+        {
+            if (searchItem?.Product == null || _order == null) return;
+            var product = searchItem.Product;
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
+            if (existingDetail != null)
+                existingDetail.Qty += 1f;
+            else
+            {
+                var detail = new OrderDetail(product, 0, _order);
+                double expectedPrice = Product.GetPriceForProduct(product, _order, false, false);
+                double price = 0;
+                if (Offer.ProductHasSpecialPriceForClient(product, _order.Client, out price))
+                {
+                    detail.Price = price;
+                    detail.FromOfferPrice = true;
+                }
+                else
+                {
+                    detail.Price = expectedPrice;
+                    detail.FromOfferPrice = false;
+                }
+                detail.ExpectedPrice = expectedPrice;
+                detail.UnitOfMeasure = product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.Qty = 1f;
+                detail.CalculateOfferDetail();
+                _order.AddDetail(detail);
+            }
+            _order.RecalculateDiscounts();
+            _order.Save();
+            LoadMergedList();
+            RefilterDisplay();
+            RefreshTotals();
+        }
+
+        private void RefreshTotals()
+        {
+            if (_order == null) return;
             LinesText = $"Lines: {_order.Details.Count}";
+            QtySoldText = $"Qty Sold: {_order.Details.Sum(x => x.Qty)}";
             QtyText = $"Qty: {_order.Details.Sum(x => x.Qty)}";
             TermText = $"Term: {_order.Term}";
+            TermsText = $"Terms: {_order.Term}";
             SubtotalText = $"Subtotal: {_order.CalculateItemCost().ToCustomString()}";
             DiscountText = $"Discount: {_order.CalculateDiscount().ToCustomString()}";
             TaxText = $"Tax: {_order.CalculateTax().ToCustomString()}";
             TotalText = $"Total: {_order.OrderTotalCost().ToCustomString()}";
             CanSendOrder = _order.Details.Count > 0;
-
-            OrderDetails.Clear();
-            foreach (var detail in _order.Details.OrderBy(x => x.Product.Name))
-            {
-                OrderDetails.Add(new OrderDetailItemViewModel(detail));
-            }
         }
 
         [RelayCommand]
@@ -166,7 +578,9 @@ namespace LaceupMigration.ViewModels.SelfService
                     }
                     newOrder.Save();
                     _order = newOrder;
-                    Refresh();
+                    LoadMergedList();
+                    RefilterDisplay();
+                    RefreshTotals();
                 }
             }
             catch (Exception ex)
@@ -178,11 +592,11 @@ namespace LaceupMigration.ViewModels.SelfService
         }
 
         [RelayCommand]
-        private async Task EditQty(OrderDetailItemViewModel item)
+        private async Task EditQtyDisplay(SelfServiceOrderProductViewModel item)
         {
-            if (item?.Detail == null) return;
-
-            var qtyString = await _dialogService.ShowPromptAsync("Edit Quantity", "Quantity", "OK", "Cancel", item.Detail.Qty.ToString());
+            if (item?.ExistingDetail == null || _order == null) return;
+            var detail = item.ExistingDetail;
+            var qtyString = await _dialogService.ShowPromptAsync("Edit Quantity", "Quantity", "OK", "Cancel", detail.Qty.ToString());
             if (qtyString == "Cancel" || string.IsNullOrEmpty(qtyString))
                 return;
 
@@ -193,37 +607,284 @@ namespace LaceupMigration.ViewModels.SelfService
                     var result = await _dialogService.ShowConfirmationAsync("Are you sure you want to delete this item?", "Warning", "Yes", "No");
                     if (result)
                     {
-                        _order.Details.Remove(item.Detail);
+                        _order.Details.Remove(detail);
                         _order.RecalculateDiscounts();
                         _order.Save();
-                        Refresh();
+                        LoadMergedList();
+                        RefilterDisplay();
+                        RefreshTotals();
                     }
                 }
                 else
                 {
-                    item.Detail.Qty = qty;
-                    OrderDetail.UpdateRelated(item.Detail, _order);
-                    item.Detail.CalculateOfferDetail();
+                    detail.Qty = qty;
+                    OrderDetail.UpdateRelated(detail, _order);
+                    detail.CalculateOfferDetail();
                     _order.RecalculateDiscounts();
                     _order.Save();
-                    Refresh();
+                    LoadMergedList();
+                    RefilterDisplay();
+                    RefreshTotals();
                 }
             }
         }
+
+        public int? OrderId => _order?.OrderId;
+
+        [RelayCommand]
+        private async Task GoToCatalog()
+        {
+            if (OrderId == null || _order?.Client == null) return;
+            await Shell.Current.GoToAsync($"fullcategory?orderId={OrderId}&clientId={_order.Client.ClientId}&comingFrom=SelfService");
+        }
+
+        /// <summary>Open search popup: user types Name, Code, UPC, or SKU; navigate to product catalog with filter if match, else "Product not found".</summary>
+        [RelayCommand]
+        private async Task GoToSearch()
+        {
+            if (OrderId == null || _order?.Client == null) return;
+            var searchInput = await _dialogService.ShowPromptAsync(
+                "Search Product",
+                "Enter Name, Code, UPC, or SKU",
+                "OK",
+                "Cancel",
+                placeholder: "Name, Code, UPC, or SKU");
+            if (string.IsNullOrWhiteSpace(searchInput)) return;
+            var searchTrim = searchInput.Trim();
+            var products = Product.GetProductListForOrder(_order, false, 0).ToList();
+            var searchLower = searchTrim.ToLowerInvariant();
+            var hasMatch = products.Any(p =>
+                (p.Name?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                (p.Upc?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                (p.Sku?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                (p.Description?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                (p.Code?.ToLowerInvariant().Contains(searchLower) ?? false));
+            if (hasMatch)
+            {
+                var encoded = Uri.EscapeDataString(searchTrim);
+                await Shell.Current.GoToAsync($"productcatalog?orderId={OrderId}&clientId={_order.Client.ClientId}&comingFrom=SelfService&productSearch={encoded}");
+            }
+            else
+            {
+                await _dialogService.ShowAlertAsync("Product not found.", "Search");
+            }
+        }
+
+        /// <summary>More options (bottom bar): View Offers, Select Ship Date, Add Comment, Send by Email, Delete Order, View Captured Images (multi-client). Same as Xamarin SelfServiceCheckOutActivity.</summary>
+        [RelayCommand]
+        private async Task GoToMore()
+        {
+            var options = new List<string>
+            {
+                "View Offers",
+                "Select Ship Date",
+                "Add Comment",
+                "Send by Email",
+                "Delete Order"
+            };
+            if (Client.Clients.Count > 1)
+                options.Add("View Captured Images");
+
+            var choice = await _dialogService.ShowActionSheetAsync("More Options", null, "Cancel", options.ToArray());
+            if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+
+            if (choice == "View Offers")
+                await ViewOffersAsync();
+            else if (choice == "Select Ship Date")
+                await SelectShipDateAsync();
+            else if (choice == "Add Comment")
+                await AddCommentAsync();
+            else if (choice == "Send by Email")
+                await SendByEmailAsync();
+            else if (choice == "Delete Order")
+                await DeleteOrderAsync();
+            else if (choice == "View Captured Images")
+                await ViewCapturedImagesAsync();
+        }
+
+        private async Task ViewOffersAsync()
+        {
+            if (_order == null) return;
+            await Shell.Current.GoToAsync($"offers?orderId={_order.OrderId}");
+        }
+
+        private async Task SelectShipDateAsync()
+        {
+            if (_order == null) return;
+            var current = _order.ShipDate.Year == 1 ? DateTime.Now : _order.ShipDate;
+            var selected = await _dialogService.ShowDatePickerAsync("Select Ship Date", current, DateTime.Now, null);
+            if (selected.HasValue)
+            {
+                _order.ShipDate = selected.Value;
+                _order.Save();
+                RefreshTotals();
+            }
+        }
+
+        private async Task AddCommentAsync()
+        {
+            if (_order == null) return;
+            var comments = await _dialogService.ShowPromptAsync("Add Comment", "Order comments", "OK", "Cancel", _order.Comments ?? "");
+            if (comments != null)
+            {
+                _order.Comments = comments;
+                _order.Save();
+            }
+        }
+
+        private async Task SendByEmailAsync()
+        {
+            if (_order == null) return;
+            try
+            {
+                await _dialogService.ShowLoadingAsync("Generating PDF...");
+                if (_order.AsPresale && Config.GeneratePresaleNumber && string.IsNullOrEmpty(_order.PrintedOrderId))
+                {
+                    _order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(_order);
+                    _order.Save();
+                }
+                var pdfFile = PdfHelper.GetOrderPdf(_order);
+                await _dialogService.HideLoadingAsync();
+                if (string.IsNullOrEmpty(pdfFile))
+                {
+                    await _dialogService.ShowAlertAsync("Error generating PDF.", "Alert", "OK");
+                    return;
+                }
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}&orderId={_order.OrderId}");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync("Error generating PDF.", "Alert", "OK");
+            }
+        }
+
+        private async Task DeleteOrderAsync()
+        {
+            if (_order == null) return;
+            var confirm = await _dialogService.ShowConfirmationAsync("Are you sure you want to delete this order?", "Alert", "Yes", "No");
+            if (!confirm) return;
+            if (Client.Clients.Count == 1)
+            {
+                _order.Details.Clear();
+                _order.Save();
+                LoadMergedList();
+                RefilterDisplay();
+                RefreshTotals();
+            }
+            else
+            {
+                var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
+                if (batch != null)
+                    batch.Delete();
+                _order.Delete();
+                await Shell.Current.GoToAsync("//selfservice/clientlist");
+            }
+        }
+
+        private async Task ViewCapturedImagesAsync()
+        {
+            if (_order == null) return;
+            await Shell.Current.GoToAsync($"viewcapturedimages?orderId={_order.OrderId}");
+        }
+
+        /// <summary>Top right toolbar menu. Sync Data and Sign Out only when self service has 1 client assigned; Advanced Options always.</summary>
+        [RelayCommand]
+        private async Task ShowToolbarMenuAsync()
+        {
+            var options = new List<string> { "Advanced Options" };
+            if (Client.Clients.Count == 1)
+            {
+                options.Insert(0, "Sync Data From Server");
+                options.Add("Sign Out");
+            }
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", null, "Cancel", options.ToArray());
+            if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+            if (choice == "Sync Data From Server")
+                await _mainPageViewModel.SyncDataFromMenuAsync();
+            else if (choice == "Advanced Options")
+                await _advancedOptionsService.ShowAdvancedOptionsAsync();
+            else if (choice == "Sign Out")
+                await _mainPageViewModel.SignOutFromSelfServiceAsync();
+        }
     }
 
-    public partial class OrderDetailItemViewModel : ObservableObject
+    /// <summary>Row for merged list (order + recently ordered). Same design as PreviouslyOrderedProductViewModel.</summary>
+    public partial class SelfServiceOrderProductViewModel : ObservableObject
     {
-        public OrderDetail Detail { get; }
+        private readonly SelfServiceCheckOutPageViewModel _parent;
 
-        public string ProductName => Detail?.Product?.Name ?? string.Empty;
-        public string PriceText => $"Price: {Detail?.Price.ToCustomString() ?? "$0.00"}";
-        public string UomText => Detail?.UnitOfMeasure != null ? $"UOM: {Detail.UnitOfMeasure.Name}" : string.Empty;
-        public string QtyText => Detail?.Qty.ToString() ?? "0";
+        public Product Product { get; set; }
+        public OrderDetail ExistingDetail { get; set; }
+        public LastTwoDetails OrderedItem { get; set; }
+        public int OrderId { get; set; }
 
-        public OrderDetailItemViewModel(OrderDetail detail)
+        [ObservableProperty]
+        private string _productName = string.Empty;
+
+        [ObservableProperty]
+        private string _onHandText = "OH: 0";
+
+        [ObservableProperty]
+        private string _listPriceText = string.Empty;
+
+        [ObservableProperty]
+        private string _lastVisitText = string.Empty;
+
+        [ObservableProperty]
+        private bool _showLastVisit;
+
+        [ObservableProperty]
+        private string _priceText = string.Empty;
+
+        [ObservableProperty]
+        private string _totalText = "Total: $0.00";
+
+        [ObservableProperty]
+        private string _uomText = string.Empty;
+
+        [ObservableProperty]
+        private double _quantity;
+
+        [ObservableProperty]
+        private string _quantityButtonText = "+";
+
+        [ObservableProperty]
+        private bool _isSuggested;
+
+        [ObservableProperty]
+        private string _suggestedLabelText = string.Empty;
+
+        [ObservableProperty]
+        private bool _isEnabled = true;
+
+        public Color ProductNameColor { get; set; } = Colors.Black;
+
+        public SelfServiceOrderProductViewModel(SelfServiceCheckOutPageViewModel parent)
         {
-            Detail = detail;
+            _parent = parent;
+        }
+
+        partial void OnQuantityChanged(double value)
+        {
+            QuantityButtonText = value > 0 ? value.ToString("F0") : "+";
+        }
+    }
+
+    /// <summary>Product row for search results on self service checkout (AdvancedCatalog-style list).</summary>
+    public partial class SelfServiceSearchProductViewModel : ObservableObject
+    {
+        public Product Product { get; }
+        private readonly Order _order;
+
+        public string ProductName => Product?.Name ?? string.Empty;
+        public string PriceText => _order != null && Product != null ? Product.GetPriceForProduct(Product, _order, false, false).ToCustomString() : "$0.00";
+
+        public SelfServiceSearchProductViewModel(Product product, Order order)
+        {
+            Product = product;
+            _order = order;
         }
     }
 }

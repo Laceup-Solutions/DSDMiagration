@@ -1168,9 +1168,14 @@ namespace LaceupMigration.ViewModels
                     }
                 }
 
-                // Show filter dialog (matches Xamarin FullCategoryActivity SendByEmail)
+                // When already inside a category (from product catalog / client details), hide the category selection
+                // in the popup and only show "Show In PDF"; OK uses the current category id.
+                bool fromCategoryScreen = _categoryId.HasValue && _categoryId.Value > 0;
                 var categoriesForDialog = categoryList.Select(x => x.Category).ToList();
-                var filterResult = await _dialogService.ShowCatalogFilterDialogAsync(categoriesForDialog);
+                var filterResult = await _dialogService.ShowCatalogFilterDialogAsync(
+                    categoriesForDialog,
+                    hideCategorySection: fromCategoryScreen,
+                    categoryIdsWhenCategorySectionHidden: fromCategoryScreen ? new List<int> { _categoryId!.Value } : null);
 
                 if (filterResult == null)
                 {

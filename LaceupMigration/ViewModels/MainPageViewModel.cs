@@ -1,7 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LaceupMigration;
 using LaceupMigration.Controls;
 using LaceupMigration.Services;
+using System.IO;
 using System.Linq;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.ApplicationModel;
@@ -316,6 +318,18 @@ namespace LaceupMigration.ViewModels
 		private async Task SignOut()
 		{
 			_appService.RecordEvent("mainMenuSignOut menu");
+			await MenuHandlerSignOutAsync();
+		}
+
+		/// <summary>Called from Self Service toolbar menu (Sync Data From Server).</summary>
+		public async Task SyncDataFromMenuAsync()
+		{
+			await MenuHandlerSyncDataAsync();
+		}
+
+		/// <summary>Called from Self Service toolbar menu (Sign Out).</summary>
+		public async Task SignOutFromMenuAsync()
+		{
 			await MenuHandlerSignOutAsync();
 		}
 
@@ -1190,13 +1204,100 @@ namespace LaceupMigration.ViewModels
 				// Xamarin uses RunOnUiThread to ensure UI operations happen on main thread
 				MainThread.BeginInvokeOnMainThread(async () =>
 				{
-					// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 556-563
-					// Navigate to Splash using absolute route to clear entire navigation stack
-					// SplashPage will detect Config.SignedIn = false and immediately redirect to login
-					// This provides absolute routing (///Splash) while going directly to login page
-					Console.WriteLine("[DEBUG] Before navigation to Splash (will redirect to login). Config.SignedIn = " + Config.SignedIn);
+				// [MIGRATION]: Matches Xamarin MainActivity.MenuHandlerSignOut() lines 556-563
+				// When signing out from Self Service shell, switch to main shell first then navigate to Splash
+				if (Application.Current?.MainPage is Views.SelfService.SelfServiceShell)
+				{
+					App.SwitchToMainShell();
+					var mainShell = Application.Current.MainPage as AppShell;
+					if (mainShell != null)
+						await mainShell.GoToAsync("///Splash");
+				}
+				else
+				{
 					await Shell.Current.GoToAsync("///Splash");
-					Console.WriteLine("[DEBUG] After navigation to Splash (should have redirected to login).");
+				}
+				});
+			}
+		}
+
+		/// <summary>Self-service sign out (Xamarin SelfServiceCheckOutActivity.SignOut). Clears data but keeps SelfService=true, SignedIn=true, SignedInSelfService=false; then navigates to Select Company.</summary>
+		public async Task SignOutFromSelfServiceAsync()
+		{
+			int c = Order.Orders.Count(x => x.OrderType == OrderType.NoService || x.Details.Count > 0) + InvoicePayment.List.Count;
+			if (c > 0)
+			{
+				await _dialogService.ShowAlertAsync("You must send all transactions before signing out.", "Alert", "OK");
+				return;
+			}
+
+			await _dialogService.ShowLoadingAsync("Signing out...");
+			bool signOutError = false;
+			try
+			{
+				await Task.Run(() =>
+				{
+					try
+					{
+						var acceptedTerms = Config.AcceptedTermsAndConditions;
+						var enabledlogin = Config.EnableLogin;
+						var serverAdd = Config.IPAddressGateway;
+						var lanAdd = Config.LanAddress;
+						var port = Config.Port;
+						var salesmanId = Config.SalesmanId;
+
+						BackgroundDataSync.ForceBackup();
+
+						if (File.Exists(Config.UnitOfMeasuresFile))
+							File.Delete(Config.UnitOfMeasuresFile);
+						if (File.Exists(Config.ProductStoreFile))
+							File.Delete(Config.ProductStoreFile);
+						if (File.Exists(Config.ClientStoreFile))
+							File.Delete(Config.ClientStoreFile);
+
+						ActivityState.RemoveAll();
+						Config.ClearSettings();
+						DataProvider.ClearData();
+						Config.Initialize();
+						DataProvider.Initialize();
+
+						Config.AcceptedTermsAndConditions = acceptedTerms;
+						Config.EnableLogin = enabledlogin;
+						Config.IPAddressGateway = serverAdd;
+						Config.LanAddress = lanAdd;
+						Config.Port = port;
+						Config.SalesmanId = salesmanId;
+						Config.ButlerSignedIn = false;
+
+						Config.SelfService = true;
+						Config.SignedIn = true;
+						Config.SignedInSelfService = false;
+
+						Config.SaveSettings();
+					}
+					catch (Exception ee)
+					{
+						signOutError = true;
+						Logger.CreateLog(ee);
+						MainThread.BeginInvokeOnMainThread(async () =>
+						{
+							await _dialogService.HideLoadingAsync();
+							await _dialogService.ShowAlertAsync("An error ocurred trying to sing out. Please try again.", "Alert", "OK");
+						});
+					}
+				});
+			}
+			finally
+			{
+				await _dialogService.HideLoadingAsync();
+			}
+
+			if (!signOutError)
+			{
+				MainThread.BeginInvokeOnMainThread(async () =>
+				{
+					// Stay in Self Service shell; go to Select Company (add new company or select existing to sync and re-enter)
+					await Shell.Current.GoToAsync("//selfservice/selectcompany");
 				});
 			}
 		}

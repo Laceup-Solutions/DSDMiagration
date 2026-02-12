@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="LaceupMigration.Views.SelfService.SelfServiceShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:LaceupMigration.Views.SelfService"
+    NavBarHasShadow="True"
+    Title="Self Service"
+    FlyoutBehavior="Disabled">
+
+    <!-- Single root: no tabs. Stores (client list) is the first screen when multi-client; Select Company only when adding credentials. -->
+    <FlyoutItem Route="selfservice">
+        <ShellContent Route="clientlist" ContentTemplate="{DataTemplate local:SelfServiceClientListPage}" Title="Stores" />
+    </FlyoutItem>
+</Shell>

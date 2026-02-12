@@ -193,14 +193,54 @@ namespace LaceupMigration.ViewModels
 					}
 					else
 					{
+						// Self Service: use dedicated SelfServiceShell and route to select company, client list, or template
 						if (SelfServiceCompany.List != null && SelfServiceCompany.List.Count >= 1 && !Config.SignedInSelfService)
 						{
-							await GoToAsyncOrMainAsync("selfservice/selectcompany");
+							await App.SwitchToSelfServiceShellAsync("//selfservice/selectcompany");
+						}
+						else if (Config.SignedInSelfService && Client.Clients != null && Client.Clients.Count > 0)
+						{
+							// Already signed in with clients in memory (e.g. returning to app)
+							if (Client.Clients.Count > 1)
+							{
+								await App.SwitchToSelfServiceShellAsync("//selfservice/clientlist");
+							}
+							else
+							{
+								// Count == 1: go straight to checkout (never show client list)
+								var client = Client.Clients.FirstOrDefault();
+								client?.EnsureInvoicesAreLoaded();
+								client?.EnsurePreviouslyOrdered();
+								var order = Order.Orders.FirstOrDefault(x => x.Client?.ClientId == client?.ClientId);
+								if (order == null && client != null)
+								{
+									var batch = new Batch(client) { Client = client, ClockedIn = DateTime.Now };
+									batch.Save();
+									var companies = SalesmanAvailableCompany.GetCompanies(Config.SalesmanId, client.ClientId);
+									order = new Order(client) { AsPresale = true, OrderType = OrderType.Order, SalesmanId = Config.SalesmanId, BatchId = batch.Id };
+									if (companies.Count > 0)
+									{
+										order.CompanyName = companies[0].CompanyName;
+										order.CompanyId = companies[0].CompanyId;
+									}
+									order.Save();
+								}
+								if (order != null)
+									await App.SwitchToSelfServiceShellAsync($"//selfservice/checkout?orderId={order.OrderId}");
+								else
+									await App.SwitchToSelfServiceShellAsync("//selfservice/clientlist");
+							}
 						}
 						else
 						{
-							var route = Config.EnableAdvancedLogin ? "newlogin" : "loginconfig";
-							await GoToAsyncOrMainAsync(route);
+							// Need to login: show select company (in self service shell) or regular login
+							if (SelfServiceCompany.List != null && SelfServiceCompany.List.Count >= 1)
+								await App.SwitchToSelfServiceShellAsync("//selfservice/selectcompany");
+							else
+							{
+								var route = Config.EnableAdvancedLogin ? "newlogin" : "loginconfig";
+								await GoToAsyncOrMainAsync(route);
+							}
 						}
 					}
 				}

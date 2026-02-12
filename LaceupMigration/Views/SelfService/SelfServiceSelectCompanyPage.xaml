@@ -3,38 +3,93 @@
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels.SelfService"
+             xmlns:lm="clr-namespace:LaceupMigration"
+             xmlns:laceupMigration="clr-namespace:LaceupMigration;assembly=LaceupMigration.Business"
+             Shell.NavBarIsVisible="False"
+             Shell.BackButtonBehavior="{x:Null}"
              x:DataType="vm:SelfServiceSelectCompanyPageViewModel"
              Title="Select Company">
-    <Grid RowDefinitions="Auto,*" Padding="10">
-        <Button Grid.Row="0" 
-                Text="Add Company" 
+    <Grid RowDefinitions="Auto,Auto,*" Padding="10">
+        <Grid Grid.Row="0" RowDefinitions="auto,auto,auto">
+            <Image Grid.Row="0" Source="icon144x144.png"
+                   WidthRequest="100"
+                   HeightRequest="100"
+                   HorizontalOptions="Center"
+                   Margin="0,50,0,30" />
+
+            <Label Grid.Row="1" Text="Welcome To LaceUp"
+                   HorizontalOptions="Center"
+                   FontAttributes="Bold"
+                   TextColor="{DynamicResource PrimaryTextColor}"
+                   FontSize="20"
+                   Margin="0,0,0,0" />
+
+            <Label Grid.Row="2" HorizontalOptions="Center"
+                   FontSize="14"
+                   Margin="0,0,0,15">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="Support Contact: " />
+                        <Span Text="1(786) 437-4380"
+                              TextDecorations="Underline"
+                              TextColor="{StaticResource colorLaceupDark}">
+                            <Span.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SupportContactCommand}" />
+                            </Span.GestureRecognizers>
+                        </Span>
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+        </Grid>
+
+        <Button Grid.Row="1"
+                Text="Add Company"
                 Command="{Binding AddCompanyCommand}"
                 Margin="0,0,0,10"/>
-        
-        <CollectionView Grid.Row="1" 
+
+        <CollectionView x:Name="CompanyCollectionView"
+                        Grid.Row="2"
                         ItemsSource="{Binding Companies}"
                         SelectionMode="Single"
-                        SelectionChanged="OnCompanySelected">
+                        SelectionChanged="OnCompanySelected"
+                        EmptyView="No companies. Tap Add Company to add one."
+                        ItemSizingStrategy="MeasureFirstItem">
             <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Frame Padding="10" Margin="0,0,0,10" 
-                           BackgroundColor="White"
-                           BorderColor="LightBlue"
-                           HasShadow="True">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <VerticalStackLayout Grid.Column="0">
-                                <Label Text="{Binding CompanyName}" 
-                                       FontSize="18" 
-                                       FontAttributes="Bold"/>
-                                <Label Text="{Binding CompanyAddress}" 
-                                       FontSize="14" 
-                                       TextColor="Gray"/>
-                                <Label Text="{Binding CompanyPhone}" 
-                                       FontSize="14" 
-                                       TextColor="Gray"/>
-                            </VerticalStackLayout>
+                <DataTemplate x:DataType="laceupMigration:SelfServiceCompany">
+                    <Grid RowDefinitions="*,Auto"
+                          Padding="10,8,10,4"
+                          MinimumHeightRequest="60">
+                        <Grid Grid.Row="0" RowDefinitions="Auto,Auto,Auto" RowSpacing="4" Margin="0,0,0,12">
+                            <Label Text="{Binding CompanyName}"
+                                   Grid.Row="0"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource PrimaryDark}"
+                                   VerticalOptions="Start"
+                                   LineBreakMode="WordWrap"/>
+                            <Label Text="{Binding CompanyAddress}"
+                                   FontSize="12"
+                                   Grid.Row="1"
+                                   TextColor="#666666"
+                                   VerticalOptions="Start"
+                                   HorizontalOptions="Fill"
+                                   LineBreakMode="WordWrap"
+                                   Margin="0,2,0,0"/>
+                            <Label Text="{Binding CompanyPhone}"
+                                   FontSize="12"
+                                   Grid.Row="2"
+                                   TextColor="#666666"
+                                   VerticalOptions="Start"
+                                   HorizontalOptions="Fill"
+                                   LineBreakMode="WordWrap"
+                                   Margin="0,2,0,6"/>
                         </Grid>
-                    </Frame>
+                        <BoxView Grid.Row="1"
+                                 HeightRequest="1"
+                                 Color="#E0E0E0"
+                                 VerticalOptions="Start"
+                                 HorizontalOptions="Fill"/>
+                    </Grid>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>

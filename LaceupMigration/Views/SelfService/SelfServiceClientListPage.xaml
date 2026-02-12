@@ -3,39 +3,104 @@
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels.SelfService"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             xmlns:converters="clr-namespace:LaceupMigration.Converters"
              x:DataType="vm:SelfServiceClientListPageViewModel"
              Title="{Binding CompanyName}">
-    <Grid RowDefinitions="Auto,*" Padding="10">
-        <SearchBar Grid.Row="0" 
-                   Placeholder="Search clients..."
-                   Text="{Binding SearchText}"
-                   BackgroundColor="White"
-                   TextChanged="OnSearchTextChanged"
-                   Margin="0,0,0,10"/>
-        
-        <CollectionView Grid.Row="1" 
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=MoreVert, IconColor=Black}" Command="{Binding ShowToolbarMenuCommand}" />
+    </ContentPage.ToolbarItems>
+    <ContentPage.Resources>
+        <DataTemplate x:Key="ClientItemTemplate" x:DataType="vm:ClientItemViewModel">
+            <Grid RowDefinitions="*,Auto"
+                  ColumnDefinitions="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToColumnDefinitionsConverter}}"
+                  Padding="10,8,10,4"
+                  ColumnSpacing="5"
+                  MinimumHeightRequest="60">
+                <Border Grid.Row="0" Grid.Column="0"
+                        BackgroundColor="{Binding StopBadgeBackground}"
+                        StrokeThickness="0"
+                        Padding="6,2"
+                        MinimumWidthRequest="24"
+                        HeightRequest="20"
+                        VerticalOptions="Center"
+                        HorizontalOptions="Start"
+                        IsVisible="{Binding ShowStop}">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Label Text="{Binding StopText}"
+                           FontSize="11"
+                           FontAttributes="Bold"
+                           TextColor="{Binding StopBadgeTextColor}"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+                </Border>
+                <Image Grid.Row="0" Grid.Column="1"
+                       Source="{Binding IconImageSource}"
+                       WidthRequest="24"
+                       HeightRequest="24"
+                       VerticalOptions="Center"
+                       IsVisible="{Binding ShowIcon}" />
+                <Grid Grid.Row="0"
+                      Grid.Column="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToContentColumnConverter}}"
+                      RowDefinitions="Auto,Auto"
+                      RowSpacing="4"
+                      VerticalOptions="FillAndExpand"
+                      Margin="0,0,0,12">
+                    <Label Grid.Row="0"
+                           Text="{Binding Name}"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           TextColor="{Binding NameColor}"
+                           VerticalOptions="Start"
+                           LineBreakMode="WordWrap" />
+                    <Label Grid.Row="1"
+                           Text="{Binding Address}"
+                           FontSize="12"
+                           TextColor="{Binding AddressColor}"
+                           IsVisible="{Binding ShowAddress}"
+                           VerticalOptions="Start"
+                           HorizontalOptions="Fill"
+                           LineBreakMode="WordWrap"
+                           Margin="0,2,0,6" />
+                </Grid>
+                <Label Grid.Row="0"
+                       Grid.Column="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToBalanceColumnConverter}}"
+                       Text="{Binding Balance}"
+                       FontSize="14"
+                       FontAttributes="Bold"
+                       TextColor="{Binding NameColor}"
+                       VerticalOptions="Center"
+                       HorizontalOptions="End"
+                       LineBreakMode="NoWrap" />
+                <BoxView Grid.Row="1"
+                         Grid.ColumnSpan="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToColumnSpanConverter}}"
+                         HeightRequest="1"
+                         Margin="0,0,0,0"
+                         Color="#E0E0E0"
+                         VerticalOptions="Start"
+                         HorizontalOptions="Fill" />
+            </Grid>
+        </DataTemplate>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="*" RowSpacing="0" Padding="0,0,0,0">
+        <Border Grid.Row="0" Margin="5" StrokeThickness="1" BackgroundColor="White" Padding="12,2" StrokeShape="RoundRectangle 12">
+            <SearchBar Placeholder="Search customers"
+                       FontSize="14"
+                       HeightRequest="36"
+                       BackgroundColor="White"
+                       Text="{Binding SearchText}" />
+        </Border>
+
+        <CollectionView x:Name="ClientCollectionView"
+                        Grid.Row="2"
                         ItemsSource="{Binding FilteredClients}"
+                        ItemTemplate="{StaticResource ClientItemTemplate}"
                         SelectionMode="Single"
-                        SelectionChanged="OnClientSelected">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Frame Padding="10" Margin="0,0,0,10" 
-                           BackgroundColor="White"
-                           BorderColor="LightBlue"
-                           HasShadow="True">
-                        <VerticalStackLayout>
-                            <Label Text="{Binding ClientName}" 
-                                   FontSize="18" 
-                                   FontAttributes="Bold"/>
-                            <Label Text="{Binding ShipToAddress}" 
-                                   FontSize="14" 
-                                   TextColor="Gray"
-                                   IsVisible="{Binding ShowAddress}"/>
-                        </VerticalStackLayout>
-                    </Frame>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+                        SelectionChanged="OnClientSelectionChanged"
+                        EmptyView="No customers available."
+                        ItemSizingStrategy="MeasureFirstItem" />
     </Grid>
 </local:LaceupContentPage>
-

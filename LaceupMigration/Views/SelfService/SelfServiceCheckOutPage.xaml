@@ -3,63 +3,126 @@
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels.SelfService"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             xmlns:converters="clr-namespace:LaceupMigration.Converters"
+             Shell.NavBarHasShadow="True"
              x:DataType="vm:SelfServiceCheckOutPageViewModel"
              Title="Checkout">
-    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="10">
-        <Label Grid.Row="0" 
-               Text="{Binding ClientName}" 
-               FontSize="18" 
-               FontAttributes="Bold"
-               HorizontalOptions="Center"
-               Margin="0,0,0,10"/>
-        
-        <Grid Grid.Row="1" ColumnDefinitions="*,*,*" Margin="0,0,0,10">
-            <VerticalStackLayout Grid.Column="0">
-                <Label Text="{Binding LinesText}" FontSize="14"/>
-                <Label Text="{Binding QtyText}" FontSize="14"/>
-                <Label Text="{Binding TermText}" FontSize="14"/>
-            </VerticalStackLayout>
-            <VerticalStackLayout Grid.Column="1">
-                <Label Text="{Binding SubtotalText}" FontSize="14"/>
-                <Label Text="{Binding DiscountText}" FontSize="14"/>
-            </VerticalStackLayout>
-            <VerticalStackLayout Grid.Column="2">
-                <Label Text="{Binding TaxText}" FontSize="14"/>
-                <Label Text="{Binding TotalText}" FontSize="14" FontAttributes="Bold"/>
-            </VerticalStackLayout>
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=MoreVert, IconColor=Black}" Command="{Binding ShowToolbarMenuCommand}" />
+    </ContentPage.ToolbarItems>
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Padding="0">
+        <!-- Customer and Order Summary (Collapsible, collapsed by default - like AdvancedCatalogPage) -->
+        <Frame  Grid.Row="0" Padding="8,6" Margin="5,5,5,5" HasShadow="False" CornerRadius="6" BackgroundColor="{StaticResource White}">
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" RowSpacing="4">
+                <Label Grid.Row="0" Grid.Column="0" Text="{Binding ClientName}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                <Label Grid.Row="0" Grid.Column="1" Text="{Binding TotalText}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" HorizontalOptions="End" VerticalOptions="Center" IsVisible="{Binding ShowTotalInHeader}" />
+                <Grid Grid.Row="0" Grid.Column="2" HorizontalOptions="End" VerticalOptions="Center" WidthRequest="24" HeightRequest="24">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ToggleOrderSummaryCommand}" />
+                    </Grid.GestureRecognizers>
+                    <Label Text="{Binding IsOrderSummaryExpanded, Converter={StaticResource ExpandIconConverter}}" FontSize="14" TextColor="{StaticResource Gray600}" VerticalOptions="Center" HorizontalOptions="Center" />
+                </Grid>
+                <Grid Grid.Row="1" Grid.ColumnSpan="3" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,*,*" ColumnSpacing="8" RowSpacing="4" Margin="0,4,0,0" IsVisible="{Binding IsOrderSummaryExpanded}">
+                    <Label Grid.Row="0" Grid.ColumnSpan="3" Text="{Binding TermsText}" FontSize="12" TextColor="{StaticResource Gray600}" Margin="0,0,0,4" />
+                    <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="2">
+                        <Label Text="{Binding LinesText}" FontSize="12" TextColor="{StaticResource Gray900}" />
+                        <Label Text="{Binding QtySoldText}" FontSize="12" TextColor="{StaticResource Gray900}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="2">
+                        <Label Text="{Binding SubtotalText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource Gray900}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Row="1" Grid.Column="2" Spacing="2">
+                        <Label Text="{Binding TaxText}" FontSize="12" TextColor="{StaticResource Gray900}" />
+                        <Label Text="{Binding DiscountText}" FontSize="12" TextColor="{StaticResource Gray900}" />
+                        <Label Text="{Binding TotalText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Grid>
+        </Frame>
+
+        <!-- Sort By and Recently ordered on same line -->
+        <Grid Grid.Row="1" Padding="5" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="8,4" VerticalOptions="Center">
+            <HorizontalStackLayout Grid.Column="0" Spacing="8" VerticalOptions="Center">
+                <Label Text="Recently ordered" FontSize="14" VerticalOptions="Center"/>
+                <Switch IsToggled="{Binding ShowRecentlyOrdered}" VerticalOptions="Center"/>
+            </HorizontalStackLayout>
+            <Label Grid.Column="1" Text="{Binding SortByText}" FontSize="14" TextColor="{StaticResource PrimaryDark}" VerticalOptions="Center" HorizontalOptions="End">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding SortByCommand}" />
+                </Label.GestureRecognizers>
+            </Label>
         </Grid>
 
-        <Button Grid.Row="2" 
-                Text="Send Order" 
-                Command="{Binding SendOrderCommand}"
-                IsEnabled="{Binding CanSendOrder}"
-                Margin="0,0,0,10"/>
+        <Button Grid.Row="2" Padding="5" Text="Place your Order" Command="{Binding SendOrderCommand}" IsEnabled="{Binding CanSendOrder}" Margin="8,4" Style="{StaticResource PrimaryButton}" />
 
-        <CollectionView Grid.Row="3" 
-                        ItemsSource="{Binding OrderDetails}">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Frame Padding="10" Margin="0,0,0,10" 
-                           BackgroundColor="White"
-                           BorderColor="LightBlue"
-                           HasShadow="True">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <VerticalStackLayout Grid.Column="0">
-                                <Label Text="{Binding ProductName}" 
-                                       FontSize="16" 
-                                       FontAttributes="Bold"/>
-                                <Label Text="{Binding PriceText}" FontSize="14"/>
-                                <Label Text="{Binding UomText}" FontSize="12" TextColor="Gray"/>
-                            </VerticalStackLayout>
-                            <Button Grid.Column="1" 
-                                    Text="{Binding QtyText}"
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCheckOutPageViewModel}}, Path=EditQtyCommand}"
-                                    CommandParameter="{Binding .}"/>
-                        </Grid>
-                    </Frame>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+        <!-- Merged list (order + recently ordered) - same design as PreviouslyOrderedTemplatePage -->
+        <ScrollView Grid.Row="3" Padding="5">
+            <VerticalStackLayout Spacing="4">
+                <CollectionView ItemsSource="{Binding DisplayProducts}" SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SelfServiceOrderProductViewModel">
+                            <Frame Padding="10" Margin="8,2" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCheckOutPageViewModel}}, Path=ShowAddItemPopupCommand}" CommandParameter="{Binding .}" />
+                                </Frame.GestureRecognizers>
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="2">
+                                    <Label Grid.Column="0" Grid.Row="0" Text="{Binding ProductName}" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Gray900}" />
+                                    <Label Grid.Column="1" Grid.Row="0" Text="{Binding OnHandText}" FontSize="13" TextColor="{StaticResource PrimaryDark}" HorizontalOptions="End" />
+                                    <VerticalStackLayout Grid.Column="0" Grid.Row="1" Spacing="1">
+                                        <Label Text="{Binding ListPriceText}" FontSize="12" TextColor="{StaticResource Gray600}" />
+                                        <Label Text="{Binding UomText}" FontSize="12" TextColor="{StaticResource Gray600}" IsVisible="{Binding UomText, Converter={StaticResource IsStringNotEmptyConverter}}" />
+                                        <Label Text="{Binding LastVisitText}" FontSize="12" TextColor="{StaticResource Gray600}" IsVisible="{Binding ShowLastVisit}" />
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout Grid.Column="1" Grid.Row="1" Spacing="2" HorizontalOptions="End">
+                                        <Label Text="{Binding PriceText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" HorizontalOptions="End" />
+                                        <Label Text="{Binding TotalText}" FontSize="12" TextColor="{StaticResource Gray600}" HorizontalOptions="End" />
+                                        <Button Text="{Binding QuantityButtonText}"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCheckOutPageViewModel}}, Path=ShowAddItemPopupCommand}"
+                                                CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding IsEnabled}"
+                                                WidthRequest="90" HeightRequest="36"
+                                                BackgroundColor="{StaticResource PrimaryDark}"
+                                                TextColor="White" FontSize="18" FontAttributes="Bold"
+                                                CornerRadius="4" HorizontalOptions="End" Margin="0,2,0,0" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2" Text="{Binding SuggestedLabelText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource colorLaceupGreen}" IsVisible="{Binding IsSuggested}" Margin="0,4,0,0" />
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    <CollectionView.EmptyView>
+                        <Label Text="No products. Switch to Recently ordered or use Search." FontSize="14" TextColor="{StaticResource Gray600}" HorizontalOptions="Center" VerticalOptions="Center" Margin="0,30,0,0" />
+                    </CollectionView.EmptyView>
+                </CollectionView>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Bottom tab bar: Search, Catalog, More -->
+        <Border Grid.Row="4" StrokeThickness="0" BackgroundColor="#F7F7F7" Padding="0,8">
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                <VerticalStackLayout Grid.Column="0" Spacing="4" HorizontalOptions="Center">
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding GoToSearchCommand}"/>
+                    </VerticalStackLayout.GestureRecognizers>
+                    <Image Source="{mi:MaterialOutlined Icon=Search, IconColor={StaticResource colorLaceupDark}}" WidthRequest="24" HeightRequest="24" HorizontalOptions="Center"/>
+                    <Label Text="Search" FontSize="11" TextColor="{StaticResource colorLaceupDark}" HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1" Spacing="4" HorizontalOptions="Center">
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding GoToCatalogCommand}"/>
+                    </VerticalStackLayout.GestureRecognizers>
+                    <Image Source="{mi:MaterialOutlined Icon=MenuBook, IconColor={StaticResource colorLaceupDark}}" WidthRequest="24" HeightRequest="24" HorizontalOptions="Center"/>
+                    <Label Text="Catalog" FontSize="11" TextColor="{StaticResource colorLaceupDark}" HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="2" Spacing="4" HorizontalOptions="Center">
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding GoToMoreCommand}"/>
+                    </VerticalStackLayout.GestureRecognizers>
+                    <Image Source="{mi:MaterialOutlined Icon=MoreVert, IconColor={StaticResource colorLaceupDark}}" WidthRequest="24" HeightRequest="24" HorizontalOptions="Center"/>
+                    <Label Text="More" FontSize="11" TextColor="{StaticResource colorLaceupDark}" HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+                </VerticalStackLayout>
+            </Grid>
+        </Border>
     </Grid>
 </local:LaceupContentPage>
-

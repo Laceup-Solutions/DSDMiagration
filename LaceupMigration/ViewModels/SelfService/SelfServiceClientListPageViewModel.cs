@@ -1,8 +1,13 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Microsoft.Maui.Controls;
+using Microsoft.Maui.Graphics;
 using LaceupMigration.Services;
 using LaceupMigration;
+using LaceupMigration.ViewModels;
 
 namespace LaceupMigration.ViewModels.SelfService
 {
@@ -10,6 +15,8 @@ namespace LaceupMigration.ViewModels.SelfService
     {
         private readonly IDialogService _dialogService;
         private readonly ILaceupAppService _appService;
+        private readonly AdvancedOptionsService _advancedOptionsService;
+        private readonly MainPageViewModel _mainPageViewModel;
 
         [ObservableProperty]
         private ObservableCollection<ClientItemViewModel> _clients = new();
@@ -33,12 +40,41 @@ namespace LaceupMigration.ViewModels.SelfService
             return client.ShipToAddress.Replace("|", " ");
         }
 
-        public SelfServiceClientListPageViewModel(IDialogService dialogService, ILaceupAppService appService)
+        /// <summary>Same behavior as ClientsPage.HandleClientSelectionAsync: overdue alert then navigate.</summary>
+        public async Task HandleClientSelectionAsync(ClientItemViewModel item)
+        {
+            if (item?.Client == null) return;
+            _appService.RecordEvent("SelfServiceClientList.CustomerSelected");
+            if (Config.CannotOrderWithUnpaidInvoices && item.HasOverdueInvoices)
+            {
+                await _dialogService.ShowAlertAsync("Customers highlighted in red are 90 days late on their payments. Please contact the customer prior to visiting them.", "Alert");
+            }
+            await SelectClientAsync(item);
+        }
+
+        public SelfServiceClientListPageViewModel(IDialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService, MainPageViewModel mainPageViewModel)
         {
             _dialogService = dialogService;
             _appService = appService;
+            _advancedOptionsService = advancedOptionsService;
+            _mainPageViewModel = mainPageViewModel;
             _showAddress = Config.ShowAddrInClientList;
             LoadClients();
+        }
+
+        /// <summary>Top right toolbar menu. Sync Data and Sign Out only when 1 client assigned; Advanced Options always.</summary>
+        [RelayCommand]
+        private async Task ShowToolbarMenuAsync()
+        {
+            var options = new List<string> {  "Sync Data From Server", "Advanced Options","Sign Out" };
+            var choice = await _dialogService.ShowActionSheetAsync("Menu", null, "Cancel", options.ToArray());
+            if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+            if (choice == "Sync Data From Server")
+                await _mainPageViewModel.SyncDataFromMenuAsync();
+            else if (choice == "Advanced Options")
+                await _advancedOptionsService.ShowAdvancedOptionsAsync();
+            else if (choice == "Sign Out")
+                await _mainPageViewModel.SignOutFromSelfServiceAsync();
         }
 
         public void OnAppearing()
@@ -59,7 +95,7 @@ namespace LaceupMigration.ViewModels.SelfService
             var clientList = Client.SortedClients().Where(x => !x.SalesmanClient).ToList();
             foreach (var client in clientList)
             {
-                Clients.Add(new ClientItemViewModel(client, ShowAddress));
+                Clients.Add(new ClientItemViewModel(client, Config.ShowAddrInClientList));
             }
             FilterClients();
         }
@@ -107,11 +143,14 @@ namespace LaceupMigration.ViewModels.SelfService
 
                 order.Save();
 
-                await Shell.Current.GoToAsync($"selfservice/template?orderId={order.OrderId}");
+                // When only one client, replace stack so back doesn't go to client list
+                var route = $"{(Client.Clients.Count == 1 ? "//" : "")}selfservice/checkout?orderId={order.OrderId}";
+                await Shell.Current.GoToAsync(route);
             }
             else
             {
-                await Shell.Current.GoToAsync($"selfservice/checkout?orderId={order.OrderId}");
+                var route = $"{(Client.Clients.Count == 1 ? "//" : "")}selfservice/checkout?orderId={order.OrderId}";
+                await Shell.Current.GoToAsync(route);
             }
         }
 
@@ -150,17 +189,43 @@ namespace LaceupMigration.ViewModels.SelfService
         }
     }
 
+    /// <summary>Same bindable shape as ClientListItemViewModel for ClientsPage row template.</summary>
     public partial class ClientItemViewModel : ObservableObject
     {
         public Client Client { get; }
         public string ClientName => Client?.ClientName ?? string.Empty;
         public string ShipToAddress => Client?.ShipToAddress?.Replace("|", " ") ?? string.Empty;
+
+        public string Name => Client?.ClientName ?? string.Empty;
+        public string Address => Client?.ShipToAddress?.Replace("|", " ") ?? string.Empty;
         public bool ShowAddress { get; }
+        public string Balance => Client?.ClientBalanceInDevice.ToCustomString() ?? 0.0.ToCustomString();
+        public bool HasLeftContent => false;
+        public bool ShowStop => false;
+        public bool ShowIcon => false;
+        public string StopText => string.Empty;
+        public Color NameColor { get; }
+        public Color AddressColor { get; } = Color.FromArgb("#4A4A4A");
+        public Color StopBadgeBackground => Color.FromArgb("#CFD8DC");
+        public Color StopBadgeTextColor => Colors.White;
+        public ImageSource IconImageSource => null;
+        public bool HasOverdueInvoices { get; }
 
         public ClientItemViewModel(Client client, bool showAddress)
         {
             Client = client;
-            ShowAddress = showAddress;
+            ShowAddress = showAddress && !string.IsNullOrEmpty(Address);
+            bool hasOverdue = false;
+            if (Config.CannotOrderWithUnpaidInvoices && client != null)
+            {
+                var invoices = (Invoice.OpenInvoices ?? new List<Invoice>())
+                    .Where(x => x.Client.ClientId == client.ClientId)
+                    .ToList();
+                if (invoices.Count > 0)
+                    hasOverdue = invoices.Any(x => x.DueDate.AddDays(90) < DateTime.Now.Date && x.Balance > 0);
+            }
+            HasOverdueInvoices = hasOverdue;
+            NameColor = hasOverdue ? Colors.Red : Colors.Black;
         }
     }
 }

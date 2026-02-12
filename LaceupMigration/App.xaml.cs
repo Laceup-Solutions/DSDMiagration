@@ -3,10 +3,11 @@ using MauiIcons.Core;
 
 namespace LaceupMigration
 {
-    public partial class App : Application
+	public partial class App : Application
 	{
 		public static IServiceProvider Services { get; private set; } = default!;
 		private readonly AppShell _appShell;
+		private static AppShell? _mainShellRef;
 
 		public App(IServiceProvider serviceProvider, AppShell appShell)
 		{
@@ -27,6 +28,7 @@ namespace LaceupMigration
 
 			Services = serviceProvider;
 			_appShell = appShell;
+			_mainShellRef = appShell;
 
 			Config.helper = serviceProvider.GetService<IInterfaceHelper>();
 			CurrentScanner.scanner = serviceProvider.GetService<IScannerService>();
@@ -57,6 +59,33 @@ namespace LaceupMigration
 			Helpers.NavigationTracker.Initialize(_appShell);
 			
 			return window;
+		}
+
+		/// <summary>
+		/// Switch to the Self Service shell and optionally navigate to a route.
+		/// Use when Config.EnableSelfServiceModule and after login or from splash.
+		/// </summary>
+		public static async Task SwitchToSelfServiceShellAsync(string route)
+		{
+			var shell = Services.GetRequiredService<Views.SelfService.SelfServiceShell>();
+			Current!.MainPage = shell;
+			try
+			{
+				await shell.GoToAsync(route);
+			}
+			catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine($"[SelfService] SwitchToSelfServiceShellAsync navigation failed: {ex.Message}");
+			}
+		}
+
+		/// <summary>
+		/// Switch back to the main app shell (e.g. when signing out of self service).
+		/// </summary>
+		public static void SwitchToMainShell()
+		{
+			if (_mainShellRef != null)
+				Current!.MainPage = _mainShellRef;
 		}
 	}
 }
