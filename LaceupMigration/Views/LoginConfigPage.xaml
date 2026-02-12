@@ -49,6 +49,7 @@
 					<Entry
 					       Text="{Binding ServerAddress}"
 					       Placeholder="Server Address"
+					       Focused="VisualElement_OnFocused"
 					       HorizontalTextAlignment="Center" />
 					</Border>
 
@@ -60,6 +61,7 @@
 						   Text="{Binding Port}"
 						   Keyboard="Numeric"
 						   Placeholder="Port"
+						   Focused="VisualElement_OnFocused"
 						   HorizontalTextAlignment="Center" />
 					</Border>
 
@@ -71,6 +73,7 @@
 						<Entry
 						       Text="{Binding SalesmanId}"
 						       Keyboard="Numeric"
+						       Focused="VisualElement_OnFocused"
 						       Placeholder="Salesman Id"
 						       HorizontalTextAlignment="Center"
 						       Margin="0,0,0,0" />
