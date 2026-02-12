@@ -17,6 +17,18 @@ namespace LaceupMigration
 			var model = BindingContext as LoginConfigPageViewModel;
 			model?.OnAppearing();
 		}
+
+		private void VisualElement_OnFocused(object? sender, FocusEventArgs e)
+		{
+			if (sender is Entry entry)
+			{
+				Dispatcher.Dispatch( () =>
+				{
+					entry.CursorPosition = 0;
+					entry.SelectionLength = entry.Text?.Length ?? 0;
+				});
+			}
+		}
 	}
 }
 

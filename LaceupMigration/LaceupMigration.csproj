@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFrameworks>net9.0-android;net9.0-ios</TargetFrameworks>
@@ -21,7 +21,7 @@
 		<WindowsPackageType>None</WindowsPackageType>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
-		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">22.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
 		
 	</PropertyGroup>
 
@@ -79,8 +79,9 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
 		<PackageReference Include="SharpZipLib" Version="1.4.2" />
 		<PackageReference Include="Vitvov.Maui.PDFView" Version="1.0.0" />
-        <PackageReference Include="ZXing.Net.Maui" Version="0.4.0" />
-        <PackageReference Include="ZXing.Net.Maui.Controls" Version="0.4.0" />
+        <!-- 0.6.0 uses AndroidX Camera 1.4.x (16KB page-size compliant) for Android; 0.4.0 used 1.1.x -->
+        <PackageReference Include="ZXing.Net.Maui" Version="0.6.0" />
+        <PackageReference Include="ZXing.Net.Maui.Controls" Version="0.6.0" />
 	</ItemGroup>
 
 	<ItemGroup>
