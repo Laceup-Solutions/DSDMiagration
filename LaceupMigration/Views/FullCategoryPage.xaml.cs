@@ -91,6 +91,7 @@ namespace LaceupMigration.Views
             int? productId = null;
             bool consignmentCounting = false;
             string? comingFrom = null;
+            bool showSendByEmail = false;
 
             if (query.TryGetValue("clientId", out var clientValue) && clientValue != null)
             {
@@ -146,6 +147,11 @@ namespace LaceupMigration.Views
                 comingFrom = fromValue.ToString();
             }
 
+            if (query.TryGetValue("showSendByEmail", out var showEmailValue) && showEmailValue != null)
+            {
+                showSendByEmail = showEmailValue.ToString() == "1" || string.Equals(showEmailValue.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+            }
+
             // Set navigation params synchronously so they are available before InitializeAsync runs
             // (e.g. when LoadCategories runs from RefreshAsync/OnAppearing before the dispatched InitializeAsync)
             _viewModel.SetNavigationQuery(
@@ -158,7 +164,8 @@ namespace LaceupMigration.Views
                 asReturnItem: asReturnItem,
                 productId: productId,
                 consignmentCounting: consignmentCounting,
-                comingFrom: comingFrom);
+                comingFrom: comingFrom,
+                showSendByEmail: showSendByEmail);
 
             Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(
                 clientId: clientId,
@@ -170,7 +177,8 @@ namespace LaceupMigration.Views
                 asReturnItem: asReturnItem,
                 productId: productId,
                 consignmentCounting: consignmentCounting,
-                comingFrom: comingFrom));
+                comingFrom: comingFrom,
+                showSendByEmail: showSendByEmail));
             
             // [ACTIVITY STATE]: Save navigation state with query parameters
             // Build route with query parameters for state saving

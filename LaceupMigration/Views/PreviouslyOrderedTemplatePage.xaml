@@ -153,11 +153,19 @@
                                     <Label Text="{Binding ListPriceText}"
                                            FontSize="12"
                                            TextColor="{StaticResource Gray600}" />
+                                    <Label Text="{Binding UomText}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}"
+                                           IsVisible="{Binding UomText, Converter={StaticResource IsStringNotEmptyConverter}}" />
                                     <Label Text="{Binding TypeText}"
                                            FontSize="12"
                                            FontAttributes="Bold"
                                            TextColor="{Binding ProductNameColor}"
                                            IsVisible="{Binding ShowTypeText}" />
+                                    <Label Text="{Binding OrgQtyText}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}"
+                                           IsVisible="{Binding ShowOrgQty}" />
                                     <Label Text="{Binding LastVisitText}"
                                            FontSize="12"
                                            TextColor="{StaticResource Gray600}"

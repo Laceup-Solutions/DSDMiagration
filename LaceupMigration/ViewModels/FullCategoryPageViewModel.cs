@@ -33,6 +33,7 @@ namespace LaceupMigration.ViewModels
         private bool _consignmentCounting;
         private string? _comingFrom; // "Credit" or "PreviouslyOrdered"
         private int? _scannedProductId; // Product ID from camera scan
+        private bool _showSendByEmail; // True when opened from main menu or client details catalog
 
         public ObservableCollection<CategoryViewModel> Categories { get; } = new();
         public ObservableCollection<ProductViewModel> Products { get; } = new();
@@ -78,7 +79,7 @@ namespace LaceupMigration.ViewModels
         /// </summary>
         public void SetNavigationQuery(int? clientId = null, int? orderId = null, int? categoryId = null, string? productSearch = null,
             bool comingFromSearch = false, bool asCreditItem = false, bool asReturnItem = false, int? productId = null,
-            bool consignmentCounting = false, string? comingFrom = null)
+            bool consignmentCounting = false, string? comingFrom = null, bool showSendByEmail = false)
         {
             _clientId = clientId;
             _orderId = orderId;
@@ -90,6 +91,7 @@ namespace LaceupMigration.ViewModels
             _productId = productId;
             _consignmentCounting = consignmentCounting;
             _comingFrom = comingFrom;
+            _showSendByEmail = showSendByEmail;
 
             // Resolve _order and _client immediately so LoadCategories/LoadProducts always have them when IDs were passed
             if (_orderId.HasValue)
@@ -107,7 +109,8 @@ namespace LaceupMigration.ViewModels
 
         public async Task InitializeAsync(int? clientId = null, int? orderId = null, int? categoryId = null, 
             string? productSearch = null, bool comingFromSearch = false, bool asCreditItem = false, 
-            bool asReturnItem = false, int? productId = null, bool consignmentCounting = false, string? comingFrom = null)
+            bool asReturnItem = false, int? productId = null, bool consignmentCounting = false, string? comingFrom = null,
+            bool showSendByEmail = false)
         {
             // When called with no explicit params (e.g. from OnAppearingAsync before dispatched InitializeAsync ran),
             // use the params already set by SetNavigationQuery so we don't overwrite them with null.
@@ -126,6 +129,7 @@ namespace LaceupMigration.ViewModels
                 productId = _productId;
                 consignmentCounting = _consignmentCounting;
                 comingFrom = _comingFrom;
+                showSendByEmail = _showSendByEmail;
             }
 
             if (!string.IsNullOrEmpty(productSearch))
@@ -141,6 +145,7 @@ namespace LaceupMigration.ViewModels
             _productId = productId;
             _consignmentCounting = consignmentCounting;
             _comingFrom = comingFrom;
+            _showSendByEmail = showSendByEmail;
             _scannedProductId = null; // Clear scanned product ID on initialization
             
             if (comingFromSearch && !string.IsNullOrEmpty(productSearch))
@@ -602,16 +607,24 @@ namespace LaceupMigration.ViewModels
                 var route = $"fullcategory?orderId={_orderId.Value}&categoryId={categoryId}";
                 if (!string.IsNullOrEmpty(_comingFrom))
                     route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
+                if (_showSendByEmail)
+                    route += "&showSendByEmail=1";
                 await Shell.Current.GoToAsync(route);
             }
             else if (_client != null)
             {
-                await Shell.Current.GoToAsync($"fullcategory?clientId={_client.ClientId}&categoryId={categoryId}");
+                var route = $"fullcategory?clientId={_client.ClientId}&categoryId={categoryId}";
+                if (_showSendByEmail)
+                    route += "&showSendByEmail=1";
+                await Shell.Current.GoToAsync(route);
             }
             else
             {
                 // No order or client - navigate with just categoryId (matches Xamarin when clientId is 0)
-                await Shell.Current.GoToAsync($"fullcategory?categoryId={categoryId}");
+                var route = $"fullcategory?categoryId={categoryId}";
+                if (_showSendByEmail)
+                    route += "&showSendByEmail=1";
+                await Shell.Current.GoToAsync(route);
             }
         }
 
@@ -1103,15 +1116,18 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task ShowMenuAsync()
         {
-            // Send by Email commented out - only Advanced Options in Full Categories menu
-            var options = new[] { /* "Send by Email", */ "Advanced Options" };
+            var optionsList = new List<string>();
+            if (_showSendByEmail)
+                optionsList.Add("Send by Email");
+            optionsList.Add("Advanced Options");
+            var options = optionsList.ToArray();
             var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options);
             
             switch (choice)
             {
-                // case "Send by Email":
-                //     await SendByEmailAsync();
-                //     break;
+                case "Send by Email":
+                    await SendByEmailAsync();
+                    break;
                 case "Advanced Options":
                     await ShowAdvancedOptionsAsync();
                     break;
@@ -1190,8 +1206,11 @@ namespace LaceupMigration.ViewModels
 
                 string pdfFile = null;
 
-                // Try to get PDF from server first, then fall back to local generation (matches Xamarin logic)
-                int priceLevel = _client != null ? _client.PriceLevel : 0;
+                var pricelevel = _client != null ? _client.PriceLevel : 0;
+                if (pricelevel > 0)
+                    pricelevel -= 10;
+                
+                int priceLevel = pricelevel > 0 ? pricelevel : 0;
 
                 // First try to get PDF from server (matches Xamarin: DataAccess.GetCatalogPdf)
                 if (DataProvider.GetCatalogPdf(priceLevel, showPrice, showUPC, showUoM, categoriesids))

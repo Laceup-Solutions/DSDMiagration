@@ -4044,6 +4044,11 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty] private bool _showSelectPL = false;
 
+        /// <summary>Original quantity text for delivery orders (e.g. "Org. Qty=5"). Visible only when order is delivery and product had Ordered > 0.</summary>
+        [ObservableProperty] private string _orgQtyText = string.Empty;
+
+        [ObservableProperty] private bool _showOrgQty;
+
         public bool HasMultipleDetails => HasFreeItemDetail;
         public bool HasSingleDetail => !HasFreeItemDetail;
         
@@ -4105,6 +4110,27 @@ namespace LaceupMigration.ViewModels
                         ? $"OH: {ohDisplay:F0}"
                         : $"OH: {ohDisplay:F0} {uomName}";
                     TruckInventoryText = string.Empty;
+                }
+
+                // Org. Qty: only for delivery orders when product had original ordered qty > 0 (matches Xamarin PreviouslyOrderedTemplateActivity)
+                var mainDetail = PrimaryDetail?.Detail ?? Details.FirstOrDefault(d => d.Detail != null && !d.Detail.IsFreeItem)?.Detail;
+                if (order != null && order.IsDelivery && mainDetail != null && mainDetail.Ordered > 0)
+                {
+                    ShowOrgQty = true;
+                    if (Product.SoldByWeight && Config.NewAddItemRandomWeight)
+                    {
+                        var deletedCount = order.DeletedDetails?.Count(x => x.Product?.ProductId == Product.ProductId) ?? 0;
+                        OrgQtyText = $"Org. Qty={(float)(mainDetail.Ordered + deletedCount)}";
+                    }
+                    else
+                    {
+                        OrgQtyText = $"Org. Qty={mainDetail.Ordered}";
+                    }
+                }
+                else
+                {
+                    ShowOrgQty = false;
+                    OrgQtyText = string.Empty;
                 }
 
                 // List Price

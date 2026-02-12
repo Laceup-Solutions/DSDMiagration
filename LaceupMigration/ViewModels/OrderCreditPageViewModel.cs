@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using Microsoft.Maui.Graphics;
 using System;
@@ -307,6 +308,9 @@ namespace LaceupMigration.ViewModels
                 showType = true;
             }
 
+            // UoM (e.g. Case, Each, Dozen) so multiple lines for same product are distinguishable
+            var uomText = detail.UnitOfMeasure != null ? detail.UnitOfMeasure.Name : string.Empty;
+
             // Quantity button text
             var qtyButtonText = detail.Qty > 0 ? detail.Qty.ToString("F0") : "+";
 
@@ -319,6 +323,7 @@ namespace LaceupMigration.ViewModels
                 ListPriceText = listPriceText,
                 QtyText = qtyText,
                 PriceText = priceText,
+                UomText = uomText,
                 TotalText = totalText,
                 TypeText = typeText,
                 TypeColor = typeColor,
@@ -332,8 +337,8 @@ namespace LaceupMigration.ViewModels
         {
             if (item == null || item.Detail == null) return;
 
-            // Navigate to AddItemPage to edit the credit item
-            await Shell.Current.GoToAsync($"additem?orderId={_order?.OrderId}&orderDetailId={item.Detail.OrderDetailId}&asCreditItem=1");
+            // Navigate to AddItemPage to edit this credit item (use orderDetail param so correct detail is loaded)
+            await Shell.Current.GoToAsync($"additem?orderId={_order?.OrderId}&orderDetail={item.Detail.OrderDetailId}&asCreditItem=1");
         }
 
         [RelayCommand]
@@ -379,6 +384,7 @@ namespace LaceupMigration.ViewModels
                 existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
             }
 
+            OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, existingDetail);
             OrderDetail.UpdateRelated(existingDetail, _order);
             _order.RecalculateDiscounts();
             _order.Save();
@@ -1193,6 +1199,8 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _qtyText = string.Empty;
 
         [ObservableProperty] private string _priceText = string.Empty;
+
+        [ObservableProperty] private string _uomText = string.Empty;
 
         [ObservableProperty] private string _amountText = string.Empty;
 

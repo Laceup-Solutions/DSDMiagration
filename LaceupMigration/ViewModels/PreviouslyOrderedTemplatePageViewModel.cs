@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.ApplicationModel;
@@ -369,32 +370,6 @@ namespace LaceupMigration.ViewModels
 
             PreviouslyOrderedProducts.Clear();
 
-            // Composite key: (ProductId, IsCredit, Damaged) so we show separate rows for Sales, Return, and Dump
-            // Sales: IsCredit=false, Damaged=false | Return: IsCredit=true, Damaged=false | Dump: IsCredit=true, Damaged=true
-            // History (OrderedList) only merges with SALES - return/dump always get their own rows and never overwrite history.
-            var productDict = new Dictionary<(int ProductId, bool IsCredit, bool Damaged), PreviouslyOrderedProductViewModel>();
-
-            // Add products from history (OrderedList) - SALES ONLY. These rows show "+" when no sales detail; they are updated only by sales details (IsCredit=false).
-            // Return/dump details never touch these rows; they get separate rows created below.
-            if (_order.Client.OrderedList != null && _order.Client.OrderedList.Count > 0)
-            {
-                var orderedProducts = _order.Client.OrderedList
-                    .OrderByDescending(x => x.Last.Date)
-                    .Take(100) // Limit to recent items
-                    .ToList();
-
-                foreach (var orderedItem in orderedProducts)
-                {
-                    if (orderedItem.Last?.Product == null)
-                        continue;
-
-                    var product = orderedItem.Last.Product;
-                    var key = (product.ProductId, false, false); // history = sales only
-                    var productViewModel = CreatePreviouslyOrderedProductViewModel(product, orderedItem);
-                    productDict[key] = productViewModel;
-                }
-            }
-
             // Clean up any existing details with qty=0 (should never exist)
             var detailsToDelete = _order.Details.Where(d => d.Qty == 0).ToList();
             foreach (var detail in detailsToDelete)
@@ -406,7 +381,10 @@ namespace LaceupMigration.ViewModels
                 _order.Save();
             }
 
-            // Sync with current order (Details). History only merges with SALES; return/dump always get new rows.
+            // One line per order detail: create one row for each OrderDetail in the current order
+            var itemsToAdd = new List<PreviouslyOrderedProductViewModel>();
+            var productIdsInOrder = new HashSet<int>();
+
             foreach (var orderDetail in _order.Details)
             {
                 if (orderDetail.Product == null)
@@ -416,31 +394,12 @@ namespace LaceupMigration.ViewModels
                 if (orderDetail.Product.ProductId == Config.DefaultItem && _order.Details.Count == 1)
                     continue;
 
-                var key = (orderDetail.Product.ProductId, orderDetail.IsCredit, orderDetail.Damaged);
+                productIdsInOrder.Add(orderDetail.Product.ProductId);
 
-                PreviouslyOrderedProductViewModel viewModel;
-                if (orderDetail.IsCredit)
-                {
-                    // Return or Dump: never use history row - always create a separate row for this detail
-                    viewModel = CreatePreviouslyOrderedProductViewModelFromOrderDetail(orderDetail);
-                    productDict[key] = viewModel;
-                }
-                else
-                {
-                    // Sales only: may update the history row (same key) if product was in history, else create new
-                    if (productDict.TryGetValue(key, out var existingViewModel))
-                        viewModel = existingViewModel;
-                    else
-                    {
-                        viewModel = CreatePreviouslyOrderedProductViewModelFromOrderDetail(orderDetail);
-                        productDict[key] = viewModel;
-                    }
-                }
-
+                var viewModel = CreatePreviouslyOrderedProductViewModelFromOrderDetail(orderDetail);
                 viewModel.ExistingDetail = orderDetail;
                 viewModel.IsCreditLine = orderDetail.IsCredit;
                 viewModel.Quantity = (double)orderDetail.Qty;
-
                 viewModel.UpdateFromOrderDetail(orderDetail);
 
                 if (orderDetail.IsCredit)
@@ -455,34 +414,46 @@ namespace LaceupMigration.ViewModels
                     viewModel.TypeText = string.Empty;
                     viewModel.ShowTypeText = false;
                 }
-            }
 
-            // Add all products to the collection
-            // Items from history that are NOT in the order will have Quantity = 0 and ExistingDetail = null
-            // This is correct - they should still be shown
-            var itemsToAdd = new List<PreviouslyOrderedProductViewModel>();
-            foreach (var viewModel in productDict.Values)
-            {
-                // Apply "Just Ordered" filter (matches Xamarin whatToViewInList == WhatToViewInList.Selected)
-                if (_whatToViewInList == WhatToViewInList.Selected && viewModel.ExistingDetail == null)
-                {
-                    // Skip items not in the current order
-                    continue;
-                }
-                
-                // Set IsEnabled based on CanEdit (disable if order is read-only)
                 viewModel.IsEnabled = CanEdit;
                 itemsToAdd.Add(viewModel);
             }
 
-            // Add filtered items
+            // Add one row per product from history that is NOT yet in the order (so user can tap to add)
+            if (_order.Client.OrderedList != null && _order.Client.OrderedList.Count > 0)
+            {
+                var orderedProducts = _order.Client.OrderedList
+                    .OrderByDescending(x => x.Last.Date)
+                    .Take(100)
+                    .ToList();
+
+                foreach (var orderedItem in orderedProducts)
+                {
+                    if (orderedItem.Last?.Product == null)
+                        continue;
+
+                    var productId = orderedItem.Last.ProductId;
+                    if (productIdsInOrder.Contains(productId))
+                        continue; // already have at least one row for this product from order details
+
+                    var productViewModel = CreatePreviouslyOrderedProductViewModel(orderedItem.Last.Product, orderedItem);
+                    productViewModel.IsEnabled = CanEdit;
+                    itemsToAdd.Add(productViewModel);
+                }
+            }
+
+            // Apply "Just Ordered" filter: when selected, only show rows that are in the current order
+            if (_whatToViewInList == WhatToViewInList.Selected)
+            {
+                itemsToAdd = itemsToAdd.Where(x => x.ExistingDetail != null).ToList();
+            }
+
             PreviouslyOrderedProducts.Clear();
             foreach (var item in itemsToAdd)
             {
                 PreviouslyOrderedProducts.Add(item);
             }
 
-            // Apply sorting
             SortProducts();
         }
 
@@ -611,7 +582,9 @@ namespace LaceupMigration.ViewModels
                     : $"{Config.ProductCategoryNameIdentifier} Products";
             }
 
-            return new PreviouslyOrderedProductViewModel(this)
+            var uomText = orderDetail.UnitOfMeasure != null ? orderDetail.UnitOfMeasure.Name : string.Empty;
+
+            var vm = new PreviouslyOrderedProductViewModel(this)
             {
                 Product = product,
                 ProductName = product.Name,
@@ -622,6 +595,7 @@ namespace LaceupMigration.ViewModels
                 PerWeekText = $"Per week: {perWeek:F2}",
                 ShowPerWeek = showPerWeek,
                 PriceText = $"Price: {orderDetail.Price.ToCustomString()}",
+                UomText = uomText,
                 TotalText = $"Total: {total.ToCustomString()}",
                 OrderedItem = orderedItem,
                 OrderId = _order.OrderId,
@@ -634,6 +608,8 @@ namespace LaceupMigration.ViewModels
                 IsSuggested = isSuggested,
                 SuggestedLabelText = suggestedLabelText
             };
+            vm.UpdateOrgQtyFromOrder();
+            return vm;
         }
 
         private void SortProducts()
@@ -2355,6 +2331,9 @@ namespace LaceupMigration.ViewModels
         private string _priceText = string.Empty;
 
         [ObservableProperty]
+        private string _uomText = string.Empty;
+
+        [ObservableProperty]
         private string _totalText = "Total: $0.00";
 
         [ObservableProperty]
@@ -2371,6 +2350,13 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private bool _showTypeText = false;
+
+        /// <summary>Original quantity text for delivery orders (e.g. "Org. Qty=5"). Visible only when order is delivery and product had Ordered > 0.</summary>
+        [ObservableProperty]
+        private string _orgQtyText = string.Empty;
+
+        [ObservableProperty]
+        private bool _showOrgQty;
 
         [ObservableProperty]
         private bool _isEnabled = true;
@@ -2397,9 +2383,9 @@ namespace LaceupMigration.ViewModels
             if (orderDetail == null)
                 return;
 
-            // Update price from order detail
-            // This matches Xamarin: line.Price = orderDetail.Price; etc.
+            // Update price and UoM from order detail
             PriceText = $"Price: {orderDetail.Price.ToCustomString()}";
+            UomText = orderDetail.UnitOfMeasure != null ? orderDetail.UnitOfMeasure.Name : string.Empty;
             
             // Note: Quantity is set in the sync loop, but we ensure it's correct here too
             // This ensures the quantity is always from the actual order detail
@@ -2411,9 +2397,32 @@ namespace LaceupMigration.ViewModels
             // Refresh OH (truck when !AsPresale, warehouse when AsPresale)
             if (_parent._order != null && Product != null)
                 OnHandText = $"OH: {Product.GetInventory(_parent._order.AsPresale, false):F0}";
+
+            UpdateOrgQtyFromOrder();
             
             // Update total - this must use the order detail's price and quantity
             UpdateTotal();
+        }
+
+        /// <summary>Sets OrgQtyText and ShowOrgQty for delivery orders when product had original ordered qty > 0 (matches Xamarin PreviouslyOrderedTemplateActivity).</summary>
+        internal void UpdateOrgQtyFromOrder()
+        {
+            if (_parent._order == null || Product == null || !_parent._order.IsDelivery || ExistingDetail == null || ExistingDetail.Ordered <= 0)
+            {
+                ShowOrgQty = false;
+                OrgQtyText = string.Empty;
+                return;
+            }
+            ShowOrgQty = true;
+            if (Product.SoldByWeight && Config.NewAddItemRandomWeight)
+            {
+                var deletedCount = _parent._order.DeletedDetails?.Count(x => x.Product?.ProductId == Product.ProductId) ?? 0;
+                OrgQtyText = $"Org. Qty={(float)(ExistingDetail.Ordered + deletedCount)}";
+            }
+            else
+            {
+                OrgQtyText = $"Org. Qty={ExistingDetail.Ordered}";
+            }
         }
 
         public void UpdateTotal()
@@ -2487,6 +2496,7 @@ namespace LaceupMigration.ViewModels
                     {
                         creditDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result_credit.PriceLevelSelected.ToString(), creditDetail.ExtraFields);
                     }
+                    OrderDetailMergeHelper.TryMergeDuplicateDetail(order, creditDetail);
                     OrderDetail.UpdateRelated(creditDetail, order);
                     order.RecalculateDiscounts();
                     order.Save();
@@ -2502,8 +2512,10 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // Sales path: Show RestOfTheAddDialog (matches Xamarin RestOfTheAddDialog1)
-            var existingDetail = order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && !x.IsCredit);
+            // Sales path: use the row's specific order detail so editing "Dozen" edits Dozen, not "Each"
+            OrderDetail? existingDetail = item.ExistingDetail != null && !item.ExistingDetail.IsCredit
+                ? item.ExistingDetail
+                : null;
             var result = await _parent._dialogService.ShowRestOfTheAddDialogAsync(
                 item.Product,
                 order,
@@ -2630,17 +2642,14 @@ namespace LaceupMigration.ViewModels
                 updatedDetail = detail;
             }
 
-            // Update related details and recalculate discounts
             if (updatedDetail != null)
             {
+                OrderDetailMergeHelper.TryMergeDuplicateDetail(order, updatedDetail);
                 OrderDetail.UpdateRelated(updatedDetail, order);
                 order.RecalculateDiscounts();
             }
 
-            // Save the order
             order.Save();
-
-            // Refresh the parent view
             _parent.LoadOrderData();
             _parent.RefreshProductList();
         }
@@ -2718,8 +2727,10 @@ namespace LaceupMigration.ViewModels
             if (_order == null || item?.Product == null)
                 return;
 
-            // Match existing credit detail by product and damaged state (Return vs Dump)
-            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && x.IsCredit && x.Damaged == damaged);
+            // Use the row's specific order detail so editing one credit line (e.g. Dozen Return) edits that one, not another
+            OrderDetail? existingDetail = item.ExistingDetail != null && item.ExistingDetail.IsCredit && item.ExistingDetail.Damaged == damaged
+                ? item.ExistingDetail
+                : _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && x.IsCredit && x.Damaged == damaged);
 
             // When editing an existing credit line, use RestOfTheAddDialog so popup is pre-filled with detail
             if (existingDetail != null)
@@ -2758,6 +2769,7 @@ namespace LaceupMigration.ViewModels
                 {
                     existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
                 }
+                OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, existingDetail);
                 OrderDetail.UpdateRelated(existingDetail, _order);
                 _order.RecalculateDiscounts();
                 _order.Save();
@@ -2810,6 +2822,7 @@ namespace LaceupMigration.ViewModels
             detail.CalculateOfferDetail();
             _order.AddDetail(detail);
 
+            OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, detail);
             OrderDetail.UpdateRelated(detail, _order);
             _order.RecalculateDiscounts();
             _order.Save();

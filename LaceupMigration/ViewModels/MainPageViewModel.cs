@@ -232,8 +232,8 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			// Navigate to FullCategoryPage (same as product catalog)
-			await Shell.Current.GoToAsync("fullcategory");
+			// Navigate to FullCategoryPage (same as product catalog); show Send by Email when from menu
+			await Shell.Current.GoToAsync("fullcategory?showSendByEmail=1");
 		}
 
 		[RelayCommand]

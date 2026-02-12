@@ -126,7 +126,107 @@ namespace LaceupMigration.ViewModels
             }
 
             _initialized = true;
+
+            // Recalculate qty based on inventory and subtract inventory for delivery (matches Xamarin BatchActivity OnCreate)
+            SubtractInventoryForDeliveryBatch();
+
             LoadBatchData();
+        }
+
+        /// <summary>
+        /// When entering the batch, subtract inventory for delivery orders (matches Xamarin BatchActivity OnCreate).
+        /// </summary>
+        private void SubtractInventoryForDeliveryBatch()
+        {
+            if (_batch == null)
+                return;
+
+            var orders = _batch.Orders().ToList();
+
+            if (Config.TrackInventory)
+            {
+                foreach (var order in orders)
+                {
+                    if (Config.ParInConsignment && order.IsDelivery && order.OrderType == OrderType.Consignment)
+                        continue;
+
+                    foreach (var detail in order.Details)
+                    {
+                        if (detail.Substracted)
+                            continue;
+
+                        if (order.OrderType == OrderType.Consignment)
+                            detail.Substracted = true;
+
+                        if (!detail.Substracted)
+                        {
+                            if (Config.ScanDeliveryChecking && order.OrderType == OrderType.Order)
+                            {
+                                detail.Qty = 0;
+                                detail.Substracted = true;
+                                continue;
+                            }
+
+                            if (Config.ScanDeliveryChecking && detail.IsCredit && detail.Product.SoldByWeight)
+                            {
+                                detail.Qty = 0;
+                                detail.Substracted = true;
+                                continue;
+                            }
+
+                            var qty = detail.Qty;
+                            if (detail.Product.SoldByWeight && detail.Product.InventoryByWeight)
+                                qty = detail.Weight;
+
+                            if (detail.UnitOfMeasure != null)
+                                qty *= detail.UnitOfMeasure.Conversion;
+
+                            if (!detail.IsCredit)
+                            {
+                                var currentInventory = detail.Product.GetInventory(false, detail.Lot ?? "", true, detail.Weight);
+
+                                if (currentInventory < qty && !Config.CanGoBelow0)
+                                {
+                                    qty = currentInventory;
+                                    if (qty < 0)
+                                        qty = 0;
+
+                                    if (qty > 0 && detail.UnitOfMeasure != null)
+                                        qty /= detail.UnitOfMeasure.Conversion;
+
+                                    Logger.CreateLog(string.Format("Not enough inventory for Product={0} in the order={1} (Inventory={2}, Qty={3}, NewQty={4}, Lot={5})",
+                                        detail.Product.Name, order.OrderId, currentInventory, detail.Qty, qty, detail.Lot ?? ""));
+
+                                    detail.Qty = qty;
+                                }
+                            }
+
+                            order.UpdateInventory(detail, -1);
+                            detail.Substracted = true;
+                        }
+                    }
+
+                    order.Modified = true;
+                    order.Save();
+                }
+            }
+            else if (Config.ScanDeliveryChecking)
+            {
+                foreach (var order in orders)
+                {
+                    foreach (var detail in order.Details)
+                    {
+                        if (detail.Substracted)
+                            continue;
+
+                        detail.Qty = 0;
+                        detail.Substracted = true;
+                    }
+                    order.Save();
+                }
+            }
+
+            ProductInventory.Save();
         }
 
         public async Task OnAppearingAsync()

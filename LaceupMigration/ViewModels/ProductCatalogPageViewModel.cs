@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.ApplicationModel;
 
@@ -593,6 +594,59 @@ namespace LaceupMigration.ViewModels
             await AddButton_ClickAsync(item);
         }
 
+        /// <summary>Edit an existing subline (order detail). Opens RestOfTheAddDialog with that detail for editing. Matches Xamarin EditButton_Click on subline.</summary>
+        [RelayCommand]
+        private async Task EditSublineAsync(OdLine? line)
+        {
+            if (line == null || line.OrderDetail == null || _order == null)
+                return;
+
+            var existingDetail = line.OrderDetail;
+            var product = existingDetail.Product;
+            if (product == null)
+                return;
+
+            var result = await _dialogService.ShowRestOfTheAddDialogAsync(
+                product,
+                _order,
+                existingDetail,
+                isCredit: existingDetail.IsCredit,
+                isDamaged: existingDetail.Damaged,
+                isDelivery: _order.IsDelivery);
+
+            if (result.Cancelled)
+                return;
+
+            if (result.Qty == 0)
+            {
+                _order.DeleteDetail(existingDetail);
+                _order.Save();
+                PrepareProductList();
+                Filter();
+                return;
+            }
+
+            existingDetail.Qty = result.Qty;
+            existingDetail.Weight = result.Weight;
+            existingDetail.Lot = result.Lot;
+            if (result.LotExpiration.HasValue)
+                existingDetail.LotExpiration = result.LotExpiration.Value;
+            existingDetail.Comments = result.Comments;
+            existingDetail.Price = result.Price;
+            existingDetail.UnitOfMeasure = result.SelectedUoM;
+            existingDetail.IsFreeItem = result.IsFreeItem;
+            existingDetail.ReasonId = result.ReasonId;
+            if (result.PriceLevelSelected > 0)
+                existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
+
+            OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, existingDetail);
+            OrderDetail.UpdateRelated(existingDetail, _order);
+            _order.RecalculateDiscounts();
+            _order.Save();
+            PrepareProductList();
+            Filter();
+        }
+
         private async Task AddButton_ClickAsync(CatalogItemViewModel item)
         {
             if (_order == null || item.Product == null)
@@ -707,8 +761,9 @@ namespace LaceupMigration.ViewModels
             if (_order == null || item.Product == null)
                 return;
 
-            // Use same RestOfTheAddDialog as PreviouslyOrderedTemplatePage and OrderCreditPage (not a simple qty prompt)
-            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && x.IsCredit && x.Damaged == damaged);
+            // When adding from main line (+), always create a new credit line so we can have e.g. 1 case return + 1 each return + 1 case dump + 1 each dump per product.
+            // Editing a specific line is done via EditSublineAsync (subline tap), which passes that detail.
+            OrderDetail? existingDetail = null;
             var result = await _dialogService.ShowRestOfTheAddDialogAsync(
                 item.Product,
                 _order,
@@ -810,6 +865,7 @@ namespace LaceupMigration.ViewModels
 
             if (updatedDetail != null)
             {
+                OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, updatedDetail);
                 OrderDetail.UpdateRelated(updatedDetail, _order);
                 _order.RecalculateDiscounts();
             }
@@ -824,8 +880,8 @@ namespace LaceupMigration.ViewModels
             if (_order == null || item.Product == null)
                 return;
 
-            // Show RestOfTheAddDialog (matches PreviouslyOrderedTemplatePage row click)
-            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == item.Product.ProductId && !x.IsCredit);
+            // Show RestOfTheAddDialog - pass null so we always ADD a new line (main line + sublines: multiple order details per product)
+            OrderDetail? existingDetail = null;
             var result = await _dialogService.ShowRestOfTheAddDialogAsync(
                 item.Product,
                 _order,
@@ -929,17 +985,14 @@ namespace LaceupMigration.ViewModels
                 updatedDetail = detail;
             }
 
-            // Update related details and recalculate discounts
             if (updatedDetail != null)
             {
+                OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, updatedDetail);
                 OrderDetail.UpdateRelated(updatedDetail, _order);
                 _order.RecalculateDiscounts();
             }
 
-            // Save the order
             _order.Save();
-
-            // Refresh the product list
             PrepareProductList();
             Filter();
         }
@@ -1253,7 +1306,7 @@ namespace LaceupMigration.ViewModels
             switch (choice)
             {
                 case "Advanced Options":
-            await ShowAdvancedOptionsAsync();
+                    await ShowAdvancedOptionsAsync();
                     break;
             }
         }
@@ -1330,8 +1383,12 @@ namespace LaceupMigration.ViewModels
 
                 string pdfFile = null;
 
-                // Try to get PDF from server first, then fall back to local generation (matches Xamarin logic)
-                int priceLevel = _order?.Client != null ? _order.Client.PriceLevel : 0;
+                var _client = _order != null ? _order.Client : null;
+                var pricelevel = _client != null ? _client.PriceLevel : 0;
+                if (pricelevel > 0)
+                    pricelevel -= 10;
+                
+                int priceLevel = pricelevel > 0 ? pricelevel : 0;
 
                 // First try to get PDF from server (matches Xamarin: DataAccess.GetCatalogPdf)
                 if (DataProvider.GetCatalogPdf(priceLevel, showPrice, showUPC, showUoM, categoriesids))
@@ -1493,9 +1550,8 @@ namespace LaceupMigration.ViewModels
             var total = Values.Sum(v => v.Qty * v.Price);
             TotalText = $"Total: {total.ToCustomString()}";
 
-            // Update quantity button text
-            var totalQty = Values.Sum(v => v.Qty);
-            QuantityButtonText = totalQty > 0 ? totalQty.ToString("F0") : "+";
+            // Main line shows "+" only (add button); sublines show their qty in the subline list (Xamarin catalog behavior)
+            QuantityButtonText = "+";
 
             // Update has values
             HasValues = Values.Count > 0 && Values.Any(v => v.Qty > 0);
