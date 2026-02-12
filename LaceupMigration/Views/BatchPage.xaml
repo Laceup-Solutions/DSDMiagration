@@ -100,6 +100,11 @@
                                            FontSize="13"
                                            TextColor="{StaticResource Gray600}"
                                            IsVisible="{Binding ShowCompany}" />
+                                    <!-- No Service: reason (e.g. "Will Order Next Time") -->
+                                    <Label Text="{Binding ReasonText}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray600}"
+                                           IsVisible="{Binding ShowReason}" />
                                     <Label Text="{Binding TermText}"
                                            FontSize="13"
                                            TextColor="{StaticResource Gray600}" />

@@ -83,8 +83,10 @@ namespace LaceupMigration.Views
                 _ = _viewModel.ShowCannotLeaveDialog();
                 return;
             }
+            // Xamarin: exclude No_Service from clock-out requirement - when only No_Service, can leave without clock out
+            var validOrders = allOrders.Where(x => x.OrderType != OrderType.NoService).ToList();
             var batch = Batch.List.FirstOrDefault(x => x.Id == _viewModel.GetBatchId());
-            if (batch != null && batch.ClockedOut == DateTime.MinValue)
+            if (batch != null && batch.ClockedOut == DateTime.MinValue && validOrders.Count > 0)
             {
                 _ = _viewModel.ShowCannotLeaveDialog();
                 return;

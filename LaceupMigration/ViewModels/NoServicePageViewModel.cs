@@ -278,12 +278,9 @@ namespace LaceupMigration.ViewModels
             _order.EndDate = DateTime.Now;
             _order.Save();
 
-            if (_batch != null)
-            {
-                _batch.Status = BatchStatus.Locked;
-                _batch.ClockedOut = DateTime.Now;
-                _batch.Save();
-            }
+            // Match Xamarin: do NOT auto-clock-out the batch when completing NoService.
+            // The user returns to the Batch view and manually taps Clock Out.
+            // (Xamarin CommentsNoService/ReasonsViewController only call order.ClockOut() and order.Save())
 
             if (Session.session != null)
                 Session.session.AddDetailFromOrder(_order);
