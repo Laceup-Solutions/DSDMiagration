@@ -16,6 +16,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 public class DialogService : IDialogService
 {
+    /// <summary>When a scan action returns this value, the prompt closes immediately without filling the text (caller already handled add).</summary>
+    public const string ScanResultAddedAndClose = "{{SCAN_ADDED_CLOSE}}";
+
     private ContentPage _loadingPage;
     private Label _loadingLabel;
 
@@ -180,16 +183,21 @@ public class DialogService : IDialogService
             Padding = new Thickness(8, 0, 0, 0)
         };
 
-        // Handle scan button click
+        // Handle scan button click: if scan returns ScanResultAddedAndClose, close without filling text
         scanButton.Clicked += async (s, e) =>
         {
             try
             {
                 var scanResult = await scanAction();
-                if (!string.IsNullOrEmpty(scanResult))
+                if (scanResult == ScanResultAddedAndClose)
                 {
-                    entry.Text = scanResult;
+                    if (page != null && page.Navigation.ModalStack.Count > 0)
+                        await page.Navigation.PopModalAsync();
+                    tcs.SetResult(null);
+                    return;
                 }
+                if (!string.IsNullOrEmpty(scanResult))
+                    entry.Text = scanResult;
             }
             catch (Exception ex)
             {
@@ -206,60 +214,112 @@ public class DialogService : IDialogService
                 new ColumnDefinition { Width = GridLength.Auto }
             },
             ColumnSpacing = 0,
-            Padding = new Thickness(0, 8, 0, 8)
+            Padding = new Thickness(0, 4, 0, 0)
         };
         Grid.SetColumn(entry, 0);
         Grid.SetColumn(scanButton, 1);
         inputRow.Children.Add(entry);
         inputRow.Children.Add(scanButton);
 
-        // Content - match native prompt style (simpler, cleaner)
+        // Underline below entry (match "input field indicated by an underline" design)
+        var underline = new BoxView
+        {
+            HeightRequest = 1,
+            Color = Color.FromArgb("#E0E0E0"),
+            Margin = new Thickness(0, 4, 0, 0)
+        };
+
+        var inputWithUnderline = new VerticalStackLayout
+        {
+            Spacing = 0,
+            Children = { inputRow, underline }
+        };
+
+        // Content - title area uses "message" as the field label (e.g. "Search")
         var content = new VerticalStackLayout
         {
-            Spacing = 12,
-            Padding = new Thickness(24, 10, 24, 16),
+            Spacing = 8,
+            Padding = new Thickness(24, 0, 24, 8),
             Children =
             {
                 new Label
                 {
                     Text = message,
-                    FontSize = 12,
+                    FontSize = 14,
                     TextColor = Colors.Black
                 },
-                inputRow
+                inputWithUnderline
             }
         };
 
-        // Buttons - match native prompt style (text buttons, not full buttons)
+        // Separator line above buttons (Android AlertDialog style)
+        var buttonSeparatorLine = new BoxView
+        {
+            HeightRequest = 1,
+            Color = Color.FromArgb("#E0E0E0"),
+            Margin = new Thickness(0)
+        };
+
+        // Buttons - smaller, Android style: text-only, less height, with vertical divider
         var cancelButton = new Button
         {
             Text = cancelText,
-            FontSize = 16,
-            TextColor = Colors.Black,
+            FontSize = 14,
+            TextColor = Color.FromArgb("#424242"),
             BackgroundColor = Colors.Transparent,
             BorderWidth = 0,
-            Padding = new Thickness(16, 8)
+            Padding = new Thickness(12, 8),
+            MinimumHeightRequest = 0,
+            MinimumWidthRequest = 0,
+            HorizontalOptions = LayoutOptions.Center
         };
 
         var okButton = new Button
         {
             Text = acceptText,
-            FontSize = 16,
-            TextColor = Colors.Black,
+            FontSize = 14,
+            TextColor = Color.FromArgb("#424242"),
             BackgroundColor = Colors.Transparent,
             BorderWidth = 0,
-            Padding = new Thickness(16, 8)
+            Padding = new Thickness(12, 8),
+            MinimumHeightRequest = 0,
+            MinimumWidthRequest = 0,
+            HorizontalOptions = LayoutOptions.Center
         };
 
-        var buttonRow = new HorizontalStackLayout
+        var verticalDivider = new BoxView
+        {
+            WidthRequest = 1,
+            Color = Color.FromArgb("#E0E0E0"),
+            VerticalOptions = LayoutOptions.Fill
+        };
+
+        var buttonRow = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = GridLength.Star }
+            },
+            Padding = new Thickness(8, 6, 8, 10),
+            ColumnSpacing = 0,
+            MinimumHeightRequest = 0
+        };
+        buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(verticalDivider);
+        buttonRow.Children.Add(okButton);
+        Grid.SetColumn(cancelButton, 0);
+        Grid.SetColumn(verticalDivider, 1);
+        Grid.SetColumn(okButton, 2);
+
+        var buttonSection = new VerticalStackLayout
         {
             Spacing = 0,
-            HorizontalOptions = LayoutOptions.End,
-            Padding = new Thickness(8, 8, 8, 8),
-            Children = { cancelButton, okButton }
+            Children = { buttonSeparatorLine, buttonRow }
         };
 
-        // Main container - match native prompt style (simpler layout)
+        // Main container - title at top, then label + input row, then separator line + buttons
         var mainContainer = new VerticalStackLayout
         {
             Spacing = 0,
@@ -269,12 +329,13 @@ public class DialogService : IDialogService
                 new Label
                 {
                     Text = title,
-                    FontSize = 16,
-                    Padding = new Thickness(24, 24, 24, 0),
+                    FontSize = 18,
+                    FontAttributes = FontAttributes.Bold,
+                    Padding = new Thickness(24, 24, 24, 8),
                     TextColor = Colors.Black
                 },
                 content,
-                buttonRow
+                buttonSection
             }
         };
 

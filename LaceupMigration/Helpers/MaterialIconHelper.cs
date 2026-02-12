@@ -28,9 +28,10 @@ public static class MaterialIconHelper
 			MaterialOutlinedIcons.CheckCircle => "\uE86C",
 			MaterialOutlinedIcons.Description => "\uE873",
 			// QrCodeScanner: Since \uE8B6 shows magnifier, try alternative codes
-			// Material Icons qr_code_scanner should be \uE8B6, but MauiIcons might map differently
-			// Try \uE8B7, \uE8B8, or check what the XAML actually uses
-			MaterialOutlinedIcons.QrCodeScanner => "\uF206", // Try E8B8 (if still wrong, may need to inspect XAML-generated code)
+			MaterialOutlinedIcons.QrCodeScanner => "\uF206",
+			MaterialOutlinedIcons.ArrowBack => "\uE5C4",
+			MaterialOutlinedIcons.FlashOff => "\uE3E6",
+			MaterialOutlinedIcons.FlashOn => "\uE3E7",
 			_ => "\uEB94"
 		};
 	}

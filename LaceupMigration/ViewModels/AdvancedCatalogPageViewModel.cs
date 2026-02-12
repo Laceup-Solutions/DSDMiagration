@@ -1319,28 +1319,42 @@ namespace LaceupMigration.ViewModels
 
                 if (product != null)
                 {
-                    // Set search query to the barcode to filter products
+                    // From load order: if product is in the current list, add qty 1 and stay; otherwise add and exit to load template
+                    if (IsFromLoadOrder)
+                    {
+                        var catalogItem = FilteredItems.FirstOrDefault(i => i.Product.ProductId == product.ProductId);
+                        if (catalogItem != null)
+                        {
+                            var detail = catalogItem.PrimaryDetail ?? catalogItem.Details.FirstOrDefault();
+                            if (detail != null)
+                            {
+                                await IncrementQuantityAsync(detail);
+                                if (detail.Detail != null)
+                                    detail.Detail.LoadStarting = -1;
+                                _order.Save();
+                            }
+                            return;
+                        }
+                        AddSingleProductToLoadOrder(product, null);
+                        _order.Save();
+                        await NavigateToLoadOrderTemplateAsync();
+                        return;
+                    }
+
+                    // Not from load: set search and go to add item page
                     SearchQuery = scanResult;
-
-                    // Wait for the filter to complete (debounce is 300ms, wait a bit longer to be safe)
                     await Task.Delay(500);
-
-                    // If we have an order, navigate to add item page (same as FullCategoryPageViewModel)
                     var route = $"additem?orderId={_order.OrderId}&productId={product.ProductId}";
-                    if (_itemType == 1) // Dump
+                    if (_itemType == 1)
                         route += "&asCreditItem=1";
-                    if (_itemType == 2) // Return
+                    if (_itemType == 2)
                         route += "&asReturnItem=1";
                     await Shell.Current.GoToAsync(route);
                 }
                 else
                 {
-                    // Product not found, but set search query anyway (same as FullCategoryPageViewModel)
                     SearchQuery = scanResult;
-
-                    // Wait for the filter to complete
                     await Task.Delay(500);
-
                     await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
                 }
             }
@@ -1349,6 +1363,29 @@ namespace LaceupMigration.ViewModels
                 Logger.CreateLog($"Error scanning barcode: {ex.Message}");
                 await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
             }
+        }
+
+        /// <summary>Add one product with qty 1 to load order. Same logic as NewLoadOrderTemplatePageViewModel.ScanSingleProductAsync.</summary>
+        private void AddSingleProductToLoadOrder(Product product, UnitOfMeasure uom = null)
+        {
+            if (product == null || _order == null)
+                return;
+            if (uom == null && !string.IsNullOrEmpty(product.UoMFamily))
+                uom = UnitOfMeasure.List.FirstOrDefault(x => x.FamilyId == product.UoMFamily && x.IsDefault);
+            if (uom == null && product.UnitOfMeasures != null)
+                uom = product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault) ?? product.UnitOfMeasures.FirstOrDefault();
+
+            var detail = _order.Details.FirstOrDefault(x => !x.Deleted && x.Product?.ProductId == product.ProductId && x.UnitOfMeasure == uom);
+            if (detail == null)
+            {
+                detail = new OrderDetail(product, 0, _order)
+                {
+                    LoadStarting = -1,
+                    UnitOfMeasure = uom
+                };
+                _order.Details.Add(detail);
+            }
+            detail.Qty += 1;
         }
 
         private async Task AddItemFromScannerAsync(AdvancedCatalogItemViewModel.AdvancedCatalogDetailViewModel detail, bool excludeOffer)

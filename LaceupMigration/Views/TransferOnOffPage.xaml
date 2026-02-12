@@ -56,14 +56,15 @@
             </Grid>
         </Frame>
 
-        <CollectionView Grid.Row="3"
+        <CollectionView x:Name="LinesCollectionView"
+                        Grid.Row="3"
                         ItemsSource="{Binding TransferLines}"
                         Margin="16,0,16,8">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:TransferLineViewModel">
                     <Frame Padding="12"
                            Margin="0,4"
-                           BackgroundColor="{StaticResource White}"
+                           BackgroundColor="{Binding RowBackgroundColor}"
                            HasShadow="False"
                            CornerRadius="0">
                         <VerticalStackLayout Spacing="0">
