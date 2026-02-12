@@ -507,11 +507,59 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            var catalogItem = FilteredProducts.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
-            if (catalogItem != null)
+            // From load order: if product is in the current list, add qty 1 and stay; otherwise add and exit to load template
+            if (_comingFrom == "LoadOrderTemplate" && _order.OrderType == OrderType.Load)
             {
-                await AddButton_ClickAsync(catalogItem);
+                var catalogItem = FilteredProducts.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
+                var uom = catalogItem?.Line?.UoM ?? (!string.IsNullOrEmpty(product.UoMFamily)
+                    ? UnitOfMeasure.List.FirstOrDefault(x => x.FamilyId == product.UoMFamily && x.IsDefault)
+                    : null) ?? product.UnitOfMeasures?.FirstOrDefault(x => x.IsDefault) ?? product.UnitOfMeasures?.FirstOrDefault();
+                AddSingleProductToLoadOrder(product, uom);
+                _order.Save();
+                if (catalogItem != null)
+                {
+                    PrepareProductList();
+                    Filter();
+                    return;
+                }
+                Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
+                for (int i = 0; i < _loadOrderReturnDepth; i++)
+                {
+                    if (i == 1)
+                        Helpers.NavigationHelper.RemoveNavigationState("fullcategory");
+                    await Shell.Current.GoToAsync("..");
+                }
+                return;
             }
+
+            var catalogItemDefault = FilteredProducts.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
+            if (catalogItemDefault != null)
+            {
+                await AddButton_ClickAsync(catalogItemDefault);
+            }
+        }
+
+        /// <summary>Add one product with qty 1 to load order. Same logic as NewLoadOrderTemplatePageViewModel.ScanSingleProductAsync.</summary>
+        private void AddSingleProductToLoadOrder(Product product, UnitOfMeasure uom = null)
+        {
+            if (product == null || _order == null)
+                return;
+            if (uom == null && !string.IsNullOrEmpty(product.UoMFamily))
+                uom = UnitOfMeasure.List.FirstOrDefault(x => x.FamilyId == product.UoMFamily && x.IsDefault);
+            if (uom == null && product.UnitOfMeasures != null)
+                uom = product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault) ?? product.UnitOfMeasures.FirstOrDefault();
+
+            var detail = _order.Details.FirstOrDefault(x => !x.Deleted && x.Product?.ProductId == product.ProductId && x.UnitOfMeasure == uom);
+            if (detail == null)
+            {
+                detail = new OrderDetail(product, 0, _order)
+                {
+                    LoadStarting = -1,
+                    UnitOfMeasure = uom
+                };
+                _order.Details.Add(detail);
+            }
+            detail.Qty += 1;
         }
 
         [RelayCommand]

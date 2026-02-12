@@ -948,6 +948,63 @@ namespace LaceupMigration.ViewModels
             ShowNoCategories = ShowProducts && Products.Count == 0;
         }
 
+        /// <summary>Find products matching barcode for load order (client/company visible). Same logic as NewLoadOrderTemplatePageViewModel.</summary>
+        private List<Product> FindScannedProductsForLoadOrder(string data)
+        {
+            if (string.IsNullOrEmpty(data) || _order == null)
+                return new List<Product>();
+
+            var lst = _order.Client != null
+                ? Product.GetProductVisibleToClient(_order.Client).Where(x => x.CategoryId > 0).ToList()
+                : Product.Products.Where(x => x.CategoryId > 0).ToList();
+
+            if (_order.CompanyId > 0)
+            {
+                var companyIds = ProductVisibleCompany.List.Where(x => x.CompanyId == _order.CompanyId).Select(x => x.ProductId).ToList();
+                if (companyIds.Count > 0)
+                    lst = lst.Where(x => companyIds.Contains(x.ProductId)).ToList();
+            }
+
+            var products = lst.Where(x => x != null && !string.IsNullOrEmpty(x.Upc) && x.Upc.Equals(data, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (products.Count == 0)
+                products = lst.Where(x => x != null && !string.IsNullOrEmpty(x.Sku) && x.Sku.Equals(data, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (products.Count == 0)
+                products = lst.Where(x => x != null && !string.IsNullOrEmpty(x.Code) && x.Code.Equals(data, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (products.Count == 0)
+                products = lst.Where(x => x != null && !string.IsNullOrEmpty(x.Upc) && x.Upc.Contains(data, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (products.Count == 0)
+                products = lst.Where(x => x != null && !string.IsNullOrEmpty(x.Sku) && x.Sku.Contains(data, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            return products;
+        }
+
+        /// <summary>Add one product with qty 1 to load order. Same logic as NewLoadOrderTemplatePageViewModel.ScanSingleProductAsync.</summary>
+        private void AddSingleProductToLoadOrder(Product product)
+        {
+            if (product == null || _order == null)
+                return;
+
+            UnitOfMeasure uom = null;
+            if (!string.IsNullOrEmpty(product.UoMFamily))
+                uom = UnitOfMeasure.List.FirstOrDefault(x => x.FamilyId == product.UoMFamily && x.IsDefault);
+            if (uom == null && product.UnitOfMeasures != null)
+                uom = product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault) ?? product.UnitOfMeasures.FirstOrDefault();
+
+            var detail = _order.Details.FirstOrDefault(x => !x.Deleted && x.Product?.ProductId == product.ProductId && x.UnitOfMeasure == uom);
+            if (detail == null)
+            {
+                detail = new OrderDetail(product, 0, _order)
+                {
+                    LoadStarting = -1,
+                    UnitOfMeasure = uom
+                };
+                _order.Details.Add(detail);
+            }
+
+            detail.Qty += 1;
+            _order.Save();
+        }
+
         [RelayCommand]
         private async Task ScanAsync()
         {
@@ -956,6 +1013,27 @@ namespace LaceupMigration.ViewModels
                 var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
                 if (string.IsNullOrEmpty(scanResult))
                     return;
+
+                // When from Load Order Template: if scan matches one product and !ShowProductsPerUoM, add qty 1 and go back to load order page
+                if (_comingFrom == "LoadOrderTemplate" && _order != null)
+                {
+                    var products = FindScannedProductsForLoadOrder(scanResult.Trim());
+                    if (products != null && products.Count == 1 && products[0] != null && !Config.ShowProductsPerUoM)
+                    {
+                        AddSingleProductToLoadOrder(products[0]);
+                        await Shell.Current.GoToAsync("..");
+                        return;
+                    }
+                    if (products != null && products.Count == 0)
+                    {
+                        var p = Product.Products.Where(x => (!string.IsNullOrEmpty(x.Upc) && x.Upc == scanResult.Trim()) || (!string.IsNullOrEmpty(x.Sku) && x.Sku == scanResult.Trim()) || (!string.IsNullOrEmpty(x.Code) && x.Code == scanResult.Trim())).ToList();
+                        if (p.Count > 0 && _order.Client != null && (_order.Client.CategoryId != 0 || _order.CompanyId > 0))
+                            await _dialogService.ShowAlertAsync("Product is not authorized for this client.", "Warning", "OK");
+                        else
+                            await _dialogService.ShowAlertAsync($"{scanResult.Trim()} is not assigned to any product.", "Alert", "OK");
+                        return;
+                    }
+                }
 
                 // Find product by barcode (check UPC, SKU, Code)
                 var product = Product.Products.FirstOrDefault(p =>

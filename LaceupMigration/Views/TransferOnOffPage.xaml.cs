@@ -15,6 +15,18 @@ namespace LaceupMigration.Views
             InitializeComponent();
             _viewModel = viewModel;
             BindingContext = _viewModel;
+
+            _viewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(TransferOnOffPageViewModel.ScannedLineToFocus) && _viewModel.ScannedLineToFocus is { } line)
+                {
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        await Task.Delay(100);
+                        LinesCollectionView.ScrollTo(line, position: ScrollToPosition.Center, animate: true);
+                    });
+                }
+            };
         }
 
         protected override List<MenuOption> GetPageSpecificMenuOptions()
@@ -24,8 +36,12 @@ namespace LaceupMigration.Views
 
         protected override string? GetRouteName() => "transferonoff";
 
-        protected override void GoBack()
+        protected override async void GoBack()
         {
+            // Match Xamarin TransferOnOffActivity OnKeyDown(Back): confirm unsaved changes, print mandatory, comment required
+            if (await _viewModel.OnBackButtonPressedAsync())
+                return; // User cancelled or must complete action; stay on page
+
             if (_viewModel.ReadOnly && !string.IsNullOrEmpty(_viewModel.GetTempFilePath()))
             {
                 var tempFile = _viewModel.GetTempFilePath();

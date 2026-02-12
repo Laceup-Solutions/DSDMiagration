@@ -413,21 +413,138 @@ namespace LaceupMigration.ViewModels
             }
 
             _appService.RecordEvent("search button");
-            // Use ShowPromptAsync with scan icon - looks exactly like native prompt but with scan button
             var searchTerm = await _dialogService.ShowPromptAsync(
-                "Enter Product Name", 
-                "Search", 
-                "OK", 
-                "Cancel", 
+                "Enter Product Name",
+                "Search",
+                "OK",
+                "Cancel",
                 "Product Name",
                 maxLength: -1,
                 initialValue: "",
                 keyboard: null,
                 showScanIcon: true,
-                scanAction: async () => await _cameraBarcodeScanner.ScanBarcodeAsync());
-            if (!string.IsNullOrEmpty(searchTerm))
+                scanAction: async () =>
+                {
+                    var barcode = await _cameraBarcodeScanner.ScanBarcodeAsync();
+                    if (string.IsNullOrEmpty(barcode)) return null;
+                    var products = FindScannedProductsForLoadOrder(barcode.Trim());
+                    if (products != null && products.Count == 1 && products[0] != null && !Config.ShowProductsPerUoM)
+                    {
+                        await ScanSingleProductAsync(products[0]);
+                        return DialogService.ScanResultAddedAndClose;
+                    }
+                    return barcode;
+                });
+            if (string.IsNullOrEmpty(searchTerm))
+                return;
+
+            var data = searchTerm.Trim();
+            var products = FindScannedProductsForLoadOrder(data);
+
+            // Match Xamarin ScannerDoTheThing: single product and !ShowProductsPerUoM → add with qty 1; else go to catalog
+            if (products != null && products.Count > 0)
             {
-                await Shell.Current.GoToAsync($"fullcategory?orderId={_loadOrder.OrderId}&productSearch={Uri.EscapeDataString(searchTerm)}&comingFromSearch=true&comingFrom=LoadOrderTemplate");
+                if (products.Count == 1 && products[0] != null)
+                {
+                    if (Config.ShowProductsPerUoM)
+                    {
+                        await GoToCatalogWithSearchAsync(data);
+                        return;
+                    }
+                    await ScanSingleProductAsync(products[0]);
+                    return;
+                }
+                if (products.Count > 1)
+                {
+                    await GoToCatalogWithSearchAsync(data);
+                    return;
+                }
+            }
+
+            // No match: show alert (match Xamarin FindScannedProducts when products.Count == 0)
+            var p = Product.Products.Where(x => (!string.IsNullOrEmpty(x.Upc) && x.Upc == data) || (!string.IsNullOrEmpty(x.Sku) && x.Sku == data) || (!string.IsNullOrEmpty(x.Code) && x.Code == data)).ToList();
+            if (p.Count > 0 && _loadOrder.Client != null && (_loadOrder.Client.CategoryId != 0 || _loadOrder.CompanyId > 0))
+            {
+                await _dialogService.ShowAlertAsync("Product is not authorized for this client.", "Warning", "OK");
+                return;
+            }
+            await _dialogService.ShowAlertAsync($"{data} is not assigned to any product.", "Alert", "OK");
+        }
+
+        /// <summary>Find products matching barcode (UPC, SKU, Code) for load order. Match Xamarin FindScannedProducts + GetProducts.</summary>
+        private List<Product> FindScannedProductsForLoadOrder(string data)
+        {
+            if (string.IsNullOrEmpty(data))
+                return new List<Product>();
+
+            var lst = _loadOrder?.Client != null
+                ? Product.GetProductVisibleToClient(_loadOrder.Client).Where(x => x.CategoryId > 0).ToList()
+                : Product.Products.Where(x => x.CategoryId > 0).ToList();
+
+            if (_loadOrder != null && _loadOrder.CompanyId > 0)
+            {
+                var companyIds = LaceupMigration.ProductVisibleCompany.List.Where(x => x.CompanyId == _loadOrder.CompanyId).Select(x => x.ProductId).ToList();
+                if (companyIds.Count > 0)
+                    lst = lst.Where(x => companyIds.Contains(x.ProductId)).ToList();
+            }
+
+            var products = lst.Where(x => x != null && !string.IsNullOrEmpty(x.Upc) && x.Upc.Equals(data, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (products.Count == 0)
+                products = lst.Where(x => x != null && !string.IsNullOrEmpty(x.Sku) && x.Sku.Equals(data, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (products.Count == 0)
+                products = lst.Where(x => x != null && !string.IsNullOrEmpty(x.Code) && x.Code.Equals(data, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (products.Count == 0)
+                products = lst.Where(x => x != null && !string.IsNullOrEmpty(x.Upc) && x.Upc.Contains(data, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (products.Count == 0)
+                products = lst.Where(x => x != null && !string.IsNullOrEmpty(x.Sku) && x.Sku.Contains(data, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            return products;
+        }
+
+        /// <summary>Add one product with qty 1 to load order. Match Xamarin ScanSingleProduct.</summary>
+        private async Task ScanSingleProductAsync(Product product)
+        {
+            if (product == null || _loadOrder == null)
+                return;
+
+            UnitOfMeasure uom = null;
+            if (!string.IsNullOrEmpty(product.UoMFamily))
+                uom = UnitOfMeasure.List.FirstOrDefault(x => x.FamilyId == product.UoMFamily && x.IsDefault);
+            if (uom == null && product.UnitOfMeasures != null)
+                uom = product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault) ?? product.UnitOfMeasures.FirstOrDefault();
+
+            var detail = _loadOrder.Details.FirstOrDefault(x => !x.Deleted && x.Product?.ProductId == product.ProductId && x.UnitOfMeasure == uom);
+            if (detail == null)
+            {
+                detail = new OrderDetail(product, 0, _loadOrder)
+                {
+                    LoadStarting = -1,
+                    UnitOfMeasure = uom
+                };
+                _loadOrder.Details.Add(detail);
+            }
+
+            detail.Qty += 1;
+            _lastDetail = detail;
+            _loadOrder.Save();
+            RefreshOrderDetails();
+        }
+
+        private async Task GoToCatalogWithSearchAsync(string searchParam)
+        {
+            var loadOrderSource = "&comingFrom=LoadOrderTemplate";
+            var encoded = Uri.EscapeDataString(searchParam);
+
+            if (Config.UseLaceupAdvancedCatalog)
+            {
+                var categoryId = _lastDetail?.Product?.CategoryId ?? 0;
+                await Shell.Current.GoToAsync($"advancedcatalog?orderId={_loadOrder.OrderId}&categoryId={categoryId}&search={encoded}{loadOrderSource}&loadOrderReturnDepth=1");
+            }
+            else
+            {
+                var categoryId = _lastDetail?.Product?.CategoryId ?? 0;
+                var productId = _lastDetail?.Product?.ProductId ?? 0;
+                await Shell.Current.GoToAsync($"productcatalog?orderId={_loadOrder.OrderId}&categoryId={categoryId}&productId={productId}&productSearch={encoded}&comingFromSearch=true{loadOrderSource}&loadOrderReturnDepth=1");
             }
         }
 

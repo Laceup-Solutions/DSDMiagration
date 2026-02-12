@@ -29,6 +29,7 @@ namespace LaceupMigration.ViewModels
         private string _tempFile = string.Empty;
         private List<TransferLine> _allProductList = new();
         private int _lastDetailId = 0;
+        private bool _printed = false; // Match Xamarin: must print before leaving when Config.PrintIsMandatory
 
         public bool Changed
         {
@@ -45,6 +46,9 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _filterButtonText = "Changed";
         [ObservableProperty] private string _searchQuery = string.Empty;
         [ObservableProperty] private string _sortButtonText = "Sort By: Product Name";
+
+        /// <summary>Set when a scan matches a line; view scrolls to it. Cleared after delay.</summary>
+        [ObservableProperty] private TransferLineViewModel? _scannedLineToFocus;
 
         public TransferOnOffPageViewModel(DialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService, ICameraBarcodeScannerService cameraBarcodeScanner)
         {
@@ -338,8 +342,12 @@ namespace LaceupMigration.ViewModels
                     Changed = true;
                     SaveList();
                     UpdateTotal();
-                    
-                    // Match Xamarin SetViewToCurrentProduct - scroll to item (handled by CollectionView automatically)
+
+                    // Highlight the matched line (light blue) and scroll it into focus; stays until another line is scanned or added
+                    foreach (var line in TransferLines)
+                        line.IsHighlightedFromScan = false;
+                    lineViewModel.IsHighlightedFromScan = true;
+                    ScannedLineToFocus = lineViewModel;
                 }
                 else
                 {
@@ -408,6 +416,7 @@ namespace LaceupMigration.ViewModels
 
                 ReadOnly = true;
                 Changed = false;
+                _printed = true; // Saved document counts as "printed" for leaving the screen
 
                 // Delete temp file after save (match Xamarin behavior)
                 // Details are preserved in _allProductList and will be restored on reload if ReadOnly is true
@@ -484,12 +493,51 @@ namespace LaceupMigration.ViewModels
                         return "Error printing transfer.";
                     return string.Empty;
                 }, 2);
+                _printed = true; // Match Xamarin: printed = allGood after successful print
             }
             catch (Exception ex)
             {
                 await _dialogService.ShowAlertAsync($"Error printing: {ex.Message}", "Error", "OK");
                 _appService.TrackError(ex);
             }
+        }
+
+        /// <summary>
+        /// Called when user tries to go back. Returns true to prevent navigation, false to allow.
+        /// Match Xamarin TransferOnOffActivity OnKeyDown(Back) logic.
+        /// </summary>
+        public async Task<bool> OnBackButtonPressedAsync()
+        {
+            // 1. If changed and comment required but empty, show comments dialog and stay
+            if (Changed && Config.TransferComment && string.IsNullOrEmpty(_comment))
+            {
+                await ShowCommentsDialog();
+                return true; // Prevent back
+            }
+
+            // 2. If print is mandatory and not yet printed, show alert and stay
+            if (!_printed && Config.PrintIsMandatory)
+            {
+                await _dialogService.ShowAlertAsync(
+                    "You must print the final report before leaving this screen.",
+                    "Alert",
+                    "OK");
+                return true; // Prevent back
+            }
+
+            // 3. If there are unsaved changes, confirm
+            if (Changed)
+            {
+                var confirmed = await _dialogService.ShowConfirmationAsync(
+                    "Alert",
+                    "You haven't saved your changes. Are you sure you'd like to continue?",
+                    "Yes",
+                    "No");
+                if (!confirmed)
+                    return true; // Prevent back
+            }
+
+            return false; // Allow back
         }
 
         partial void OnSearchQueryChanged(string value)
@@ -1202,6 +1250,7 @@ namespace LaceupMigration.ViewModels
             // Match Xamarin: Update state after successful submission
             ReadOnly = true;
             Changed = false;
+            _printed = true;
 
             // Delete temp file if it exists
             if (File.Exists(_tempFile)) File.Delete(_tempFile);
@@ -1263,6 +1312,12 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private Product _product = null!;
         [ObservableProperty] private UnitOfMeasure? _uom;
         [ObservableProperty] private ObservableCollection<TransferLineDetViewModel> _details = new();
+
+        [ObservableProperty] private bool _isHighlightedFromScan;
+
+        partial void OnIsHighlightedFromScanChanged(bool value) => OnPropertyChanged(nameof(RowBackgroundColor));
+
+        public Color RowBackgroundColor => IsHighlightedFromScan ? Color.FromArgb("#ADD8E6") : Colors.White;
 
         public TransferLine TransferLine { get; set; } = null!;
 

@@ -342,12 +342,12 @@ namespace LaceupMigration.ViewModels
             {
                 case OrderType.Order:
                     if (order.AsPresale || (order.IsDelivery && !order.Finished))
-                        return order.IsQuote ? $"Quote{number}" : $"Sales order{number}";
-                    return $"Sales invoice{number}";
+                        return order.IsQuote ? $"Quote{number}" : $"Sales Order{number}";
+                    return $"Invoice{number}";
                 case OrderType.Consignment:
                     if (order.AsPresale || (order.IsDelivery && !order.Finished))
                         return $"Sales order{number}";
-                    return $"Sales invoice{number}";
+                    return $"Invoice{number}";
                 case OrderType.Credit:
                     if (order.AsPresale || (order.IsDelivery && !order.Finished))
                         return $"Credit order{number}";
@@ -360,7 +360,7 @@ namespace LaceupMigration.ViewModels
                     // Delivery (load) orders: show as invoice when finished
                     if (order.AsPresale || !order.Finished)
                         return $"Sales order{number}";
-                    return $"Sales invoice{number}";
+                    return $"Invoice{number}";
                 default:
                     return $"Invoice{number}";
             }
