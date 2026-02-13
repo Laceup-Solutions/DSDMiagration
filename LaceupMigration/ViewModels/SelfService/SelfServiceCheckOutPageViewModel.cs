@@ -19,6 +19,8 @@ namespace LaceupMigration.ViewModels.SelfService
         private readonly MainPageViewModel _mainPageViewModel;
         private Order _order;
         private List<SelfServiceOrderProductViewModel> _mergedList = new();
+        private bool _listInitialized;
+        private bool _needsFullRefresh;
 
         [ObservableProperty]
         private string _clientName = string.Empty;
@@ -75,6 +77,10 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private bool _showRecentlyOrdered = true;
 
+        /// <summary>When true (UseLaceupAdvancedCatalogKey=1), line items use AdvancedCatalog-style layout. When false, use current layout.</summary>
+        [ObservableProperty]
+        private bool _useAdvancedCatalogStyle;
+
         [ObservableProperty]
         private string _searchQuery = string.Empty;
 
@@ -97,6 +103,7 @@ namespace LaceupMigration.ViewModels.SelfService
             _appService = appService;
             _advancedOptionsService = advancedOptionsService;
             _mainPageViewModel = mainPageViewModel;
+            UseAdvancedCatalogStyle = Config.UseLaceupAdvancedCatalog;
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -106,6 +113,9 @@ namespace LaceupMigration.ViewModels.SelfService
                 _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId);
                 if (_order != null)
                 {
+                    _listInitialized = false;
+                    if (query.TryGetValue("fromCatalog", out var fromCat) && "1".Equals(fromCat?.ToString()))
+                        _needsFullRefresh = true;
                     LoadOrder();
                 }
             }
@@ -113,12 +123,16 @@ namespace LaceupMigration.ViewModels.SelfService
 
         public void OnAppearing()
         {
-            if (_order != null)
+            UseAdvancedCatalogStyle = Config.UseLaceupAdvancedCatalog;
+            if (_order == null) return;
+            if (_needsFullRefresh || !_listInitialized)
             {
                 LoadMergedList();
                 RefilterDisplay();
-                RefreshTotals();
+                _listInitialized = true;
+                _needsFullRefresh = false;
             }
+            RefreshTotals();
         }
 
         private void LoadOrder()
@@ -187,6 +201,7 @@ namespace LaceupMigration.ViewModels.SelfService
             }
             var total = orderDetail.Qty * orderDetail.Price;
             var uomText = orderDetail.UnitOfMeasure != null ? orderDetail.UnitOfMeasure.Name : string.Empty;
+            var imagePath = ProductImage.GetProductImageWithPlaceholder(product.ProductId);
             return new SelfServiceOrderProductViewModel(this)
             {
                 Product = product,
@@ -201,7 +216,11 @@ namespace LaceupMigration.ViewModels.SelfService
                 ExistingDetail = orderDetail,
                 OrderedItem = orderedItem,
                 Quantity = (double)orderDetail.Qty,
-                OrderId = _order.OrderId
+                OrderId = _order.OrderId,
+                ProductImagePath = imagePath ?? string.Empty,
+                HasImage = !string.IsNullOrEmpty(ProductImage.GetProductImage(product.ProductId)),
+                QuantityText = orderDetail.Qty.ToString("F0"),
+                HistoryText = showLastVisit ? lastVisitText : "No previous orders"
             };
         }
 
@@ -219,6 +238,7 @@ namespace LaceupMigration.ViewModels.SelfService
             }
             var isSuggested = _order != null && _order.Client != null && Product.IsSuggestedForClient(_order.Client, product);
             var suggestedLabelText = isSuggested ? (string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) ? "Suggested Products" : $"{Config.ProductCategoryNameIdentifier} Products") : string.Empty;
+            var imagePath = ProductImage.GetProductImageWithPlaceholder(product.ProductId);
             return new SelfServiceOrderProductViewModel(this)
             {
                 Product = product,
@@ -235,7 +255,11 @@ namespace LaceupMigration.ViewModels.SelfService
                 Quantity = 0,
                 OrderId = _order.OrderId,
                 IsSuggested = isSuggested,
-                SuggestedLabelText = suggestedLabelText
+                SuggestedLabelText = suggestedLabelText,
+                ProductImagePath = imagePath ?? string.Empty,
+                HasImage = !string.IsNullOrEmpty(ProductImage.GetProductImage(product.ProductId)),
+                QuantityText = "0",
+                HistoryText = showLastVisit ? lastVisitText : "No previous orders"
             };
         }
 
@@ -250,6 +274,35 @@ namespace LaceupMigration.ViewModels.SelfService
             var toShow = ShowRecentlyOrdered ? _mergedList : _mergedList.Where(x => x.ExistingDetail != null).ToList();
             foreach (var item in toShow)
                 DisplayProducts.Add(item);
+        }
+
+        /// <summary>Update one or more rows in place from current order (no full list rebuild).</summary>
+        private void UpdateAffectedRows(params int[] productIds)
+        {
+            if (_order == null || productIds == null || productIds.Length == 0) return;
+            var ids = new HashSet<int>(productIds);
+            var needRefilter = false;
+            foreach (var productId in ids)
+            {
+                var detail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == productId && !x.IsCredit);
+                var row = _mergedList.FirstOrDefault(x => x.Product?.ProductId == productId);
+                if (row != null)
+                    RefreshRowInPlace(row, detail);
+                else if (detail != null)
+                {
+                    var newRow = CreateRowFromOrderDetail(detail);
+                    _mergedList.Add(newRow);
+                    SortMergedList();
+                    needRefilter = true;
+                }
+            }
+            if (needRefilter)
+                RefilterDisplay();
+        }
+
+        private void RefreshRowInPlace(SelfServiceOrderProductViewModel row, OrderDetail detail)
+        {
+            row?.RefreshFromOrder(detail, _order);
         }
 
         private void BuildSearchResults()
@@ -305,8 +358,7 @@ namespace LaceupMigration.ViewModels.SelfService
             OrderDetail.UpdateRelated(existingDetail ?? _order.Details.Last(), _order);
             _order.RecalculateDiscounts();
             _order.Save();
-            LoadMergedList();
-            RefilterDisplay();
+            UpdateAffectedRows(product.ProductId);
             RefreshTotals();
         }
 
@@ -345,8 +397,7 @@ namespace LaceupMigration.ViewModels.SelfService
                     _order.DeleteDetail(existingDetail);
                     _order.Save();
                 }
-                LoadMergedList();
-                RefilterDisplay();
+                UpdateAffectedRows(item.Product.ProductId);
                 RefreshTotals();
                 return;
             }
@@ -453,8 +504,7 @@ namespace LaceupMigration.ViewModels.SelfService
                 _order.RecalculateDiscounts();
             }
             _order.Save();
-            LoadMergedList();
-            RefilterDisplay();
+            UpdateAffectedRows(item.Product.ProductId);
             RefreshTotals();
         }
 
@@ -489,8 +539,7 @@ namespace LaceupMigration.ViewModels.SelfService
             }
             _order.RecalculateDiscounts();
             _order.Save();
-            LoadMergedList();
-            RefilterDisplay();
+            UpdateAffectedRows(product.ProductId);
             RefreshTotals();
         }
 
@@ -591,6 +640,52 @@ namespace LaceupMigration.ViewModels.SelfService
             }
         }
 
+        /// <summary>Increment quantity by 1 (for advanced catalog-style rows). Add new line with qty 1 if not in order.</summary>
+        [RelayCommand]
+        private void IncrementQuantity(SelfServiceOrderProductViewModel item)
+        {
+            if (item?.Product == null || _order == null) return;
+            if (item.ExistingDetail != null)
+            {
+                item.ExistingDetail.Qty += 1f;
+                OrderDetail.UpdateRelated(item.ExistingDetail, _order);
+                item.Quantity = (double)item.ExistingDetail.Qty;
+            }
+            else
+            {
+                AddFromDisplayProduct(item);
+            }
+            _order.RecalculateDiscounts();
+            _order.Save();
+            UpdateAffectedRows(item.Product.ProductId);
+            RefreshTotals();
+        }
+
+        /// <summary>Decrement quantity by 1 (for advanced catalog-style rows). Remove line if qty becomes 0.</summary>
+        [RelayCommand]
+        private void DecrementQuantity(SelfServiceOrderProductViewModel item)
+        {
+            if (item?.Product == null || _order == null) return;
+            if (item.ExistingDetail == null) return;
+            var detail = item.ExistingDetail;
+            if (detail.Qty <= 1f)
+            {
+                _order.Details.Remove(detail);
+                _order.RecalculateDiscounts();
+                _order.Save();
+            }
+            else
+            {
+                detail.Qty -= 1f;
+                OrderDetail.UpdateRelated(detail, _order);
+                item.Quantity = (double)detail.Qty;
+                _order.RecalculateDiscounts();
+                _order.Save();
+            }
+            UpdateAffectedRows(item.Product.ProductId);
+            RefreshTotals();
+        }
+
         [RelayCommand]
         private async Task EditQtyDisplay(SelfServiceOrderProductViewModel item)
         {
@@ -610,8 +705,7 @@ namespace LaceupMigration.ViewModels.SelfService
                         _order.Details.Remove(detail);
                         _order.RecalculateDiscounts();
                         _order.Save();
-                        LoadMergedList();
-                        RefilterDisplay();
+                        UpdateAffectedRows(item.Product.ProductId);
                         RefreshTotals();
                     }
                 }
@@ -622,8 +716,7 @@ namespace LaceupMigration.ViewModels.SelfService
                     detail.CalculateOfferDetail();
                     _order.RecalculateDiscounts();
                     _order.Save();
-                    LoadMergedList();
-                    RefilterDisplay();
+                    UpdateAffectedRows(item.Product.ProductId);
                     RefreshTotals();
                 }
             }
@@ -859,7 +952,52 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private bool _isEnabled = true;
 
+        /// <summary>For advanced catalog style: product image path (or placeholder).</summary>
+        [ObservableProperty]
+        private string _productImagePath = string.Empty;
+
+        /// <summary>For advanced catalog style: whether product has a real image (vs placeholder).</summary>
+        [ObservableProperty]
+        private bool _hasImage;
+
+        /// <summary>For advanced catalog style: quantity as string (e.g. "2").</summary>
+        [ObservableProperty]
+        private string _quantityText = "0";
+
+        /// <summary>For advanced catalog style: previously ordered text (e.g. "Last Visit: ..." or "No previous orders").</summary>
+        [ObservableProperty]
+        private string _historyText = string.Empty;
+
         public Color ProductNameColor { get; set; } = Colors.Black;
+
+        /// <summary>True when item is in the current order (enables decrement in advanced style).</summary>
+        public bool IsInOrder => ExistingDetail != null;
+
+        /// <summary>Update row in place from order (avoids full list reload).</summary>
+        public void RefreshFromOrder(OrderDetail detail, Order order)
+        {
+            if (Product == null) return;
+            ExistingDetail = detail;
+            if (detail != null)
+            {
+                var total = detail.Qty * detail.Price;
+                Quantity = (double)detail.Qty;
+                PriceText = $"Price: {detail.Price.ToCustomString()}";
+                TotalText = $"Total: {total.ToCustomString()}";
+                QuantityText = detail.Qty.ToString("F0");
+                UomText = detail.UnitOfMeasure != null ? detail.UnitOfMeasure.Name : string.Empty;
+            }
+            else
+            {
+                var listPrice = Product.GetPriceForProduct(Product, order, false, false);
+                Quantity = 0;
+                PriceText = $"Price: {listPrice.ToCustomString()}";
+                TotalText = "Total: $0.00";
+                QuantityText = "0";
+                UomText = string.Empty;
+            }
+            OnPropertyChanged(nameof(IsInOrder));
+        }
 
         public SelfServiceOrderProductViewModel(SelfServiceCheckOutPageViewModel parent)
         {
@@ -869,6 +1007,7 @@ namespace LaceupMigration.ViewModels.SelfService
         partial void OnQuantityChanged(double value)
         {
             QuantityButtonText = value > 0 ? value.ToString("F0") : "+";
+            QuantityText = value > 0 ? value.ToString("F0") : "0";
         }
     }
 
