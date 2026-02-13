@@ -63,6 +63,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>external-accessory</string>
+		<string>bluetooth-central</string>
 		<string>fetch</string>
 	</array>
 </dict>
