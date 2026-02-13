@@ -171,8 +171,11 @@ namespace LaceupMigration.ViewModels
                     && string.IsNullOrEmpty(productSearch)
                     && !comingFromSearch;
 
-                // Check config to determine which catalog to use (skip redirect when showing categories for load order)
-                if (!isLoadOrderCategoriesOnly && Config.UseLaceupAdvancedCatalog)
+                // Self-service has its own flow: FullCategory → ProductCatalog → back to checkout. Do not redirect to AdvancedCatalog.
+                bool isSelfServiceFlow = _comingFrom == "SelfService";
+
+                // Check config to determine which catalog to use (skip redirect when showing categories for load order, or when from SelfService)
+                if (!isLoadOrderCategoriesOnly && !isSelfServiceFlow && Config.UseLaceupAdvancedCatalog)
                 {
                     // Redirect to AdvancedCatalog
                     var route = $"advancedcatalog?orderId={orderId.Value}";
@@ -575,6 +578,13 @@ namespace LaceupMigration.ViewModels
             // This is called when a category with no subcategories is clicked
             int categoryId = item.Category.CategoryId;
 
+            // Self-service: use dedicated catalog page with +/- (do not use AdvancedCatalog or ProductCatalog)
+            if (_comingFrom == "SelfService" && _orderId.HasValue)
+            {
+                await Shell.Current.GoToAsync($"selfservice/catalog?orderId={_orderId.Value}&categoryId={categoryId}");
+                return;
+            }
+
             if (Config.UseLaceupAdvancedCatalog && _orderId.HasValue)
             {
                 var route = $"advancedcatalog?orderId={_orderId.Value}&categoryId={categoryId}";
@@ -659,6 +669,17 @@ namespace LaceupMigration.ViewModels
         {
             if (item == null || item.Product == null || _order == null)
                 return;
+
+            // Self-service: go to dedicated catalog page with +/- for this category
+            if (_comingFrom == "SelfService")
+            {
+                var catId = _categoryId ?? item.Product.CategoryId;
+                var route = $"selfservice/catalog?orderId={_order.OrderId}&categoryId={catId}";
+                if (item.Product.ProductId > 0)
+                    route += $"&productId={item.Product.ProductId}";
+                await Shell.Current.GoToAsync(route);
+                return;
+            }
 
             if (Config.UseCatalog)
             {
