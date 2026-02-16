@@ -1260,6 +1260,9 @@ namespace LaceupMigration.ViewModels
                         await _dialogService.ShowAlertAsync("This customer is over the credit limit. No new order is allowed", "Alert");
                         return;
                     }
+                    
+                    if(!await EnsureCompanySelectedAsync())
+                        return;
 
                     var order = new Order(_batch.Client) { OrderType = OrderType.Order };
                     order.BatchId = _batch.Id;
@@ -1279,7 +1282,10 @@ namespace LaceupMigration.ViewModels
                         await _dialogService.ShowAlertAsync("Batch is locked. Cannot create new orders.", "Alert");
                         return;
                     }
-
+                    
+                    if(!await EnsureCompanySelectedAsync())
+                        return;
+                    
                     // Credit Invoice doesn't check credit limit (matches Xamarin BatchActivity line 2796)
                     var order = new Order(_batch.Client) { OrderType = OrderType.Credit };
                     order.BatchId = _batch.Id;
@@ -1300,6 +1306,9 @@ namespace LaceupMigration.ViewModels
                         return;
                     }
 
+                    if(!await EnsureCompanySelectedAsync())
+                        return;
+                    
                     // Return Invoice doesn't check credit limit (it reduces balance, so it's allowed)
                     var order = new Order(_batch.Client) { OrderType = OrderType.Return };
                     order.BatchId = _batch.Id;
@@ -1320,6 +1329,9 @@ namespace LaceupMigration.ViewModels
                         return;
                     }
 
+                    if(!await EnsureCompanySelectedAsync())
+                        return;
+                    
                     var order = new Order(_batch.Client) { OrderType = OrderType.Order };
                     order.BatchId = _batch.Id;
                     CompanyInfo.AssignCompanyToOrder(order);
@@ -1504,6 +1516,48 @@ namespace LaceupMigration.ViewModels
             options.Add(new MenuOption("Advanced Options", ShowAdvancedOptionsAsync));
 
             return options;
+        }
+        
+        private async Task<bool> EnsureCompanySelectedAsync()
+        {
+            // Already selected? (optional guard)
+            if (CompanyInfo.SelectedCompany != null)
+                return true;
+
+            var clientCompanies = SalesmanAvailableCompany.GetCompanies(Config.SalesmanId, _batch.Client.ClientId);
+
+            if (clientCompanies.Count > 1)
+            {
+                var companyOptions = clientCompanies.Select(c =>
+                {
+                    var subtitleParts = new[] { c.CompanyAddress1, c.CompanyAddress2, c.CompanyPhone }
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .ToArray();
+
+                    var subtitle = subtitleParts.Length > 0 ? string.Join("\n", subtitleParts) : null;
+                    return (c.CompanyName ?? string.Empty, subtitle);
+                }).ToArray();
+
+                var selectedIndex = await _dialogService.ShowSingleChoiceDialogAsync(
+                    "Select Company",
+                    companyOptions,
+                    0);
+
+                if (selectedIndex >= 0 && selectedIndex < clientCompanies.Count)
+                {
+                    CompanyInfo.SelectedCompany = clientCompanies[selectedIndex];
+                    return true;
+                }
+                else
+                    return false;
+            }
+            else if (clientCompanies.Count == 1)
+            {
+                CompanyInfo.SelectedCompany = clientCompanies[0];
+                return true;
+            }
+            else
+                return true;
         }
 
         /// <summary>

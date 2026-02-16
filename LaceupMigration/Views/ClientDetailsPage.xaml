@@ -30,7 +30,7 @@
                 <Label Text="{Binding ClientName}"
                        FontSize="22"
                        FontAttributes="Bold"
-                       TextColor="{StaticResource PrimaryDark}" />
+                       TextColor="{StaticResource Primary}" />
                 <Button Grid.Column="1"
                         Text="{Binding ClockInButtonText}"
                         Command="{Binding ToggleClockInCommand}"
@@ -122,74 +122,73 @@
                                 ItemsSource="{Binding FilteredInvoices}"
                                 IsGrouped="True"
                                 SelectionMode="Single"
-                                RemainingItemsThreshold="1"
-                                RemainingItemsThresholdReachedCommand="{Binding LoadMoreInvoicesCommand}"
-                                ItemSizingStrategy="MeasureFirstItem">
+                                RemainingItemsThreshold="0"
+                                RemainingItemsThresholdReachedCommand="{Binding LoadMoreInvoicesCommand}">
                     <CollectionView.ItemsLayout>
                         <LinearItemsLayout Orientation="Vertical" ItemSpacing="0" />
                     </CollectionView.ItemsLayout>
                     <CollectionView.GroupHeaderTemplate>
                         <DataTemplate x:DataType="vm:InvoiceGroup">
                             <Grid BackgroundColor="#EEEEEE"
-                                  Padding="5"
+                                  Padding="12,8"
                                   HeightRequest="{Binding Header, Converter={StaticResource StringToHeightConverter}}">
                                 <Label Text="{Binding Header}"
-                                       FontSize="18"
+                                       FontSize="16"
                                        FontAttributes="Bold"
-                                       TextColor="#333333"
+                                       TextColor="{StaticResource Gray900}"
                                        IsVisible="{Binding Header, Converter={StaticResource IsStringNotEmptyConverter}}" />
                             </Grid>
                         </DataTemplate>
                     </CollectionView.GroupHeaderTemplate>
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="vm:ClientInvoiceViewModel">
-                            <Grid BackgroundColor="{StaticResource White}"
-                                  Margin="0,5,0,5">
+                            <Grid Padding="0,10,0,0" ColumnDefinitions="*,Auto" VerticalOptions="Center">
                                 <Grid.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding Source={x:Reference InvoicesCollectionView}, Path=BindingContext.HandleInvoiceSelectedCommand}" 
                                                           CommandParameter="{Binding}" />
                                 </Grid.GestureRecognizers>
-                                <BoxView BackgroundColor="{StaticResource Gray200}"
-                                         HeightRequest="1"
-                                         VerticalOptions="End"
-                                         HorizontalOptions="Fill"
-                                         Margin="0,0,0,0" />
-                                <VerticalStackLayout Padding="0"
-                                                     Spacing="4">
-                                    <Label Text="{Binding NumberText}"
-                                           FontSize="16"
-                                           FontAttributes="Bold"
-                                           TextColor="{Binding DueTextColor}" />
-                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                        <VerticalStackLayout Grid.Column="0" Spacing="2">
-                                            <Label Text="{Binding CreatedText}" FontSize="14" TextColor="{StaticResource Gray600}" />
-                                            <Label Text="{Binding DueText}" FontSize="14" TextColor="{Binding DueTextColor}" />
-                                        </VerticalStackLayout>
-                                        <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="End">
+                                <Grid Grid.ColumnSpan="2" RowSpacing="4" RowDefinitions="auto,auto,auto,auto,auto">
+                                    <Grid Grid.Row="0" ColumnSpacing="8">
+                                        <Label Text="{Binding NumberText}"
+                                               FontSize="16"
+                                               FontAttributes="Bold"
+                                               TextColor="{Binding DueTextColor}"
+                                               VerticalOptions="Center" />
+                                    </Grid>
+                                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <Grid RowDefinitions="auto,auto" Grid.Column="0" RowSpacing="2">
+                                            <Label Grid.Row="0" Text="{Binding CreatedText}" FontSize="14" TextColor="{StaticResource Gray600}" />
+                                            <Label Grid.Row="1" Text="{Binding DueText}" FontSize="14" TextColor="{Binding DueTextColor}" />
+                                        </Grid>
+                                        <Grid RowSpacing="2" Grid.Column="1" RowDefinitions="auto,auto" HorizontalOptions="End" VerticalOptions="End">
                                             <Label Text="{Binding TotalText}" 
+                                                   Grid.Row="0"
                                                    FontSize="14" 
                                                    TextColor="{StaticResource Gray900}" 
                                                    HorizontalOptions="End"
                                                    HorizontalTextAlignment="End"
+                                                   VerticalOptions="Center"
                                                    IsVisible="{Binding ShowAmount}" />
+                                            
                                             <Label Text="{Binding OpenText}" 
                                                    FontSize="14" 
+                                                   Grid.Row="1"
                                                    TextColor="{Binding DueTextColor}" 
                                                    HorizontalOptions="End"
                                                    HorizontalTextAlignment="End"
                                                    IsVisible="{Binding ShowAmount}" />
-                                        </VerticalStackLayout>
+                                        </Grid>
                                     </Grid>
-                                    <Label Text="{Binding StatusText}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource Gray600}" IsVisible="{Binding HasStatus}" />
-                                    <Label Text="{Binding DiscountText}" FontSize="14" TextColor="{StaticResource colorLaceupGreen}" IsVisible="{Binding HasDiscount}" />
-                                    <Label Text="{Binding PastDueText}" FontSize="13" TextColor="{StaticResource colorLaceupRed}" IsVisible="{Binding ShowPastDue}" />
-                                    <StackLayout Orientation="Vertical"
-                                                 Spacing="2"
-                                                 IsVisible="{Binding ShowPaymentGoal}">
+                                    <Label Grid.Row="2" Text="{Binding StatusText}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource Gray600}" IsVisible="{Binding HasStatus}" />
+                                    <Label Grid.Row="3" Text="{Binding DiscountText}" FontSize="14" TextColor="{StaticResource colorLaceupGreen}" IsVisible="{Binding HasDiscount}" />
+                                    <Label Grid.Row="4" Text="{Binding PastDueText}" FontSize="13" TextColor="{StaticResource colorLaceupRed}" IsVisible="{Binding ShowPastDue}" />
+                                    <StackLayout Grid.Row="5" Orientation="Vertical" Spacing="2" IsVisible="{Binding ShowPaymentGoal}">
                                         <Label Text="{Binding GoalPaymentText}" FontSize="13" TextColor="{StaticResource colorLaceupGreen}" />
                                         <Label Text="{Binding PendingDaysText}" FontSize="13" TextColor="{StaticResource Gray600}" />
                                     </StackLayout>
-                                </VerticalStackLayout>
+                                </Grid>
+                                <BoxView Grid.ColumnSpan="2" BackgroundColor="{StaticResource Gray200}"
+                                         HeightRequest="1" VerticalOptions="End" HorizontalOptions="Fill" />
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
