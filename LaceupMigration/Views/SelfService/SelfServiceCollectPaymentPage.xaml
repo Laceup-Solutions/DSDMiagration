@@ -33,7 +33,8 @@
             <HorizontalStackLayout Spacing="12">
                 <Label Text="{Binding TotalText}" 
                        FontSize="18" 
-                       FontAttributes="Bold"/>
+                       FontAttributes="Bold"
+                       IsVisible="{Binding ShowPrices}"/>
                 <Button Text="Send" 
                         Command="{Binding SendCommand}"
                         HorizontalOptions="End"/>
@@ -64,7 +65,8 @@
                                        FontSize="14" 
                                        TextColor="Gray"/>
                                 <Label Text="{Binding AmountText}" 
-                                       FontSize="14"/>
+                                       FontSize="14"
+                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCollectPaymentPageViewModel}}, Path=ShowPrices}"/>
                             </VerticalStackLayout>
                             <Button Grid.Column="2" 
                                     Text="Delete" 

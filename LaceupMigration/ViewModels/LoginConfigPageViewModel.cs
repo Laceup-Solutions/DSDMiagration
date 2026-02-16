@@ -251,7 +251,10 @@ namespace LaceupMigration.ViewModels
 							return;
 						}
 
-						Config.SignedIn = !Config.EnableSelfServiceModule;
+						// So next app open goes straight to clientlist or checkout when self-service
+						Config.SignedIn = true;
+						if (Config.EnableSelfServiceModule)
+							Config.SignedInSelfService = true;
 						Config.LastSignIn = DateTime.Now.Ticks.ToString();
 						Config.SaveSettings();
 

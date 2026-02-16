@@ -173,7 +173,9 @@ namespace LaceupMigration.ViewModels.SelfService
                 return;
             }
 
-            Config.SignedIn = !Config.EnableSelfServiceModule;
+            // Mark signed in so next app open (Splash/RouteNextAsync) goes straight to clientlist or checkout
+            Config.SignedIn = true;
+            Config.SignedInSelfService = true;
             Config.SaveSettings();
 
             if (Config.EnableSelfServiceModule)

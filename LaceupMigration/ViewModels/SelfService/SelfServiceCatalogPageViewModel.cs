@@ -7,9 +7,11 @@ using LaceupMigration.Services;
 using LaceupMigration.Business.Interfaces;
 using LaceupMigration;
 using LaceupMigration.Helpers;
+using LaceupMigration.ViewModels;
 using Microsoft.Maui.Graphics;
 using System;
 using System.Threading.Tasks;
+using Microsoft.Maui.ApplicationModel;
 
 namespace LaceupMigration.ViewModels.SelfService
 {
@@ -27,11 +29,22 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private string _categoryName = "All Categories";
 
-        [ObservableProperty]
-        private ObservableCollection<ProductItemViewModel> _products = new();
+        /// <summary>Full list of catalog items (with sublines). Same model as ProductCatalogPage.</summary>
+        public ObservableCollection<CatalogItemViewModel> Products { get; } = new();
+        /// <summary>Filtered by search; bound to the list. Same as ProductCatalogPage.</summary>
+        public ObservableCollection<CatalogItemViewModel> FilteredProducts { get; } = new();
 
         [ObservableProperty]
         private string _searchText = string.Empty;
+
+        [ObservableProperty]
+        private string _searchQuery = string.Empty;
+
+        [ObservableProperty]
+        private string _pageTitle = "Products";
+
+        [ObservableProperty]
+        private bool _showImages = true;
 
         [ObservableProperty]
         private string _filterText = "Filter: All";
@@ -39,16 +52,28 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private string _sortByText = "Sort: Name";
 
-        /// <summary>When true (UseLaceupAdvancedCatalogKey=1), cells use Advanced Catalog style (image, OH green, price blue, [-] qty [+]). When false, cells match ProductCatalog style.</summary>
+        /// <summary>When true (UseLaceupAdvancedCatalogKey=1), cells use Advanced Catalog style (image, OH green, price blue, [-] qty [+]). When false, ProductCatalog style with sublines.</summary>
         [ObservableProperty]
         private bool _useAdvancedCatalogStyle;
+
+        /// <summary>When false (HidePriceInSelfServiceKey=1), all prices and totals are hidden in self service.</summary>
+        [ObservableProperty]
+        private bool _showPrices = true;
+
+        /// <summary>When false (HideOHinSelfServiceKey=1), all on-hand/inventory labels are hidden in self service.</summary>
+        [ObservableProperty]
+        private bool _showOnHand = true;
+
+        private string _searchCriteria = string.Empty;
 
         private int _currentFilter = 0; // 0 = All, 2 = In Stock, 4 = Not In Order, etc.
         private int _currentSort = 0; // 0 = Name, 1 = Category, 2 = In Stock
         private bool _listInitialized;
-        private const int PageSize = 50;
-        private List<Product> _allFilteredProducts = new();
-        private int _loadedCount;
+        private bool _atLeastOneImage;
+
+        /// <summary>True while the product list is loading (page shows first, then list).</summary>
+        [ObservableProperty]
+        private bool _isLoadingList;
 
         public SelfServiceCatalogPageViewModel(IDialogService dialogService, ILaceupAppService appService, ICameraBarcodeScannerService cameraBarcodeScanner)
         {
@@ -56,6 +81,8 @@ namespace LaceupMigration.ViewModels.SelfService
             _appService = appService;
             _cameraBarcodeScanner = cameraBarcodeScanner;
             UseAdvancedCatalogStyle = Config.UseLaceupAdvancedCatalog;
+            ShowPrices = !Config.HidePriceInSelfService;
+            ShowOnHand = !Config.HideOHinSelfService;
         }
 
         public void ApplyQueryAttributes(System.Collections.Generic.IDictionary<string, object> query)
@@ -64,182 +91,238 @@ namespace LaceupMigration.ViewModels.SelfService
             {
                 _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId);
                 if (_order != null)
-                {
                     ClientName = _order.Client?.ClientName ?? string.Empty;
-                }
             }
 
             if (query.TryGetValue("categoryId", out var categoryIdObj) && int.TryParse(categoryIdObj?.ToString(), out var categoryId))
             {
                 _category = Category.Categories.FirstOrDefault(x => x.CategoryId == categoryId);
                 if (_category != null)
-                {
                     CategoryName = _category.Name;
-                }
             }
 
-            LoadProducts();
-            _listInitialized = true;
+            if (query.TryGetValue("productSearch", out var productSearchObj) && productSearchObj is string productSearch && !string.IsNullOrWhiteSpace(productSearch))
+            {
+                try { productSearch = Uri.UnescapeDataString(productSearch); } catch { }
+                SearchText = productSearch.Trim();
+                SearchQuery = SearchText;
+            }
+
+            PageTitle = _category != null ? _category.Name : "Products";
+            _searchCriteria = SearchText?.Trim() ?? string.Empty;
         }
 
         public void OnAppearing()
         {
             UseAdvancedCatalogStyle = Config.UseLaceupAdvancedCatalog;
-            if (!_listInitialized)
-            {
-                LoadProducts();
-                _listInitialized = true;
-            }
-            else
-                RefreshProductQuantitiesFromOrder();
+            ShowPrices = !Config.HidePriceInSelfService;
+            ShowOnHand = !Config.HideOHinSelfService;
+            if (_order == null) return;
+            _ = LoadCatalogAsync();
         }
 
-        /// <summary>Update qty/price for all visible items from current order (no full reload).</summary>
-        private void RefreshProductQuantitiesFromOrder()
+        /// <summary>Load catalog list asynchronously. Heavy work (BuildCatalogItemsList) runs on background thread; only assigning to Products and ApplyFilter run on UI thread.</summary>
+        private async Task LoadCatalogAsync()
         {
             if (_order == null) return;
-            foreach (var item in Products)
+            IsLoadingList = true;
+            try
             {
-                var detail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == item.Product?.ProductId && !x.IsCredit);
-                item.UpdateFromOrder(_order, detail);
+                var (items, atLeastOneImage) = await Task.Run(() => BuildCatalogItemsList()).ConfigureAwait(false);
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    Products.Clear();
+                    if (items != null && items.Count > 0)
+                        foreach (var item in items) Products.Add(item);
+                    _atLeastOneImage = atLeastOneImage;
+                    ShowImages = _atLeastOneImage;
+                    _listInitialized = true;
+                    ApplyFilter();
+                    IsLoadingList = false;
+                }).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (IsLoadingList) await MainThread.InvokeOnMainThreadAsync(() => IsLoadingList = false).ConfigureAwait(false);
             }
         }
 
-        /// <summary>Update a single row after add/edit/increment/decrement.</summary>
-        private void UpdateAffectedProductRow(int productId)
+        /// <summary>Builds the catalog items list and atLeastOneImage flag. Safe to run on background thread; does not touch Products collection.</summary>
+        private (List<CatalogItemViewModel> items, bool atLeastOneImage) BuildCatalogItemsList()
         {
-            var detail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == productId && !x.IsCredit);
-            var qty = detail != null ? (double)detail.Qty : 0;
-            var item = Products.FirstOrDefault(x => x.Product?.ProductId == productId);
-            if (item != null)
-                item.UpdateFromOrder(_order, detail);
-        }
+            if (_order == null) return (new List<CatalogItemViewModel>(), false);
 
-        private void LoadProducts()
-        {
-            if (_order == null)
-                return;
+            var categoryId = _category?.CategoryId ?? 0;
+            var productsForOrder = Product.GetProductListForOrder(_order, false, categoryId).ToList();
 
-            Products.Clear();
-            _allFilteredProducts.Clear();
-            _loadedCount = 0;
-
-            var productList = Product.Products.ToList();
-
-            // Filter by category if selected
-            if (_category != null)
+            if ((_currentFilter & 2) != 0)
+                productsForOrder = productsForOrder.Where(x => x.OnHand > 0).ToList();
+            if ((_currentFilter & 4) != 0)
             {
-                productList = productList.Where(x => x.CategoryId == _category.CategoryId).ToList();
+                var orderProductIds = _order.Details.Where(d => !d.IsCredit).Select(x => x.Product.ProductId).ToList();
+                productsForOrder = productsForOrder.Where(x => !orderProductIds.Contains(x.ProductId)).ToList();
+            }
+            if ((_currentFilter & 8) != 0)
+            {
+                var orderProductIds = _order.Details.Where(d => !d.IsCredit).Select(x => x.Product.ProductId).ToList();
+                productsForOrder = productsForOrder.Where(x => orderProductIds.Contains(x.ProductId)).ToList();
             }
 
-            // Apply search filter
             if (!string.IsNullOrEmpty(SearchText))
             {
                 var searchLower = SearchText.ToLowerInvariant();
-                productList = productList.Where(x => x.Name.ToLowerInvariant().Contains(searchLower)).ToList();
+                productsForOrder = productsForOrder.Where(x =>
+                    (x.Name?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                    (x.Upc?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                    (x.Sku?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                    (x.Description?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                    (x.Code?.ToLowerInvariant().Contains(searchLower) ?? false)).ToList();
             }
 
-            // Apply additional filters
-            if ((_currentFilter & 2) != 0) // In Stock
-            {
-                productList = productList.Where(x => x.OnHand > 0).ToList();
-            }
-            if ((_currentFilter & 4) != 0) // Not In Order
-            {
-                var orderProductIds = _order.Details.Select(x => x.Product.ProductId).ToList();
-                productList = productList.Where(x => !orderProductIds.Contains(x.ProductId)).ToList();
-            }
-            if ((_currentFilter & 8) != 0) // In Order
-            {
-                var orderProductIds = _order.Details.Select(x => x.Product.ProductId).ToList();
-                productList = productList.Where(x => orderProductIds.Contains(x.ProductId)).ToList();
-            }
-
-            // Sort
             switch (_currentSort)
             {
-                case 1: // Category
-                    productList = productList.OrderBy(x => x.CategoryId).ThenBy(x => x.Name).ToList();
-                    break;
-                case 2: // In Stock
-                    productList = productList.OrderByDescending(x => x.OnHand).ThenBy(x => x.Name).ToList();
-                    break;
-                default: // Name
-                    productList = productList.OrderBy(x => x.Name).ToList();
-                    break;
+                case 1: productsForOrder = productsForOrder.OrderBy(x => x.CategoryId).ThenBy(x => x.Name).ToList(); break;
+                case 2: productsForOrder = productsForOrder.OrderByDescending(x => x.OnHand).ThenBy(x => x.Name).ToList(); break;
+                default: productsForOrder = productsForOrder.OrderBy(x => x.Name).ToList(); break;
             }
 
-            if (_order.Client != null)
-                _order.Client.EnsurePreviouslyOrdered();
+            if (_order.Client?.ClientProductHistory == null && _order.Client != null)
+                _order.Client.ClientProductHistory = InvoiceDetail.GetProductHistoryDictionary(_order.Client);
+            var clientSource = _order.Client?.ClientProductHistory ?? new Dictionary<Product, List<InvoiceDetail>>();
+            var catalogItems = new List<CatalogItemViewModel>();
 
-            _allFilteredProducts = productList;
-            var toLoad = _allFilteredProducts.Take(PageSize).ToList();
-            _loadedCount = toLoad.Count;
-            foreach (var product in toLoad)
+            foreach (var product in productsForOrder)
             {
-                var detail = _order.Details.FirstOrDefault(x => x.Product.ProductId == product.ProductId && !x.IsCredit);
-                var qtyInOrder = detail != null ? (double)detail.Qty : 0;
-                Products.Add(ProductItemViewModel.Create(product, _order, detail, qtyInOrder));
+                var catalogItem = new CatalogItemViewModel { Product = product, Order = _order };
+                var clientSourceKey = clientSource.Keys.FirstOrDefault(x => x.ProductId == product.ProductId);
+                catalogItem.Line.History = clientSourceKey != null ? clientSource[clientSourceKey].OrderByDescending(x => x.Date).ToList() : new List<InvoiceDetail>();
+                catalogItem.Line.LastInvoiceDetail = catalogItem.Line.History?.FirstOrDefault();
+                catalogItem.Line.Product = product;
+                catalogItem.Line.ExpectedPrice = Product.GetPriceForProduct(product, _order, false, false);
+                catalogItem.Line.IsCredit = false;
+
+                if (!string.IsNullOrEmpty(product.UoMFamily))
+                {
+                    var uom = _order.Client?.UseBaseUoM == true
+                        ? UnitOfMeasure.List.FirstOrDefault(x => x.FamilyId == product.UoMFamily && x.IsBase)
+                        : UnitOfMeasure.List.FirstOrDefault(x => x.FamilyId == product.UoMFamily && x.IsDefault);
+                    if (Config.UseLastUoM && catalogItem.Line.LastInvoiceDetail != null)
+                        uom = UnitOfMeasure.List.FirstOrDefault(x => x.Id == catalogItem.Line.LastInvoiceDetail.UnitOfMeasureId) ?? uom;
+                    catalogItem.Line.UoM = uom;
+                    if (catalogItem.Line.UoM != null)
+                        catalogItem.Line.ExpectedPrice *= catalogItem.Line.UoM.Conversion;
+                }
+                if (Config.UseLSP && catalogItem.Line.LastInvoiceDetail != null)
+                    catalogItem.Line.PreviousOrderedPrice = Math.Round(catalogItem.Line.LastInvoiceDetail.Price, Config.Round);
+                if (Config.ShowAvgInCatalog && _order.Client != null)
+                {
+                    catalogItem.Line.AvgSale = _order.Client.Average(product.ProductId);
+                    if (catalogItem.Line.AvgSale == -1 && catalogItem.Line.History?.Count > 0)
+                        catalogItem.Line.AvgSale = catalogItem.Line.History.Sum(x => x.Quantity) / catalogItem.Line.History.Count;
+                }
+
+                foreach (var orderDetail in _order.Details.Where(d => !d.IsCredit && d.Product?.ProductId == product.ProductId))
+                {
+                    catalogItem.Values.Add(new OdLine
+                    {
+                        OrderDetail = orderDetail,
+                        Product = product,
+                        Qty = orderDetail.Qty,
+                        Weight = orderDetail.Weight,
+                        ExpectedPrice = orderDetail.ExpectedPrice,
+                        Price = orderDetail.Price,
+                        Comments = orderDetail.Comments,
+                        Lot = orderDetail.Lot,
+                        Damaged = orderDetail.Damaged,
+                        UoM = orderDetail.UnitOfMeasure,
+                        FreeItem = orderDetail.IsFreeItem,
+                        IsCredit = false,
+                        IsPriceFromSpecial = orderDetail.FromOfferPrice,
+                        Allowance = orderDetail.Allowance,
+                        Discount = orderDetail.Discount,
+                        DiscountType = orderDetail.DiscountType,
+                        ReasonId = orderDetail.ReasonId,
+                        LotExp = orderDetail.LotExpiration,
+                        ManuallyChanged = orderDetail.ModifiedManually,
+                        PriceLevelSelected = orderDetail.PriceLevelSelected
+                    });
+                }
+                catalogItem.UpdateDisplay();
+                catalogItems.Add(catalogItem);
             }
+
+            var catalogItemsForSort = catalogItems.Select(x => new CatalogItem { Product = x.Product, Line = x.Line, Values = x.Values.ToList() }).ToList();
+            var sorted = SortDetails.SortedDetailsInProduct(catalogItemsForSort).ToList();
+            var sortedViewModels = sorted.Select(s => catalogItems.FirstOrDefault(x => x.Product?.ProductId == s.Product?.ProductId)).Where(x => x != null).ToList();
+            foreach (var item in catalogItems)
+                if (!sortedViewModels.Contains(item)) sortedViewModels.Add(item);
+
+            var productIds = sortedViewModels.Where(x => x.Product != null).Select(x => x.Product.ProductId).Where(id => id > 0).ToList();
+            var atLeastOneImage = productIds.Count > 0 && ProductImage.AtLeastOneProductHasImg(productIds);
+            return (sortedViewModels, atLeastOneImage);
         }
 
-        /// <summary>Load next page of products (pagination).</summary>
-        [RelayCommand]
-        private void LoadMore()
+        /// <summary>Build catalog items with sublines (same as ProductCatalogPage). Used by Filter, Sort, Search, and after add/edit. Replaces Products in one shot to avoid N Add() layout cost.</summary>
+        private void PrepareProductList()
         {
-            if (_order == null || _loadedCount >= _allFilteredProducts.Count) return;
-            var next = _allFilteredProducts.Skip(_loadedCount).Take(PageSize).ToList();
-            _loadedCount += next.Count;
-            foreach (var product in next)
-            {
-                var detail = _order.Details.FirstOrDefault(x => x.Product.ProductId == product.ProductId && !x.IsCredit);
-                var qtyInOrder = detail != null ? (double)detail.Qty : 0;
-                Products.Add(ProductItemViewModel.Create(product, _order, detail, qtyInOrder));
-            }
+            if (_order == null) return;
+            var (items, atLeastOneImage) = BuildCatalogItemsList();
+            Products.Clear();
+            if (items != null && items.Count > 0)
+                foreach (var item in items) Products.Add(item);
+            _atLeastOneImage = atLeastOneImage;
+            ShowImages = _atLeastOneImage;
         }
 
-        /// <summary>True when there are more items to load (for RemainingItemsThreshold).</summary>
-        public bool HasMoreToLoad => _allFilteredProducts != null && _loadedCount < _allFilteredProducts.Count;
+        private void ApplyFilter()
+        {
+            var list = Products.ToList();
+            if (!string.IsNullOrEmpty(_searchCriteria))
+            {
+                var searchUpper = _searchCriteria.Trim().ToUpperInvariant();
+                list = list.Where(x =>
+                    x.Product?.Name?.ToUpperInvariant().Contains(searchUpper) == true ||
+                    x.Product?.Upc?.ToUpperInvariant().Contains(searchUpper) == true ||
+                    x.Product?.Sku?.ToUpperInvariant().Contains(searchUpper) == true ||
+                    x.Product?.Code?.ToUpperInvariant().Contains(searchUpper) == true).ToList();
+            }
+            FilteredProducts.Clear();
+            foreach (var item in list) FilteredProducts.Add(item);
+        }
+
+        partial void OnSearchQueryChanged(string value)
+        {
+            _searchCriteria = value?.Trim() ?? string.Empty;
+            ApplyFilter();
+        }
 
         [RelayCommand]
         private async Task Scan()
         {
             if (_order == null)
                 return;
-
             try
             {
                 var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
-                if (string.IsNullOrEmpty(scanResult))
-                    return;
-
-                // Find product by barcode (check UPC, SKU, Code)
+                if (string.IsNullOrEmpty(scanResult)) return;
                 var product = Product.Products.FirstOrDefault(p =>
                     (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
                     (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
                     (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
-
                 if (product != null)
                 {
-                    // Set search text to filter products
+                    SearchQuery = scanResult;
                     SearchText = scanResult;
-                    
-                    // Find the product in the list and add it
-                    var productItem = Products.FirstOrDefault(p => p.Product.ProductId == product.ProductId);
-                    if (productItem != null)
-                    {
-                        // Product is in the list, could navigate to it or add it
-                        await _dialogService.ShowAlertAsync($"Found product: {product.Name}", "Barcode Scan");
-                    }
-                    else
-                    {
-                        await _dialogService.ShowAlertAsync("Product not found in current category.", "Info");
-                    }
+                    _searchCriteria = scanResult;
+                    ApplyFilter();
+                    await _dialogService.ShowAlertAsync($"Found product: {product.Name}", "Barcode Scan");
                 }
                 else
                 {
-                    // Product not found, but set search text anyway
+                    SearchQuery = scanResult;
                     SearchText = scanResult;
+                    _searchCriteria = scanResult;
+                    ApplyFilter();
                     await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
                 }
             }
@@ -253,25 +336,13 @@ namespace LaceupMigration.ViewModels.SelfService
         [RelayCommand]
         private async Task Filter()
         {
-            var options = new[] { "All", "In Stock", "Not In Order", "In Order", "Previously Ordered", "Never Ordered", "In Offer" };
+            var options = new[] { "All", "In Stock", "Not In Order", "In Order" };
             var selected = await _dialogService.ShowActionSheetAsync("Filter Products", "", "Cancel", options);
-
-            if (selected == "Cancel" || string.IsNullOrEmpty(selected))
-                return;
-
-            _currentFilter = selected switch
-            {
-                "In Stock" => 2,
-                "Not In Order" => 4,
-                "In Order" => 8,
-                "Previously Ordered" => 16,
-                "Never Ordered" => 32,
-                "In Offer" => 64,
-                _ => 0
-            };
-
+            if (selected == "Cancel" || string.IsNullOrEmpty(selected)) return;
+            _currentFilter = selected switch { "In Stock" => 2, "Not In Order" => 4, "In Order" => 8, _ => 0 };
             FilterText = $"Filter: {selected}";
-            LoadProducts();
+            PrepareProductList();
+            ApplyFilter();
         }
 
         [RelayCommand]
@@ -279,168 +350,64 @@ namespace LaceupMigration.ViewModels.SelfService
         {
             var options = new[] { "Name", "Category", "In Stock" };
             var selected = await _dialogService.ShowActionSheetAsync("Sort By", "", "Cancel", options);
-
-            if (selected == "Cancel" || string.IsNullOrEmpty(selected))
-                return;
-
-            _currentSort = selected switch
-            {
-                "Category" => 1,
-                "In Stock" => 2,
-                _ => 0
-            };
-
+            if (selected == "Cancel" || string.IsNullOrEmpty(selected)) return;
+            _currentSort = selected switch { "Category" => 1, "In Stock" => 2, _ => 0 };
             SortByText = $"Sort: {selected}";
-            LoadProducts();
+            PrepareProductList();
+            ApplyFilter();
         }
 
-        /// <summary>Tap row or + to add/edit quantity (RestOfTheAddDialog). Stays on catalog and refreshes list.</summary>
+        /// <summary>+ button: open RestOfTheAddDialog (same as ProductCatalogPage). Adds new line/subline.</summary>
         [RelayCommand]
-        private async Task SelectProduct(ProductItemViewModel productItem)
+        private async Task AddButtonClick(CatalogItemViewModel item)
         {
-            if (productItem == null || _order == null)
-                return;
-            await AddOrEditItemAsync(productItem);
+            if (item == null || _order == null) return;
+            await AddProductWithRestOfTheAddDialogAsync(item);
         }
 
-        /// <summary>Open add/edit quantity dialog (same as SelfServiceCheckOutPage).</summary>
+        /// <summary>Edit subline (tap on order detail row). Same as ProductCatalogPage EditSublineAsync.</summary>
         [RelayCommand]
-        private async Task AddOrEditItem(ProductItemViewModel productItem)
+        private async Task EditSubline(OdLine line)
         {
-            if (productItem == null || _order == null)
-                return;
-            await AddOrEditItemAsync(productItem);
-        }
-
-        private async Task AddOrEditItemAsync(ProductItemViewModel productItem)
-        {
-            if (productItem?.Product == null || _order == null)
-                return;
-
-            if (productItem.Quantity == 0 && !_order.AsPresale && !Config.CanGoBelow0)
-            {
-                var oh = productItem.Product.GetInventory(_order.AsPresale, false);
-                if (oh <= 0)
-                {
-                    await _dialogService.ShowAlertAsync("Not enough inventory.", "Alert");
-                    return;
-                }
-            }
-
-            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == productItem.Product.ProductId && !x.IsCredit);
-            var result = await _dialogService.ShowRestOfTheAddDialogAsync(
-                productItem.Product,
-                _order,
-                existingDetail,
-                isCredit: false,
-                isDamaged: false,
-                isDelivery: _order.IsDelivery);
-
-            if (result.Cancelled)
-                return;
-
+            if (line?.OrderDetail == null || _order == null) return;
+            var existingDetail = line.OrderDetail;
+            var product = existingDetail.Product;
+            if (product == null) return;
+            var result = await _dialogService.ShowRestOfTheAddDialogAsync(product, _order, existingDetail, isCredit: false, isDamaged: existingDetail.Damaged, isDelivery: _order.IsDelivery);
+            if (result.Cancelled) return;
             if (result.Qty == 0)
             {
-                if (existingDetail != null)
-                {
-                    _order.DeleteDetail(existingDetail);
-                    _order.Save();
-                }
-                UpdateAffectedProductRow(productItem.Product.ProductId);
+                _order.DeleteDetail(existingDetail);
+            _order.Save();
+            PrepareProductList();
+                ApplyFilter();
                 return;
             }
-
-            if (!_order.AsPresale && !Config.CanGoBelow0)
-            {
-                var currentOH = productItem.Product.GetInventory(_order.AsPresale, false);
-                var resultBaseQty = (double)result.Qty;
-                if (result.SelectedUoM != null)
-                    resultBaseQty *= result.SelectedUoM.Conversion;
-                var totalBaseQtyInOrder = _order.Details
-                    .Where(d => d.Product.ProductId == productItem.Product.ProductId && !d.IsCredit && d != existingDetail)
-                    .Sum(d => (double)d.Qty * (d.UnitOfMeasure?.Conversion ?? 1));
-                if (totalBaseQtyInOrder + resultBaseQty > currentOH)
-                {
-                    await _dialogService.ShowAlertAsync("Not enough inventory.", "Alert");
-                    return;
-                }
-            }
-
-            if (existingDetail != null)
-            {
-                existingDetail.Qty = result.Qty;
-                existingDetail.Weight = result.Weight;
-                existingDetail.Lot = result.Lot;
-                if (result.LotExpiration.HasValue)
-                    existingDetail.LotExpiration = result.LotExpiration.Value;
-                existingDetail.Comments = result.Comments;
-                existingDetail.Price = result.Price;
-                existingDetail.UnitOfMeasure = result.SelectedUoM;
-                existingDetail.IsFreeItem = result.IsFreeItem;
-                existingDetail.ReasonId = result.ReasonId;
-                if (result.PriceLevelSelected > 0)
-                    existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
-                OrderDetail.UpdateRelated(existingDetail, _order);
-            }
-            else
-            {
-                var detail = new OrderDetail(productItem.Product, 0, _order);
-                double expectedPrice = Product.GetPriceForProduct(productItem.Product, _order, false, false);
-                double price = result.Price;
-                if (result.UseLastSoldPrice && _order.Client != null)
-                {
-                    var clientHistory = InvoiceDetail.ClientProduct(_order.Client.ClientId, productItem.Product.ProductId);
-                    var lastInvoiceDetail = clientHistory?.OrderByDescending(x => x.Date).FirstOrDefault();
-                    if (lastInvoiceDetail != null)
-                        price = lastInvoiceDetail.Price;
-                }
-                else if (price == 0)
-                {
-                    if (Offer.ProductHasSpecialPriceForClient(productItem.Product, _order.Client, out var offerPrice))
-                    {
-                        detail.Price = offerPrice;
-                        detail.FromOfferPrice = true;
-                    }
-                    else
-                    {
-                        detail.Price = expectedPrice;
-                        detail.FromOfferPrice = false;
-                    }
-                }
-                else
-                {
-                    detail.Price = price;
-                    detail.FromOfferPrice = false;
-                }
-                detail.ExpectedPrice = expectedPrice;
-                detail.UnitOfMeasure = result.SelectedUoM ?? productItem.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
-                detail.Qty = result.Qty;
-                detail.Weight = result.Weight;
-                detail.Lot = result.Lot;
-                if (result.LotExpiration.HasValue)
-                    detail.LotExpiration = result.LotExpiration.Value;
-                detail.Comments = result.Comments;
-                detail.IsFreeItem = result.IsFreeItem;
-                detail.ReasonId = result.ReasonId;
-                if (result.PriceLevelSelected > 0)
-                    detail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), detail.ExtraFields);
-                detail.CalculateOfferDetail();
-                _order.AddDetail(detail);
-                OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, detail);
-                OrderDetail.UpdateRelated(detail, _order);
-            }
+            existingDetail.Qty = result.Qty;
+            existingDetail.Weight = result.Weight;
+            existingDetail.Lot = result.Lot;
+            if (result.LotExpiration.HasValue) existingDetail.LotExpiration = result.LotExpiration.Value;
+            existingDetail.Comments = result.Comments;
+            existingDetail.Price = result.Price;
+            existingDetail.UnitOfMeasure = result.SelectedUoM;
+            existingDetail.IsFreeItem = result.IsFreeItem;
+            existingDetail.ReasonId = result.ReasonId;
+            if (result.PriceLevelSelected > 0)
+                existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
+            OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, existingDetail);
+            OrderDetail.UpdateRelated(existingDetail, _order);
             _order.RecalculateDiscounts();
             _order.Save();
-            UpdateAffectedProductRow(productItem.Product.ProductId);
+            PrepareProductList();
+            ApplyFilter();
         }
 
-        /// <summary>+ button: add 1 to existing line or add new line with qty 1.</summary>
+        /// <summary>+ button for Advanced Catalog style: add 1 to first detail or create new detail with qty 1.</summary>
         [RelayCommand]
-        private void IncrementQuantity(ProductItemViewModel productItem)
+        private void IncrementQuantity(CatalogItemViewModel item)
         {
-            if (productItem?.Product == null || _order == null)
-                return;
-            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == productItem.Product.ProductId && !x.IsCredit);
+            if (item?.Product == null || _order == null) return;
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == item.Product.ProductId && !x.IsCredit);
             if (existingDetail != null)
             {
                 existingDetail.Qty += 1f;
@@ -448,20 +415,14 @@ namespace LaceupMigration.ViewModels.SelfService
             }
             else
             {
-                var detail = new OrderDetail(productItem.Product, 0, _order);
-                double expectedPrice = Product.GetPriceForProduct(productItem.Product, _order, false, false);
-                if (Offer.ProductHasSpecialPriceForClient(productItem.Product, _order.Client, out var price))
-                {
-                    detail.Price = price;
-                    detail.FromOfferPrice = true;
-                }
+                var detail = new OrderDetail(item.Product, 0, _order);
+                double expectedPrice = Product.GetPriceForProduct(item.Product, _order, false, false);
+                if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out var price))
+                { detail.Price = price; detail.FromOfferPrice = true; }
                 else
-                {
-                    detail.Price = expectedPrice;
-                    detail.FromOfferPrice = false;
-                }
+                { detail.Price = expectedPrice; detail.FromOfferPrice = false; }
                 detail.ExpectedPrice = expectedPrice;
-                detail.UnitOfMeasure = productItem.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.UnitOfMeasure = item.Product.UnitOfMeasures?.FirstOrDefault(x => x.IsDefault);
                 detail.Qty = 1f;
                 detail.CalculateOfferDetail();
                 _order.AddDetail(detail);
@@ -469,21 +430,19 @@ namespace LaceupMigration.ViewModels.SelfService
             }
             _order.RecalculateDiscounts();
             _order.Save();
-            UpdateAffectedProductRow(productItem.Product.ProductId);
+            RefreshCatalogItem(item);
         }
 
-        /// <summary>- button: subtract 1 or remove line if qty becomes 0.</summary>
+        /// <summary>- button for Advanced Catalog style: subtract 1 or remove detail if qty becomes 0.</summary>
         [RelayCommand]
-        private void DecrementQuantity(ProductItemViewModel productItem)
+        private void DecrementQuantity(CatalogItemViewModel item)
         {
-            if (productItem?.Product == null || _order == null)
-                return;
-            var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == productItem.Product.ProductId && !x.IsCredit);
-            if (existingDetail == null)
-                return;
+            if (item?.Product == null || _order == null) return;
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == item.Product.ProductId && !x.IsCredit);
+            if (existingDetail == null) return;
             if (existingDetail.Qty <= 1f)
             {
-                _order.Details.Remove(existingDetail);
+                _order.DeleteDetail(existingDetail);
                 _order.RecalculateDiscounts();
                 _order.Save();
             }
@@ -494,156 +453,107 @@ namespace LaceupMigration.ViewModels.SelfService
                 _order.RecalculateDiscounts();
                 _order.Save();
             }
-            UpdateAffectedProductRow(productItem.Product.ProductId);
+            RefreshCatalogItem(item);
+        }
+
+        private void RefreshCatalogItem(CatalogItemViewModel item)
+        {
+            if (item == null) return;
+            item.Values.Clear();
+            var product = item.Product;
+            if (product == null) return;
+            foreach (var orderDetail in _order.Details.Where(d => !d.IsCredit && d.Product?.ProductId == product.ProductId))
+            {
+                item.Values.Add(new OdLine
+                {
+                    OrderDetail = orderDetail,
+                    Product = product,
+                    Qty = orderDetail.Qty,
+                    Weight = orderDetail.Weight,
+                    ExpectedPrice = orderDetail.ExpectedPrice,
+                    Price = orderDetail.Price,
+                    Comments = orderDetail.Comments,
+                    Lot = orderDetail.Lot,
+                    Damaged = orderDetail.Damaged,
+                    UoM = orderDetail.UnitOfMeasure,
+                    FreeItem = orderDetail.IsFreeItem,
+                    IsCredit = false,
+                    IsPriceFromSpecial = orderDetail.FromOfferPrice,
+                    Allowance = orderDetail.Allowance,
+                    Discount = orderDetail.Discount,
+                    DiscountType = orderDetail.DiscountType,
+                    ReasonId = orderDetail.ReasonId,
+                    LotExp = orderDetail.LotExpiration,
+                    ManuallyChanged = orderDetail.ModifiedManually,
+                    PriceLevelSelected = orderDetail.PriceLevelSelected
+                });
+            }
+            item.UpdateDisplay();
+        }
+
+        private async Task AddProductWithRestOfTheAddDialogAsync(CatalogItemViewModel item)
+        {
+            if (_order == null || item?.Product == null) return;
+            OrderDetail existingDetail = null;
+            var result = await _dialogService.ShowRestOfTheAddDialogAsync(item.Product, _order, existingDetail, isCredit: false, isDamaged: false, isDelivery: _order.IsDelivery);
+            if (result.Cancelled) return;
+            if (result.Qty == 0) { PrepareProductList(); ApplyFilter(); return; }
+            var detail = new OrderDetail(item.Product, 0, _order);
+            double expectedPrice = Product.GetPriceForProduct(item.Product, _order, false, false);
+            double price = result.Price;
+            if (result.UseLastSoldPrice && _order.Client != null)
+            {
+                var clientHistory = InvoiceDetail.ClientProduct(_order.Client.ClientId, item.Product.ProductId);
+                var lastInvoiceDetail = clientHistory?.OrderByDescending(x => x.Date).FirstOrDefault();
+                if (lastInvoiceDetail != null) price = lastInvoiceDetail.Price;
+            }
+            else if (price == 0)
+            {
+                if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out var offerPrice))
+                { detail.Price = offerPrice; detail.FromOfferPrice = true; }
+                else
+                { detail.Price = expectedPrice; detail.FromOfferPrice = false; }
+            }
+            else
+            { detail.Price = price; detail.FromOfferPrice = false; }
+            detail.ExpectedPrice = expectedPrice;
+            detail.UnitOfMeasure = result.SelectedUoM ?? item.Product.UnitOfMeasures?.FirstOrDefault(x => x.IsDefault);
+            detail.Qty = result.Qty;
+            detail.Weight = result.Weight;
+            detail.Lot = result.Lot;
+            if (result.LotExpiration.HasValue) detail.LotExpiration = result.LotExpiration.Value;
+            detail.Comments = result.Comments;
+            detail.IsFreeItem = result.IsFreeItem;
+            detail.ReasonId = result.ReasonId;
+            if (result.PriceLevelSelected > 0)
+                detail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), detail.ExtraFields);
+            detail.CalculateOfferDetail();
+            _order.AddDetail(detail);
+            OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, detail);
+            OrderDetail.UpdateRelated(detail, _order);
+            _order.RecalculateDiscounts();
+            _order.Save();
+            PrepareProductList();
+            ApplyFilter();
         }
 
         partial void OnSearchTextChanged(string value)
         {
-            LoadProducts();
+            _searchCriteria = value?.Trim() ?? string.Empty;
+            SearchQuery = value ?? string.Empty;
+            PrepareProductList();
+            ApplyFilter();
         }
 
-        /// <summary>Navigate directly to SelfServiceCheckOutPage (toolbar Checkout button). Pass fromCatalog=1 so checkout does a full list refresh.</summary>
+        /// <summary>Return to SelfServiceCheckOutPage (toolbar Checkout button). When entered from Categories (Catalog → Select Category), pop twice to land on Checkout.</summary>
         [RelayCommand]
         private async Task GoToCheckout()
         {
             if (_order == null)
                 return;
-            await Shell.Current.GoToAsync($"selfservice/checkout?orderId={_order.OrderId}&fromCatalog=1");
-        }
-    }
-
-    public partial class ProductItemViewModel : ObservableObject
-    {
-        public Product Product { get; }
-
-        [ObservableProperty]
-        private string _productName;
-
-        [ObservableProperty]
-        private string _categoryName;
-
-        [ObservableProperty]
-        private string _priceText;
-
-        [ObservableProperty]
-        private string _statusText;
-
-        [ObservableProperty]
-        private Color _statusColor;
-
-        [ObservableProperty]
-        private string _qtyInOrder;
-
-        /// <summary>Numeric qty in order (for binding and logic).</summary>
-        public double Quantity { get; set; }
-
-        /// <summary>True when product is in order (enables minus button).</summary>
-        public bool IsInOrder => Quantity > 0;
-
-        /// <summary>Update qty/price in place from order (avoids full list reload).</summary>
-        public void UpdateFromOrder(Order order, OrderDetail detail)
-        {
-            if (Product == null) return;
-            Quantity = detail != null ? (double)detail.Qty : 0;
-            QtyInOrder = Quantity.ToString("F0");
-            if (detail != null)
-            {
-                PriceText = $"Price: {detail.Price.ToCustomString()}";
-                TotalText = $"Total: {(detail.Qty * detail.Price).ToCustomString()}";
-                QuantityButtonText = detail.Qty.ToString("F0");
-            }
-            else
-            {
-                var listPrice = Product.GetPriceForProduct(Product, order, false, false);
-                PriceText = $"Price: {listPrice.ToCustomString()}";
-                TotalText = string.Empty;
-                QuantityButtonText = "+";
-            }
-            OnPropertyChanged(nameof(HasValues));
-            OnPropertyChanged(nameof(IsInOrder));
-        }
-
-        /// <summary>For ProductCatalog-style and Advanced: on-hand text (e.g. "OH: 99").</summary>
-        [ObservableProperty]
-        private string _onHandText = "OH: 0";
-
-        /// <summary>For ProductCatalog-style and Advanced: list price text.</summary>
-        [ObservableProperty]
-        private string _listPriceText = string.Empty;
-
-        /// <summary>For Advanced style: "Previously Ordered:" / "Last Visit: ..." or "No previous orders".</summary>
-        [ObservableProperty]
-        private string _historyText = string.Empty;
-
-        /// <summary>For ProductCatalog-style: total line text when in order.</summary>
-        [ObservableProperty]
-        private string _totalText = string.Empty;
-
-        /// <summary>True when in order (show total in ProductCatalog style).</summary>
-        public bool HasValues => Quantity > 0;
-
-        /// <summary>For ProductCatalog-style: suggested label.</summary>
-        [ObservableProperty]
-        private string _suggestedLabelText = string.Empty;
-
-        /// <summary>For ProductCatalog-style: "+" or quantity number.</summary>
-        [ObservableProperty]
-        private string _quantityButtonText = "+";
-
-        /// <summary>Product image path (or placeholder) for Advanced/ProductCatalog style.</summary>
-        [ObservableProperty]
-        private string _productImagePath = string.Empty;
-
-        [ObservableProperty]
-        private bool _hasImage;
-
-        /// <summary>Create a fully populated item for both Advanced and ProductCatalog templates.</summary>
-        public static ProductItemViewModel Create(Product product, Order order, OrderDetail detail, double qtyInOrder)
-        {
-            var onHand = order != null ? product.GetInventory(order.AsPresale, false) : 0;
-            var listPrice = Product.GetPriceForProduct(product, order, false, false);
-            var historyText = "No previous orders";
-            if (order?.Client?.OrderedList != null)
-            {
-                var orderedItem = order.Client.OrderedList.FirstOrDefault(x => x.Last?.ProductId == product.ProductId);
-                if (orderedItem?.Last != null && orderedItem.Last.Date != DateTime.MinValue)
-                    historyText = $"Last Visit: {orderedItem.Last.Date:MM/dd}, {orderedItem.Last.Quantity}, {orderedItem.Last.Price.ToCustomString()}";
-            }
-            var priceText = detail != null
-                ? $"Price: {detail.Price.ToCustomString()}"
-                : $"Price: {listPrice.ToCustomString()}";
-            var totalText = detail != null ? $"Total: {(detail.Qty * detail.Price).ToCustomString()}" : string.Empty;
-            var isSuggested = order != null && order.Client != null && Product.IsSuggestedForClient(order.Client, product);
-            var suggestedLabelText = isSuggested
-                ? (string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) ? "Suggested Products" : $"{Config.ProductCategoryNameIdentifier} Products")
-                : string.Empty;
-            var imagePath = ProductImage.GetProductImageWithPlaceholder(product.ProductId);
-            var hasImage = !string.IsNullOrEmpty(ProductImage.GetProductImage(product.ProductId));
-
-            return new ProductItemViewModel(product, qtyInOrder)
-            {
-                OnHandText = $"OH: {onHand:F0}",
-                ListPriceText = $"List Price: {listPrice.ToCustomString()}",
-                HistoryText = historyText,
-                PriceText = priceText,
-                TotalText = totalText,
-                SuggestedLabelText = suggestedLabelText,
-                QuantityButtonText = qtyInOrder > 0 ? qtyInOrder.ToString("F0") : "+",
-                ProductImagePath = imagePath ?? string.Empty,
-                HasImage = hasImage
-            };
-        }
-
-        private ProductItemViewModel(Product product, double qtyInOrder)
-        {
-            Product = product;
-            Quantity = qtyInOrder;
-            ProductName = product.Name;
-            CategoryName = Category.Categories.FirstOrDefault(x => x.CategoryId == product.CategoryId)?.Name ?? "Uncategorized";
-            PriceText = $"Price: {product.PriceLevel0.ToCustomString()}";
-            StatusText = product.OnHand > 0 ? "In Stock" : "Out of Stock";
-            StatusColor = product.OnHand > 0 ? Colors.Green : Colors.Red;
-            QtyInOrder = qtyInOrder.ToString("F0");
+            await Shell.Current.GoToAsync("..");
+            if (_category != null)
+                await Shell.Current.GoToAsync("..");
         }
     }
 }

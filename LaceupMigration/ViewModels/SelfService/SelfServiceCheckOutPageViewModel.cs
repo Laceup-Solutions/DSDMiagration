@@ -55,12 +55,19 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private bool _canSendOrder;
 
+        /// <summary>True while the order/recently-ordered list is loading (page shows first, then list).</summary>
+        [ObservableProperty]
+        private bool _isLoadingList;
+
         /// <summary>Collapsible order summary (like AdvancedCatalogPage). Collapsed by default.</summary>
         [ObservableProperty]
         private bool _isOrderSummaryExpanded = false;
 
         /// <summary>Show total in header when summary is collapsed.</summary>
         public bool ShowTotalInHeader => !IsOrderSummaryExpanded;
+
+        /// <summary>Show total in header when summary is collapsed and prices are visible (HidePriceInSelfServiceKey=0).</summary>
+        public bool ShowTotalInHeaderWithPrice => ShowTotalInHeader && ShowPrices;
 
         [RelayCommand]
         private void ToggleOrderSummary()
@@ -80,6 +87,14 @@ namespace LaceupMigration.ViewModels.SelfService
         /// <summary>When true (UseLaceupAdvancedCatalogKey=1), line items use AdvancedCatalog-style layout. When false, use current layout.</summary>
         [ObservableProperty]
         private bool _useAdvancedCatalogStyle;
+
+        /// <summary>When false (HidePriceInSelfServiceKey=1), all prices and totals are hidden in self service.</summary>
+        [ObservableProperty]
+        private bool _showPrices = true;
+
+        /// <summary>When false (HideOHinSelfServiceKey=1), all on-hand/inventory labels are hidden in self service.</summary>
+        [ObservableProperty]
+        private bool _showOnHand = true;
 
         [ObservableProperty]
         private string _searchQuery = string.Empty;
@@ -104,6 +119,8 @@ namespace LaceupMigration.ViewModels.SelfService
             _advancedOptionsService = advancedOptionsService;
             _mainPageViewModel = mainPageViewModel;
             UseAdvancedCatalogStyle = Config.UseLaceupAdvancedCatalog;
+            ShowPrices = !Config.HidePriceInSelfService;
+            ShowOnHand = !Config.HideOHinSelfService;
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -113,10 +130,10 @@ namespace LaceupMigration.ViewModels.SelfService
                 _order = Order.Orders.FirstOrDefault(x => x.OrderId == orderId);
                 if (_order != null)
                 {
+                    ClientName = _order.Client.ClientName;
                     _listInitialized = false;
                     if (query.TryGetValue("fromCatalog", out var fromCat) && "1".Equals(fromCat?.ToString()))
                         _needsFullRefresh = true;
-                    LoadOrder();
                 }
             }
         }
@@ -124,15 +141,39 @@ namespace LaceupMigration.ViewModels.SelfService
         public void OnAppearing()
         {
             UseAdvancedCatalogStyle = Config.UseLaceupAdvancedCatalog;
+            ShowPrices = !Config.HidePriceInSelfService;
+            ShowOnHand = !Config.HideOHinSelfService;
             if (_order == null) return;
             if (_needsFullRefresh || !_listInitialized)
             {
-                LoadMergedList();
-                RefilterDisplay();
-                _listInitialized = true;
-                _needsFullRefresh = false;
+                _ = LoadOrderAsync();
+                return;
             }
             RefreshTotals();
+        }
+
+        /// <summary>Load order list asynchronously so the page is visible first. Heavy work (LoadMergedList) runs on background thread; only RefilterDisplay + RefreshTotals run on UI thread.</summary>
+        private async Task LoadOrderAsync()
+        {
+            if (_order == null) return;
+            IsLoadingList = true;
+            try
+            {
+                await Task.Run(() => _order.Client.EnsurePreviouslyOrdered()).ConfigureAwait(false);
+                await Task.Run(() => LoadMergedList()).ConfigureAwait(false);
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    RefilterDisplay();
+                    _listInitialized = true;
+                    _needsFullRefresh = false;
+                    RefreshTotals();
+                    IsLoadingList = false;
+                }).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (IsLoadingList) await MainThread.InvokeOnMainThreadAsync(() => IsLoadingList = false).ConfigureAwait(false);
+            }
         }
 
         private void LoadOrder()
@@ -153,6 +194,12 @@ namespace LaceupMigration.ViewModels.SelfService
         partial void OnIsOrderSummaryExpandedChanged(bool value)
         {
             OnPropertyChanged(nameof(ShowTotalInHeader));
+            OnPropertyChanged(nameof(ShowTotalInHeaderWithPrice));
+        }
+
+        partial void OnShowPricesChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowTotalInHeaderWithPrice));
         }
 
         /// <summary>Build merged list: order details first (with qty), then previously ordered not in order (qty 0). Same logic as PreviouslyOrderedTemplatePageViewModel.LoadOrderData.</summary>
@@ -270,10 +317,9 @@ namespace LaceupMigration.ViewModels.SelfService
 
         private void RefilterDisplay()
         {
-            DisplayProducts.Clear();
             var toShow = ShowRecentlyOrdered ? _mergedList : _mergedList.Where(x => x.ExistingDetail != null).ToList();
-            foreach (var item in toShow)
-                DisplayProducts.Add(item);
+            // Replace collection in one shot to avoid 1 Clear + N Add (each Add triggers UI layout; 18 items = 842 ms).
+            DisplayProducts = new ObservableCollection<SelfServiceOrderProductViewModel>(toShow);
         }
 
         /// <summary>Update one or more rows in place from current order (no full list rebuild).</summary>
@@ -610,7 +656,7 @@ namespace LaceupMigration.ViewModels.SelfService
 
                 if (Client.Clients.Count > 1)
                 {
-                    await Shell.Current.GoToAsync("selfservice/clientlist");
+                    await Shell.Current.GoToAsync("//selfservice/clientlist");
                 }
                 else
                 {
@@ -728,7 +774,7 @@ namespace LaceupMigration.ViewModels.SelfService
         private async Task GoToCatalog()
         {
             if (OrderId == null || _order?.Client == null) return;
-            await Shell.Current.GoToAsync($"fullcategory?orderId={OrderId}&clientId={_order.Client.ClientId}&comingFrom=SelfService");
+            await Shell.Current.GoToAsync($"selfservice/categories?orderId={OrderId}");
         }
 
         /// <summary>Open search popup: user types Name, Code, UPC, or SKU; navigate to product catalog with filter if match, else "Product not found".</summary>
@@ -755,7 +801,7 @@ namespace LaceupMigration.ViewModels.SelfService
             if (hasMatch)
             {
                 var encoded = Uri.EscapeDataString(searchTrim);
-                await Shell.Current.GoToAsync($"productcatalog?orderId={OrderId}&clientId={_order.Client.ClientId}&comingFrom=SelfService&productSearch={encoded}");
+                await Shell.Current.GoToAsync($"selfservice/catalog?orderId={OrderId}&productSearch={encoded}");
             }
             else
             {

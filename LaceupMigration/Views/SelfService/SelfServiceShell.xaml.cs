@@ -15,9 +15,6 @@ namespace LaceupMigration.Views.SelfService
             Routing.RegisterRoute("selfservice/categories", typeof(SelfServiceCategoriesPage));
             Routing.RegisterRoute("selfservice/collectpayment", typeof(SelfServiceCollectPaymentPage));
             Routing.RegisterRoute("selfservice/credittemplate", typeof(SelfServiceCreditTemplatePage));
-            // Reuse main app catalog flow: Categories → ProductCatalog (and FullCategory if needed)
-            Routing.RegisterRoute("fullcategory", typeof(LaceupMigration.Views.FullCategoryPage));
-            Routing.RegisterRoute("productcatalog", typeof(LaceupMigration.Views.ProductCatalogPage));
             // More options: View Captured Images, PDF viewer (Send by Email)
             Routing.RegisterRoute("viewcapturedimages", typeof(LaceupMigration.Views.ViewCapturedImagesPage));
             Routing.RegisterRoute("pdfviewer", typeof(LaceupMigration.UtilDlls.PdfViewer));
