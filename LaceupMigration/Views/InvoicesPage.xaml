@@ -103,6 +103,8 @@
                                  IsVisible="{Binding IsGroupHeader}" />
                         <Grid Padding="8,6"
                               BackgroundColor="#DDF0FF"
+                              MinimumHeightRequest="44"
+                              VerticalOptions="Center"
                               IsVisible="{Binding IsGroupHeader}">
                             <Label Text="{Binding ClientName}"
                                    FontSize="15"
@@ -110,11 +112,13 @@
                                    TextColor="Black" />
                         </Grid>
                         
-                        <!-- Invoice Item -->
+                        <!-- Invoice Item: MinimumHeightRequest prevents iOS row collapse on reload -->
                         <Grid ColumnDefinitions="Auto,*,Auto"
                               Padding="8,4"
                               BackgroundColor="White"
                               InputTransparent="False"
+                              MinimumHeightRequest="56"
+                              VerticalOptions="Center"
                               IsVisible="{Binding IsGroupHeader, Converter={StaticResource InvertedBoolConverter}}">
                             <Grid.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding InvoiceItem.ViewDetailsCommand}" />
