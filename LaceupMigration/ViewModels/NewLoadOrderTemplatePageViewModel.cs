@@ -359,6 +359,63 @@ namespace LaceupMigration.ViewModels
             }
         }
 
+        /// <summary>
+        /// Called when user presses Back. Returns true to prevent navigation (show message or handle term selection and navigate from here), false to allow page to go back.
+        /// Matches Xamarin NewLoadOrderTemplateActivity OnKeyDown(Keycode.Back).
+        /// </summary>
+        public async Task<bool> OnBackButtonPressedAsync()
+        {
+            if (_loadOrder == null)
+                return false;
+
+            var count = _loadOrder.Details.Count(x => x.LoadStarting != -1);
+
+            if (count > 0 && !_canGetOut && !_readOnly)
+            {
+                await _dialogService.ShowAlertAsync("You must save your order before continuing.", "Warning", "OK");
+                return true; // Prevent navigation
+            }
+
+            if (count > 0 && Config.ShipDateIsMandatory && _loadOrder.ShipDate.Year == 1)
+            {
+                await _dialogService.ShowAlertAsync("You must select a ship date before continuing.", "Alert", "OK");
+                return true;
+            }
+
+            bool hasTerm = true;
+            if (count > 0 && Config.UseTermsInLoadOrder)
+            {
+                hasTerm = false;
+                if (!string.IsNullOrEmpty(_loadOrder.ExtraFields))
+                {
+                    var term = UDFHelper.GetSingleUDF("cashTerm", _loadOrder.ExtraFields);
+                    if (!string.IsNullOrEmpty(term))
+                        hasTerm = true;
+                }
+            }
+
+            if (count == 0)
+                _loadOrder.Delete();
+
+            if (Config.MasterLoadOrder && count > 0)
+            {
+                var drivers = Salesman.List.Where(x => x.IsActive).ToList();
+                if (drivers.Count > 0 && _loadOrder.SalesmanId == 0)
+                {
+                    await _dialogService.ShowAlertAsync("You must select a driver.", "Warning", "OK");
+                    return true;
+                }
+            }
+
+            if (!hasTerm)
+            {
+                await SelectLoadTermAsync();
+                return true; // We navigated (or user cancelled) in SelectLoadTermAsync; do not call base.GoBack()
+            }
+
+            return false; // Allow navigation
+        }
+
         [RelayCommand]
         private async Task Prod()
         {

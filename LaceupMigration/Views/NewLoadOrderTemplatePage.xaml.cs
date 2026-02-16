@@ -106,8 +106,11 @@ namespace LaceupMigration.Views
 
         protected override string? GetRouteName() => "newloadordertemplate";
 
-        protected override void GoBack()
+        protected override async void GoBack()
         {
+            // Match Xamarin NewLoadOrderTemplateActivity OnKeyDown(Back): must save order, ship date, driver, term
+            if (await _viewModel.OnBackButtonPressedAsync())
+                return;
             base.GoBack();
         }
 
