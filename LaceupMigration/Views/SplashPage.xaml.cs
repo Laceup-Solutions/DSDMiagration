@@ -16,10 +16,9 @@ namespace LaceupMigration
 		{
 			base.OnAppearing();
 			
-			// [MIGRATION]: Sign Out fix - if user is signed out, immediately redirect to login
-			// This allows navigation to ///Splash to clear stack, then immediately go to login
-			// Splash won't be visible because redirect happens immediately
-			if (!Config.SignedIn)
+			// When signed out: redirect to login only if NOT in self-service mode.
+			// In self-service mode we run Initialize so RouteNextAsync can go straight to self-service shell (e.g. select company) and never show the main app login page.
+			if (!Config.SignedIn && !Config.EnableSelfServiceModule)
 			{
 				_viewModel.RedirectToLoginAsync();
 				return;

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using LaceupMigration;
 using LaceupMigration.ViewModels.SelfService;
 
 namespace LaceupMigration.Views.SelfService
@@ -8,9 +10,12 @@ namespace LaceupMigration.Views.SelfService
         {
             InitializeComponent();
             BindingContext = viewModel;
+            OverrideBaseMenu = true; // No MENU toolbar item on this page; only Checkout
         }
 
         protected override string? GetRouteName() => "selfservice/catalog";
+
+        protected override List<MenuOption> GetPageSpecificMenuOptions() => new List<MenuOption>();
 
         protected override void OnAppearing()
         {

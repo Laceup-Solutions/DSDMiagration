@@ -1446,6 +1446,11 @@ namespace LaceupMigration.ViewModels
             Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
             System.Diagnostics.Debug.WriteLine("[ProductCatalog] GoBackAsync: removing state productcatalog, popping");
             await Shell.Current.GoToAsync("..");
+            if (_viaFullCategory)
+            {
+                Helpers.NavigationHelper.RemoveNavigationState("fullcategory");
+                await Shell.Current.GoToAsync("..");
+            }
         }
 
         private enum ViewTypes
@@ -1534,6 +1539,10 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private string _suggestedLabelText = string.Empty;
 
+        /// <summary>Sum of qty across all sublines (Values). Used for Advanced Catalog style [-] qty [+] display.</summary>
+        [ObservableProperty]
+        private float _totalQty;
+
         public Order? Order { get; set; } // Store order reference to check if product is suggested
 
         public void UpdateDisplay()
@@ -1562,6 +1571,9 @@ namespace LaceupMigration.ViewModels
 
             // Update has values
             HasValues = Values.Count > 0 && Values.Any(v => v.Qty > 0);
+
+            // Total qty (sum of all sublines) - for Advanced Catalog style single-row display
+            TotalQty = (float)Values.Sum(v => v.Qty);
 
             // Update price and type text from first value with Qty > 0
             var firstValue = Values.FirstOrDefault(v => v.Qty > 0);

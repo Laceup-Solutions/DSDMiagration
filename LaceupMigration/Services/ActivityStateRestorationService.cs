@@ -305,6 +305,21 @@ namespace LaceupMigration.Services
                 }
             }
 
+            // When restoring self-service, do not include login in the stack so back/reopen never shows login
+            if (stack.Any(r => r.TrimStart('/').StartsWith("selfservice/", StringComparison.OrdinalIgnoreCase)))
+            {
+                var loginRoutes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "login", "loginconfig", "newlogin", "bottlelogin" };
+                for (int i = stack.Count - 1; i >= 0; i--)
+                {
+                    var baseRoute = stack[i].Split('?')[0].TrimStart('/');
+                    if (loginRoutes.Contains(baseRoute))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ActivityStateRestoration] Excluding login from self-service stack: {baseRoute}");
+                        stack.RemoveAt(i);
+                    }
+                }
+            }
+
             return stack;
         }
 

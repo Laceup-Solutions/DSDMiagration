@@ -37,7 +37,7 @@
                                 <VerticalStackLayout Grid.Column="0">
                                     <Label Text="{Binding ProductName}" FontSize="16" FontAttributes="Bold"/>
                                     <Label Text="{Binding LastOrderedText}" FontSize="14" TextColor="Gray"/>
-                                    <Label Text="{Binding PriceText}" FontSize="14"/>
+                                    <Label Text="{Binding PriceText}" FontSize="14" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceTemplatePageViewModel}}, Path=ShowPrices}"/>
                                 </VerticalStackLayout>
                                 <Button Grid.Column="1" 
                                         Text="Add"

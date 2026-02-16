@@ -43,10 +43,15 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private bool _canEdit = true;
 
+        /// <summary>When false (HidePriceInSelfServiceKey=1), all prices and totals are hidden in self service.</summary>
+        [ObservableProperty]
+        private bool _showPrices = true;
+
         public SelfServiceCreditTemplatePageViewModel(IDialogService dialogService, ILaceupAppService appService)
         {
             _dialogService = dialogService;
             _appService = appService;
+            ShowPrices = !Config.HidePriceInSelfService;
         }
 
         public void ApplyQueryAttributes(System.Collections.Generic.IDictionary<string, object> query)
@@ -69,6 +74,7 @@ namespace LaceupMigration.ViewModels.SelfService
 
         public void OnAppearing()
         {
+            ShowPrices = !Config.HidePriceInSelfService;
             if (_order != null)
             {
                 // Xamarin PreviouslyOrderedTemplateActivity logic:

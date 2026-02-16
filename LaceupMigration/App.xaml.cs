@@ -14,7 +14,6 @@ namespace LaceupMigration
 			if (Current != null)
 				Current.UserAppTheme = AppTheme.Light;
 
-			// MauiIcons init can fail in release (e.g. font/reflection); don't crash app startup
 			try
 			{
 				_ = new MauiIcon();
@@ -34,10 +33,6 @@ namespace LaceupMigration
 			CurrentScanner.scanner = serviceProvider.GetService<IScannerService>();
 			DialogHelper._dialogService = serviceProvider.GetService<IDialogService>();
 
-			// [MIGRATION]: Initialize Config at app startup (matches Xamarin LaceupActivity.InitializeApplication)
-			// This creates ALL directories (SessionPath, InvoicesPath, DataPath, etc.) BEFORE any pages load
-			// This prevents "Could not find a part of the path" errors on Android tablet emulators
-			// Must be called synchronously here to ensure directories exist before any file operations
 			try
 			{
 				Config.Initialize();
@@ -53,9 +48,7 @@ namespace LaceupMigration
 		protected override Window CreateWindow(IActivationState? activationState)
 		{
 			var window = new Window(_appShell);
-			
-			// [ACTIVITY STATE]: Initialize navigation tracking after window is created
-			// Shell is now available
+
 			Helpers.NavigationTracker.Initialize(_appShell);
 			
 			return window;
@@ -64,9 +57,13 @@ namespace LaceupMigration
 		/// <summary>
 		/// Switch to the Self Service shell and optionally navigate to a route.
 		/// Use when Config.EnableSelfServiceModule and after login or from splash.
+		/// Removes login pages from ActivityState so they are not in the stack when the app closes and reopens.
 		/// </summary>
 		public static async Task SwitchToSelfServiceShellAsync(string route)
 		{
+			// Remove login from navigation state so on app close/reopen we don't restore or show login in the stack
+			RemoveLoginFromActivityState();
+
 			var shell = Services.GetRequiredService<Views.SelfService.SelfServiceShell>();
 			Current!.MainPage = shell;
 			try
@@ -80,8 +77,22 @@ namespace LaceupMigration
 		}
 
 		/// <summary>
-		/// Switch back to the main app shell (e.g. when signing out of self service).
+		/// Removes all login-related ActivityState entries so they are not persisted or restored when in self-service.
 		/// </summary>
+		private static void RemoveLoginFromActivityState()
+		{
+			var loginTypes = new[] { "LoginActivity", "LoginConfigActivity", "NewLoginActivity", "BottleLoginActivity" };
+			foreach (var activityType in loginTypes)
+			{
+				var state = ActivityState.GetState(activityType);
+				if (state != null)
+				{
+					ActivityState.RemoveState(state);
+					System.Diagnostics.Debug.WriteLine($"[SelfService] Removed {activityType} from ActivityState");
+				}
+			}
+		}
+
 		public static void SwitchToMainShell()
 		{
 			if (_mainShellRef != null)

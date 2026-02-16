@@ -28,12 +28,17 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private string _totalText = "Total: $0.00";
 
+        /// <summary>When false (HidePriceInSelfServiceKey=1), all prices and totals are hidden in self service.</summary>
+        [ObservableProperty]
+        private bool _showPrices = true;
+
         private bool _isUpdatingSelectAll;
 
         public SelfServiceCollectPaymentPageViewModel(IDialogService dialogService, ILaceupAppService appService)
         {
             _dialogService = dialogService;
             _appService = appService;
+            ShowPrices = !Config.HidePriceInSelfService;
         }
 
         public void ApplyQueryAttributes(System.Collections.Generic.IDictionary<string, object> query)
@@ -52,6 +57,7 @@ namespace LaceupMigration.ViewModels.SelfService
 
         public void OnAppearing()
         {
+            ShowPrices = !Config.HidePriceInSelfService;
             LoadPayments();
             RefreshTotal();
         }

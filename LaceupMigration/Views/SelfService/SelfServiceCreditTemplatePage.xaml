@@ -25,7 +25,7 @@
                    FontSize="14"/>
         </Grid>
         
-        <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,0,0,10">
+        <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,0,0,10" IsVisible="{Binding ShowPrices}">
             <Label Grid.Column="0" 
                    Text="{Binding SubtotalText}" 
                    FontSize="14"/>
@@ -34,7 +34,7 @@
                    FontSize="14"/>
         </Grid>
         
-        <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,0,0,10">
+        <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,0,0,10" IsVisible="{Binding ShowPrices}">
             <Label Grid.Column="0" 
                    Text="{Binding TaxText}" 
                    FontSize="14"/>
@@ -81,7 +81,8 @@
                                        FontSize="14" 
                                        TextColor="Gray"/>
                                 <Label Text="{Binding PriceText}" 
-                                       FontSize="14"/>
+                                       FontSize="14"
+                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCreditTemplatePageViewModel}}, Path=ShowPrices}"/>
                             </VerticalStackLayout>
                             <Button Grid.Column="1" 
                                     Text="Remove" 

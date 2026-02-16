@@ -375,5 +375,24 @@ namespace LaceupMigration.Converters
             throw new NotImplementedException();
         }
     }
+
+    /// <summary>
+    /// Returns true when value (HasValues) is true and Config.HidePriceInSelfService is false.
+    /// Used in self service catalog to show total only when item has values and prices are not hidden.
+    /// </summary>
+    public class ShowWhenHasValuesAndPricesConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is bool hasValues && hasValues)
+                return !LaceupMigration.Config.HidePriceInSelfService;
+            return false;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
 

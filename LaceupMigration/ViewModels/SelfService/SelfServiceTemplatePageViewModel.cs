@@ -34,12 +34,17 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private string _sortByText = "Sort By: Product Name";
 
+        /// <summary>When false (HidePriceInSelfServiceKey=1), all prices are hidden in self service.</summary>
+        [ObservableProperty]
+        private bool _showPrices = true;
+
         public int? OrderId => _order?.OrderId;
 
         public SelfServiceTemplatePageViewModel(IDialogService dialogService, ILaceupAppService appService)
         {
             _dialogService = dialogService;
             _appService = appService;
+            ShowPrices = !Config.HidePriceInSelfService;
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -56,6 +61,7 @@ namespace LaceupMigration.ViewModels.SelfService
 
         public void OnAppearing()
         {
+            ShowPrices = !Config.HidePriceInSelfService;
             if (_order != null)
             {
                 LoadTemplate();
