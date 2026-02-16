@@ -46,7 +46,9 @@
                    Padding="12"
                    HasShadow="False"
                    BorderColor="#E0E0E0"
-                   CornerRadius="10">
+                   CornerRadius="10"
+                   MinimumHeightRequest="88"
+                   VerticalOptions="Center">
                 <Frame.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding ViewDetailsCommand}" />
                 </Frame.GestureRecognizers>
@@ -98,10 +100,13 @@
             <VerticalStackLayout Spacing="4">
                 <Frame Padding="12"
                        BackgroundColor="#F5F5F5"
-                       HasShadow="False">
+                       HasShadow="False"
+                       MinimumHeightRequest="48"
+                       VerticalOptions="Center">
                     <Label Text="{Binding ClientName}"
                            FontSize="16"
-                           FontAttributes="Bold" />
+                           FontAttributes="Bold"
+                           VerticalOptions="Center" />
                 </Frame>
                 <CollectionView ItemsSource="{Binding Payments}"
                                 ItemTemplate="{StaticResource PaymentItemTemplate}"
@@ -199,6 +204,10 @@
                         ItemsSource="{Binding ClientGroups}"
                         ItemTemplate="{StaticResource ClientGroupTemplate}"
                         SelectionMode="None"
-                        EmptyView="No payments available." />
+                        EmptyView="No payments available.">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Vertical" ItemSpacing="8" />
+            </CollectionView.ItemsLayout>
+        </CollectionView>
     </Grid>
 </ContentPage>

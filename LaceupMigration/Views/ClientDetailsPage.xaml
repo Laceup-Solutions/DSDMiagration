@@ -39,7 +39,8 @@
 
             <CollectionView x:Name="ClientDetailsCollection"
                             ItemsSource="{Binding ClientDetails}"
-                            SelectionMode="None">
+                            SelectionMode="None"
+                            ItemSizingStrategy="MeasureFirstItem">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:ClientDetailItemViewModel">
                         <Label Text="{Binding Text}"
@@ -74,7 +75,8 @@
                        TextColor="{StaticResource PrimaryDark}" />
                 <CollectionView x:Name="OrdersCollectionView"
                                 ItemsSource="{Binding Orders}"
-                                SelectionMode="Single">
+                                SelectionMode="Single"
+                                ItemSizingStrategy="MeasureFirstItem">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="vm:ClientOrderViewModel">
                             <Grid Style="{StaticResource CollectionViewItemStyle}">
@@ -121,7 +123,8 @@
                                 IsGrouped="True"
                                 SelectionMode="Single"
                                 RemainingItemsThreshold="1"
-                                RemainingItemsThresholdReachedCommand="{Binding LoadMoreInvoicesCommand}">
+                                RemainingItemsThresholdReachedCommand="{Binding LoadMoreInvoicesCommand}"
+                                ItemSizingStrategy="MeasureFirstItem">
                     <CollectionView.ItemsLayout>
                         <LinearItemsLayout Orientation="Vertical" ItemSpacing="0" />
                     </CollectionView.ItemsLayout>
