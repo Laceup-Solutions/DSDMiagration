@@ -57,6 +57,7 @@ namespace LaceupMigration
             builder.Services.AddSingleton<LaceupMigration.Business.Interfaces.IDatePickerService, Platforms.Android.DatePickerService>();
 #elif IOS
             builder.Services.AddSingleton<LaceupMigration.Business.Interfaces.ICameraBarcodeScannerService, Platforms.iOS.Services.CameraBarcodeScannerService>();
+            builder.Services.AddSingleton<LaceupMigration.Business.Interfaces.IDatePickerService, Platforms.iOS.DatePickerService>();
 #endif
 
             // Register DialogService - use same instance for both interface and concrete type

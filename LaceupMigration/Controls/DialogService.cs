@@ -609,8 +609,7 @@ public class DialogService : IDialogService
     
     public async Task<DateTime?> ShowDatePickerAsync(string title, DateTime? initialDate = null, DateTime? minimumDate = null, DateTime? maximumDate = null)
     {
-#if ANDROID
-        // Use platform-specific Android date picker
+        // Use platform-specific native date picker (Android: DatePickerDialog, iOS: UIDatePicker)
         try
         {
             var datePickerService = App.Services?.GetService<LaceupMigration.Business.Interfaces.IDatePickerService>();
@@ -623,9 +622,8 @@ public class DialogService : IDialogService
         {
             // Fall through to default implementation if service is not available
         }
-#endif
 
-        // Default implementation for other platforms or fallback
+        // Fallback: text prompt when native picker not available
         var page = GetCurrentPage();
         if (page == null)
             return null;
