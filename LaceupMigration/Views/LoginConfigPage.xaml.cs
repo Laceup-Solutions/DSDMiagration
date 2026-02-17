@@ -2,7 +2,7 @@ using LaceupMigration.ViewModels;
 
 namespace LaceupMigration
 {
-	public partial class LoginConfigPage 
+	public partial class LoginConfigPage : MainTabContentPage
 	{
 		public LoginConfigPage(LoginConfigPageViewModel viewModel)
 		{

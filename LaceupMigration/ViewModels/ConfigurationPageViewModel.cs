@@ -1190,6 +1190,9 @@ namespace LaceupMigration.ViewModels
                 // Notify ClientsPage (and others) so routeDate can be reset to today
                 MessagingCenter.Send<ConfigurationPageViewModel>(this, "DataCleared");
 
+                // So Invoices/Orders/Payments tabs clear selection when user opens them next
+                LaceupMigration.Helpers.ClearDataState.SetClearSelectionOnNextTabAppear();
+
                 // Stay on Configuration screen after clear (do not navigate away)
             }
             catch (Exception ex)

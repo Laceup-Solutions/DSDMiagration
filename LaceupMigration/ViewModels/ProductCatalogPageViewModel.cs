@@ -275,6 +275,8 @@ namespace LaceupMigration.ViewModels
 
             foreach (var product in productsForOrder)
             {
+                var img = ProductImage.GetProductImage(product.ProductId);
+
                 var catalogItem = new CatalogItemViewModel
                 {
                     ProductId = product.ProductId,
@@ -282,7 +284,10 @@ namespace LaceupMigration.ViewModels
                     ProductName = product.Name,
                     Upc = product.Upc ?? "",
                     Sku = product.Sku ?? "",
-                    Code = product.Code ?? ""
+                    Code = product.Code ?? "",
+                    ProductImg = img,
+                    HasImage = !string.IsNullOrEmpty(img),
+                    Inventory = Math.Round(product.GetInventory(_order.AsPresale), 2).ToString()
                 };
 
                 var clientSourceKey = clientSource.Keys.FirstOrDefault(x => x.ProductId == product.ProductId);
@@ -637,6 +642,8 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
+            // Add back current qty so inventory updates correctly, then subtract new qty
+            _order.UpdateInventory(existingDetail, 1);
             existingDetail.Qty = result.Qty;
             existingDetail.Weight = result.Weight;
             existingDetail.Lot = result.Lot;
@@ -649,6 +656,7 @@ namespace LaceupMigration.ViewModels
             existingDetail.ReasonId = result.ReasonId;
             if (result.PriceLevelSelected > 0)
                 existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
+            _order.UpdateInventory(existingDetail, -1);
 
             OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, existingDetail);
             OrderDetail.UpdateRelated(existingDetail, _order);
@@ -804,6 +812,7 @@ namespace LaceupMigration.ViewModels
             OrderDetail? updatedDetail = null;
             if (existingDetail != null)
             {
+                _order.UpdateInventory(existingDetail, 1);
                 existingDetail.Qty = result.Qty;
                 existingDetail.Weight = result.Weight;
                 existingDetail.Lot = result.Lot;
@@ -819,6 +828,7 @@ namespace LaceupMigration.ViewModels
                 {
                     existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
                 }
+                _order.UpdateInventory(existingDetail, -1);
                 updatedDetail = existingDetail;
             }
             else
@@ -872,6 +882,7 @@ namespace LaceupMigration.ViewModels
                 }
                 detail.CalculateOfferDetail();
                 _order.AddDetail(detail);
+                _order.UpdateInventory(detail, -1);
                 updatedDetail = detail;
             }
 
@@ -924,6 +935,7 @@ namespace LaceupMigration.ViewModels
             OrderDetail? updatedDetail = null;
             if (existingDetail != null)
             {
+                _order.UpdateInventory(existingDetail, 1);
                 // Update existing detail
                 existingDetail.Qty = result.Qty;
                 existingDetail.Weight = result.Weight;
@@ -939,6 +951,7 @@ namespace LaceupMigration.ViewModels
                 {
                     existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
                 }
+                _order.UpdateInventory(existingDetail, -1);
                 updatedDetail = existingDetail;
             }
             else
@@ -996,6 +1009,7 @@ namespace LaceupMigration.ViewModels
                 }
                 detail.CalculateOfferDetail();
                 _order.AddDetail(detail);
+                _order.UpdateInventory(detail, -1);
                 updatedDetail = detail;
             }
 
@@ -1484,7 +1498,8 @@ namespace LaceupMigration.ViewModels
                 }
             }
         }
-        
+
+        [ObservableProperty] public string _productImg = string.Empty;
         public ObservableCollection<OdLine> Values { get; } = new();
 
         [ObservableProperty]

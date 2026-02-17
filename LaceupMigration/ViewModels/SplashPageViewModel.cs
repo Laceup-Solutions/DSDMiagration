@@ -133,17 +133,25 @@ namespace LaceupMigration.ViewModels
 									}
 									else
 									{
-										var firstRoute = restorationStack[0];
-										var absFirst = (firstRoute?.StartsWith("//") == true) ? firstRoute : "//" + firstRoute;
-										await App.SwitchToSelfServiceShellAsync(absFirst);
-										for (int i = 1; i < restorationStack.Count; i++)
+										try
 										{
-											var route = restorationStack[i];
-											if (!string.IsNullOrEmpty(route))
+											ActivityStateRestorationService.IsRestoringState = true;
+											var firstRoute = restorationStack[0];
+											var absFirst = (firstRoute?.StartsWith("//") == true) ? firstRoute : "//" + firstRoute;
+											await App.SwitchToSelfServiceShellAsync(absFirst);
+											for (int i = 1; i < restorationStack.Count; i++)
 											{
-												await Shell.Current.GoToAsync(route);
-												await Task.Delay(200);
+												var route = restorationStack[i];
+												if (!string.IsNullOrEmpty(route))
+												{
+													await Shell.Current.GoToAsync(route);
+													await Task.Delay(200);
+												}
 											}
+										}
+										finally
+										{
+											ActivityStateRestorationService.IsRestoringState = false;
 										}
 									}
 								}
@@ -156,21 +164,29 @@ namespace LaceupMigration.ViewModels
 									}
 									else
 									{
-										for (int i = 0; i < restorationStack.Count; i++)
+										try
 										{
-											var route = restorationStack[i];
-											if (i == 0)
+											ActivityStateRestorationService.IsRestoringState = true;
+											for (int i = 0; i < restorationStack.Count; i++)
 											{
-												if (route?.StartsWith("///") == true)
-													await Shell.Current.GoToAsync(route);
+												var route = restorationStack[i];
+												if (i == 0)
+												{
+													if (route?.StartsWith("///") == true)
+														await Shell.Current.GoToAsync(route);
+													else
+														await Shell.Current.GoToAsync($"///MainPage/{route}");
+												}
 												else
-													await Shell.Current.GoToAsync($"///MainPage/{route}");
+												{
+													await Shell.Current.GoToAsync(route);
+													await Task.Delay(200);
+												}
 											}
-											else
-											{
-												await Shell.Current.GoToAsync(route);
-												await Task.Delay(200);
-											}
+										}
+										finally
+										{
+											ActivityStateRestorationService.IsRestoringState = false;
 										}
 									}
 								}

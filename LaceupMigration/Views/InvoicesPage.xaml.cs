@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LaceupMigration
 {
-	public partial class InvoicesPage : ContentPage
+	public partial class InvoicesPage : MainTabContentPage
 	{
 		private readonly InvoicesPageViewModel _viewModel;
 		private readonly MainPageViewModel _mainViewModel;

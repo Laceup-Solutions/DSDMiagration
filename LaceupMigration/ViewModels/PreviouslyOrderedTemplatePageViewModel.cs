@@ -237,7 +237,8 @@ namespace LaceupMigration.ViewModels
             }
 
             // Xamarin PreviouslyOrderedTemplateActivity: when creating Activity, if UpdateInventoryInPresale && AsPresale run inventory update then refresh, else just refresh
-            if (!inventoryUpdated && _order != null && Config.UpdateInventoryInPresale && _order.AsPresale)
+            // Skip the one-time inventory update during state restoration so we don't block navigating through to the restored page (e.g. ProductCatalogPage)
+            if (!ActivityStateRestorationService.IsRestoringState && !inventoryUpdated && _order != null && Config.UpdateInventoryInPresale && _order.AsPresale)
             {
                 inventoryUpdated = true;
                 await RunPresaleInventoryUpdateAsync();
@@ -458,8 +459,9 @@ namespace LaceupMigration.ViewModels
 
         private PreviouslyOrderedProductViewModel CreatePreviouslyOrderedProductViewModel(Product product, LastTwoDetails orderedItem)
         {
-            // When order is not AsPresale, OH = truck inventory (GetInventory returns truck); otherwise warehouse
-            var onHand = _order != null ? product.GetInventory(_order.AsPresale, false) : product.CurrentWarehouseInventory;
+            // When order is not AsPresale, OH = truck inventory (GetInventory returns truck); otherwise warehouse. No UOM yet (history-only row).
+            var baseInv = _order != null ? product.GetInventory(_order.AsPresale, false) : product.CurrentWarehouseInventory;
+            var onHand = baseInv; // no UOM for history-only row
             var listPrice = Product.GetPriceForProduct(product, _order, false, false);
             var expectedPrice = Product.GetPriceForProduct(product, _order, false, false);
 
@@ -507,6 +509,8 @@ namespace LaceupMigration.ViewModels
                 ProductName = product.Name,
                 OnHandText = $"OH: {onHand:F0}",
                 ListPriceText = $"List Price: {listPrice.ToCustomString()}",
+                UomDisplayText = string.Empty,
+                ShowUomLabel = false,
                 LastVisitText = lastVisitText,
                 ShowLastVisit = showLastVisit,
                 PerWeekText = $"Per week: {perWeek:F2}",
@@ -529,8 +533,11 @@ namespace LaceupMigration.ViewModels
         private PreviouslyOrderedProductViewModel CreatePreviouslyOrderedProductViewModelFromOrderDetail(OrderDetail orderDetail)
         {
             var product = orderDetail.Product;
-            // When order is not AsPresale, OH = truck inventory (GetInventory returns truck); otherwise warehouse
-            var onHand = _order != null ? product.GetInventory(_order.AsPresale, false) : product.CurrentWarehouseInventory;
+            // OH in this detail's UOM: base inventory / UOM conversion (so it updates as qty is modified)
+            var baseInv = _order != null ? product.GetInventory(_order.AsPresale, false) : product.CurrentWarehouseInventory;
+            var conversion = orderDetail.UnitOfMeasure?.Conversion ?? 1f;
+            var onHandInUom = conversion != 0 ? baseInv / conversion : baseInv;
+            var onHand = onHandInUom;
             var listPrice = Product.GetPriceForProduct(product, _order, false, false);
             var expectedPrice = orderDetail.ExpectedPrice > 0 ? orderDetail.ExpectedPrice : Product.GetPriceForProduct(product, _order, false, false);
 
@@ -582,6 +589,8 @@ namespace LaceupMigration.ViewModels
             }
 
             var uomText = orderDetail.UnitOfMeasure != null ? orderDetail.UnitOfMeasure.Name : string.Empty;
+            var uomDisplayText = orderDetail.UnitOfMeasure != null ? "UOM: " + orderDetail.UnitOfMeasure.Name : string.Empty;
+            var showUomLabel = orderDetail.UnitOfMeasure != null;
 
             var vm = new PreviouslyOrderedProductViewModel(this)
             {
@@ -589,6 +598,8 @@ namespace LaceupMigration.ViewModels
                 ProductName = product.Name,
                 OnHandText = $"OH: {onHand:F0}",
                 ListPriceText = $"List Price: {listPrice.ToCustomString()}",
+                UomDisplayText = uomDisplayText,
+                ShowUomLabel = showUomLabel,
                 LastVisitText = lastVisitText,
                 ShowLastVisit = showLastVisit,
                 PerWeekText = $"Per week: {perWeek:F2}",
@@ -1418,15 +1429,6 @@ namespace LaceupMigration.ViewModels
                     }));
                 }
 
-                // Select Company (presale) - Xamarin: visible when CompanyInfo.Companies.Count > 1
-                if (CompanyInfo.Companies.Count > 1)
-                {
-                    options.Add(new MenuOption("Select Company", async () =>
-                    {
-                        await SelectCompanyAsync();
-                    }));
-                }
-
                 // Convert Quote to Sales Order - Config.CanModifyQuotes && IsQuote && !IsDelivery
                 if (Config.CanModifyQuotes && _order.IsQuote && !_order.IsDelivery)
                 {
@@ -1549,15 +1551,6 @@ namespace LaceupMigration.ViewModels
                     options.Add(new MenuOption("Share", async () =>
                     {
                         await SharePdfAsync();
-                    }));
-                }
-
-                // Select Company (non-presale) - Xamarin: visible when CompanyInfo.Companies.Count > 1
-                if (CompanyInfo.Companies.Count > 1)
-                {
-                    options.Add(new MenuOption("Select Company", async () =>
-                    {
-                        await SelectCompanyAsync();
                     }));
                 }
 
@@ -2354,6 +2347,14 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private string _uomText = string.Empty;
 
+        /// <summary>Display text "UOM: name" for the detail's unit of measure. Empty when UOM is null (hide label).</summary>
+        [ObservableProperty]
+        private string _uomDisplayText = string.Empty;
+
+        /// <summary>True when the detail has a UOM so the UOM label is shown above list price.</summary>
+        [ObservableProperty]
+        private bool _showUomLabel;
+
         [ObservableProperty]
         private string _totalText = "Total: $0.00";
 
@@ -2415,7 +2416,9 @@ namespace LaceupMigration.ViewModels
             // Update price and UoM from order detail
             PriceText = $"Price: {orderDetail.Price.ToCustomString()}";
             UomText = orderDetail.UnitOfMeasure != null ? orderDetail.UnitOfMeasure.Name : string.Empty;
-            
+            UomDisplayText = orderDetail.UnitOfMeasure != null ? "UOM: " + orderDetail.UnitOfMeasure.Name : string.Empty;
+            ShowUomLabel = orderDetail.UnitOfMeasure != null;
+
             // Note: Quantity is set in the sync loop, but we ensure it's correct here too
             // This ensures the quantity is always from the actual order detail
             if (Math.Abs(Quantity - (double)orderDetail.Qty) > 0.001) // Only update if different (avoid unnecessary property change)
@@ -2423,10 +2426,15 @@ namespace LaceupMigration.ViewModels
                 Quantity = (double)orderDetail.Qty; // Convert float to double, use ACTUAL order qty
             }
 
-            // Refresh OH (truck when !AsPresale, warehouse when AsPresale)
+            // Refresh OH for this detail's UOM (inventory in base / UOM conversion so it reflects changes as qty is modified)
             var product = GetProduct();
             if (_parent._order != null && product != null)
-                OnHandText = $"OH: {product.GetInventory(_parent._order.AsPresale, false):F0}";
+            {
+                var baseInv = product.GetInventory(_parent._order.AsPresale, false);
+                var conversion = orderDetail.UnitOfMeasure?.Conversion ?? 1f;
+                var onHandInUom = conversion != 0 ? baseInv / conversion : baseInv;
+                OnHandText = $"OH: {onHandInUom:F0}";
+            }
 
             UpdateOrgQtyFromOrder();
             
@@ -2604,6 +2612,8 @@ namespace LaceupMigration.ViewModels
             OrderDetail? updatedDetail = null;
             if (existingDetail != null)
             {
+                // Add back current qty to inventory before changing, then subtract new qty (so OH display updates correctly)
+                order.UpdateInventory(existingDetail, 1);
                 // Update existing detail
                 existingDetail.Qty = result.Qty;
                 existingDetail.Weight = result.Weight;
@@ -2619,6 +2629,7 @@ namespace LaceupMigration.ViewModels
                 {
                     existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
                 }
+                order.UpdateInventory(existingDetail, -1);
                 updatedDetail = existingDetail;
             }
             else
@@ -2676,6 +2687,7 @@ namespace LaceupMigration.ViewModels
                 }
                 detail.CalculateOfferDetail();
                 order.AddDetail(detail);
+                order.UpdateInventory(detail, -1);
                 updatedDetail = detail;
             }
 

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -104,7 +105,29 @@ namespace LaceupMigration.ViewModels
 
 		public async Task OnAppearingAsync()
 		{
+			if (ClearDataState.ClearSelectionOnOrdersAppear)
+			{
+				ClearDataState.ClearSelectionOnOrdersAppear = false;
+				ClearSelection();
+			}
 			RefreshUI();
+		}
+
+		private void ClearSelection()
+		{
+			SelectedOrders.Clear();
+			_isUpdatingSelectAll = true;
+			try
+			{
+				RefreshTransactionSections();
+				IsSelectAllChecked = false;
+				RefreshListHeader();
+				UpdateSelectAllState();
+			}
+			finally
+			{
+				_isUpdatingSelectAll = false;
+			}
 		}
 
 		partial void OnSelectedTransactionTypeChanged(string value)

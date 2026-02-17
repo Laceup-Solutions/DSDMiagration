@@ -21,6 +21,14 @@ namespace LaceupMigration.Views
 			base.OnAppearing();
 			await _viewModel.InitializeAsync();
 		}
+		
+		protected override async void GoBack()
+		{
+			if (await _viewModel.OnBackButtonPressedAsync())
+				return; 
+
+			base.GoBack();
+		}
 	}
 }
 

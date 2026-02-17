@@ -745,7 +745,9 @@ namespace LaceupMigration.ViewModels
             var title = component.RefLabelText;
             var initial = component.Ref ?? string.Empty;
             var promptTitle = title;
-            var refStr = await _dialogService.ShowPromptAsync(promptTitle, string.Empty, "Set", "Cancel", string.Empty, 20, initial, Keyboard.Numeric);
+            // When method is Check, use default keyboard so user can enter letters (e.g. check numbers with letters).
+            var keyboard = component.PaymentMethod == InvoicePaymentMethod.Check ? Keyboard.Default : Keyboard.Numeric;
+            var refStr = await _dialogService.ShowPromptAsync(promptTitle, string.Empty, "Set", "Cancel", string.Empty, 20, initial, keyboard);
             if (refStr == null) return;
             component.Ref = refStr.Trim();
             MarkUnsavedChanges();
@@ -1166,8 +1168,8 @@ namespace LaceupMigration.ViewModels
             // Save first if needed (save only — do not exit)
             if (_invoicePayment == null || !_invoicePayment.Printed)
             {
-                var confirmed = await _dialogService.ShowConfirmationAsync("Print Before Finalize", 
-                    "You must save the payment before printing. Save now?", "Yes", "No");
+                var confirmed = await _dialogService.ShowConfirmationAsync("Warning", 
+                    "If you print, you won't be able to modify the payment. Are you sure you'd like to continue?", "Yes", "No");
                 if (confirmed)
                 {
                     if (!await SavePaymentInternal())

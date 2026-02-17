@@ -42,7 +42,7 @@
                                 <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
                                     <!-- Main line: product name, OH, list price, total, + button only (for adding) -->
                                     <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                                        <Image Source="dotnet_bot.png"
+                                        <Image Source="{Binding ProductImg}"
                                                WidthRequest="60"
                                                HeightRequest="60"
                                                Grid.Column="0"

@@ -129,6 +129,21 @@ public class DialogService : IDialogService
         return cancelText;
     }
 
+    /// <summary>Shows a dialog to pick one of the product's UOMs. Returns selected UOM or null if cancelled.</summary>
+    public async Task<UnitOfMeasure?> ShowPickUomForProductAsync(Product product, string title = "Select UOM")
+    {
+        if (product?.UnitOfMeasures == null || product.UnitOfMeasures.Count == 0)
+            return null;
+        var uoms = product.UnitOfMeasures;
+        var buttons = uoms.Select(u => u.Name).ToArray();
+        var cancelText = "Cancel";
+        var result = await ShowActionSheetAsync(title, null, cancelText, buttons);
+        if (string.IsNullOrEmpty(result) || result == cancelText)
+            return null;
+        var index = uoms.FindIndex(u => u.Name == result);
+        return index >= 0 ? uoms[index] : null;
+    }
+
     public async Task<string> ShowPromptAsync(string title, string message, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", int maxLength = -1, string initialValue = "", Keyboard keyboard = null, bool showScanIcon = false, Func<Task<string>> scanAction = null)
     {
         var page = GetCurrentPage();
@@ -2664,6 +2679,10 @@ public class DialogService : IDialogService
         // Price Entry (if can change price)
             Entry priceEntry = null;
             bool canChangePrice = Config.CanChangePrice(order, product, isCredit);
+            // When product has UOM and we're adding (no existing detail), GetPriceForProduct returns base price - display price for initial UOM
+            var initialDisplayPrice = initialPrice;
+            if (existingDetail == null && initialUoM != null && !string.IsNullOrEmpty(product.UoMFamily))
+                initialDisplayPrice = Math.Round(initialPrice * initialUoM.Conversion, Config.Round);
             // Note: isVendor is a field in TemplateActivity, not a property on Order
             // For now, we'll just check canChangePrice
             if (canChangePrice)
@@ -2671,7 +2690,7 @@ public class DialogService : IDialogService
                 var priceLabel = new Label { Text = "Price:", FontSize = 14, TextColor = Colors.Black };
                 priceEntry = new Entry
                 {
-                    Text = initialPrice.ToString("F2"),
+                    Text = initialDisplayPrice.ToString("F2"),
                     Keyboard = Keyboard.Numeric,
                     FontSize = 14,
                     HeightRequest = 36
@@ -2721,8 +2740,16 @@ public class DialogService : IDialogService
 
                     uomPicker.SelectedIndexChanged += (s, e) =>
                     {
-                        if (uomPicker.SelectedIndex >= 0 && uomPicker.SelectedIndex < familyItems.Count)
-                            selectedUoM = familyItems[uomPicker.SelectedIndex];
+                        if (uomPicker.SelectedIndex < 0 || uomPicker.SelectedIndex >= familyItems.Count)
+                            return;
+                        var previousUoM = selectedUoM;
+                        selectedUoM = familyItems[uomPicker.SelectedIndex];
+                        // Update price to the conversion for the selected UOM (price per new UOM = price per old UOM * (newConversion / oldConversion))
+                        if (priceEntry != null && previousUoM != null && selectedUoM != null && double.TryParse(priceEntry.Text, out var currentPrice))
+                        {
+                            var newPrice = Math.Round(currentPrice * (selectedUoM.Conversion / previousUoM.Conversion), Config.Round);
+                            priceEntry.Text = newPrice.ToString("F2");
+                        }
                     };
 
                     var uomRow = new Grid

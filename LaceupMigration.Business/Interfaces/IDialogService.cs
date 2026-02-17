@@ -28,6 +28,8 @@ public interface IDialogService
     Task<(List<int> selectedCategoryIds, bool selectAll, bool showPrice, bool showUPC, bool showUoM)?> ShowCatalogFilterDialogAsync(List<Category> categories, bool hideCategorySection = false, IReadOnlyList<int>? categoryIdsWhenCategorySectionHidden = null);
     /// <summary>Full add/edit item dialog (quantity, UoM, price, weight, lot, etc.). Same as PreviouslyOrderedTemplate row tap / quantity button.</summary>
     Task<RestOfTheAddDialogResult> ShowRestOfTheAddDialogAsync(Product product, Order order, OrderDetail existingDetail = null, bool isCredit = false, bool isDamaged = false, bool isDelivery = false);
+    /// <summary>Shows a dialog to pick one of the product's UOMs. Returns selected UOM or null if cancelled.</summary>
+    Task<UnitOfMeasure?> ShowPickUomForProductAsync(Product product, string title = "Select UOM");
 }
 
 /// <summary>Result of ShowRestOfTheAddDialogAsync (add/edit item popup).</summary>

@@ -10,6 +10,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.Maui;
 
 namespace LaceupMigration
 {
@@ -61,6 +62,16 @@ namespace LaceupMigration
 
         }
 
+        public static void Clear()
+        {
+            BankDeposit.currentDeposit = null;
+            
+            if (File.Exists(Config.BankDepositPath))
+                File.Delete(Config.BankDepositPath);
+
+            if (Directory.Exists(Config.DepositImagesPath))
+                Directory.Delete(Config.DepositImagesPath, true);
+        }
         public string UniqueId { get; set; }
 
         public List<InvoicePayment> Payments { get; set; }
