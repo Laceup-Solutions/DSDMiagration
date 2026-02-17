@@ -2443,6 +2443,8 @@ public class DialogService : IDialogService
         var initialReasonId = existingDetail != null ? existingDetail.ReasonId : 0;
         var initialPriceLevelSelected = existingDetail != null ? (existingDetail.ExtraFields != null ? 
             int.TryParse(UDFHelper.GetSingleUDF("priceLevelSelected", existingDetail.ExtraFields), out var pl) ? pl : 0 : 0) : 0;
+        var initialDiscount = existingDetail != null ? existingDetail.Discount : 0;
+        var initialDiscountType = existingDetail != null ? existingDetail.DiscountType : DiscountType.Amount;
 
         // Create dialog content - compact layout matching the "before" image
         var scrollView = new ScrollView
@@ -2912,6 +2914,206 @@ public class DialogService : IDialogService
             }
         }
 
+        // Discount per line (link) - matches Xamarin PreviouslyOrderedTemplateActivity CatalogAddDiscountLink / DiscountLink_Click
+        double currentDiscount = initialDiscount;
+        DiscountType currentDiscountType = initialDiscountType;
+        ContentPage restOfTheDialog = null; // set when dialog is created; discount tap uses restOfTheDialog.Navigation
+        bool showDiscountLink = Config.AllowDiscountPerLine
+            && order.Client?.UseDiscountPerLine == true
+            && (order.OrderType == OrderType.Order || order.OrderType == OrderType.Credit || order.OrderType == OrderType.Return)
+            && !Config.HidePriceInTransaction
+            && !initialFreeItem;
+
+        Label discountLinkLabel = null;
+        if (showDiscountLink)
+        {
+            string FormatDiscountText(double discount, DiscountType dType)
+            {
+                if (discount == 0) return "Discount = $0.00";
+                if (dType == DiscountType.Percent)
+                    return "Discount = " + (discount * 100).ToString("F0") + "%";
+                return "Discount = $" + discount.ToString("F2");
+            }
+
+            discountLinkLabel = new Label
+            {
+                Text = FormatDiscountText(currentDiscount, currentDiscountType),
+                FontSize = 14,
+                TextColor = Color.FromArgb("#017CBA"),
+                TextDecorations = TextDecorations.Underline,
+                Margin = new Thickness(0, 6, 0, 2)
+            };
+            var discountTap = new TapGestureRecognizer();
+            discountTap.Tapped += async (s, e) =>
+            {
+                // Get current qty and price from form (for validation)
+                double qtyVal = 1;
+                float.TryParse(qtyEntry?.Text, out var qtyF);
+                qtyVal = qtyF;
+                if (product.SoldByWeight && order.AsPresale)
+                    qtyVal *= product.Weight;
+                double priceVal = initialPrice;
+                if (priceEntry != null && double.TryParse(priceEntry.Text, out var p))
+                    priceVal = p;
+
+                var percRadio = new RadioButton { Content = "Percentage", IsChecked = currentDiscountType == DiscountType.Percent };
+                var percEntry = new Entry
+                {
+                    Text = currentDiscountType == DiscountType.Percent ? (currentDiscount * 100).ToString("F0") : "",
+                    Keyboard = Keyboard.Numeric,
+                    Placeholder = "0"
+                };
+                var amountRadio = new RadioButton { Content = "Amount", IsChecked = currentDiscountType == DiscountType.Amount };
+                var amountEntry = new Entry
+                {
+                    Text = currentDiscountType == DiscountType.Amount ? currentDiscount.ToString("F2") : "",
+                    Keyboard = Keyboard.Numeric,
+                    Placeholder = "0.00"
+                };
+                var calcLabel = new Label { Text = "", FontSize = 12, TextColor = Colors.Gray };
+                void UpdateCalc()
+                {
+                    if (percRadio.IsChecked && double.TryParse(percEntry.Text, out var perc))
+                        calcLabel.Text = "= $" + (priceVal * qtyVal * perc / 100).ToString("F2");
+                }
+                percEntry.TextChanged += (_, __) => UpdateCalc();
+                percRadio.CheckedChanged += (_, __) => { if (percRadio.IsChecked) { amountEntry.Text = ""; UpdateCalc(); } };
+                amountRadio.CheckedChanged += (_, __) => { if (amountRadio.IsChecked) { percEntry.Text = ""; calcLabel.Text = ""; } };
+
+                var addBtn = new Button { Text = "Add", HorizontalOptions = LayoutOptions.End };
+                var cancelBtn = new Button { Text = "Cancel", HorizontalOptions = LayoutOptions.Start };
+                addBtn.Clicked += async (s, e) =>
+                {
+                    var lineTotal = qtyVal * priceVal;
+                    if (percRadio.IsChecked)
+                    {
+                        if (!double.TryParse(percEntry.Text, out var percent)) percent = 0;
+                        if (percent > 100)
+                        {
+                            await GetCurrentPage()?.DisplayAlert("Alert", "Discount cannot exceed 100% of the line total.", "OK");
+                            return;
+                        }
+                        if (!order.CanAddLineDiscount(percent, DiscountType.Percent, qtyVal, priceVal, existingDetail))
+                        {
+                            await GetCurrentPage()?.DisplayAlert("Alert", "Cannot give more than " + Config.MaxDiscountPerOrder + "% discount to the order.", "OK");
+                            return;
+                        }
+                        currentDiscount = percent / 100;
+                        currentDiscountType = DiscountType.Percent;
+                    }
+                    else
+                    {
+                        if (!double.TryParse(amountEntry.Text, out var amt)) amt = 0;
+                        if (amt > lineTotal)
+                        {
+                            await GetCurrentPage()?.DisplayAlert("Alert", "Discount cannot exceed the line total ($" + lineTotal.ToString("F2") + ").", "OK");
+                            return;
+                        }
+                        if (!order.CanAddLineDiscount(amt, DiscountType.Amount, qtyVal, priceVal, existingDetail))
+                        {
+                            await GetCurrentPage()?.DisplayAlert("Alert", "Cannot give more than " + Config.MaxDiscountPerOrder + "% discount to the order.", "OK");
+                            return;
+                        }
+                        currentDiscount = amt;
+                        currentDiscountType = DiscountType.Amount;
+                    }
+                    discountLinkLabel.Text = FormatDiscountText(currentDiscount, currentDiscountType);
+                    await restOfTheDialog?.Navigation.PopModalAsync();
+                };
+                cancelBtn.Clicked += async (s, e) => await restOfTheDialog?.Navigation.PopModalAsync();
+
+                // Popup content: title bar + form (match RestOfThe dialog style)
+                var discountTitleBar = new BoxView { BackgroundColor = Color.FromArgb("#E3F2FD"), HeightRequest = 40 };
+                var discountTitleLabel = new Label
+                {
+                    Text = product.Name,
+                    FontSize = 14,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Colors.Black,
+                    VerticalOptions = LayoutOptions.Center,
+                    Padding = new Thickness(12, 0, 12, 0)
+                };
+                var discountTitleGrid = new Grid { Children = { discountTitleBar, discountTitleLabel } };
+
+                var discountForm = new VerticalStackLayout
+                {
+                    Spacing = 8,
+                    Padding = new Thickness(16, 12, 16, 16),
+                    Children =
+                    {
+                        discountTitleGrid,
+                        percRadio,
+                        percEntry,
+                        calcLabel,
+                        amountRadio,
+                        amountEntry,
+                        new Grid
+                        {
+                            ColumnDefinitions = { new ColumnDefinition(), new ColumnDefinition() },
+                            ColumnSpacing = 8,
+                            Children = { cancelBtn, addBtn },
+                            Margin = new Thickness(0, 8, 0, 0)
+                        }
+                    }
+                };
+                Grid.SetColumn(cancelBtn, 0);
+                Grid.SetColumn(addBtn, 1);
+
+                var discountPopupBorder = new Border
+                {
+                    BackgroundColor = Colors.White,
+                    StrokeThickness = 1,
+                    Stroke = Color.FromArgb("#E0E0E0"),
+                    StrokeShape = new RoundRectangle { CornerRadius = 8 },
+                    WidthRequest = 280,
+                    MaximumWidthRequest = 340,
+                    Padding = new Thickness(0),
+                    Content = discountForm
+                };
+
+                var discountOverlay = new Grid
+                {
+                    BackgroundColor = Color.FromArgb("#80000000"),
+                    RowDefinitions = new RowDefinitionCollection
+                    {
+                        new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                        new RowDefinition { Height = GridLength.Auto },
+                        new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+                    },
+                    ColumnDefinitions = new ColumnDefinitionCollection
+                    {
+                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                        new ColumnDefinition { Width = GridLength.Auto },
+                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+                    },
+                    Padding = new Thickness(24)
+                };
+                Grid.SetRow(discountPopupBorder, 1);
+                Grid.SetColumn(discountPopupBorder, 1);
+                discountOverlay.Children.Add(discountPopupBorder);
+
+                var discountPage = new ContentPage
+                {
+                    BackgroundColor = Colors.Transparent,
+                    Content = discountOverlay
+                };
+
+                UpdateCalc();
+                await restOfTheDialog?.Navigation.PushModalAsync(discountPage);
+            };
+            discountLinkLabel.GestureRecognizers.Add(discountTap);
+            content.Children.Add(discountLinkLabel);
+
+            if (freeItemCheckbox != null)
+            {
+                freeItemCheckbox.CheckedChanged += (s, e) =>
+                {
+                    if (discountLinkLabel != null)
+                        discountLinkLabel.IsVisible = !(freeItemCheckbox.IsChecked);
+                };
+            }
+        }
+
         // Buttons with separator line above
         var topSeparator = new BoxView
         {
@@ -3008,7 +3210,7 @@ public class DialogService : IDialogService
             Grid.SetColumn(dialogBorder, 1);
             overlayGrid.Children.Add(dialogBorder);
 
-            var dialog = new ContentPage
+            restOfTheDialog = new ContentPage
             {
                 BackgroundColor = Colors.Transparent,
                 Content = overlayGrid
@@ -3058,6 +3260,9 @@ public class DialogService : IDialogService
                 // TODO: Add reason logic
                 result.ReasonId = initialReasonId;
 
+                result.Discount = currentDiscount;
+                result.DiscountType = currentDiscountType;
+
                 result.Cancelled = false;
 
                 await page.Navigation.PopModalAsync();
@@ -3070,7 +3275,7 @@ public class DialogService : IDialogService
                 tcs.SetResult(new RestOfTheAddDialogResult { Cancelled = true });
             };
 
-        await page.Navigation.PushModalAsync(dialog);
+        await page.Navigation.PushModalAsync(restOfTheDialog);
         
         // Auto-focus the Qty/Weight field when dialog appears and select all text
         // If weight entry is shown, focus that instead (since qty is disabled in that case)

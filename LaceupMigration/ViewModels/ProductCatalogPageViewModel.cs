@@ -654,6 +654,8 @@ namespace LaceupMigration.ViewModels
             existingDetail.UnitOfMeasure = result.SelectedUoM;
             existingDetail.IsFreeItem = result.IsFreeItem;
             existingDetail.ReasonId = result.ReasonId;
+            existingDetail.Discount = result.Discount;
+            existingDetail.DiscountType = result.DiscountType;
             if (result.PriceLevelSelected > 0)
                 existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
             _order.UpdateInventory(existingDetail, -1);
@@ -824,6 +826,8 @@ namespace LaceupMigration.ViewModels
                 existingDetail.IsFreeItem = result.IsFreeItem;
                 existingDetail.Damaged = damaged;
                 existingDetail.ReasonId = result.ReasonId;
+                existingDetail.Discount = result.Discount;
+                existingDetail.DiscountType = result.DiscountType;
                 if (result.PriceLevelSelected > 0)
                 {
                     existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
@@ -837,6 +841,8 @@ namespace LaceupMigration.ViewModels
                 detail.IsCredit = true;
                 detail.Damaged = damaged;
                 detail.ReasonId = result.ReasonId;
+                detail.Discount = result.Discount;
+                detail.DiscountType = result.DiscountType;
                 double expectedPrice = Product.GetPriceForProduct(product, _order, true, damaged);
                 double price = result.Price;
                 if (result.UseLastSoldPrice && _order.Client != null)
@@ -947,6 +953,8 @@ namespace LaceupMigration.ViewModels
                 existingDetail.UnitOfMeasure = result.SelectedUoM;
                 existingDetail.IsFreeItem = result.IsFreeItem;
                 existingDetail.ReasonId = result.ReasonId;
+                existingDetail.Discount = result.Discount;
+                existingDetail.DiscountType = result.DiscountType;
                 if (result.PriceLevelSelected > 0)
                 {
                     existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
@@ -1003,6 +1011,8 @@ namespace LaceupMigration.ViewModels
                 detail.Comments = result.Comments;
                 detail.IsFreeItem = result.IsFreeItem;
                 detail.ReasonId = result.ReasonId;
+                detail.Discount = result.Discount;
+                detail.DiscountType = result.DiscountType;
                 if (result.PriceLevelSelected > 0)
                 {
                     detail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), detail.ExtraFields);
