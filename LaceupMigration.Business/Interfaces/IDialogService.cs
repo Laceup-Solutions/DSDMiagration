@@ -46,6 +46,10 @@ public class RestOfTheAddDialogResult
     public bool UseLastSoldPrice { get; set; }
     public int ReasonId { get; set; }
     public int PriceLevelSelected { get; set; }
+    /// <summary>Per-line discount amount (currency) or rate (for Percent). Set when user taps Discount link and applies.</summary>
+    public double Discount { get; set; }
+    /// <summary>Whether Discount is a percentage (Percent) or fixed amount (Amount).</summary>
+    public DiscountType DiscountType { get; set; }
     public bool Cancelled { get; set; }
 }
 

@@ -484,6 +484,8 @@ namespace LaceupMigration.ViewModels.SelfService
                 existingDetail.UnitOfMeasure = result.SelectedUoM;
                 existingDetail.IsFreeItem = result.IsFreeItem;
                 existingDetail.ReasonId = result.ReasonId;
+                existingDetail.Discount = result.Discount;
+                existingDetail.DiscountType = result.DiscountType;
                 if (result.PriceLevelSelected > 0)
                 {
                     existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
@@ -534,6 +536,8 @@ namespace LaceupMigration.ViewModels.SelfService
                 detail.Comments = result.Comments;
                 detail.IsFreeItem = result.IsFreeItem;
                 detail.ReasonId = result.ReasonId;
+                detail.Discount = result.Discount;
+                detail.DiscountType = result.DiscountType;
                 if (result.PriceLevelSelected > 0)
                 {
                     detail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), detail.ExtraFields);

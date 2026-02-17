@@ -371,6 +371,18 @@ namespace LaceupMigration.ViewModels
 
             PreviouslyOrderedProducts.Clear();
 
+            // When order has a company, only show products visible for that company (merge with history filter)
+            List<int> productsVisibleForCompany = null;
+            if (_order.CompanyId > 0)
+            {
+                productsVisibleForCompany = ProductVisibleCompany.List
+                    .Where(x => x.CompanyId == _order.CompanyId)
+                    .Select(x => x.ProductId)
+                    .ToList();
+                if (productsVisibleForCompany.Count == 0)
+                    productsVisibleForCompany = null;
+            }
+
             // Clean up any existing details with qty=0 (should never exist)
             var detailsToDelete = _order.Details.Where(d => d.Qty == 0).ToList();
             foreach (var detail in detailsToDelete)
@@ -393,6 +405,10 @@ namespace LaceupMigration.ViewModels
 
                 // Skip default item if it's the only item
                 if (orderDetail.Product.ProductId == Config.DefaultItem && _order.Details.Count == 1)
+                    continue;
+
+                // Hide product if not visible for the order's company
+                if (productsVisibleForCompany != null && !productsVisibleForCompany.Contains(orderDetail.Product.ProductId))
                     continue;
 
                 productIdsInOrder.Add(orderDetail.Product.ProductId);
@@ -435,6 +451,10 @@ namespace LaceupMigration.ViewModels
                     var productId = orderedItem.Last.ProductId;
                     if (productIdsInOrder.Contains(productId))
                         continue; // already have at least one row for this product from order details
+
+                    // Hide history product if not visible for the order's company
+                    if (productsVisibleForCompany != null && !productsVisibleForCompany.Contains(productId))
+                        continue;
 
                     var productViewModel = CreatePreviouslyOrderedProductViewModel(orderedItem.Last.Product, orderedItem);
                     productViewModel.IsEnabled = CanEdit;
@@ -2625,6 +2645,8 @@ namespace LaceupMigration.ViewModels
                 existingDetail.UnitOfMeasure = result.SelectedUoM;
                 existingDetail.IsFreeItem = result.IsFreeItem;
                 existingDetail.ReasonId = result.ReasonId;
+                existingDetail.Discount = result.Discount;
+                existingDetail.DiscountType = result.DiscountType;
                 if (result.PriceLevelSelected > 0)
                 {
                     existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
@@ -2681,6 +2703,8 @@ namespace LaceupMigration.ViewModels
                 detail.Comments = result.Comments;
                 detail.IsFreeItem = result.IsFreeItem;
                 detail.ReasonId = result.ReasonId;
+                detail.Discount = result.Discount;
+                detail.DiscountType = result.DiscountType;
                 if (result.PriceLevelSelected > 0)
                 {
                     detail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), detail.ExtraFields);
@@ -2818,6 +2842,8 @@ namespace LaceupMigration.ViewModels
                 existingDetail.UnitOfMeasure = result.SelectedUoM;
                 existingDetail.IsFreeItem = result.IsFreeItem;
                 existingDetail.ReasonId = result.ReasonId;
+                existingDetail.Discount = result.Discount;
+                existingDetail.DiscountType = result.DiscountType;
                 if (result.PriceLevelSelected > 0)
                 {
                     existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
