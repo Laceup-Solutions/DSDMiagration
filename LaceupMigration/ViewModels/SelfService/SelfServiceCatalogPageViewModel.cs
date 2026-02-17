@@ -193,7 +193,16 @@ namespace LaceupMigration.ViewModels.SelfService
 
             foreach (var product in productsForOrder)
             {
-                var catalogItem = new CatalogItemViewModel { Product = product, Order = _order };
+                var catalogItem = new CatalogItemViewModel
+                {
+                    ProductId = product.ProductId, 
+                    OrderId = _order.OrderId, 
+                    ProductName = product.Name,
+                    Upc = product.Upc ?? "",
+                    Sku = product.Sku ?? "",
+                    Code = product.Code ?? ""
+                };
+                
                 var clientSourceKey = clientSource.Keys.FirstOrDefault(x => x.ProductId == product.ProductId);
                 catalogItem.Line.History = clientSourceKey != null ? clientSource[clientSourceKey].OrderByDescending(x => x.Date).ToList() : new List<InvoiceDetail>();
                 catalogItem.Line.LastInvoiceDetail = catalogItem.Line.History?.FirstOrDefault();
@@ -251,13 +260,13 @@ namespace LaceupMigration.ViewModels.SelfService
                 catalogItems.Add(catalogItem);
             }
 
-            var catalogItemsForSort = catalogItems.Select(x => new CatalogItem { Product = x.Product, Line = x.Line, Values = x.Values.ToList() }).ToList();
+            var catalogItemsForSort = catalogItems.Select(x => new CatalogItem { Product = Product.Find(x.ProductId), Line = x.Line, Values = x.Values.ToList() }).ToList();
             var sorted = SortDetails.SortedDetailsInProduct(catalogItemsForSort).ToList();
-            var sortedViewModels = sorted.Select(s => catalogItems.FirstOrDefault(x => x.Product?.ProductId == s.Product?.ProductId)).Where(x => x != null).ToList();
+            var sortedViewModels = sorted.Select(s => catalogItems.FirstOrDefault(x => x.ProductId == s.Product?.ProductId)).Where(x => x != null).ToList();
             foreach (var item in catalogItems)
                 if (!sortedViewModels.Contains(item)) sortedViewModels.Add(item);
 
-            var productIds = sortedViewModels.Where(x => x.Product != null).Select(x => x.Product.ProductId).Where(id => id > 0).ToList();
+            var productIds = sortedViewModels.Select(x => x.ProductId).Where(id => id > 0).ToList();
             var atLeastOneImage = productIds.Count > 0 && ProductImage.AtLeastOneProductHasImg(productIds);
             return (sortedViewModels, atLeastOneImage);
         }
@@ -281,10 +290,10 @@ namespace LaceupMigration.ViewModels.SelfService
             {
                 var searchUpper = _searchCriteria.Trim().ToUpperInvariant();
                 list = list.Where(x =>
-                    x.Product?.Name?.ToUpperInvariant().Contains(searchUpper) == true ||
-                    x.Product?.Upc?.ToUpperInvariant().Contains(searchUpper) == true ||
-                    x.Product?.Sku?.ToUpperInvariant().Contains(searchUpper) == true ||
-                    x.Product?.Code?.ToUpperInvariant().Contains(searchUpper) == true).ToList();
+                    x.ProductName.ToUpperInvariant().Contains(searchUpper) ||
+                    x.Upc.ToUpperInvariant().Contains(searchUpper) ||
+                    x.Sku.ToUpperInvariant().Contains(searchUpper) ||
+                    x.Code.ToUpperInvariant().Contains(searchUpper)).ToList();
             }
             FilteredProducts.Clear();
             foreach (var item in list) FilteredProducts.Add(item);
@@ -406,8 +415,8 @@ namespace LaceupMigration.ViewModels.SelfService
         [RelayCommand]
         private void IncrementQuantity(CatalogItemViewModel item)
         {
-            if (item?.Product == null || _order == null) return;
-            var existingDetail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == item.Product.ProductId && !x.IsCredit);
+            if (_order == null) return;
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == item.ProductId && !x.IsCredit);
             if (existingDetail != null)
             {
                 existingDetail.Qty += 1f;
@@ -415,14 +424,16 @@ namespace LaceupMigration.ViewModels.SelfService
             }
             else
             {
-                var detail = new OrderDetail(item.Product, 0, _order);
-                double expectedPrice = Product.GetPriceForProduct(item.Product, _order, false, false);
-                if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out var price))
+                var product = Product.Find(item.ProductId);
+                
+                var detail = new OrderDetail(product, 0, _order);
+                double expectedPrice = Product.GetPriceForProduct(product, _order, false, false);
+                if (Offer.ProductHasSpecialPriceForClient(product, _order.Client, out var price))
                 { detail.Price = price; detail.FromOfferPrice = true; }
                 else
                 { detail.Price = expectedPrice; detail.FromOfferPrice = false; }
                 detail.ExpectedPrice = expectedPrice;
-                detail.UnitOfMeasure = item.Product.UnitOfMeasures?.FirstOrDefault(x => x.IsDefault);
+                detail.UnitOfMeasure = product.UnitOfMeasures?.FirstOrDefault(x => x.IsDefault);
                 detail.Qty = 1f;
                 detail.CalculateOfferDetail();
                 _order.AddDetail(detail);
@@ -437,8 +448,10 @@ namespace LaceupMigration.ViewModels.SelfService
         [RelayCommand]
         private void DecrementQuantity(CatalogItemViewModel item)
         {
-            if (item?.Product == null || _order == null) return;
-            var existingDetail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == item.Product.ProductId && !x.IsCredit);
+
+            if (_order == null) return;
+            
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == item.ProductId && !x.IsCredit);
             if (existingDetail == null) return;
             if (existingDetail.Qty <= 1f)
             {
@@ -460,7 +473,7 @@ namespace LaceupMigration.ViewModels.SelfService
         {
             if (item == null) return;
             item.Values.Clear();
-            var product = item.Product;
+            var product = Product.Find(item.ProductId);
             if (product == null) return;
             foreach (var orderDetail in _order.Details.Where(d => !d.IsCredit && d.Product?.ProductId == product.ProductId))
             {
@@ -493,23 +506,26 @@ namespace LaceupMigration.ViewModels.SelfService
 
         private async Task AddProductWithRestOfTheAddDialogAsync(CatalogItemViewModel item)
         {
-            if (_order == null || item?.Product == null) return;
+            if (_order == null) return;
+            
+            var product = Product.Find(item.ProductId);
+
             OrderDetail existingDetail = null;
-            var result = await _dialogService.ShowRestOfTheAddDialogAsync(item.Product, _order, existingDetail, isCredit: false, isDamaged: false, isDelivery: _order.IsDelivery);
+            var result = await _dialogService.ShowRestOfTheAddDialogAsync(product, _order, existingDetail, isCredit: false, isDamaged: false, isDelivery: _order.IsDelivery);
             if (result.Cancelled) return;
             if (result.Qty == 0) { PrepareProductList(); ApplyFilter(); return; }
-            var detail = new OrderDetail(item.Product, 0, _order);
-            double expectedPrice = Product.GetPriceForProduct(item.Product, _order, false, false);
+            var detail = new OrderDetail(product, 0, _order);
+            double expectedPrice = Product.GetPriceForProduct(product, _order, false, false);
             double price = result.Price;
             if (result.UseLastSoldPrice && _order.Client != null)
             {
-                var clientHistory = InvoiceDetail.ClientProduct(_order.Client.ClientId, item.Product.ProductId);
+                var clientHistory = InvoiceDetail.ClientProduct(_order.Client.ClientId, item.ProductId);
                 var lastInvoiceDetail = clientHistory?.OrderByDescending(x => x.Date).FirstOrDefault();
                 if (lastInvoiceDetail != null) price = lastInvoiceDetail.Price;
             }
             else if (price == 0)
             {
-                if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out var offerPrice))
+                if (Offer.ProductHasSpecialPriceForClient(product, _order.Client, out var offerPrice))
                 { detail.Price = offerPrice; detail.FromOfferPrice = true; }
                 else
                 { detail.Price = expectedPrice; detail.FromOfferPrice = false; }
@@ -517,7 +533,7 @@ namespace LaceupMigration.ViewModels.SelfService
             else
             { detail.Price = price; detail.FromOfferPrice = false; }
             detail.ExpectedPrice = expectedPrice;
-            detail.UnitOfMeasure = result.SelectedUoM ?? item.Product.UnitOfMeasures?.FirstOrDefault(x => x.IsDefault);
+            detail.UnitOfMeasure = result.SelectedUoM ?? product.UnitOfMeasures?.FirstOrDefault(x => x.IsDefault);
             detail.Qty = result.Qty;
             detail.Weight = result.Weight;
             detail.Lot = result.Lot;

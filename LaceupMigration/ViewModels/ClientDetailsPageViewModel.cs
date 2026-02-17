@@ -305,7 +305,7 @@ namespace LaceupMigration.ViewModels
             var title = GetOrderTitle(order);
             var subtitle = $"Total: {order.OrderTotalCost().ToCustomString()}";
             var status = GetOrderStatus(order, out var color);
-            return new ClientOrderViewModel(title, subtitle, status, color, order, batch);
+            return new ClientOrderViewModel(title, subtitle, status, color, order.OrderId, batch.Id);
         }
 
         private string GetOrderTitle(Order order)
@@ -495,7 +495,8 @@ namespace LaceupMigration.ViewModels
                 showPaymentGoal: showPaymentGoal,
                 goalPaymentText: goalPaymentText,
                 pendingDaysText: pendingDaysText,
-                invoice: invoice);
+                invoiceId: invoice.InvoiceId, 
+                companyName: invoice.CompanyName ?? "");
         }
 
         private string FormatAmountWithParentheses(double amount, string prefix)
@@ -1406,6 +1407,15 @@ namespace LaceupMigration.ViewModels
                         else
                         {
                             batch.Delete();
+                            
+                            //visually remove it
+                            if (Orders.Any(x => x.OrderId == order.OrderId))
+                            {
+                                var item = Orders.FirstOrDefault(x => x.OrderId == order.OrderId);
+                                if(item != null)
+                                    Orders.Remove(item);
+                            }
+                            
                             order.Delete();
                             return;
                         }
@@ -1436,7 +1446,17 @@ namespace LaceupMigration.ViewModels
                 else
                 {
                     batch.Delete();
+
+                    //visually remove it
+                    if (Orders.Any(x => x.OrderId == order.OrderId))
+                    {
+                        var item = Orders.FirstOrDefault(x => x.OrderId == order.OrderId);
+                        if(item != null)
+                            Orders.Remove(item);
+                    }
+                    
                     order.Delete();
+                   
                     return;
                 }
             }
@@ -1465,6 +1485,15 @@ namespace LaceupMigration.ViewModels
                     {
                         await _dialogService.ShowAlertAsync("You must select a site to create the Order", "Warning");
                         batch.Delete();
+                        
+                        //visually remove it
+                        if (Orders.Any(x => x.OrderId == order.OrderId))
+                        {
+                            var item = Orders.FirstOrDefault(x => x.OrderId == order.OrderId);
+                            if(item != null)
+                                Orders.Remove(item);
+                        }
+                        
                         order.Delete();
                         return;
                     }
@@ -1828,19 +1857,22 @@ namespace LaceupMigration.ViewModels
 
         public async Task HandleOrderSelectedAsync(ClientOrderViewModel? orderViewModel)
         {
-            if (orderViewModel?.Order == null)
+            if (orderViewModel == null)
                 return;
 
-            await NavigateToOrderAsync(orderViewModel.Order, orderViewModel.Batch);
+            var order = Order.Find(orderViewModel.OrderId);
+            var batch = Batch.List.FirstOrDefault(x => x.Id == orderViewModel.BatchId);
+
+            await NavigateToOrderAsync(order, batch);
         }
 
         [RelayCommand]
         public async Task HandleInvoiceSelectedAsync(ClientInvoiceViewModel? invoiceViewModel)
         {
-            if (invoiceViewModel?.Invoice == null)
+            if(invoiceViewModel == null)
                 return;
 
-            await Shell.Current.GoToAsync($"invoicedetails?invoiceId={invoiceViewModel.Invoice.InvoiceId}");
+            await Shell.Current.GoToAsync($"invoicedetails?invoiceId={invoiceViewModel.InvoiceId}");
         }
 
         private List<MenuOption> BuildMenuOptions()
@@ -2032,22 +2064,22 @@ namespace LaceupMigration.ViewModels
 
     public class ClientOrderViewModel
     {
-        public ClientOrderViewModel(string title, string subtitle, string status, Color statusColor, Order order, Batch batch)
+        public ClientOrderViewModel(string title, string subtitle, string status, Color statusColor, int orderId, int batchId)
         {
             Title = title;
             Subtitle = subtitle;
             Status = status;
             StatusColor = statusColor;
-            Order = order;
-            Batch = batch;
+            OrderId = orderId;
+            BatchId = batchId;
         }
 
         public string Title { get; }
         public string Subtitle { get; }
         public string Status { get; }
         public Color StatusColor { get; }
-        public Order Order { get; }
-        public Batch Batch { get; }
+        public int OrderId { get; }
+        public int BatchId { get; }
     }
 
     public class ClientInvoiceViewModel
@@ -2071,7 +2103,8 @@ namespace LaceupMigration.ViewModels
             bool showPaymentGoal,
             string goalPaymentText,
             string pendingDaysText,
-            Invoice invoice)
+            int invoiceId,
+            string companyName)
         {
             NumberText = number;
             InvoiceNumber = invoiceNumber;
@@ -2091,8 +2124,8 @@ namespace LaceupMigration.ViewModels
             ShowPaymentGoal = showPaymentGoal;
             GoalPaymentText = goalPaymentText;
             PendingDaysText = pendingDaysText;
-            Invoice = invoice;
-            CompanyName = invoice.CompanyName ?? string.Empty;
+            InvoiceId = invoiceId;
+            CompanyName = companyName;
             HasHeader = !string.IsNullOrEmpty(CompanyName);
             IsFirstInGroup = false;
             IsLastInGroup = false;
@@ -2118,7 +2151,7 @@ namespace LaceupMigration.ViewModels
         public bool ShowPaymentGoal { get; }
         public string GoalPaymentText { get; }
         public string PendingDaysText { get; }
-        public Invoice Invoice { get; }
+        public int InvoiceId { get; }
         public string CompanyName { get; }
         public bool HasHeader { get; }
         public bool IsLastInGroup { get; set; }
