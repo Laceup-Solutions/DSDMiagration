@@ -277,8 +277,12 @@ namespace LaceupMigration.ViewModels
             {
                 var catalogItem = new CatalogItemViewModel
                 {
-                    Product = product,
-                    Order = _order // Store order reference for suggested check
+                    ProductId = product.ProductId,
+                    OrderId = _order.OrderId,
+                    ProductName = product.Name,
+                    Upc = product.Upc ?? "",
+                    Sku = product.Sku ?? "",
+                    Code = product.Code ?? ""
                 };
 
                 var clientSourceKey = clientSource.Keys.FirstOrDefault(x => x.ProductId == product.ProductId);
@@ -376,7 +380,7 @@ namespace LaceupMigration.ViewModels
             // Sort products - convert to CatalogItem for sorting
             var catalogItemsForSort = catalogItems.Select(x => new CatalogItem
             {
-                Product = x.Product,
+                Product = Product.Find(x.ProductId),
                 Line = x.Line,
                 Values = x.Values.ToList()
             }).ToList();
@@ -392,7 +396,7 @@ namespace LaceupMigration.ViewModels
             var sortedViewModels = new List<CatalogItemViewModel>();
             foreach (var sortedItem in sorted)
             {
-                var vm = catalogItems.FirstOrDefault(x => x.Product.ProductId == sortedItem.Product.ProductId);
+                var vm = catalogItems.FirstOrDefault(x => x.ProductId == sortedItem.Product.ProductId);
                 if (vm != null)
                 {
                     sortedViewModels.Add(vm);
@@ -412,7 +416,7 @@ namespace LaceupMigration.ViewModels
             }
 
             // Check for images
-            var productIds = Products.Select(x => x.Product.ProductId).ToList();
+            var productIds = Products.Select(x => x.ProductId).ToList();
             _atLeastOneImage = ProductImage.AtLeastOneProductHasImg(productIds);
             ShowImages = _atLeastOneImage;
         }
@@ -425,10 +429,10 @@ namespace LaceupMigration.ViewModels
             {
                 var searchUpper = _searchCriteria.Trim().ToUpperInvariant();
                 list = list.Where(x =>
-                    x.Product.Name.ToUpperInvariant().Contains(searchUpper) ||
-                    x.Product.Upc.ToUpperInvariant().Contains(searchUpper) ||
-                    x.Product.Sku.ToUpperInvariant().Contains(searchUpper) ||
-                    x.Product.Code.ToLowerInvariant().Contains(searchUpper)
+                    x.ProductName.ToUpperInvariant().Contains(searchUpper) ||
+                    x.Upc.ToUpperInvariant().Contains(searchUpper) ||
+                    x.Sku.ToUpperInvariant().Contains(searchUpper) ||
+                    x.Code.ToLowerInvariant().Contains(searchUpper)
                 ).ToList();
             }
 
@@ -518,7 +522,7 @@ namespace LaceupMigration.ViewModels
             // From load order: if product is in the current list, add qty 1 and stay; otherwise add and exit to load template
             if (_comingFrom == "LoadOrderTemplate" && _order.OrderType == OrderType.Load)
             {
-                var catalogItem = FilteredProducts.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
+                var catalogItem = FilteredProducts.FirstOrDefault(x => x.ProductId == product.ProductId);
                 var uom = catalogItem?.Line?.UoM ?? (!string.IsNullOrEmpty(product.UoMFamily)
                     ? UnitOfMeasure.List.FirstOrDefault(x => x.FamilyId == product.UoMFamily && x.IsDefault)
                     : null) ?? product.UnitOfMeasures?.FirstOrDefault(x => x.IsDefault) ?? product.UnitOfMeasures?.FirstOrDefault();
@@ -540,7 +544,7 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            var catalogItemDefault = FilteredProducts.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
+            var catalogItemDefault = FilteredProducts.FirstOrDefault(x => x.ProductId == product.ProductId);
             if (catalogItemDefault != null)
             {
                 await AddButton_ClickAsync(catalogItemDefault);
@@ -573,7 +577,7 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         public async Task NavigateToAddItemAsync(CatalogItemViewModel? item)
         {
-            if (item?.Product == null || _order == null)
+            if (item == null || _order == null)
                 return;
 
             // Find the first value with an OrderDetail (if editing existing item)
@@ -588,7 +592,7 @@ namespace LaceupMigration.ViewModels
             else
             {
                 // Navigate with productId (adding new item)
-                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={item.Product.ProductId}");
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={item.ProductId}");
             }
         }
 
@@ -656,7 +660,7 @@ namespace LaceupMigration.ViewModels
 
         private async Task AddButton_ClickAsync(CatalogItemViewModel item)
         {
-            if (_order == null || item.Product == null)
+            if (_order == null)
                 return;
 
             _appService.RecordEvent("AddButton_Click Product Catalog");
@@ -699,7 +703,7 @@ namespace LaceupMigration.ViewModels
 
         private async Task SelectCreditTypeAsync(CatalogItemViewModel item, bool fromEdit, int defaultType = 0)
         {
-            if (_order == null || item.Product == null)
+            if (_order == null)
                 return;
 
             var items = new List<CreditType>();
@@ -765,14 +769,15 @@ namespace LaceupMigration.ViewModels
 
         private async Task RestOfTheAddDialogAsync(CatalogItemViewModel item, bool damaged, bool fromEdit, int reasonId)
         {
-            if (_order == null || item.Product == null)
+            if (_order == null)
                 return;
 
+            var product = Product.Find(item.ProductId);
             // When adding from main line (+), always create a new credit line so we can have e.g. 1 case return + 1 each return + 1 case dump + 1 each dump per product.
             // Editing a specific line is done via EditSublineAsync (subline tap), which passes that detail.
             OrderDetail? existingDetail = null;
             var result = await _dialogService.ShowRestOfTheAddDialogAsync(
-                item.Product,
+                product,
                 _order,
                 existingDetail,
                 isCredit: true,
@@ -818,15 +823,15 @@ namespace LaceupMigration.ViewModels
             }
             else
             {
-                var detail = new OrderDetail(item.Product, 0, _order);
+                var detail = new OrderDetail(product, 0, _order);
                 detail.IsCredit = true;
                 detail.Damaged = damaged;
                 detail.ReasonId = result.ReasonId;
-                double expectedPrice = Product.GetPriceForProduct(item.Product, _order, true, damaged);
+                double expectedPrice = Product.GetPriceForProduct(product, _order, true, damaged);
                 double price = result.Price;
                 if (result.UseLastSoldPrice && _order.Client != null)
                 {
-                    var clientHistory = InvoiceDetail.ClientProduct(_order.Client.ClientId, item.Product.ProductId);
+                    var clientHistory = InvoiceDetail.ClientProduct(_order.Client.ClientId, item.ProductId);
                     if (clientHistory != null && clientHistory.Count > 0)
                     {
                         var lastInvoiceDetail = clientHistory.OrderByDescending(x => x.Date).FirstOrDefault();
@@ -836,7 +841,7 @@ namespace LaceupMigration.ViewModels
                 }
                 else if (price == 0)
                 {
-                    if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out var offerPrice))
+                    if (Offer.ProductHasSpecialPriceForClient(product, _order.Client, out var offerPrice))
                     {
                         detail.Price = offerPrice;
                         detail.FromOfferPrice = true;
@@ -853,7 +858,7 @@ namespace LaceupMigration.ViewModels
                     detail.FromOfferPrice = false;
                 }
                 detail.ExpectedPrice = expectedPrice;
-                detail.UnitOfMeasure = result.SelectedUoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.UnitOfMeasure = result.SelectedUoM ?? product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
                 detail.Qty = result.Qty;
                 detail.Weight = result.Weight;
                 detail.Lot = result.Lot;
@@ -884,13 +889,15 @@ namespace LaceupMigration.ViewModels
 
         private async Task AddProductWithRestOfTheAddDialogAsync(CatalogItemViewModel item)
         {
-            if (_order == null || item.Product == null)
+            if (_order == null)
                 return;
+
+            var product = Product.Find(item.ProductId);
 
             // Show RestOfTheAddDialog - pass null so we always ADD a new line (main line + sublines: multiple order details per product)
             OrderDetail? existingDetail = null;
             var result = await _dialogService.ShowRestOfTheAddDialogAsync(
-                item.Product,
+                product,
                 _order,
                 existingDetail,
                 isCredit: false,
@@ -937,14 +944,14 @@ namespace LaceupMigration.ViewModels
             else
             {
                 // Create new detail
-                var detail = new OrderDetail(item.Product, 0, _order);
-                double expectedPrice = Product.GetPriceForProduct(item.Product, _order, false, false);
+                var detail = new OrderDetail(product, 0, _order);
+                double expectedPrice = Product.GetPriceForProduct(product, _order, false, false);
                 double price = result.Price;
                 
                 // If UseLastSoldPrice, get from last invoice detail (from client history)
                 if (result.UseLastSoldPrice && _order.Client != null)
                 {
-                    var clientHistory = InvoiceDetail.ClientProduct(_order.Client.ClientId, item.Product.ProductId);
+                    var clientHistory = InvoiceDetail.ClientProduct(_order.Client.ClientId, item.ProductId);
                     if (clientHistory != null && clientHistory.Count > 0)
                     {
                         var lastInvoiceDetail = clientHistory.OrderByDescending(x => x.Date).FirstOrDefault();
@@ -956,7 +963,7 @@ namespace LaceupMigration.ViewModels
                 {
                     // Get price from offers or default
                     double offerPrice = 0;
-                    if (Offer.ProductHasSpecialPriceForClient(item.Product, _order.Client, out offerPrice))
+                    if (Offer.ProductHasSpecialPriceForClient(product, _order.Client, out offerPrice))
                     {
                         detail.Price = offerPrice;
                         detail.FromOfferPrice = true;
@@ -974,7 +981,7 @@ namespace LaceupMigration.ViewModels
                 }
 
                 detail.ExpectedPrice = expectedPrice;
-                detail.UnitOfMeasure = result.SelectedUoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.UnitOfMeasure = result.SelectedUoM ?? product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
                 detail.Qty = result.Qty;
                 detail.Weight = result.Weight;
                 detail.Lot = result.Lot;
@@ -1006,19 +1013,21 @@ namespace LaceupMigration.ViewModels
 
         private async Task RestOfTheAddDialogLoadAsync(CatalogItemViewModel item)
         {
-            if (_order == null || item.Product == null)
+            if (_order == null)
                 return;
 
+            var product = Product.Find(item.ProductId);
+
             // Handle Load order type - show popup dialog (same as NewLoadOrderTemplatePage)
-            var existingDetail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == item.Product.ProductId && !x.Deleted);
+            var existingDetail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == item.ProductId && !x.Deleted);
             
             var currentQty = existingDetail?.Qty ?? 0;
             var currentComments = existingDetail?.Comments ?? string.Empty;
-            var currentUoM = existingDetail?.UnitOfMeasure ?? item.Line?.UoM ?? item.Product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+            var currentUoM = existingDetail?.UnitOfMeasure ?? item.Line?.UoM ?? product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
             
             var result = await _dialogService.ShowAddItemDialogAsync(
-                item.Product.Name,
-                item.Product,
+                item.ProductName,
+                product,
                 currentQty > 0 ? currentQty.ToString() : "1",
                 currentComments,
                 currentUoM);
@@ -1044,7 +1053,7 @@ namespace LaceupMigration.ViewModels
                 OrderDetail det;
                 if (existingDetail == null)
                 {
-                    det = new OrderDetail(item.Product, (float)qty, _order)
+                    det = new OrderDetail(product, (float)qty, _order)
                     {
                         LoadStarting = -1, // Mark as new/modified
                         UnitOfMeasure = result.selectedUoM ?? currentUoM,
@@ -1462,22 +1471,6 @@ namespace LaceupMigration.ViewModels
 
     public partial class CatalogItemViewModel : ObservableObject
     {
-        private Product? _product;
-        public Product? Product 
-        { 
-            get => _product;
-            set
-            {
-                if (SetProperty(ref _product, value))
-                {
-                    if (value != null)
-                    {
-                        ProductName = value.Name;
-                        UpdateDisplay();
-                    }
-                }
-            }
-        }
         
         private OdLine _line = new();
         public OdLine Line 
@@ -1495,6 +1488,19 @@ namespace LaceupMigration.ViewModels
         public ObservableCollection<OdLine> Values { get; } = new();
 
         [ObservableProperty]
+        private string _upc = string.Empty;
+        [ObservableProperty]
+        private string _sku = string.Empty;
+        [ObservableProperty]
+        private string _code = string.Empty;
+        
+        [ObservableProperty]
+        private int _productId = 0;
+        
+        [ObservableProperty]
+        private int _orderId = 0;
+        
+        [ObservableProperty]
         private string _productName = string.Empty;
 
         [ObservableProperty]
@@ -1511,6 +1517,9 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private string _listPriceText = string.Empty;
+        
+        [ObservableProperty]
+        private string _Inventory = string.Empty;
 
         [ObservableProperty]
         private bool _hasImage = false;
@@ -1542,17 +1551,15 @@ namespace LaceupMigration.ViewModels
         /// <summary>Sum of qty across all sublines (Values). Used for Advanced Catalog style [-] qty [+] display.</summary>
         [ObservableProperty]
         private float _totalQty;
-
-        public Order? Order { get; set; } // Store order reference to check if product is suggested
-
+        
         public void UpdateDisplay()
         {
-            if (Product == null || Line == null)
+            if (Line == null)
                 return;
 
             // Update on hand
             // Format as integer (matching screenshot: OH:93, OH:94, etc.)
-            var oh = (int)Product.CurrentWarehouseInventory;
+            var oh = _Inventory;
             OnHandText = $"OH:{oh}";
 
             // Update UoM
@@ -1607,26 +1614,26 @@ namespace LaceupMigration.ViewModels
                 AvgSaleText = $"Avg: {Line.AvgSale:F2}";
             }
 
-            // Check if product is suggested
-            if (Order != null && Order.Client != null && Product != null)
-            {
-                IsSuggested = Product.IsSuggestedForClient(Order.Client, Product);
-                if (IsSuggested)
-                {
-                    SuggestedLabelText = string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) 
-                        ? "Suggested Products" 
-                        : $"{Config.ProductCategoryNameIdentifier} Products";
-                }
-                else
-                {
-                    SuggestedLabelText = string.Empty;
-                }
-            }
-            else
-            {
-                IsSuggested = false;
-                SuggestedLabelText = string.Empty;
-            }
+            // // Check if product is suggested
+            // if (Order != null && Order.Client != null && Product != null)
+            // {
+            //     IsSuggested = Product.IsSuggestedForClient(Order.Client, Product);
+            //     if (IsSuggested)
+            //     {
+            //         SuggestedLabelText = string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) 
+            //             ? "Suggested Products" 
+            //             : $"{Config.ProductCategoryNameIdentifier} Products";
+            //     }
+            //     else
+            //     {
+            //         SuggestedLabelText = string.Empty;
+            //     }
+            // }
+            // else
+            // {
+            //     IsSuggested = false;
+            //     SuggestedLabelText = string.Empty;
+            // }
         }
     }
 }

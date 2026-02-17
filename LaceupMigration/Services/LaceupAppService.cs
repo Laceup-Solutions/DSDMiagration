@@ -22,10 +22,11 @@ namespace LaceupMigration.Services
 			{
 				try
 				{
+					CompanyInfo.Load();
+
 					DataProvider.Initialize();
 
 					Config.Initialize();
-					CompanyInfo.Load();
 					BackgroundDataSync.CallMe();
 
 					PlatformAppCenter.InitializeAndHookCrash();

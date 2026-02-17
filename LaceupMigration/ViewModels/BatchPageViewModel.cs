@@ -1520,10 +1520,6 @@ namespace LaceupMigration.ViewModels
         
         private async Task<bool> EnsureCompanySelectedAsync()
         {
-            // Already selected? (optional guard)
-            if (CompanyInfo.SelectedCompany != null)
-                return true;
-
             var clientCompanies = SalesmanAvailableCompany.GetCompanies(Config.SalesmanId, _batch.Client.ClientId);
 
             if (clientCompanies.Count > 1)
