@@ -150,13 +150,14 @@
                                 
                                 <!-- Product Details (Left) -->
                                 <VerticalStackLayout Grid.Column="0" Grid.Row="1" Spacing="1">
+                                    <Label Text="{Binding UomDisplayText}"
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           TextColor="Black"
+                                           IsVisible="{Binding ShowUomLabel}" />
                                     <Label Text="{Binding ListPriceText}"
                                            FontSize="12"
                                            TextColor="{StaticResource Gray600}" />
-                                    <Label Text="{Binding UomText}"
-                                           FontSize="12"
-                                           TextColor="{StaticResource Gray600}"
-                                           IsVisible="{Binding UomText, Converter={StaticResource IsStringNotEmptyConverter}}" />
                                     <Label Text="{Binding TypeText}"
                                            FontSize="12"
                                            FontAttributes="Bold"

@@ -79,6 +79,23 @@ namespace LaceupMigration.ViewModels
 			LoadImages();
 		}
 
+		public async Task<bool> OnBackButtonPressedAsync()
+		{
+				var confirmed = await _dialogService.ShowConfirmationAsync(
+					"Alert",
+					"You will lose any changes you made in this screen. Are you sure you want to leave?",
+					"Yes",
+					"No");
+				
+				if (confirmed && _deposit != null)
+					_deposit.Delete();
+				
+				if (!confirmed)
+					return true;
+
+				return false;
+		}
+		
 		private void LoadDepositData()
 		{
 			BatchNumber = "Batch #" + _deposit.UniqueId;

@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<base:MainTabContentPage xmlns:base="clr-namespace:LaceupMigration" xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.OrdersPage"
              xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              x:DataType="vm:OrdersPageViewModel"
              Title="Transactions">
-    <ContentPage.ToolbarItems>
+    <base:MainTabContentPage.ToolbarItems>
         <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
-    </ContentPage.ToolbarItems>
+    </base:MainTabContentPage.ToolbarItems>
 
-    <ContentPage.Resources>
+    <base:MainTabContentPage.Resources>
         <DataTemplate x:Key="OrderItemTemplate" x:DataType="vm:OrderListItemViewModel">
             <VerticalStackLayout Spacing="0">
                 <BoxView HeightRequest="1"
@@ -94,7 +94,7 @@
                                 SelectionMode="None" />
             </VerticalStackLayout>
         </DataTemplate>
-    </ContentPage.Resources>
+    </base:MainTabContentPage.Resources>
 
     <Grid RowDefinitions="Auto,Auto,Auto,*"
           Padding="12"
@@ -177,4 +177,4 @@
             </CollectionView.ItemsLayout>
         </CollectionView>
     </Grid>
-</ContentPage>
+</base:MainTabContentPage>

@@ -4,7 +4,7 @@ using Microsoft.Maui.Dispatching;
 
 namespace LaceupMigration
 {
-	public partial class ClientsPage : ContentPage
+	public partial class ClientsPage : MainTabContentPage
 	{
 		private readonly ClientsPageViewModel _viewModel;
 		private readonly MainPageViewModel _mainViewModel;

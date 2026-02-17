@@ -83,7 +83,31 @@ namespace LaceupMigration.ViewModels
 
 		public async Task OnAppearingAsync()
 		{
+			if (ClearDataState.ClearSelectionOnInvoicesAppear)
+			{
+				ClearDataState.ClearSelectionOnInvoicesAppear = false;
+				ClearSelection();
+			}
 			RefreshUI();
+		}
+
+		/// <summary>Clear all invoice selections (e.g. after Clear Data so stale selection is reset).</summary>
+		private void ClearSelection()
+		{
+			SelectedInvoices.Clear();
+			_isUpdatingSelectAll = true;
+			try
+			{
+				foreach (var flatItem in FlatInvoiceList.Where(x => !x.IsGroupHeader && x.InvoiceItem != null))
+					flatItem.InvoiceItem.SetIsSelected(false, skipHandler: true);
+				IsSelectAllChecked = false;
+				RefreshListHeader();
+				UpdateSelectAllState();
+			}
+			finally
+			{
+				_isUpdatingSelectAll = false;
+			}
 		}
 
 		partial void OnSelectedDateRangeChanged(string value)

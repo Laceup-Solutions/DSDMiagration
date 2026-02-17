@@ -4324,6 +4324,7 @@ namespace LaceupMigration
                 BankAccount.List.Clear();
                 InvoicePayment.ClearList();
                 TemporalInvoicePayment.List.Clear();
+                BankDeposit.Clear();
                 SiteEx.Clear();
                 ProductInventory.ClearAll();
                 AccessCode.Clear();

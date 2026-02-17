@@ -1413,15 +1413,37 @@ namespace LaceupMigration
             lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[StandarPrintTitle], startY, s1, string.Empty));
             startY += font36Separation;
 
-            if (Config.UseBigFontForPrintDate)
+            if (order.ConvertedInvoice)
             {
-                lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[StandarPrintDateBig], startY, DateTime.Now.ToString(Config.OrderDatePrintFormat)));
-                startY += 40;
+                lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[StandarPrintedOn], startY, DateTime.Now.ToString(Config.OrderDatePrintFormat)));
+                startY += font18Separation;
+
+                lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[StandarCreatedOn], startY, order.Date.ToString(Config.OrderDatePrintFormat)));
+                startY += font18Separation;
+
+                if (order.DueDate < DateTime.Today)
+                {
+                    lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[InvoiceDueOnOverdue], startY, order.DueDate.ToString(Config.OrderDatePrintFormat)));
+                    startY += font18Separation;
+                }
+                else
+                {
+                    lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[InvoiceDueOn], startY, order.DueDate.ToString(Config.OrderDatePrintFormat)));
+                    startY += font18Separation;
+                }
             }
             else
             {
-                lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[StandarPrintDate], startY, DateTime.Now.ToString(Config.OrderDatePrintFormat)));
-                startY += font18Separation;
+                if (Config.UseBigFontForPrintDate)
+                {
+                    lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[StandarPrintDateBig], startY, DateTime.Now.ToString(Config.OrderDatePrintFormat)));
+                    startY += 40;
+                }
+                else
+                {
+                    lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[StandarPrintDate], startY, DateTime.Now.ToString(Config.OrderDatePrintFormat)));
+                    startY += font18Separation;
+                }
             }
 
             lines.Add(String.Format(CultureInfo.InvariantCulture, linesTemplates[StandarPrintRouteNumber], startY, Config.RouteName));

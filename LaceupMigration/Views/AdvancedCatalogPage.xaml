@@ -209,7 +209,8 @@
             </Grid>
 
             <!-- Product List -->
-            <CollectionView Grid.Row="3"
+            <CollectionView x:Name="CatalogCollectionView"
+                            Grid.Row="3"
                             ItemsSource="{Binding FilteredItems}"
                             SelectionMode="None">
                 <CollectionView.EmptyView>
@@ -220,16 +221,21 @@
                 </CollectionView.EmptyView>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:AdvancedCatalogItemViewModel">
-                        <Frame Padding="12" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                        <Frame Padding="12" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{Binding RowBackgroundColor}">
                             <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12">
-                                <!-- Product Image -->
+                                <!-- Product Image (tap opens full-screen ViewImagePage) -->
                                 <Image Source="{Binding ProductImagePath}"
                                        WidthRequest="60"
                                        HeightRequest="60"
                                        Grid.Row="0" Grid.Column="0"
                                        Grid.RowSpan="4"
                                        Aspect="AspectFill"
-                                       IsVisible="{Binding HasImage}" />
+                                       IsVisible="{Binding HasImage}">
+                                    <Image.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=ViewImageCommand}"
+                                                              CommandParameter="{Binding .}" />
+                                    </Image.GestureRecognizers>
+                                </Image>
 
                                 <!-- Product Info -->
                                 <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="4">
@@ -291,6 +297,16 @@
                                                                   CommandParameter="{Binding .}" />
                                         </Label.GestureRecognizers>
                                     </Label>
+                                    <Label Text="UOM"
+                                           FontSize="11"
+                                           TextDecorations="Underline"
+                                           TextColor="{StaticResource PrimaryDark}"
+                                           IsVisible="{Binding HasUoms}">
+                                        <Label.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=PickUomCommand}"
+                                                                  CommandParameter="{Binding .}" />
+                                        </Label.GestureRecognizers>
+                                    </Label>
                                 </VerticalStackLayout>
 
                                 <!-- History (hidden when load order) -->
@@ -311,73 +327,54 @@
                                            IsVisible="{Binding HasNoHistory}" />
                                 </VerticalStackLayout>
 
-                                <!-- Details Sublines (for free items) - hidden when load order -->
+                                <!-- Details Sublines (free items + UOM sublines) - hidden when load order -->
                                 <BoxView Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2"
                                          HeightRequest="1"
                                          Color="{StaticResource Gray300}"
                                          Margin="0,8,0,4"
-                                         IsVisible="{Binding ShowFreeItemDetailInCell}" />
+                                         IsVisible="{Binding ShowSublinesInCell}" />
                                 
-                                <Grid Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2"
-                                      ColumnDefinitions="*,Auto,Auto,Auto" 
-                                      ColumnSpacing="8"
-                                      IsVisible="{Binding ShowFreeItemDetailInCell}"
-                                      Margin="0,4"
-                                      Padding="0"
-                                      VerticalOptions="Center"
-                                      HorizontalOptions="FillAndExpand">
-                                    <!-- Free Item Label and UoM -->
-                                    <HorizontalStackLayout Grid.Column="0" 
-                                                           Spacing="8"
-                                                           VerticalOptions="Center"
-                                                           HorizontalOptions="FillAndExpand">
-                                        <Label Text="FREE"
-                                               FontSize="15"
-                                               FontAttributes="Bold"
-                                               TextColor="{StaticResource PrimaryDark}"
-                                               VerticalOptions="Center"
-                                               IsVisible="{Binding FreeItemDetail.Detail.IsFreeItem}" />
-                                        <Label Text="{Binding FreeItemDetail.UomText, StringFormat='UoM: {0}'}"
-                                               FontSize="11"
-                                               TextColor="{StaticResource Gray600}"
-                                               VerticalOptions="Center"
-                                               IsVisible="{Binding FreeItemDetail.UomText, Converter={StaticResource IsStringNotEmptyConverter}}" />
-                                    </HorizontalStackLayout>
-                                    
-                                    <!-- Quantity Controls - aligned with main controls -->
-                                    <Button Text="-"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=DecrementQuantityCommand}"
-                                            CommandParameter="{Binding FreeItemDetail}"
-                                            IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}"
-                                            WidthRequest="40"
-                                            HeightRequest="40"
-                                            FontSize="18"
-                                            VerticalOptions="Center"
-                                            Grid.Column="1" />
-                                    <Label Text="{Binding FreeItemDetail.QuantityText}"
-                                           FontSize="16"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource PrimaryDark}"
-                                           VerticalOptions="Center"
-                                           HorizontalOptions="Center"
-                                           Grid.Column="2"
-                                           Padding="12,0"
-                                           IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}">
-                                        <Label.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=EditQuantityCommand}"
-                                                                  CommandParameter="{Binding FreeItemDetail}" />
-                                        </Label.GestureRecognizers>
-                                    </Label>
-                                    <Button Text="+"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=IncrementQuantityCommand}"
-                                            CommandParameter="{Binding FreeItemDetail}"
-                                            IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}"
-                                            WidthRequest="40"
-                                            HeightRequest="40"
-                                            FontSize="18"
-                                            VerticalOptions="Center"
-                                            Grid.Column="3" />
-                                </Grid>
+                                <CollectionView Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2"
+                                                ItemsSource="{Binding DetailsWithOrderDetail}"
+                                                Margin="0,4"
+                                                VerticalOptions="Start"
+                                                HorizontalOptions="FillAndExpand"
+                                                IsVisible="{Binding ShowSublinesInCell}">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:AdvancedCatalogItemViewModel+AdvancedCatalogDetailViewModel">
+                                            <Grid ColumnDefinitions="*,Auto,Auto,Auto" 
+                                                  ColumnSpacing="8"
+                                                  Margin="0,2"
+                                                  VerticalOptions="Center">
+                                                <HorizontalStackLayout Grid.Column="0" Spacing="8" VerticalOptions="Center" HorizontalOptions="FillAndExpand">
+                                                    <Label Text="FREE" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" VerticalOptions="Center"
+                                                           IsVisible="{Binding Detail.IsFreeItem}" />
+                                                    <Label Text="{Binding UomText, StringFormat='UoM: {0}'}" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource Gray600}" VerticalOptions="Center"
+                                                           IsVisible="{Binding UomText, Converter={StaticResource IsStringNotEmptyConverter}}" />
+                                                    <Label Text="{Binding PriceText, StringFormat='Price: {0}'}" FontSize="11" TextColor="{StaticResource Gray600}" VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
+                                                <Button Grid.Column="1" Text="-"
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=DecrementQuantityCommand}"
+                                                        CommandParameter="{Binding .}"
+                                                        IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}"
+                                                        WidthRequest="40" HeightRequest="40" FontSize="18" VerticalOptions="Center" />
+                                                <Label Grid.Column="2" Text="{Binding QuantityText}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}"
+                                                       VerticalOptions="Center" HorizontalOptions="Center" Padding="12,0"
+                                                       IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}">
+                                                    <Label.GestureRecognizers>
+                                                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=EditQuantityCommand}"
+                                                                              CommandParameter="{Binding .}" />
+                                                    </Label.GestureRecognizers>
+                                                </Label>
+                                                <Button Grid.Column="3" Text="+"
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=IncrementQuantityCommand}"
+                                                        CommandParameter="{Binding .}"
+                                                        IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=CanEdit}"
+                                                        WidthRequest="40" HeightRequest="40" FontSize="18" VerticalOptions="Center" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                </CollectionView>
                                 
                                 <!-- Primary Detail Controls (always show, even when free item exists) -->
                                 <Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" 

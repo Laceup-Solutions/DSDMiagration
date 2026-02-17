@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-			 x:Class="LaceupMigration.LoginConfigPage"
-			 Shell.NavBarIsVisible="False"
-			 Shell.BackButtonBehavior="{x:Null}">
+<base:MainTabContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                         xmlns:base="clr-namespace:LaceupMigration"
+                         xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                         x:Class="LaceupMigration.LoginConfigPage"
+                         Shell.NavBarIsVisible="False"
+                         Shell.BackButtonBehavior="{x:Null}">
 	<Grid x:Name="RootGrid">
 		<ScrollView>
 			<VerticalStackLayout Padding="24" >
@@ -99,6 +100,6 @@
 			</VerticalStackLayout>
 		</ScrollView>
 	</Grid>
-</ContentPage>
+</base:MainTabContentPage>
 
 

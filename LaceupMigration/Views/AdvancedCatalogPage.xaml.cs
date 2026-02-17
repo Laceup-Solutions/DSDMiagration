@@ -17,6 +17,19 @@ namespace LaceupMigration.Views
             UseCustomMenu = true; // We build toolbar in OnAppearing based on IsFromLoadOrder
             // Subscribe to property changes to update Grid columns
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+            // Match TransferOnOffPage: scroll to scanned item with short delay so layout is ready
+            _viewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(AdvancedCatalogPageViewModel.ScannedItemToFocus) && _viewModel.ScannedItemToFocus is { } item)
+                {
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        await Task.Delay(100);
+                        CatalogCollectionView.ScrollTo(item, position: ScrollToPosition.Center, animate: true);
+                    });
+                }
+            };
         }
 
         // Override to integrate ViewModel menu with base menu (or single "Add To Order" when from load order)

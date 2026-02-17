@@ -147,6 +147,12 @@ namespace LaceupMigration.Services
         };
 
         /// <summary>
+        /// True while the app is restoring the navigation stack (navigating through intermediate pages to reach the deepest route).
+        /// Pages that run heavy one-time work in OnAppearing (e.g. inventory update) should skip it when this is true so restoration does not get stuck.
+        /// </summary>
+        public static bool IsRestoringState { get; set; }
+
+        /// <summary>
         /// Gets the Shell route for a given ActivityType.
         /// </summary>
         public string GetRouteForActivityType(string activityType)

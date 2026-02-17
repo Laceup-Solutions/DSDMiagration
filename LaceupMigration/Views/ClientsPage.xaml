@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<base:MainTabContentPage xmlns:base="clr-namespace:LaceupMigration" xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              xmlns:converters="clr-namespace:LaceupMigration.Converters"
@@ -7,11 +7,11 @@
              x:DataType="vm:ClientsPageViewModel"
              xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              Title="Customers">
-    <ContentPage.ToolbarItems>
+    <base:MainTabContentPage.ToolbarItems>
             <ToolbarItem Text="Menu" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"/>
-    </ContentPage.ToolbarItems>
+    </base:MainTabContentPage.ToolbarItems>
 
-    <ContentPage.Resources>
+    <base:MainTabContentPage.Resources>
         <Style TargetType="Border" x:Key="BadgeBorder">
             <Setter Property="Padding" Value="6,2" />
             <Setter Property="StrokeShape">
@@ -105,7 +105,7 @@
                 </Grid>
             </Grid>
         </DataTemplate>
-    </ContentPage.Resources>
+    </base:MainTabContentPage.Resources>
 
     <Grid RowDefinitions="Auto,Auto,Auto,*"
           ColumnDefinitions="*"
@@ -211,5 +211,5 @@
             </CollectionView.ItemTemplate>
         </CollectionView>
     </Grid>
-</ContentPage>
+</base:MainTabContentPage>
 
