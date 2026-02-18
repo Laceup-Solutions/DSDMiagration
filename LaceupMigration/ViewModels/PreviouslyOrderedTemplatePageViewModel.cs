@@ -21,7 +21,7 @@ namespace LaceupMigration.ViewModels
         internal Order? _order;
         private bool _asPresale;
         private bool _initialized;
-        
+
         private bool inventoryUpdated = false;
         private int _lastDetailCount = 0;
         private int? _lastDetailId = null;
@@ -29,59 +29,45 @@ namespace LaceupMigration.ViewModels
         private bool _justOrdered = false;
         private int? _pendingOrderId = null;
         private bool _pendingAsPresale = false;
-        
+
         // WhatToViewInList enum and field (matches TemplateActivity)
         private enum WhatToViewInList
         {
             All,
             Selected
         }
-        
+
         private WhatToViewInList _whatToViewInList = WhatToViewInList.All;
 
         public ObservableCollection<PreviouslyOrderedProductViewModel> PreviouslyOrderedProducts { get; } = new();
 
-        [ObservableProperty]
-        private string _clientName = string.Empty;
+        [ObservableProperty] private string _clientName = string.Empty;
 
-        [ObservableProperty]
-        private string _companyText = string.Empty;
+        [ObservableProperty] private string _companyText = string.Empty;
 
-        [ObservableProperty]
-        private bool _showCompany;
+        [ObservableProperty] private bool _showCompany;
 
-        [ObservableProperty]
-        private string _orderTypeText = string.Empty;
+        [ObservableProperty] private string _orderTypeText = string.Empty;
 
-        [ObservableProperty]
-        private string _linesText = "Lines: 0";
+        [ObservableProperty] private string _linesText = "Lines: 0";
 
-        [ObservableProperty]
-        private string _qtySoldText = "Qty Sold: 0";
+        [ObservableProperty] private string _qtySoldText = "Qty Sold: 0";
 
-        [ObservableProperty]
-        private string _orderAmountText = "Order: $0.00";
+        [ObservableProperty] private string _orderAmountText = "Order: $0.00";
 
-        [ObservableProperty]
-        private string _creditAmountText = "Credit: $0.00";
+        [ObservableProperty] private string _creditAmountText = "Credit: $0.00";
 
-        [ObservableProperty]
-        private string _subtotalText = "Subtotal: $0.00";
+        [ObservableProperty] private string _subtotalText = "Subtotal: $0.00";
 
-        [ObservableProperty]
-        private string _taxText = "Tax: $0.00";
+        [ObservableProperty] private string _taxText = "Tax: $0.00";
 
-        [ObservableProperty]
-        private string _discountText = "Discount: $0.00";
+        [ObservableProperty] private string _discountText = "Discount: $0.00";
 
-        [ObservableProperty]
-        private string _totalText = "Total: $0.00";
+        [ObservableProperty] private string _totalText = "Total: $0.00";
 
-        [ObservableProperty]
-        private string _termsText = "Terms: ";
+        [ObservableProperty] private string _termsText = "Terms: ";
 
-        [ObservableProperty]
-        private string _sortByText = "Sort By: Product Name";
+        [ObservableProperty] private string _sortByText = "Sort By: Product Name";
 
         private string GetSortCriteriaName(SortDetails.SortCriteria criteria)
         {
@@ -100,23 +86,17 @@ namespace LaceupMigration.ViewModels
             };
         }
 
-        [ObservableProperty]
-        private bool _showTotals = true;
+        [ObservableProperty] private bool _showTotals = true;
 
-        [ObservableProperty]
-        private bool _showDiscount = true;
+        [ObservableProperty] private bool _showDiscount = true;
 
-        [ObservableProperty]
-        private bool _canEdit = true;
+        [ObservableProperty] private bool _canEdit = true;
 
-        [ObservableProperty]
-        private bool _showSendButton = true;
+        [ObservableProperty] private bool _showSendButton = true;
 
-        [ObservableProperty]
-        private bool _showAddCredit = false;
+        [ObservableProperty] private bool _showAddCredit = false;
 
-        [ObservableProperty]
-        private string _actionButtonsColumnDefinitions = "*,*,*,*";
+        [ObservableProperty] private string _actionButtonsColumnDefinitions = "*,*,*,*";
 
         partial void OnShowAddCreditChanged(bool value)
         {
@@ -128,13 +108,10 @@ namespace LaceupMigration.ViewModels
             _dialogService = dialogService;
             _appService = appService;
             ShowTotals = !Config.HidePriceInTransaction;
-            
+
             // Subscribe to sort criteria messages
-            MessagingCenter.Subscribe<SortByDialogViewModel, Tuple<SortDetails.SortCriteria, bool>>(
-                this, "SortCriteriaApplied", (sender, args) =>
-                {
-                    ApplySortCriteria(args.Item1, args.Item2);
-                });
+            MessagingCenter.Subscribe<SortByDialogViewModel, Tuple<SortDetails.SortCriteria, bool>>(this,
+                "SortCriteriaApplied", (sender, args) => { ApplySortCriteria(args.Item1, args.Item2); });
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -144,14 +121,12 @@ namespace LaceupMigration.ViewModels
 
             if (query.TryGetValue("orderId", out var orderValue) && orderValue != null)
             {
-                if (int.TryParse(orderValue.ToString(), out var oId))
-                    orderId = oId;
+                if (int.TryParse(orderValue.ToString(), out var oId)) orderId = oId;
             }
 
             if (query.TryGetValue("asPresale", out var presaleValue) && presaleValue != null)
             {
-                if (int.TryParse(presaleValue.ToString(), out var presale))
-                    asPresale = presale == 1;
+                if (int.TryParse(presaleValue.ToString(), out var presale)) asPresale = presale == 1;
             }
 
             // Store query parameters for retry in OnAppearingAsync if initialization fails
@@ -181,18 +156,18 @@ namespace LaceupMigration.ViewModels
             _asPresale = asPresale;
             _initialized = true;
             _lastDetailCount = _order.Details.Count;
-            
+
             // Initialize sort criteria from Config (matches Xamarin behavior)
             _sortCriteria = SortDetails.GetCriteriaFromName(Config.PrintInvoiceSort);
             SortByText = $"Sort By: {GetSortCriteriaName(_sortCriteria)}";
-            
+
             // Initialize Just Ordered filter based on whether order has details
             if (_order.Details.Count > 0)
             {
                 _whatToViewInList = WhatToViewInList.Selected; // Show only ordered items if order has details
                 _justOrdered = true; // Keep for backward compatibility with SortByDialog
             }
-            
+
             LoadOrderData();
         }
 
@@ -204,12 +179,10 @@ namespace LaceupMigration.ViewModels
             {
                 await InitializeAsync(_pendingOrderId.Value, _pendingAsPresale);
                 // If still not initialized after retry, return early
-                if (!_initialized)
-                    return;
+                if (!_initialized) return;
             }
 
-            if (!_initialized)
-                return;
+            if (!_initialized) return;
 
             // Set order location
             if (_order != null)
@@ -232,16 +205,16 @@ namespace LaceupMigration.ViewModels
                             _lastDetailId = null;
                         }
                     }
+
                     _lastDetailCount = _order.Details.Count;
                 }
             }
 
-            // Xamarin PreviouslyOrderedTemplateActivity: when creating Activity, if UpdateInventoryInPresale && AsPresale run inventory update then refresh, else just refresh
-            // Skip the one-time inventory update during state restoration so we don't block navigating through to the restored page (e.g. ProductCatalogPage)
-            if (!ActivityStateRestorationService.IsRestoringState && !inventoryUpdated && _order != null && Config.UpdateInventoryInPresale && _order.AsPresale)
+            if (!ActivityStateRestorationService.IsRestoringState && !inventoryUpdated && _order != null &&
+                Config.UpdateInventoryInPresale && _order.AsPresale)
             {
                 inventoryUpdated = true;
-                await RunPresaleInventoryUpdateAsync();
+                _ = RunPresaleInventoryUpdateAndRefreshOhAsync();
             }
 
             await RefreshAsync();
@@ -275,43 +248,54 @@ namespace LaceupMigration.ViewModels
             LoadPreviouslyOrderedProducts();
         }
 
-        /// <summary>Runs presale inventory update in background (matches Xamarin PreviouslyOrderedTemplateActivity when creating Activity). Shows "Updating Inventory" dialog. Caller refreshes list after.</summary>
+        /// <summary>Runs presale inventory update in background; on success refreshes only OH cells on main thread.</summary>
+        private async Task RunPresaleInventoryUpdateAndRefreshOhAsync()
+        {
+            await RunPresaleInventoryUpdateAsync();
+            MainThread.BeginInvokeOnMainThread(RefreshOnHandCellsOnly);
+        }
+
+        /// <summary>Light refresh: updates only OnHandText for each product row (no full reload).</summary>
+        private void RefreshOnHandCellsOnly()
+        {
+            if (_order == null) return;
+            foreach (var item in PreviouslyOrderedProducts)
+                item.RefreshOnHandOnly();
+        }
+
         public async Task RunPresaleInventoryUpdateAsync()
         {
-            if (Connectivity.NetworkAccess != NetworkAccess.Internet)
-                return;
-            await _dialogService.ShowLoadingAsync("Updating Inventory");
+            if (Connectivity.NetworkAccess != NetworkAccess.Internet) return;
             try
             {
-                await Task.Run(() =>
+                try
                 {
-                    try
+                    var forSite =
+                        ((Config.SalesmanCanChangeSite || Config.SelectWarehouseForSales) &&
+                         Config.SalesmanSelectedSite > 0) || Config.PresaleUseInventorySite;
+                    DataProvider.RunInventorySync(forSite, true);
+                    var validOrders = Order.Orders.Where(x =>
+                            x.AsPresale && (x.OrderType == OrderType.Order || x.OrderType == OrderType.Return ||
+                                            x.OrderType == OrderType.Credit))
+                        .ToList();
+                    foreach (var order in validOrders)
                     {
-                        var forSite = ((Config.SalesmanCanChangeSite || Config.SelectWarehouseForSales) && Config.SalesmanSelectedSite > 0) || Config.PresaleUseInventorySite;
-                        DataProvider.RunInventorySync(forSite, true);
-                        var validOrders = Order.Orders.Where(x => x.AsPresale && (x.OrderType == OrderType.Order || x.OrderType == OrderType.Return || x.OrderType == OrderType.Credit)).ToList();
-                        foreach (var order in validOrders)
-                        {
-                            foreach (var o in order.Details)
-                                order.UpdateInventory(o, -1);
-                        }
+                        foreach (var o in order.Details) order.UpdateInventory(o, -1);
                     }
-                    catch (Exception ex)
-                    {
-                        Logger.CreateLog(ex.ToString());
-                    }
-                });
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex.ToString());
+                }
             }
             finally
             {
-                await _dialogService.HideLoadingAsync();
             }
         }
 
         public void LoadOrderData()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             ClientName = _order.Client?.ClientName ?? "Unknown Client";
             OrderTypeText = GetOrderTypeText(_order);
@@ -328,34 +312,34 @@ namespace LaceupMigration.ViewModels
                 ShowCompany = false;
             }
 
-            // Calculate totals
+            // Calculate totals: subtotal before discount, full discount (order + per-line), then total after discount/tax
             var totalQty = _order.Details.Sum(x => x.Qty);
-            var subtotal = _order.OrderTotalCost();
-            var discount = _order.DiscountAmount;
+            var subtotal = _order.CalculateItemCost();
+            var discount = _order.CalculateDiscount();
             var tax = _order.CalculateTax();
             var total = _order.OrderTotalCost();
 
             LinesText = $"Lines: {_order.Details.Count}";
             QtySoldText = $"Qty Sold: {totalQty}";
-            
+
             // Calculate order and credit amounts
             var orderAmount = _order.Details.Where(x => !x.IsCredit).Sum(x => x.Qty * x.Price);
             var creditAmount = _order.Details.Where(x => x.IsCredit).Sum(x => x.Qty * x.Price);
             OrderAmountText = $"Order: {orderAmount.ToCustomString()}";
             CreditAmountText = $"Credit: {creditAmount.ToCustomString()}";
-            
+
             SubtotalText = $"Subtotal: {subtotal.ToCustomString()}";
             DiscountText = $"Discount: {discount.ToCustomString()}";
             TaxText = $"Tax: {tax.ToCustomString()}";
             TotalText = $"Total: {total.ToCustomString()}";
 
-            ShowDiscount = _order.Client?.UseDiscount == true || _order.Client?.UseDiscountPerLine == true || _order.IsDelivery;
+            ShowDiscount = _order.Client?.UseDiscount == true || _order.Client?.UseDiscountPerLine == true ||
+                           _order.IsDelivery;
 
             // Show Add Credit button only if Order type and AllowOneDoc is true
             // Hide if Credit or Return type (since everything added is already credit)
-            ShowAddCredit = !_order.IsQuote && 
-                           _order.OrderType == OrderType.Order && 
-                           _order.Client?.AllowOneDoc == true;
+            ShowAddCredit = !_order.IsQuote && _order.OrderType == OrderType.Order &&
+                            _order.Client?.AllowOneDoc == true;
 
             // Load previously ordered products
             LoadPreviouslyOrderedProducts();
@@ -363,8 +347,7 @@ namespace LaceupMigration.ViewModels
 
         private void LoadPreviouslyOrderedProducts()
         {
-            if (_order?.Client == null)
-                return;
+            if (_order?.Client == null) return;
 
             // Ensure previously ordered list is loaded
             _order.Client.EnsurePreviouslyOrdered();
@@ -375,12 +358,10 @@ namespace LaceupMigration.ViewModels
             List<int> productsVisibleForCompany = null;
             if (_order.CompanyId > 0)
             {
-                productsVisibleForCompany = ProductVisibleCompany.List
-                    .Where(x => x.CompanyId == _order.CompanyId)
+                productsVisibleForCompany = ProductVisibleCompany.List.Where(x => x.CompanyId == _order.CompanyId)
                     .Select(x => x.ProductId)
                     .ToList();
-                if (productsVisibleForCompany.Count == 0)
-                    productsVisibleForCompany = null;
+                if (productsVisibleForCompany.Count == 0) productsVisibleForCompany = null;
             }
 
             // Clean up any existing details with qty=0 (should never exist)
@@ -389,6 +370,7 @@ namespace LaceupMigration.ViewModels
             {
                 _order.DeleteDetail(detail);
             }
+
             if (detailsToDelete.Count > 0)
             {
                 _order.Save();
@@ -400,15 +382,14 @@ namespace LaceupMigration.ViewModels
 
             foreach (var orderDetail in _order.Details)
             {
-                if (orderDetail.Product == null)
-                    continue;
+                if (orderDetail.Product == null) continue;
 
                 // Skip default item if it's the only item
-                if (orderDetail.Product.ProductId == Config.DefaultItem && _order.Details.Count == 1)
-                    continue;
+                if (orderDetail.Product.ProductId == Config.DefaultItem && _order.Details.Count == 1) continue;
 
                 // Hide product if not visible for the order's company
-                if (productsVisibleForCompany != null && !productsVisibleForCompany.Contains(orderDetail.Product.ProductId))
+                if (productsVisibleForCompany != null &&
+                    !productsVisibleForCompany.Contains(orderDetail.Product.ProductId))
                     continue;
 
                 productIdsInOrder.Add(orderDetail.Product.ProductId);
@@ -438,25 +419,21 @@ namespace LaceupMigration.ViewModels
             // Add one row per product from history that is NOT yet in the order (so user can tap to add)
             if (_order.Client.OrderedList != null && _order.Client.OrderedList.Count > 0)
             {
-                var orderedProducts = _order.Client.OrderedList
-                    .OrderByDescending(x => x.Last.Date)
-                    .Take(100)
-                    .ToList();
+                var orderedProducts = _order.Client.OrderedList.OrderByDescending(x => x.Last.Date).Take(100).ToList();
 
                 foreach (var orderedItem in orderedProducts)
                 {
-                    if (orderedItem.Last?.Product == null)
-                        continue;
+                    if (orderedItem.Last?.Product == null) continue;
 
                     var productId = orderedItem.Last.ProductId;
                     if (productIdsInOrder.Contains(productId))
                         continue; // already have at least one row for this product from order details
 
                     // Hide history product if not visible for the order's company
-                    if (productsVisibleForCompany != null && !productsVisibleForCompany.Contains(productId))
-                        continue;
+                    if (productsVisibleForCompany != null && !productsVisibleForCompany.Contains(productId)) continue;
 
-                    var productViewModel = CreatePreviouslyOrderedProductViewModel(orderedItem.Last.Product, orderedItem);
+                    var productViewModel =
+                        CreatePreviouslyOrderedProductViewModel(orderedItem.Last.Product, orderedItem);
                     productViewModel.IsEnabled = CanEdit;
                     itemsToAdd.Add(productViewModel);
                 }
@@ -477,10 +454,13 @@ namespace LaceupMigration.ViewModels
             SortProducts();
         }
 
-        private PreviouslyOrderedProductViewModel CreatePreviouslyOrderedProductViewModel(Product product, LastTwoDetails orderedItem)
+        private PreviouslyOrderedProductViewModel CreatePreviouslyOrderedProductViewModel(Product product,
+            LastTwoDetails orderedItem)
         {
             // When order is not AsPresale, OH = truck inventory (GetInventory returns truck); otherwise warehouse. No UOM yet (history-only row).
-            var baseInv = _order != null ? product.GetInventory(_order.AsPresale, false) : product.CurrentWarehouseInventory;
+            var baseInv = _order != null
+                ? product.GetInventory(_order.AsPresale, false)
+                : product.CurrentWarehouseInventory;
             var onHand = baseInv; // no UOM for history-only row
             var listPrice = Product.GetPriceForProduct(product, _order, false, false);
             var expectedPrice = Product.GetPriceForProduct(product, _order, false, false);
@@ -514,12 +494,13 @@ namespace LaceupMigration.ViewModels
             var showTypeText = false;
 
             // Check if product is suggested
-            var isSuggested = _order != null && _order.Client != null && Product.IsSuggestedForClient(_order.Client, product);
+            var isSuggested = _order != null && _order.Client != null &&
+                              Product.IsSuggestedForClient(_order.Client, product);
             string suggestedLabelText = string.Empty;
             if (isSuggested)
             {
-                suggestedLabelText = string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) 
-                    ? "Suggested Products" 
+                suggestedLabelText = string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier)
+                    ? "Suggested Products"
                     : $"{Config.ProductCategoryNameIdentifier} Products";
             }
 
@@ -550,16 +531,21 @@ namespace LaceupMigration.ViewModels
             };
         }
 
-        private PreviouslyOrderedProductViewModel CreatePreviouslyOrderedProductViewModelFromOrderDetail(OrderDetail orderDetail)
+        private PreviouslyOrderedProductViewModel CreatePreviouslyOrderedProductViewModelFromOrderDetail(
+            OrderDetail orderDetail)
         {
             var product = orderDetail.Product;
             // OH in this detail's UOM: base inventory / UOM conversion (so it updates as qty is modified)
-            var baseInv = _order != null ? product.GetInventory(_order.AsPresale, false) : product.CurrentWarehouseInventory;
+            var baseInv = _order != null
+                ? product.GetInventory(_order.AsPresale, false)
+                : product.CurrentWarehouseInventory;
             var conversion = orderDetail.UnitOfMeasure?.Conversion ?? 1f;
             var onHandInUom = conversion != 0 ? baseInv / conversion : baseInv;
             var onHand = onHandInUom;
             var listPrice = Product.GetPriceForProduct(product, _order, false, false);
-            var expectedPrice = orderDetail.ExpectedPrice > 0 ? orderDetail.ExpectedPrice : Product.GetPriceForProduct(product, _order, false, false);
+            var expectedPrice = orderDetail.ExpectedPrice > 0
+                ? orderDetail.ExpectedPrice
+                : Product.GetPriceForProduct(product, _order, false, false);
 
             // Try to find history for this product
             LastTwoDetails? orderedItem = null;
@@ -590,7 +576,7 @@ namespace LaceupMigration.ViewModels
             var productNameColor = Colors.Black;
             var typeText = string.Empty;
             var showTypeText = false;
-            
+
             if (orderDetail.IsCredit)
             {
                 productNameColor = Colors.Orange; // Orange for credit items
@@ -599,17 +585,20 @@ namespace LaceupMigration.ViewModels
             }
 
             // Check if product is suggested
-            var isSuggested = _order != null && _order.Client != null && Product.IsSuggestedForClient(_order.Client, product);
+            var isSuggested = _order != null && _order.Client != null &&
+                              Product.IsSuggestedForClient(_order.Client, product);
             string suggestedLabelText = string.Empty;
             if (isSuggested)
             {
-                suggestedLabelText = string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) 
-                    ? "Suggested Products" 
+                suggestedLabelText = string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier)
+                    ? "Suggested Products"
                     : $"{Config.ProductCategoryNameIdentifier} Products";
             }
 
             var uomText = orderDetail.UnitOfMeasure != null ? orderDetail.UnitOfMeasure.Name : string.Empty;
-            var uomDisplayText = orderDetail.UnitOfMeasure != null ? "UOM: " + orderDetail.UnitOfMeasure.Name : string.Empty;
+            var uomDisplayText = orderDetail.UnitOfMeasure != null
+                ? "UOM: " + orderDetail.UnitOfMeasure.Name
+                : string.Empty;
             var showUomLabel = orderDetail.UnitOfMeasure != null;
 
             var vm = new PreviouslyOrderedProductViewModel(this)
@@ -644,13 +633,14 @@ namespace LaceupMigration.ViewModels
 
         private void SortProducts()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             List<PreviouslyOrderedProductViewModel> sorted = _sortCriteria switch
             {
                 SortDetails.SortCriteria.ProductName => PreviouslyOrderedProducts.OrderBy(x => x.ProductName).ToList(),
-                SortDetails.SortCriteria.ProductCode => PreviouslyOrderedProducts.OrderBy(x => GetProductById(x.ProductId)?.Code ?? "").ToList(),
+                SortDetails.SortCriteria.ProductCode => PreviouslyOrderedProducts
+                    .OrderBy(x => GetProductById(x.ProductId)?.Code ?? "")
+                    .ToList(),
                 SortDetails.SortCriteria.Category => PreviouslyOrderedProducts
                     .OrderBy(x => GetProductById(x.ProductId)?.CategoryId ?? 0)
                     .ThenBy(x => x.ProductName)
@@ -658,11 +648,8 @@ namespace LaceupMigration.ViewModels
                 SortDetails.SortCriteria.InStock => PreviouslyOrderedProducts
                     .OrderByDescending(x => GetProductById(x.ProductId)?.GetInventory(_order.AsPresale, false) ?? 0)
                     .ToList(),
-                SortDetails.SortCriteria.Qty => PreviouslyOrderedProducts
-                    .OrderByDescending(x => x.Quantity)
-                    .ToList(),
-                SortDetails.SortCriteria.Descending => PreviouslyOrderedProducts
-                    .OrderByDescending(x => x.ProductName)
+                SortDetails.SortCriteria.Qty => PreviouslyOrderedProducts.OrderByDescending(x => x.Quantity).ToList(),
+                SortDetails.SortCriteria.Descending => PreviouslyOrderedProducts.OrderByDescending(x => x.ProductName)
                     .ToList(),
                 SortDetails.SortCriteria.OrderOfEntry => PreviouslyOrderedProducts
                     .OrderBy(x => x.OrderDetailId ?? int.MaxValue)
@@ -710,6 +697,7 @@ namespace LaceupMigration.ViewModels
                 {
                     return order.IsQuote ? "Quote" : "Sales Order";
                 }
+
                 return "Sales Invoice";
             }
             else if (order.OrderType == OrderType.Credit)
@@ -736,67 +724,66 @@ namespace LaceupMigration.ViewModels
             {
                 return "Work Order";
             }
+
             return order.OrderType.ToString();
         }
 
         [RelayCommand]
         private async Task AddCreditAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             _appService.RecordEvent("add credit button");
 
             // Navigate to OrderCreditPage (equivalent to OrderCreditActivity in Xamarin)
             // This matches PreviouslyOrderedTemplateActivity.AddCredit_Click which navigates to OrderCreditActivity with fromOneDoc=1
-            await Shell.Current.GoToAsync($"ordercredit?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}&fromOneDoc=1");
+            await Shell.Current.GoToAsync(
+                $"ordercredit?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}&fromOneDoc=1");
         }
 
         [RelayCommand]
         private async Task ViewProductsAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             // Navigate to FullCategoryPage first (shows categories, then navigates to ProductCatalog)
             // This matches Xamarin's ViewProd_Click which shows categories first
             // Pass comingFrom=PreviouslyOrdered so ProductCatalog knows to add as sales (no credit prompt)
-            await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}&comingFrom=PreviouslyOrdered");
+            await Shell.Current.GoToAsync(
+                $"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}&comingFrom=PreviouslyOrdered");
         }
 
         [RelayCommand]
         private async Task ViewCategoriesAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             // Navigate to categories
             // Pass comingFrom=PreviouslyOrdered so ProductCatalog knows to add as sales (no credit prompt)
-            await Shell.Current.GoToAsync($"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}&comingFrom=PreviouslyOrdered");
+            await Shell.Current.GoToAsync(
+                $"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}&comingFrom=PreviouslyOrdered");
         }
 
         [RelayCommand]
         private async Task SearchAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             var searchOptions = new[] { "Search in Product List", "Search in Current Transaction" };
             var choice = await _dialogService.ShowActionSheetAsync("Search", "", "Cancel", searchOptions);
-            
-            if (choice == null || choice == "Cancel")
-                return;
 
-            var searchTerm = await _dialogService.ShowPromptAsync("Enter Product Name", "Search", "OK", "Cancel", "Product name, UPC, SKU, or code");
-            
-            if (string.IsNullOrWhiteSpace(searchTerm))
-                return;
+            if (choice == null || choice == "Cancel") return;
+
+            var searchTerm = await _dialogService.ShowPromptAsync("Enter Product Name", "Search", "OK", "Cancel",
+                "Product name, UPC, SKU, or code");
+
+            if (string.IsNullOrWhiteSpace(searchTerm)) return;
 
             if (choice == "Search in Current Transaction")
             {
-                var matchingDetail = _order.Details.FirstOrDefault(x => 
+                var matchingDetail = _order.Details.FirstOrDefault(x =>
                     x.Product.Name.ToLowerInvariant().IndexOf(searchTerm.ToLowerInvariant()) != -1);
-                
+
                 if (matchingDetail != null)
                 {
                     await _dialogService.ShowAlertAsync($"Found: {matchingDetail.Product.Name}", "Search Result");
@@ -809,7 +796,8 @@ namespace LaceupMigration.ViewModels
             else
             {
                 // Search in product list - navigate to ProductCatalogPage with search
-                await Shell.Current.GoToAsync($"productcatalog?orderId={_order.OrderId}&productSearch={searchTerm}&comingFromSearch=yes");
+                await Shell.Current.GoToAsync(
+                    $"productcatalog?orderId={_order.OrderId}&productSearch={searchTerm}&comingFromSearch=yes");
             }
         }
 
@@ -818,9 +806,10 @@ namespace LaceupMigration.ViewModels
         {
             // Get current sort criteria from Config (matches Xamarin behavior)
             var currentCriteria = SortDetails.GetCriteriaFromName(Config.PrintInvoiceSort);
-            
+
             // Navigate to SortByDialogPage
-            await Shell.Current.GoToAsync($"sortbydialog?currentCriteria={(int)currentCriteria}&justOrdered={(_whatToViewInList == WhatToViewInList.Selected ? 1 : 0)}&callback=PreviouslyOrderedTemplate");
+            await Shell.Current.GoToAsync(
+                $"sortbydialog?currentCriteria={(int)currentCriteria}&justOrdered={(_whatToViewInList == WhatToViewInList.Selected ? 1 : 0)}&callback=PreviouslyOrderedTemplate");
         }
 
         public void ApplySortCriteria(SortDetails.SortCriteria criteria, bool justOrdered)
@@ -828,13 +817,13 @@ namespace LaceupMigration.ViewModels
             _sortCriteria = criteria;
             _whatToViewInList = justOrdered ? WhatToViewInList.Selected : WhatToViewInList.All;
             _justOrdered = justOrdered; // Keep for backward compatibility
-            
+
             // Save to Config (matches Xamarin SaveSortCriteria)
             SortDetails.SaveSortCriteria(criteria);
-            
+
             // Update UI
             SortByText = $"Sort By: {GetSortCriteriaName(criteria)}";
-            
+
             // Reload and sort products
             LoadPreviouslyOrderedProducts();
         }
@@ -842,13 +831,12 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task SendOrderAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             // Check if order has details
             bool isEmpty = _order.Details.Count == 0 ||
                            (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
-            
+
             if (isEmpty)
             {
                 await _dialogService.ShowAlertAsync("You can't send an empty order", "Alert");
@@ -856,16 +844,14 @@ namespace LaceupMigration.ViewModels
             }
 
             var canSend = await FinalizeOrderAsync();
-            if (!canSend)
-                return;
+            if (!canSend) return;
 
             await ConfirmationSendAsync();
         }
 
         private async Task ConfirmationSendAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             if (_order.AsPresale)
             {
@@ -923,14 +909,14 @@ namespace LaceupMigration.ViewModels
                     {
                         var result = await _dialogService.ShowConfirmAsync(
                             "Debe completar una encuesta antes de continuar. Desea realizar la encuesta ahora?",
-                            "Alert",
-                            "Yes",
-                            "No");
+                            "Alert", "Yes", "No");
                         if (result)
                         {
                             // TODO: Navigate to survey
-                            await _dialogService.ShowAlertAsync("Survey functionality is not yet fully implemented.", "Info");
+                            await _dialogService.ShowAlertAsync("Survey functionality is not yet fully implemented.",
+                                "Info");
                         }
+
                         return;
                     }
                 }
@@ -944,16 +930,14 @@ namespace LaceupMigration.ViewModels
 
                 // Check discounts
                 var shipdate = _order.ShipDate != DateTime.MinValue ? _order.ShipDate : DateTime.Now;
-                if (OrderDiscount.HasDiscounts && _order.DiscountAmount == 0 && 
-                    _order.Details.Any(x => OrderDiscount.ProductHasDiscount(x.Product, x.Qty, _order, shipdate, x.UnitOfMeasure, x.IsFreeItem)))
+                if (OrderDiscount.HasDiscounts && _order.DiscountAmount == 0 && _order.Details.Any(x =>
+                        OrderDiscount.ProductHasDiscount(x.Product, x.Qty, _order, shipdate, x.UnitOfMeasure,
+                            x.IsFreeItem)))
                 {
                     var result = await _dialogService.ShowConfirmAsync(
                         "This client has discounts available to apply. Are you sure you want to continue sending it?",
-                        "Alert",
-                        "Yes",
-                        "No");
-                    if (!result)
-                        return;
+                        "Alert", "Yes", "No");
+                    if (!result) return;
                 }
 
                 // Check if shipdate is locked
@@ -963,9 +947,9 @@ namespace LaceupMigration.ViewModels
                     if (!DataProvider.CheckIfShipdateIsValid(new List<DateTime>() { _order.ShipDate }, ref lockedDates))
                     {
                         var sb = string.Empty;
-                        foreach (var l in lockedDates)
-                            sb += '\n' + l.Date.ToShortDateString();
-                        await _dialogService.ShowAlertAsync("The selected date is currently locked. Please select a different shipdate", "Alert");
+                        foreach (var l in lockedDates) sb += '\n' + l.Date.ToShortDateString();
+                        await _dialogService.ShowAlertAsync(
+                            "The selected date is currently locked. Please select a different shipdate", "Alert");
                         return;
                     }
                 }
@@ -973,7 +957,7 @@ namespace LaceupMigration.ViewModels
                 // Check suggested categories
                 if (SuggestedClientCategory.List.Count > 0)
                 {
-                    var suggestedForthisCLient = SuggestedClientCategory.List.FirstOrDefault(x => 
+                    var suggestedForthisCLient = SuggestedClientCategory.List.FirstOrDefault(x =>
                         x.SuggestedClientCategoryClients.Any(y => y.ClientId == _order.Client.ClientId));
 
                     if (suggestedForthisCLient != null)
@@ -983,8 +967,7 @@ namespace LaceupMigration.ViewModels
 
                         foreach (var p in suggestedForthisCLient.SuggestedClientCategoryProducts)
                         {
-                            if (!product_.Any(x => x.ProductId == p.ProductId))
-                                continue;
+                            if (!product_.Any(x => x.ProductId == p.ProductId)) continue;
 
                             if (!_order.Details.Any(x => x.Product.ProductId == p.ProductId))
                             {
@@ -995,14 +978,17 @@ namespace LaceupMigration.ViewModels
 
                         if (!containedInOrder)
                         {
-                            var warning = "Continue sending suggested " + 
-                                (string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) ? "suggested" : Config.ProductCategoryNameIdentifier) + 
-                                " " + "continue sending suggested part 2";
+                            var warning = "Continue sending suggested " +
+                                          (string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier)
+                                              ? "suggested"
+                                              : Config.ProductCategoryNameIdentifier) + " " +
+                                          "continue sending suggested part 2";
                             var result = await _dialogService.ShowConfirmAsync(warning, "Alert", "Yes", "No");
                             if (!result)
                             {
                                 // TODO: Navigate to suggested
-                                await _dialogService.ShowAlertAsync("Suggested functionality is not yet fully implemented.", "Info");
+                                await _dialogService.ShowAlertAsync(
+                                    "Suggested functionality is not yet fully implemented.", "Info");
                                 return;
                             }
                         }
@@ -1011,18 +997,13 @@ namespace LaceupMigration.ViewModels
             }
 
             // Show confirmation dialog
-            var confirmResult = await _dialogService.ShowConfirmAsync(
-                "Are you sure you want to send the order?",
-                "Confirm Shipping",
-                "Yes",
-                "No");
-            if (!confirmResult)
-                return;
+            var confirmResult = await _dialogService.ShowConfirmAsync("Are you sure you want to send the order?",
+                "Confirm Shipping", "Yes", "No");
+            if (!confirmResult) return;
 
             // Validate order minimum
             bool validQty = _order.ValidateOrderMinimum();
-            if (!validQty)
-                return;
+            if (!validQty) return;
 
             // Send the order
             await SendItAsync();
@@ -1030,21 +1011,18 @@ namespace LaceupMigration.ViewModels
 
         private async Task SendItAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             try
             {
                 await _dialogService.ShowLoadingAsync("Sending order...");
 
-                if (_order.EndDate == DateTime.MinValue)
-                    _order.EndDate = DateTime.Now;
+                if (_order.EndDate == DateTime.MinValue) _order.EndDate = DateTime.Now;
 
                 if (_order.AsPresale && Config.GeneratePresaleNumber && string.IsNullOrEmpty(_order.PrintedOrderId))
                     _order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(_order);
 
-                if (_order.AsPresale)
-                    UpdateRoute(true);
+                if (_order.AsPresale) UpdateRoute(true);
 
                 _order.Save();
 
@@ -1090,13 +1068,11 @@ namespace LaceupMigration.ViewModels
 
         private async Task ContinueAfterAlertAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             // Validate order minimum
             bool validQty = _order.ValidateOrderMinimum();
-            if (!validQty)
-                return;
+            if (!validQty) return;
 
             // Set end date if not set
             if (_order.EndDate == DateTime.MinValue)
@@ -1123,14 +1099,14 @@ namespace LaceupMigration.ViewModels
                     {
                         var result = await _dialogService.ShowConfirmAsync(
                             "Debe completar una encuesta antes de continuar. Desea realizar la encuesta ahora?",
-                            "Alert",
-                            "Yes",
-                            "No");
+                            "Alert", "Yes", "No");
                         if (result)
                         {
                             // TODO: Navigate to survey
-                            await _dialogService.ShowAlertAsync("Survey functionality is not yet fully implemented.", "Info");
+                            await _dialogService.ShowAlertAsync("Survey functionality is not yet fully implemented.",
+                                "Info");
                         }
+
                         return;
                     }
                 }
@@ -1157,17 +1133,15 @@ namespace LaceupMigration.ViewModels
 
         private async Task<bool> FinalizeOrderAsync()
         {
-            if (_order == null)
-                return true;
+            if (_order == null) return true;
 
-            if (_order.Voided)
-                return true;
+            if (_order.Voided) return true;
 
             // Check if order is empty - matches Xamarin PreviouslyOrderedTemplateActivity logic
             // Empty means: no details, or only default item
             // Note: Details with qty=0 are always deleted, so we don't need to check for them
-            bool isEmpty = _order.Details.Count == 0 || 
-                (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
+            bool isEmpty = _order.Details.Count == 0 ||
+                           (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
 
             if (isEmpty)
             {
@@ -1199,9 +1173,7 @@ namespace LaceupMigration.ViewModels
                 {
                     // If order has been printed or is a delivery, ask to void instead
                     var result = await _dialogService.ShowConfirmAsync(
-                        "You have to set all quantities to zero. Do you want to void this order?",
-                        "Alert",
-                        "Yes",
+                        "You have to set all quantities to zero. Do you want to void this order?", "Alert", "Yes",
                         "No");
                     if (result)
                     {
@@ -1215,6 +1187,7 @@ namespace LaceupMigration.ViewModels
                         _order.Save();
                         return true;
                     }
+
                     return false;
                 }
             }
@@ -1225,17 +1198,12 @@ namespace LaceupMigration.ViewModels
                 {
                     var result = await _dialogService.ShowConfirmAsync(
                         "This order was not sent. If you continue it will be saved in the device to be sent later. Are you sure you want to continue?",
-                        "Alert",
-                        "Yes",
-                        "No");
-                    if (!result)
-                        return false;
+                        "Alert", "Yes", "No");
+                    if (!result) return false;
                 }
 
-                if (Session.session != null)
-                    Session.session.AddDetailFromOrder(_order);
+                if (Session.session != null) Session.session.AddDetailFromOrder(_order);
 
-                
                 // Set end date if not set
                 if (_order.EndDate == DateTime.MinValue)
                 {
@@ -1257,16 +1225,14 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task ShowMenuAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             var options = BuildMenuOptions();
-            if (options.Count == 0)
-                return;
+            if (options.Count == 0) return;
 
-            var choice = await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options.Select(o => o.Title).ToArray());
-            if (string.IsNullOrWhiteSpace(choice))
-                return;
+            var choice =
+                await _dialogService.ShowActionSheetAsync("Menu", "", "Cancel", options.Select(o => o.Title).ToArray());
+            if (string.IsNullOrWhiteSpace(choice)) return;
 
             var option = options.FirstOrDefault(o => o.Title == choice);
             if (option?.Action != null)
@@ -1279,8 +1245,7 @@ namespace LaceupMigration.ViewModels
         {
             var options = new List<MenuOption>();
 
-            if (_order == null)
-                return options;
+            if (_order == null) return options;
 
             var finalized = _order.Finished;
             var voided = _order.Voided;
@@ -1295,179 +1260,116 @@ namespace LaceupMigration.ViewModels
             // Xamarin PreviouslyOrderedTemplateActivity logic:
             // If !AsPresale && (Finished || Voided), only show Print option
             bool isReadOnly = !_order.AsPresale && (finalized || voided);
-            
+
             if (isReadOnly)
             {
                 // Only allow Print when read-only
-                options.Add(new MenuOption("Print", async () =>
-                {
-                    await PrintAsync();
-                }));
+                options.Add(new MenuOption("Print", async () => { await PrintAsync(); }));
                 return options;
             }
 
             // Scanner (only if Config.ScannerToUse == 4)
             if (Config.ScannerToUse == 4)
             {
-                options.Add(new MenuOption("Scan", async () =>
-                {
-                    await GotoBarcodeReaderAsync();
-                }));
+                options.Add(new MenuOption("Scan", async () => { await GotoBarcodeReaderAsync(); }));
             }
 
             // Presale-specific menu items
             if (_order.AsPresale)
             {
-                
                 // Set Ship Date (presale)
                 if (Config.SetShipDate)
                 {
-                    options.Add(new MenuOption("Set Ship Date", async () =>
-                    {
-                        await SetShipDateAsync();
-                    }));
+                    options.Add(new MenuOption("Set Ship Date", async () => { await SetShipDateAsync(); }));
                 }
-                
-                
-                // Set PO (presale)
-                options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO", async () =>
-                {
-                    await GetPONumberAsync();
-                }));
 
-                
+                // Set PO (presale)
+                options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO",
+                    async () => { await GetPONumberAsync(); }));
+
                 // Comments (presale)
-                options.Add(new MenuOption("Add Comments", async () =>
-                {
-                    await ShowCommentsDialogAsync();
-                }));
-                
+                options.Add(new MenuOption("Add Comments", async () => { await ShowCommentsDialogAsync(); }));
+
                 // Signature (presale) - Xamarin order: Ordered By before Send (presaleMenu.xml)
-                options.Add(new MenuOption("Ordered By", async () =>
-                {
-                    await SignAsync();
-                }));
-                
+                options.Add(new MenuOption("Ordered By", async () => { await SignAsync(); }));
+
                 // Send Order (presale)
-                options.Add(new MenuOption("Send", async () =>
-                {
-                    await SendOrderAsync();
-                }));
-                
+                options.Add(new MenuOption("Send", async () => { await SendOrderAsync(); }));
+
                 // Email (presale) - Xamarin: Send by Email visible when !isSplitClient
                 if (!isSplitClient)
                 {
-                    options.Add(new MenuOption("Send by Email", async () =>
-                    {
-                        await SendByEmailAsync();
-                    }));
+                    options.Add(new MenuOption("Send by Email", async () => { await SendByEmailAsync(); }));
                 }
 
-                options.Add(new MenuOption("Select Driver", async () =>
-                {
-                    await SelectSalesmanAsync();
-                }));
-                
+                options.Add(new MenuOption("Select Driver", async () => { await SelectSalesmanAsync(); }));
+
                 // Other Charges - Xamarin order: after Select Driver (presaleMenu.xml)
                 if (!string.IsNullOrEmpty(asset) || Config.AllowOtherCharges)
                 {
-                    options.Add(new MenuOption("Other Charges", async () =>
-                    {
-                        await OtherChargesAsync();
-                    }));
+                    options.Add(new MenuOption("Other Charges", async () => { await OtherChargesAsync(); }));
                 }
-                    
+
                 // What To View (presale)
-                options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added/All" : "Just Ordered", async () =>
-                {
-                    await WhatToViewClickedAsync();
-                }));
-                    
+                options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added/All" : "Just Ordered",
+                    async () => { await WhatToViewClickedAsync(); }));
+
                 // Offers vs Order Discount (presale)
                 if (!hasOrderDiscounts)
                 {
-                    options.Add(new MenuOption("Offers", async () =>
-                    {
-                        await ShowOffersAsync();
-                    }));
+                    options.Add(new MenuOption("Offers", async () => { await ShowOffersAsync(); }));
                 }
                 else
                 {
-                    options.Add(new MenuOption("Discount Offers", async () =>
-                    {
-                        await GoToOrderDiscountAsync();
-                    }));
+                    options.Add(new MenuOption("Discount Offers", async () => { await GoToOrderDiscountAsync(); }));
 
                     if (!Config.CalculateOffersAutomatically)
                     {
-                        options.Add(new MenuOption("Calculate Offers", async () =>
-                        {
-                            await CalculateDiscountOffersAsync();
-                        }));
+                        options.Add(new MenuOption("Calculate Offers",
+                            async () => { await CalculateDiscountOffersAsync(); }));
                     }
                 }
 
                 // Discount (presale) - Xamarin order: Add Discount before Print (presaleMenu.xml)
                 if (allowDiscount)
                 {
-                    options.Add(new MenuOption("Add Discount", async () =>
-                    {
-                        await ApplyDiscountAsync();
-                    }));
+                    options.Add(new MenuOption("Add Discount", async () => { await ApplyDiscountAsync(); }));
                 }
 
                 // Print (presale)
                 if (Config.PrinterAvailable)
                 {
-                    options.Add(new MenuOption("Print", async () =>
-                    {
-                        await PrintAsync();
-                    }));
+                    options.Add(new MenuOption("Print", async () => { await PrintAsync(); }));
                 }
 
                 // Delete (presale) - Xamarin shows "Delete" (deleteLabel)
-                options.Add(new MenuOption("Delete", async () =>
-                {
-                    await DeleteOrderAsync();
-                }));
+                options.Add(new MenuOption("Delete", async () => { await DeleteOrderAsync(); }));
 
                 // Share (presale) - Xamarin: visible when !isSplitClient (presaleMenu.xml order after Delete)
                 if (!isSplitClient)
                 {
-                    options.Add(new MenuOption("Share", async () =>
-                    {
-                        await SharePdfAsync();
-                    }));
+                    options.Add(new MenuOption("Share", async () => { await SharePdfAsync(); }));
                 }
 
                 // Ship Via (presale) - Config.ShowShipVia
                 if (Config.ShowShipVia)
                 {
-                    options.Add(new MenuOption("Ship Via", async () =>
-                    {
-                        await AddEditShipViaAsync();
-                    }));
+                    options.Add(new MenuOption("Ship Via", async () => { await AddEditShipViaAsync(); }));
                 }
 
                 // Convert Quote to Sales Order - Config.CanModifyQuotes && IsQuote && !IsDelivery
                 if (Config.CanModifyQuotes && _order.IsQuote && !_order.IsDelivery)
                 {
-                    options.Add(new MenuOption("Convert to Order", async () =>
-                    {
-                        await ConvertQuoteToSalesOrderAsync();
-                    }));
+                    options.Add(new MenuOption("Convert to Order",
+                        async () => { await ConvertQuoteToSalesOrderAsync(); }));
                 }
 
                 // View Captures / Take Picture (presale) - Config.CaptureImages && !(finalized && MustAddImageToFinalized)
                 bool isVisible = true;
-                if (finalized && Config.MustAddImageToFinalized)
-                    isVisible = false;
+                if (finalized && Config.MustAddImageToFinalized) isVisible = false;
                 if (Config.CaptureImages && isVisible)
                 {
-                    options.Add(new MenuOption("Take Picture", async () =>
-                    {
-                        await ViewCapturedImagesAsync();
-                    }));
+                    options.Add(new MenuOption("Take Picture", async () => { await ViewCapturedImagesAsync(); }));
                 }
             }
             else
@@ -1476,10 +1378,7 @@ namespace LaceupMigration.ViewModels
                 // Print (non-presale)
                 if (!Config.LockOrderAfterPrinted)
                 {
-                    options.Add(new MenuOption("Print", async () =>
-                    {
-                        await PrintAsync();
-                    }));
+                    options.Add(new MenuOption("Print", async () => { await PrintAsync(); }));
                 }
 
                 // Offers vs Order Discount (non-presale)
@@ -1487,112 +1386,77 @@ namespace LaceupMigration.ViewModels
                 {
                     if (!hasOrderDiscounts)
                     {
-                        options.Add(new MenuOption("Offers", async () =>
-                        {
-                            await ShowOffersAsync();
-                        }));
+                        options.Add(new MenuOption("Offers", async () => { await ShowOffersAsync(); }));
                     }
                     else
                     {
-                        options.Add(new MenuOption("Discount Offers", async () =>
-                        {
-                            await GoToOrderDiscountAsync();
-                        }));
+                        options.Add(new MenuOption("Discount Offers", async () => { await GoToOrderDiscountAsync(); }));
 
                         if (!Config.CalculateOffersAutomatically)
                         {
-                            options.Add(new MenuOption("Calculate Offers", async () =>
-                            {
-                                await CalculateDiscountOffersAsync();
-                            }));
+                            options.Add(new MenuOption("Calculate Offers",
+                                async () => { await CalculateDiscountOffersAsync(); }));
                         }
                     }
                 }
 
                 // Add Payment (non-presale) - Xamarin order: after Offers, before Added All
-                var hasPayment = InvoicePayment.List.FirstOrDefault(x => x.OrderId != null && x.OrderId.IndexOf(_order.UniqueId) >= 0) != null;
+                var hasPayment =
+                    InvoicePayment.List.FirstOrDefault(x =>
+                        x.OrderId != null && x.OrderId.IndexOf(_order.UniqueId) >= 0) != null;
                 if (finalized && !hasPayment && !Config.HidePriceInTransaction)
                 {
-                    options.Add(new MenuOption("Add Payment", async () =>
-                    {
-                        await GetPaymentAsync();
-                    }));
+                    options.Add(new MenuOption("Add Payment", async () => { await GetPaymentAsync(); }));
                 }
 
                 // What To View (non-presale)
                 if (!finalized)
                 {
-                    options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added/All" : "Just Ordered", async () =>
-                    {
-                        await WhatToViewClickedAsync();
-                    }));
+                    options.Add(new MenuOption(_whatToViewInList == WhatToViewInList.All ? "Added/All" : "Just Ordered",
+                        async () => { await WhatToViewClickedAsync(); }));
                 }
 
                 // Add Comments (non-presale)
-                options.Add(new MenuOption("Add Comments", async () =>
-                {
-                    await ShowCommentsDialogAsync();
-                }));
+                options.Add(new MenuOption("Add Comments", async () => { await ShowCommentsDialogAsync(); }));
 
                 // Other Charges (non-presale)
                 if (!string.IsNullOrEmpty(asset) || Config.AllowOtherCharges)
                 {
-                    options.Add(new MenuOption("Other Charges", async () =>
-                    {
-                        await OtherChargesAsync();
-                    }));
+                    options.Add(new MenuOption("Other Charges", async () => { await OtherChargesAsync(); }));
                 }
 
                 // Set PO (non-presale) - Xamarin order: after Other Charges, before Add Discount
                 if ((_order.OrderType == OrderType.Bill || Config.SetPO || Config.POIsMandatory) && !finalized)
                 {
-                    options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO", async () =>
-                    {
-                        await GetPONumberAsync();
-                    }));
+                    options.Add(new MenuOption(_order.OrderType == OrderType.Bill ? "Set Bill Number" : "Set PO",
+                        async () => { await GetPONumberAsync(); }));
                 }
 
                 // Add Discount (non-presale)
                 if (!finalized && allowDiscount && !locked)
                 {
-                    options.Add(new MenuOption("Add Discount", async () =>
-                    {
-                        await ApplyDiscountAsync();
-                    }));
+                    options.Add(new MenuOption("Add Discount", async () => { await ApplyDiscountAsync(); }));
                 }
 
                 // Email/Share (non-presale) - Xamarin: both visible when !isSplitClient
                 if (!isSplitClient)
                 {
-                    options.Add(new MenuOption("Send by Email", async () =>
-                    {
-                        await SendByEmailAsync();
-                    }));
-                    options.Add(new MenuOption("Share", async () =>
-                    {
-                        await SharePdfAsync();
-                    }));
+                    options.Add(new MenuOption("Send by Email", async () => { await SendByEmailAsync(); }));
+                    options.Add(new MenuOption("Share", async () => { await SharePdfAsync(); }));
                 }
 
                 // Service Report (non-presale)
                 if (!finalized && Config.ShowServiceReport)
                 {
-                    options.Add(new MenuOption("Service Report", async () =>
-                    {
-                        await GoToServiceReportAsync();
-                    }));
+                    options.Add(new MenuOption("Service Report", async () => { await GoToServiceReportAsync(); }));
                 }
 
                 // View Captures (non-presale)
                 bool isVisible = true;
-                if (finalized && Config.MustAddImageToFinalized)
-                    isVisible = false;
+                if (finalized && Config.MustAddImageToFinalized) isVisible = false;
                 if (Config.CaptureImages && isVisible)
                 {
-                    options.Add(new MenuOption("Take Picture", async () =>
-                    {
-                        await ViewCapturedImagesAsync();
-                    }));
+                    options.Add(new MenuOption("Take Picture", async () => { await ViewCapturedImagesAsync(); }));
                 }
             }
 
@@ -1600,49 +1464,35 @@ namespace LaceupMigration.ViewModels
             var prods = Product.Products.Where(x => x.ExtraPropertiesAsString.Contains("caseInOut"));
             var prodIn = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=1"));
             var prodOut = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=0"));
-            if (Config.MustEnterCaseInOut && (_order.OrderType == OrderType.Order || _order.OrderType == OrderType.Credit) && (prodIn != null || prodOut != null))
+            if (Config.MustEnterCaseInOut &&
+                (_order.OrderType == OrderType.Order || _order.OrderType == OrderType.Credit) &&
+                (prodIn != null || prodOut != null))
             {
-                options.Add(new MenuOption("Enter Crate In/Out", async () =>
-                {
-                    await EnterCasesInOutAsync(false);
-                }));
+                options.Add(new MenuOption("Enter Crate In/Out", async () => { await EnterCasesInOutAsync(false); }));
             }
 
             // Use LSP
             if (Config.LspInAllLines)
             {
-                options.Add(new MenuOption("Use LSP", async () =>
-                {
-                    await UseLspInAllLinesAsync();
-                }));
+                options.Add(new MenuOption("Use LSP", async () => { await UseLspInAllLinesAsync(); }));
             }
-
 
             // Select Price Level
             if (Config.AllowSelectPriceLevel)
             {
-                options.Add(new MenuOption("Select Price Level", async () =>
-                {
-                    await SelectPriceLevelAsync();
-                }));
+                options.Add(new MenuOption("Select Price Level", async () => { await SelectPriceLevelAsync(); }));
             }
 
             // Take Survey
             if (!string.IsNullOrEmpty(Config.SurveyQuestions))
             {
-                options.Add(new MenuOption("Take Survey", async () =>
-                {
-                    await TakeSurveyAsync();
-                }));
+                options.Add(new MenuOption("Take Survey", async () => { await TakeSurveyAsync(); }));
             }
 
             // Disol Client Values
             if (Config.DisolCrap)
             {
-                options.Add(new MenuOption("Edit Client Values", async () =>
-                {
-                    await EnterEditDisolValuesAsync();
-                }));
+                options.Add(new MenuOption("Edit Client Values", async () => { await EnterEditDisolValuesAsync(); }));
             }
 
             // Suggested Products
@@ -1651,40 +1501,36 @@ namespace LaceupMigration.ViewModels
             {
                 if (SuggestedClientCategory.List.Count > 0 && _order != null && _order.Client != null)
                 {
-                    var suggestedForThisClient = SuggestedClientCategory.List.FirstOrDefault(x => x.SuggestedClientCategoryClients.Any(y => y.ClientId == _order.Client.ClientId));
-                    if (suggestedForThisClient != null && suggestedForThisClient.SuggestedClientCategoryProducts.Count > 0)
+                    var suggestedForThisClient = SuggestedClientCategory.List.FirstOrDefault(x =>
+                        x.SuggestedClientCategoryClients.Any(y => y.ClientId == _order.Client.ClientId));
+                    if (suggestedForThisClient != null &&
+                        suggestedForThisClient.SuggestedClientCategoryProducts.Count > 0)
                         suggestedVisible = true;
                 }
             }
+
             if (suggestedVisible && !finalized && !locked)
             {
-                var title = !string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) 
-                    ? $"{Config.ProductCategoryNameIdentifier} Products" 
+                var title = !string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier)
+                    ? $"{Config.ProductCategoryNameIdentifier} Products"
                     : "Suggested Products";
-                options.Add(new MenuOption(title, async () =>
-                {
-                    await ShowSuggestedProductsAsync();
-                }));
+                options.Add(new MenuOption(title, async () => { await ShowSuggestedProductsAsync(); }));
             }
 
             // Delete Weight Lines
             if (Config.DeleteWeightItemsMenu)
             {
-                options.Add(new MenuOption("Delete Weight Lines", async () =>
-                {
-                    await Delete0WeightItemsAsync();
-                }));
+                options.Add(new MenuOption("Delete Weight Lines", async () => { await Delete0WeightItemsAsync(); }));
             }
 
             // Reset Order
             if (Config.AllowReset)
             {
                 var resetValue = UDFHelper.GetSingleUDF("reset", _order.ExtraFields);
-                var resetTitle = (!string.IsNullOrEmpty(resetValue) && resetValue == "1") ? "Undo Reset Order" : "Reset";
-                options.Add(new MenuOption(resetTitle, async () =>
-                {
-                    await ResetOrderAsync();
-                }));
+                var resetTitle = (!string.IsNullOrEmpty(resetValue) && resetValue == "1")
+                    ? "Undo Reset Order"
+                    : "Reset";
+                options.Add(new MenuOption(resetTitle, async () => { await ResetOrderAsync(); }));
             }
 
             // Edit Client (hidden by default in Xamarin, but available)
@@ -1696,11 +1542,9 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         public async Task NavigateToAddItemAsync(PreviouslyOrderedProductViewModel? item)
         {
-            if (item == null || _order == null || !CanEdit)
-                return;
+            if (item == null || _order == null || !CanEdit) return;
             var product = item.GetProduct();
-            if (product == null)
-                return;
+            if (product == null) return;
 
             // When order is not AsPresale and adding new item: restrict if no inventory (same as AdvancedCatalogPageViewModel)
             if (item.GetExistingDetail() == null && !_order.AsPresale && !Config.CanGoBelow0)
@@ -1721,7 +1565,8 @@ namespace LaceupMigration.ViewModels
             {
                 // Navigate with orderDetail (editing existing detail)
                 // Use the detail's IsCredit flag, not the order type
-                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&orderDetail={existingDetail.OrderDetailId}&asCreditItem={(existingDetail.IsCredit ? 1 : 0)}");
+                await Shell.Current.GoToAsync(
+                    $"additem?orderId={_order.OrderId}&orderDetail={existingDetail.OrderDetailId}&asCreditItem={(existingDetail.IsCredit ? 1 : 0)}");
             }
             else
             {
@@ -1736,8 +1581,7 @@ namespace LaceupMigration.ViewModels
         /// </summary>
         public async Task HandleScannedBarcodeAsync(string data)
         {
-            if (string.IsNullOrEmpty(data) || _order == null || !CanEdit)
-                return;
+            if (string.IsNullOrEmpty(data) || _order == null || !CanEdit) return;
 
             // Find product using the same logic as other pages
             var product = ActivityExtensionMethods.GetProduct(_order, data);
@@ -1750,7 +1594,7 @@ namespace LaceupMigration.ViewModels
 
             // Check if product is in previously ordered products list
             var previouslyOrderedItem = PreviouslyOrderedProducts.FirstOrDefault(x => x.ProductId == product.ProductId);
-            
+
             if (previouslyOrderedItem != null)
             {
                 // Product is in the list, navigate to add item page
@@ -1770,17 +1614,17 @@ namespace LaceupMigration.ViewModels
         /// </summary>
         public async Task HandleScannedQRCodeAsync(BarcodeDecoder decoder)
         {
-            if (decoder == null || _order == null || !CanEdit)
-                return;
+            if (decoder == null || _order == null || !CanEdit) return;
 
             // QR codes can contain product information directly
             if (decoder.Product != null)
             {
                 var product = decoder.Product;
-                
+
                 // Check if product is in previously ordered products list
-                var previouslyOrderedItem = PreviouslyOrderedProducts.FirstOrDefault(x => x.ProductId == product.ProductId);
-                
+                var previouslyOrderedItem =
+                    PreviouslyOrderedProducts.FirstOrDefault(x => x.ProductId == product.ProductId);
+
                 if (previouslyOrderedItem != null)
                 {
                     // Product is in the list, navigate to add item page
@@ -1808,37 +1652,32 @@ namespace LaceupMigration.ViewModels
         // Menu action methods
         private async Task GotoBarcodeReaderAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             await Shell.Current.GoToAsync($"barcodereader?orderId={_order.OrderId}");
         }
 
         private async Task ShowOffersAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             await Shell.Current.GoToAsync($"offers?orderId={_order.OrderId}");
         }
 
         private async Task GoToOrderDiscountAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             await Shell.Current.GoToAsync($"orderdiscount?orderId={_order.OrderId}");
         }
 
         private async Task CalculateDiscountOffersAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             // TODO: Implement CalculateDiscountOffers logic
             await _dialogService.ShowAlertAsync("Calculate Offers functionality is not yet fully implemented.", "Info");
         }
 
         private async Task ApplyDiscountAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             if (_order.DiscountAmount > 0)
             {
@@ -1847,40 +1686,33 @@ namespace LaceupMigration.ViewModels
             else
             {
                 _appService.RecordEvent("menu option Discount");
-                var choice = await _dialogService.ShowActionSheetAsync("Select Type Discount", "", "Cancel", new[] { "Amount", "Percentage" });
+                var choice = await _dialogService.ShowActionSheetAsync("Select Type Discount", "", "Cancel",
+                    new[] { "Amount", "Percentage" });
                 if (choice == "Amount")
                     await AddEditDiscountAsync(DiscountType.Amount);
-                else if (choice == "Percentage")
-                    await AddEditDiscountAsync(DiscountType.Percent);
+                else if (choice == "Percentage") await AddEditDiscountAsync(DiscountType.Percent);
             }
         }
 
         private async Task AddEditDiscountAsync(DiscountType discountType)
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             var discountAmount = _order.DiscountAmount;
-            if (_order.DiscountType == DiscountType.Percent && discountAmount > 0)
-                discountAmount *= 100;
+            if (_order.DiscountType == DiscountType.Percent && discountAmount > 0) discountAmount *= 100;
 
-            var discountValue = await _dialogService.ShowPromptAsync(
-                "Enter Discount",
-                $"Enter Discount ({discountType}):",
-                "OK",
-                "Cancel",
-                keyboard: Keyboard.Numeric,
+            var discountValue = await _dialogService.ShowPromptAsync("Enter Discount",
+                $"Enter Discount ({discountType}):", "OK", "Cancel", keyboard: Keyboard.Numeric,
                 initialValue: discountAmount > 0 ? discountAmount.ToString() : "");
 
-            if (string.IsNullOrWhiteSpace(discountValue))
-                return;
+            if (string.IsNullOrWhiteSpace(discountValue)) return;
 
-            if (!float.TryParse(discountValue, out float discount))
-                return;
+            if (!float.TryParse(discountValue, out float discount)) return;
 
             if (!_order.CanAddDiscount(discount, discountType))
             {
-                await _dialogService.ShowAlertAsync($"Cannot give more than {Config.MaxDiscountPerOrder}% discount to the order.", "Alert");
+                await _dialogService.ShowAlertAsync(
+                    $"Cannot give more than {Config.MaxDiscountPerOrder}% discount to the order.", "Alert");
                 return;
             }
 
@@ -1891,6 +1723,7 @@ namespace LaceupMigration.ViewModels
                     await _dialogService.ShowAlertAsync("Discount cannot be bigger than order total.", "Alert");
                     return;
                 }
+
                 _order.DiscountAmount = discount / 100;
                 _order.DiscountType = DiscountType.Percent;
             }
@@ -1901,18 +1734,14 @@ namespace LaceupMigration.ViewModels
                     await _dialogService.ShowAlertAsync("Discount cannot be bigger than order total.", "Alert");
                     return;
                 }
+
                 _order.DiscountAmount = discount;
                 _order.DiscountType = DiscountType.Amount;
             }
 
             // Get comment
-            var comment = await _dialogService.ShowPromptAsync(
-                "Enter Comment",
-                "Enter Comment:",
-                "OK",
-                "Cancel",
-                keyboard: Keyboard.Default,
-                initialValue: _order.DiscountComment ?? "");
+            var comment = await _dialogService.ShowPromptAsync("Enter Comment", "Enter Comment:", "OK", "Cancel",
+                keyboard: Keyboard.Default, initialValue: _order.DiscountComment ?? "");
 
             if (comment != null)
             {
@@ -1925,21 +1754,20 @@ namespace LaceupMigration.ViewModels
 
         private async Task GetPONumberAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             var title = _order.OrderType == OrderType.Bill ? "Set Bill Number" : "Enter PO Number";
             var message = _order.OrderType == OrderType.Bill ? "Set Bill Number:" : "PO Number:";
-            
-            var po = await _dialogService.ShowPromptAsync(title, message, "OK", "Cancel", 
-                keyboard: Keyboard.Default, 
+
+            var po = await _dialogService.ShowPromptAsync(title, message, "OK", "Cancel", keyboard: Keyboard.Default,
                 initialValue: _order.PONumber ?? "");
 
             if (po != null)
             {
                 if (Config.PONumberMaxLength > 0 && po.Length > Config.PONumberMaxLength)
                 {
-                    await _dialogService.ShowAlertAsync($"The PO Number allows only {Config.PONumberMaxLength} characters.", "Alert");
+                    await _dialogService.ShowAlertAsync(
+                        $"The PO Number allows only {Config.PONumberMaxLength} characters.", "Alert");
                     return;
                 }
 
@@ -1951,26 +1779,20 @@ namespace LaceupMigration.ViewModels
 
         private async Task SetShipDateAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             var currentDate = _order.ShipDate == DateTime.MinValue ? DateTime.Today : _order.ShipDate;
             // TODO: Implement date picker dialog
-            await _dialogService.ShowAlertAsync("Set Ship Date functionality is not yet fully implemented. Please use a date picker.", "Info");
+            await _dialogService.ShowAlertAsync(
+                "Set Ship Date functionality is not yet fully implemented. Please use a date picker.", "Info");
         }
 
         private async Task ShowCommentsDialogAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
-            var comments = await _dialogService.ShowPromptAsync(
-                "Add Comments",
-                "Enter comments:",
-                "OK",
-                "Cancel",
-                keyboard: Keyboard.Default,
-                initialValue: _order.Comments ?? "");
+            var comments = await _dialogService.ShowPromptAsync("Add Comments", "Enter comments:", "OK", "Cancel",
+                keyboard: Keyboard.Default, initialValue: _order.Comments ?? "");
 
             if (comments != null)
             {
@@ -1981,37 +1803,31 @@ namespace LaceupMigration.ViewModels
 
         private async Task WhatToViewClickedAsync()
         {
-            _whatToViewInList = _whatToViewInList == WhatToViewInList.All ? WhatToViewInList.Selected : WhatToViewInList.All;
+            _whatToViewInList = _whatToViewInList == WhatToViewInList.All
+                ? WhatToViewInList.Selected
+                : WhatToViewInList.All;
             LoadPreviouslyOrderedProducts();
         }
 
         private async Task SignAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             await Shell.Current.GoToAsync($"ordersignature?ordersId={_order.OrderId}");
         }
 
         private async Task DeleteOrderAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
-            var confirmed = await _dialogService.ShowConfirmAsync(
-                "Are you sure you want to delete this order?",
-                "Alert",
-                "Yes",
-                "No");
+            var confirmed = await _dialogService.ShowConfirmAsync("Are you sure you want to delete this order?",
+                "Alert", "Yes", "No");
 
-            if (!confirmed)
-                return;
+            if (!confirmed) return;
 
-            if (_order.AsPresale)
-                UpdateRoute(false);
+            if (_order.AsPresale) UpdateRoute(false);
 
             var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
-            if (batch != null)
-                batch.Delete();
+            if (batch != null) batch.Delete();
 
             _order.Delete();
 
@@ -2023,8 +1839,7 @@ namespace LaceupMigration.ViewModels
 
         private async Task SelectCompanyAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             // TODO: Implement company selection dialog
             await _dialogService.ShowAlertAsync("Select Company functionality is not yet fully implemented.", "Info");
@@ -2032,8 +1847,7 @@ namespace LaceupMigration.ViewModels
 
         private async Task EnterCasesInOutAsync(bool exit)
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             var prods = Product.Products.Where(x => x.ExtraPropertiesAsString.Contains("caseInOut"));
             var prodIn = prods.FirstOrDefault(x => x.ExtraPropertiesAsString.Contains("caseInOut=1"));
@@ -2041,8 +1855,7 @@ namespace LaceupMigration.ViewModels
 
             if (prodIn == null && prodOut == null)
             {
-                if (exit)
-                    await Shell.Current.GoToAsync("..");
+                if (exit) await Shell.Current.GoToAsync("..");
                 return;
             }
 
@@ -2050,80 +1863,74 @@ namespace LaceupMigration.ViewModels
             var crateOutLine = _order.Details.FirstOrDefault(x => x.Product.ProductId == prodOut?.ProductId);
 
             // TODO: Implement crate in/out dialog
-            await _dialogService.ShowAlertAsync("Enter Crate In/Out functionality is not yet fully implemented.", "Info");
+            await _dialogService.ShowAlertAsync("Enter Crate In/Out functionality is not yet fully implemented.",
+                "Info");
         }
 
         private async Task UseLspInAllLinesAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             // TODO: Implement UseLSP logic
             await _dialogService.ShowAlertAsync("Use LSP functionality is not yet fully implemented.", "Info");
         }
 
         private async Task ViewCapturedImagesAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             await Shell.Current.GoToAsync($"viewcapturedimages?orderId={_order.OrderId}");
         }
 
         private async Task SelectSalesmanAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             // TODO: Implement salesman selection dialog
             await _dialogService.ShowAlertAsync("Select Driver functionality is not yet fully implemented.", "Info");
         }
 
         private async Task SelectPriceLevelAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             await Shell.Current.GoToAsync($"selectpricelevel?orderId={_order.OrderId}");
         }
 
         private async Task TakeSurveyAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             await Shell.Current.GoToAsync($"survey?orderId={_order.OrderId}");
         }
 
         private async Task EnterEditDisolValuesAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             var rtn = UDFHelper.GetSingleUDF("RTN", _order.ExtraFields);
             var realName = UDFHelper.GetSingleUDF("RealName", _order.ExtraFields);
 
             // TODO: Implement dialog with RTN and RealName fields
-            await _dialogService.ShowAlertAsync("Edit Client Values functionality is not yet fully implemented.", "Info");
+            await _dialogService.ShowAlertAsync("Edit Client Values functionality is not yet fully implemented.",
+                "Info");
         }
 
         private async Task ShowSuggestedProductsAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             // Navigate to ProductCatalogPage with isShowingSuggested flag
             // Pass comingFrom=PreviouslyOrdered so ProductCatalog knows to add as sales (no credit prompt)
-            await Shell.Current.GoToAsync($"productcatalog?orderId={_order.OrderId}&isShowingSuggested=1&comingFrom=PreviouslyOrdered");
+            await Shell.Current.GoToAsync(
+                $"productcatalog?orderId={_order.OrderId}&isShowingSuggested=1&comingFrom=PreviouslyOrdered");
         }
 
         private async Task OtherChargesAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             // TODO: Implement other charges dialog
             await _dialogService.ShowAlertAsync("Other Charges functionality is not yet fully implemented.", "Info");
         }
 
         private async Task Delete0WeightItemsAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             var toDelete = _order.Details.Where(x => x.Product.SoldByWeight && x.Weight == 0).ToList();
             if (toDelete.Count == 0)
@@ -2133,13 +1940,10 @@ namespace LaceupMigration.ViewModels
             }
 
             var confirmed = await _dialogService.ShowConfirmAsync(
-                $"Are you sure you want to delete {toDelete.Count} weight item(s) with 0 weight?",
-                "Confirm",
-                "Yes",
+                $"Are you sure you want to delete {toDelete.Count} weight item(s) with 0 weight?", "Confirm", "Yes",
                 "No");
 
-            if (!confirmed)
-                return;
+            if (!confirmed) return;
 
             foreach (var d in toDelete)
             {
@@ -2154,8 +1958,7 @@ namespace LaceupMigration.ViewModels
 
         private async Task ResetOrderAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             var resetValue = UDFHelper.GetSingleUDF("reset", _order.ExtraFields);
 
@@ -2175,31 +1978,23 @@ namespace LaceupMigration.ViewModels
 
         private async Task GoToServiceReportAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             await Shell.Current.GoToAsync($"servicereport?orderId={_order.OrderId}");
         }
 
         private async Task GetPaymentAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             await Shell.Current.GoToAsync($"paymentsetvalues?ordersId={_order.OrderId}&commingFromFinalize=1");
         }
 
         private async Task AddEditShipViaAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             var shipVia = UDFHelper.GetSingleUDF("ShipVia", _order.ExtraFields);
-            var newShipVia = await _dialogService.ShowPromptAsync(
-                "Ship Via",
-                "Enter Ship Via:",
-                "OK",
-                "Cancel",
-                keyboard: Keyboard.Default,
-                initialValue: shipVia ?? "");
+            var newShipVia = await _dialogService.ShowPromptAsync("Ship Via", "Enter Ship Via:", "OK", "Cancel",
+                keyboard: Keyboard.Default, initialValue: shipVia ?? "");
 
             if (newShipVia != null)
             {
@@ -2210,17 +2005,12 @@ namespace LaceupMigration.ViewModels
 
         private async Task ConvertQuoteToSalesOrderAsync()
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
 
             var confirmed = await _dialogService.ShowConfirmAsync(
-                "Are you sure you want to convert this quote to a sales order?",
-                "Alert",
-                "Yes",
-                "No");
+                "Are you sure you want to convert this quote to a sales order?", "Alert", "Yes", "No");
 
-            if (!confirmed)
-                return;
+            if (!confirmed) return;
 
             _order.IsQuote = false;
             _order.Save();
@@ -2229,14 +2019,11 @@ namespace LaceupMigration.ViewModels
 
         private void UpdateRoute(bool close)
         {
-            if (!Config.CloseRouteInPresale || _order == null)
-                return;
+            if (!Config.CloseRouteInPresale || _order == null) return;
 
-            var stop = RouteEx.Routes.FirstOrDefault(x => 
-                x.Date.Date == DateTime.Today && 
-                x.Client != null && 
-                x.Client.ClientId == _order.Client.ClientId);
-            
+            var stop = RouteEx.Routes.FirstOrDefault(x =>
+                x.Date.Date == DateTime.Today && x.Client != null && x.Client.ClientId == _order.Client.ClientId);
+
             if (stop != null)
             {
                 if (close)
@@ -2256,8 +2043,8 @@ namespace LaceupMigration.ViewModels
             }
 
             // Check if order is empty - if so, handle it and return (matching Xamarin logic)
-            bool isEmpty = _order.Details.Count == 0 || 
-                (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
+            bool isEmpty = _order.Details.Count == 0 ||
+                           (_order.Details.Count == 1 && _order.Details[0].Product.ProductId == Config.DefaultItem);
 
             if (isEmpty)
             {
@@ -2267,9 +2054,10 @@ namespace LaceupMigration.ViewModels
                 {
                     // [ACTIVITY STATE]: Remove state when navigating away programmatically
                     Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
-                    
+
                     await Shell.Current.GoToAsync("..");
                 }
+
                 return; // Don't show the 3-option dialog for empty orders
             }
 
@@ -2277,17 +2065,11 @@ namespace LaceupMigration.ViewModels
             if (_order.AsPresale)
             {
                 // Show action options dialog (matching Xamarin PreviouslyOrderedTemplateActivity logic)
-                var options = new[]
-                {
-                    "Send Order",
-                    "Save Order To Send Later",
-                    "Stay In The Order"
-                };
+                var options = new[] { "Send Order", "Save Order To Send Later", "Stay In The Order" };
 
                 var choice = await _dialogService.ShowActionSheetAsync("Action Options", "", "Cancel", options);
-                
-                if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
-                    return; // User cancelled, stay in order
+
+                if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel") return; // User cancelled, stay in order
 
                 switch (choice)
                 {
@@ -2302,9 +2084,10 @@ namespace LaceupMigration.ViewModels
                         {
                             // [ACTIVITY STATE]: Remove state when navigating away programmatically
                             Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
-                            
+
                             await Shell.Current.GoToAsync("..");
                         }
+
                         break;
                     case "Stay In The Order":
                         // Do nothing, stay in the order
@@ -2319,12 +2102,11 @@ namespace LaceupMigration.ViewModels
                 {
                     // [ACTIVITY STATE]: Remove state when navigating away programmatically
                     Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
-                    
+
                     await Shell.Current.GoToAsync("..");
                 }
             }
         }
-
     }
 
     public partial class PreviouslyOrderedProductViewModel : ObservableObject
@@ -2332,82 +2114,62 @@ namespace LaceupMigration.ViewModels
         private readonly PreviouslyOrderedTemplatePageViewModel _parent;
 
         public int ProductId { get; set; }
+
         /// <summary>Default quantity from last order (history). Used when adding new credit line.</summary>
         public double? DefaultQuantityFromHistory { get; set; }
+
         public int OrderId { get; set; }
         public int? OrderDetailId { get; set; }
 
         /// <summary>True when this row is a return/dump (credit) line. Used so we treat it as credit even when order is OrderType.Order.</summary>
         public bool IsCreditLine { get; set; }
 
-        [ObservableProperty]
-        private string _productName = string.Empty;
+        [ObservableProperty] private string _productName = string.Empty;
 
-        [ObservableProperty]
-        private string _onHandText = "OH: 0";
+        [ObservableProperty] private string _onHandText = "OH: 0";
 
-        [ObservableProperty]
-        private string _listPriceText = string.Empty;
+        [ObservableProperty] private string _listPriceText = string.Empty;
 
-        [ObservableProperty]
-        private string _lastVisitText = string.Empty;
+        [ObservableProperty] private string _lastVisitText = string.Empty;
 
-        [ObservableProperty]
-        private bool _showLastVisit;
+        [ObservableProperty] private bool _showLastVisit;
 
-        [ObservableProperty]
-        private string _perWeekText = string.Empty;
+        [ObservableProperty] private string _perWeekText = string.Empty;
 
-        [ObservableProperty]
-        private bool _showPerWeek;
+        [ObservableProperty] private bool _showPerWeek;
 
-        [ObservableProperty]
-        private string _priceText = string.Empty;
+        [ObservableProperty] private string _priceText = string.Empty;
 
-        [ObservableProperty]
-        private string _uomText = string.Empty;
+        [ObservableProperty] private string _uomText = string.Empty;
 
         /// <summary>Display text "UOM: name" for the detail's unit of measure. Empty when UOM is null (hide label).</summary>
-        [ObservableProperty]
-        private string _uomDisplayText = string.Empty;
+        [ObservableProperty] private string _uomDisplayText = string.Empty;
 
         /// <summary>True when the detail has a UOM so the UOM label is shown above list price.</summary>
-        [ObservableProperty]
-        private bool _showUomLabel;
+        [ObservableProperty] private bool _showUomLabel;
 
-        [ObservableProperty]
-        private string _totalText = "Total: $0.00";
+        [ObservableProperty] private string _totalText = "Total: $0.00";
 
-        [ObservableProperty]
-        private double _quantity = 0;
+        [ObservableProperty] private double _quantity = 0;
 
-        [ObservableProperty]
-        private string _quantityButtonText = "+";
+        [ObservableProperty] private string _quantityButtonText = "+";
 
-        [ObservableProperty]
-        private Color _productNameColor = Colors.Black;
+        [ObservableProperty] private Color _productNameColor = Colors.Black;
 
-        [ObservableProperty]
-        private string _typeText = string.Empty;
+        [ObservableProperty] private string _typeText = string.Empty;
 
-        [ObservableProperty]
-        private bool _showTypeText = false;
+        [ObservableProperty] private bool _showTypeText = false;
 
         /// <summary>Original quantity text for delivery orders (e.g. "Org. Qty=5"). Visible only when order is delivery and product had Ordered > 0.</summary>
-        [ObservableProperty]
-        private string _orgQtyText = string.Empty;
+        [ObservableProperty] private string _orgQtyText = string.Empty;
 
-        [ObservableProperty]
-        private bool _showOrgQty;
+        [ObservableProperty] private bool _showOrgQty;
 
-        [ObservableProperty]
-        private bool _isEnabled = true;
+        [ObservableProperty] private bool _isEnabled = true;
 
-        [ObservableProperty]
-        private bool _isSuggested = false;
+        [ObservableProperty] private bool _isSuggested = false;
 
-        [ObservableProperty]
-        private string _suggestedLabelText = string.Empty;
+        [ObservableProperty] private string _suggestedLabelText = string.Empty;
 
         public PreviouslyOrderedProductViewModel(PreviouslyOrderedTemplatePageViewModel parent)
         {
@@ -2428,38 +2190,44 @@ namespace LaceupMigration.ViewModels
 
         public void UpdateFromOrderDetail(OrderDetail orderDetail)
         {
-            if (orderDetail == null)
-                return;
+            if (orderDetail == null) return;
 
             OrderDetailId = orderDetail.OrderDetailId;
 
             // Update price and UoM from order detail
             PriceText = $"Price: {orderDetail.Price.ToCustomString()}";
             UomText = orderDetail.UnitOfMeasure != null ? orderDetail.UnitOfMeasure.Name : string.Empty;
-            UomDisplayText = orderDetail.UnitOfMeasure != null ? "UOM: " + orderDetail.UnitOfMeasure.Name : string.Empty;
+            UomDisplayText = orderDetail.UnitOfMeasure != null
+                ? "UOM: " + orderDetail.UnitOfMeasure.Name
+                : string.Empty;
             ShowUomLabel = orderDetail.UnitOfMeasure != null;
 
             // Note: Quantity is set in the sync loop, but we ensure it's correct here too
             // This ensures the quantity is always from the actual order detail
-            if (Math.Abs(Quantity - (double)orderDetail.Qty) > 0.001) // Only update if different (avoid unnecessary property change)
+            if (Math.Abs(Quantity - (double)orderDetail.Qty) >
+                0.001) // Only update if different (avoid unnecessary property change)
             {
                 Quantity = (double)orderDetail.Qty; // Convert float to double, use ACTUAL order qty
             }
 
             // Refresh OH for this detail's UOM (inventory in base / UOM conversion so it reflects changes as qty is modified)
-            var product = GetProduct();
-            if (_parent._order != null && product != null)
-            {
-                var baseInv = product.GetInventory(_parent._order.AsPresale, false);
-                var conversion = orderDetail.UnitOfMeasure?.Conversion ?? 1f;
-                var onHandInUom = conversion != 0 ? baseInv / conversion : baseInv;
-                OnHandText = $"OH: {onHandInUom:F0}";
-            }
+            RefreshOnHandOnly();
 
             UpdateOrgQtyFromOrder();
-            
+
             // Update total - this must use the order detail's price and quantity
             UpdateTotal();
+        }
+
+        /// <summary>Updates only OnHandText from current inventory (used after background presale inventory sync).</summary>
+        internal void RefreshOnHandOnly()
+        {
+            var product = GetProduct();
+            if (_parent._order == null || product == null) return;
+            var baseInv = product.GetInventory(_parent._order.AsPresale, false);
+            var conversion = GetExistingDetail()?.UnitOfMeasure?.Conversion ?? 1f;
+            var onHandInUom = conversion != 0 ? baseInv / conversion : baseInv;
+            OnHandText = $"OH: {onHandInUom:F0}";
         }
 
         /// <summary>Sets OrgQtyText and ShowOrgQty for delivery orders when product had original ordered qty > 0 (matches Xamarin PreviouslyOrderedTemplateActivity).</summary>
@@ -2467,12 +2235,14 @@ namespace LaceupMigration.ViewModels
         {
             var product = GetProduct();
             var existingDetail = GetExistingDetail();
-            if (_parent._order == null || product == null || !_parent._order.IsDelivery || existingDetail == null || existingDetail.Ordered <= 0)
+            if (_parent._order == null || product == null || !_parent._order.IsDelivery || existingDetail == null ||
+                existingDetail.Ordered <= 0)
             {
                 ShowOrgQty = false;
                 OrgQtyText = string.Empty;
                 return;
             }
+
             ShowOrgQty = true;
             if (product.SoldByWeight && Config.NewAddItemRandomWeight)
             {
@@ -2513,63 +2283,56 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task AddProductAsync(PreviouslyOrderedProductViewModel? item)
         {
-            if (item == null || item.OrderId == 0 || _parent._order == null)
-                return;
+            if (item == null || item.OrderId == 0 || _parent._order == null) return;
             var product = item.GetProduct();
-            if (product == null)
-                return;
+            if (product == null) return;
 
             var order = Order.Orders.FirstOrDefault(x => x.OrderId == item.OrderId);
-            if (order == null)
-                return;
+            if (order == null) return;
 
             // Editing existing return/dump line: use item type (IsCreditLine) so we handle it even when order is OrderType.Order
             var credit_existingDetail = item.GetExistingDetail();
             if (item.IsCreditLine && credit_existingDetail != null)
+            {
+                var creditDetail = credit_existingDetail;
+                var result_credit = await _parent._dialogService.ShowRestOfTheAddDialogAsync(product, order,
+                    creditDetail, isCredit: true, isDamaged: creditDetail.Damaged, isDelivery: order.IsDelivery);
+
+                if (result_credit.Cancelled) return;
+
+                if (result_credit.Qty == 0)
                 {
-                    var creditDetail = credit_existingDetail;
-                    var result_credit = await _parent._dialogService.ShowRestOfTheAddDialogAsync(
-                        product,
-                        order,
-                        creditDetail,
-                        isCredit: true,
-                        isDamaged: creditDetail.Damaged,
-                        isDelivery: order.IsDelivery);
-
-                    if (result_credit.Cancelled)
-                        return;
-
-                    if (result_credit.Qty == 0)
-                    {
-                        order.DeleteDetail(creditDetail);
-                        order.Save();
-                        _parent.LoadOrderData();
-                        _parent.RefreshProductList();
-                        return;
-                    }
-
-                    creditDetail.Qty = result_credit.Qty;
-                    creditDetail.Weight = result_credit.Weight;
-                    creditDetail.Lot = result_credit.Lot;
-                    if (result_credit.LotExpiration.HasValue)
-                        creditDetail.LotExpiration = result_credit.LotExpiration.Value;
-                    creditDetail.Comments = result_credit.Comments;
-                    creditDetail.Price = result_credit.Price;
-                    creditDetail.UnitOfMeasure = result_credit.SelectedUoM;
-                    creditDetail.IsFreeItem = result_credit.IsFreeItem;
-                    creditDetail.ReasonId = result_credit.ReasonId;
-                    if (result_credit.PriceLevelSelected > 0)
-                    {
-                        creditDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result_credit.PriceLevelSelected.ToString(), creditDetail.ExtraFields);
-                    }
-                    OrderDetailMergeHelper.TryMergeDuplicateDetail(order, creditDetail);
-                    OrderDetail.UpdateRelated(creditDetail, order);
-                    order.RecalculateDiscounts();
+                    order.DeleteDetail(creditDetail);
                     order.Save();
                     _parent.LoadOrderData();
                     _parent.RefreshProductList();
                     return;
                 }
+
+                creditDetail.Qty = result_credit.Qty;
+                creditDetail.Weight = result_credit.Weight;
+                creditDetail.Lot = result_credit.Lot;
+                if (result_credit.LotExpiration.HasValue)
+                    creditDetail.LotExpiration = result_credit.LotExpiration.Value;
+                creditDetail.Comments = result_credit.Comments;
+                creditDetail.Price = result_credit.Price;
+                creditDetail.UnitOfMeasure = result_credit.SelectedUoM;
+                creditDetail.IsFreeItem = result_credit.IsFreeItem;
+                creditDetail.ReasonId = result_credit.ReasonId;
+                if (result_credit.PriceLevelSelected > 0)
+                {
+                    creditDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected",
+                        result_credit.PriceLevelSelected.ToString(), creditDetail.ExtraFields);
+                }
+
+                OrderDetailMergeHelper.TryMergeDuplicateDetail(order, creditDetail);
+                OrderDetail.UpdateRelated(creditDetail, order);
+                order.RecalculateDiscounts();
+                order.Save();
+                _parent.LoadOrderData();
+                _parent.RefreshProductList();
+                return;
+            }
 
             // Add/new credit: when order is Credit or Return type, show type picker then dialog/prompt
             if (order.OrderType == OrderType.Credit || order.OrderType == OrderType.Return)
@@ -2581,16 +2344,10 @@ namespace LaceupMigration.ViewModels
             // Sales path: use the row's specific order detail so editing "Dozen" edits Dozen, not "Each"
             OrderDetail? existingDetail = item.GetExistingDetail();
             existingDetail = existingDetail != null && !existingDetail.IsCredit ? existingDetail : null;
-            var result = await _parent._dialogService.ShowRestOfTheAddDialogAsync(
-                product,
-                order,
-                existingDetail,
-                isCredit: false,
-                isDamaged: false,
-                isDelivery: order.IsDelivery);
+            var result = await _parent._dialogService.ShowRestOfTheAddDialogAsync(product, order, existingDetail,
+                isCredit: false, isDamaged: false, isDelivery: order.IsDelivery);
 
-            if (result.Cancelled)
-                return;
+            if (result.Cancelled) return;
 
             // Handle qty == 0 - always delete the detail
             if (result.Qty == 0)
@@ -2600,6 +2357,7 @@ namespace LaceupMigration.ViewModels
                     order.DeleteDetail(existingDetail);
                     order.Save();
                 }
+
                 _parent.LoadOrderData();
                 _parent.RefreshProductList();
                 return;
@@ -2610,15 +2368,13 @@ namespace LaceupMigration.ViewModels
             {
                 var currentOH = product.GetInventory(order.AsPresale, false);
                 var resultBaseQty = (double)result.Qty;
-                if (result.SelectedUoM != null)
-                    resultBaseQty *= result.SelectedUoM.Conversion;
+                if (result.SelectedUoM != null) resultBaseQty *= result.SelectedUoM.Conversion;
                 var totalBaseQtyInOrder = order.Details
                     .Where(d => d.Product.ProductId == item.ProductId && !d.IsCredit && d != existingDetail)
                     .Sum(d =>
                     {
                         var q = (double)d.Qty;
-                        if (d.UnitOfMeasure != null)
-                            q *= d.UnitOfMeasure.Conversion;
+                        if (d.UnitOfMeasure != null) q *= d.UnitOfMeasure.Conversion;
                         return q;
                     });
                 if (totalBaseQtyInOrder + resultBaseQty > currentOH)
@@ -2638,8 +2394,7 @@ namespace LaceupMigration.ViewModels
                 existingDetail.Qty = result.Qty;
                 existingDetail.Weight = result.Weight;
                 existingDetail.Lot = result.Lot;
-                if (result.LotExpiration.HasValue)
-                    existingDetail.LotExpiration = result.LotExpiration.Value;
+                if (result.LotExpiration.HasValue) existingDetail.LotExpiration = result.LotExpiration.Value;
                 existingDetail.Comments = result.Comments;
                 existingDetail.Price = result.Price;
                 existingDetail.UnitOfMeasure = result.SelectedUoM;
@@ -2649,8 +2404,10 @@ namespace LaceupMigration.ViewModels
                 existingDetail.DiscountType = result.DiscountType;
                 if (result.PriceLevelSelected > 0)
                 {
-                    existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
+                    existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected",
+                        result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
                 }
+
                 order.UpdateInventory(existingDetail, -1);
                 updatedDetail = existingDetail;
             }
@@ -2660,7 +2417,7 @@ namespace LaceupMigration.ViewModels
                 var detail = new OrderDetail(product, 0, order);
                 double expectedPrice = Product.GetPriceForProduct(product, order, false, false);
                 double price = result.Price;
-                
+
                 // If UseLastSoldPrice, get from last invoice detail (from client history)
                 if (result.UseLastSoldPrice && order.Client != null)
                 {
@@ -2668,8 +2425,7 @@ namespace LaceupMigration.ViewModels
                     if (clientHistory != null && clientHistory.Count > 0)
                     {
                         var lastInvoiceDetail = clientHistory.OrderByDescending(x => x.Date).FirstOrDefault();
-                        if (lastInvoiceDetail != null)
-                            price = lastInvoiceDetail.Price;
+                        if (lastInvoiceDetail != null) price = lastInvoiceDetail.Price;
                     }
                 }
                 else if (price == 0)
@@ -2698,8 +2454,7 @@ namespace LaceupMigration.ViewModels
                 detail.Qty = result.Qty;
                 detail.Weight = result.Weight;
                 detail.Lot = result.Lot;
-                if (result.LotExpiration.HasValue)
-                    detail.LotExpiration = result.LotExpiration.Value;
+                if (result.LotExpiration.HasValue) detail.LotExpiration = result.LotExpiration.Value;
                 detail.Comments = result.Comments;
                 detail.IsFreeItem = result.IsFreeItem;
                 detail.ReasonId = result.ReasonId;
@@ -2707,8 +2462,10 @@ namespace LaceupMigration.ViewModels
                 detail.DiscountType = result.DiscountType;
                 if (result.PriceLevelSelected > 0)
                 {
-                    detail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), detail.ExtraFields);
+                    detail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected",
+                        result.PriceLevelSelected.ToString(), detail.ExtraFields);
                 }
+
                 detail.CalculateOfferDetail();
                 order.AddDetail(detail);
                 order.UpdateInventory(detail, -1);
@@ -2732,21 +2489,20 @@ namespace LaceupMigration.ViewModels
     {
         public async Task SelectCreditTypeAndAddAsync(PreviouslyOrderedProductViewModel item)
         {
-            if (_order == null || item?.GetProduct() == null)
-                return;
+            if (_order == null || item?.GetProduct() == null) return;
 
             // Determine if we need to prompt for credit type
-            bool onlyReturn = _order.Details.Count > 0 && _order.Details[0].IsCredit && _order.Details[0].Damaged == false;
-            bool onlyDamage = _order.Details.Count > 0 && _order.Details[0].IsCredit && _order.Details[0].Damaged == true;
+            bool onlyReturn = _order.Details.Count > 0 && _order.Details[0].IsCredit &&
+                              _order.Details[0].Damaged == false;
+            bool onlyDamage = _order.Details.Count > 0 && _order.Details[0].IsCredit &&
+                              _order.Details[0].Damaged == true;
 
             var items = new List<CreditType>();
-            
+
             if (Config.WarningDumpReturn)
             {
-                if (onlyReturn)
-                    items.Add(new CreditType() { Description = "Return", Damaged = false });
-                if (onlyDamage)
-                    items.Add(new CreditType() { Description = "Dump", Damaged = true });
+                if (onlyReturn) items.Add(new CreditType() { Description = "Return", Damaged = false });
+                if (onlyDamage) items.Add(new CreditType() { Description = "Dump", Damaged = true });
                 if (!onlyDamage && !onlyReturn)
                 {
                     items.Add(new CreditType() { Description = "Dump", Damaged = true });
@@ -2769,7 +2525,12 @@ namespace LaceupMigration.ViewModels
                 {
                     items = new List<CreditType>();
                     foreach (var r in reasons)
-                        items.Add(new CreditType() { Description = r.Description, Damaged = (r.AvailableIn & (int)ReasonType.Dump) > 0, ReasonId = r.Id });
+                        items.Add(new CreditType()
+                        {
+                            Description = r.Description,
+                            Damaged = (r.AvailableIn & (int)ReasonType.Dump) > 0,
+                            ReasonId = r.Id
+                        });
                 }
             }
 
@@ -2783,9 +2544,8 @@ namespace LaceupMigration.ViewModels
             // Show selection dialog
             var options = items.Select(x => x.Description).ToArray();
             var selected = await _dialogService.ShowActionSheetAsync("Type of Credit Item", "", "Cancel", options);
-            
-            if (string.IsNullOrEmpty(selected) || selected == "Cancel")
-                return;
+
+            if (string.IsNullOrEmpty(selected) || selected == "Cancel") return;
 
             var selectedIndex = Array.IndexOf(options, selected);
             if (selectedIndex >= 0 && selectedIndex < items.Count)
@@ -2795,33 +2555,28 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private async Task AddProductWithCreditTypeAsync(PreviouslyOrderedProductViewModel item, bool damaged, int reasonId)
+        private async Task AddProductWithCreditTypeAsync(PreviouslyOrderedProductViewModel item, bool damaged,
+            int reasonId)
         {
-            if (_order == null)
-                return;
+            if (_order == null) return;
             var product = item.GetProduct();
-            if (product == null)
-                return;
+            if (product == null) return;
 
             // Use the row's specific order detail so editing one credit line (e.g. Dozen Return) edits that one, not another
             var itemExisting = item.GetExistingDetail();
-            OrderDetail? existingDetail = itemExisting != null && itemExisting.IsCredit && itemExisting.Damaged == damaged
-                ? itemExisting
-                : _order.Details.FirstOrDefault(x => x.Product.ProductId == item.ProductId && x.IsCredit && x.Damaged == damaged);
+            OrderDetail? existingDetail =
+                itemExisting != null && itemExisting.IsCredit && itemExisting.Damaged == damaged
+                    ? itemExisting
+                    : _order.Details.FirstOrDefault(x =>
+                        x.Product.ProductId == item.ProductId && x.IsCredit && x.Damaged == damaged);
 
             // When editing an existing credit line, use RestOfTheAddDialog so popup is pre-filled with detail
             if (existingDetail != null)
             {
-                var result = await _dialogService.ShowRestOfTheAddDialogAsync(
-                    product,
-                    _order,
-                    existingDetail,
-                    isCredit: true,
-                    isDamaged: damaged,
-                    isDelivery: _order.IsDelivery);
+                var result = await _dialogService.ShowRestOfTheAddDialogAsync(product, _order, existingDetail,
+                    isCredit: true, isDamaged: damaged, isDelivery: _order.IsDelivery);
 
-                if (result.Cancelled)
-                    return;
+                if (result.Cancelled) return;
 
                 if (result.Qty == 0)
                 {
@@ -2835,8 +2590,7 @@ namespace LaceupMigration.ViewModels
                 existingDetail.Qty = result.Qty;
                 existingDetail.Weight = result.Weight;
                 existingDetail.Lot = result.Lot;
-                if (result.LotExpiration.HasValue)
-                    existingDetail.LotExpiration = result.LotExpiration.Value;
+                if (result.LotExpiration.HasValue) existingDetail.LotExpiration = result.LotExpiration.Value;
                 existingDetail.Comments = result.Comments;
                 existingDetail.Price = result.Price;
                 existingDetail.UnitOfMeasure = result.SelectedUoM;
@@ -2846,8 +2600,10 @@ namespace LaceupMigration.ViewModels
                 existingDetail.DiscountType = result.DiscountType;
                 if (result.PriceLevelSelected > 0)
                 {
-                    existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected", result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
+                    existingDetail.ExtraFields = UDFHelper.SyncSingleUDF("priceLevelSelected",
+                        result.PriceLevelSelected.ToString(), existingDetail.ExtraFields);
                 }
+
                 OrderDetailMergeHelper.TryMergeDuplicateDetail(_order, existingDetail);
                 OrderDetail.UpdateRelated(existingDetail, _order);
                 _order.RecalculateDiscounts();
@@ -2858,17 +2614,13 @@ namespace LaceupMigration.ViewModels
             }
 
             // New credit line: show quantity prompt then create detail
-            var defaultQty = item.Quantity > 0 ? item.Quantity.ToString() : (item.DefaultQuantityFromHistory ?? 1).ToString();
-            var qtyInput = await _dialogService.ShowPromptAsync(
-                $"Enter Quantity for {item.ProductName}",
-                "Quantity",
-                "OK",
-                "Cancel",
-                defaultQty,
-                keyboard: Keyboard.Numeric);
+            var defaultQty = item.Quantity > 0
+                ? item.Quantity.ToString()
+                : (item.DefaultQuantityFromHistory ?? 1).ToString();
+            var qtyInput = await _dialogService.ShowPromptAsync($"Enter Quantity for {item.ProductName}", "Quantity",
+                "OK", "Cancel", defaultQty, keyboard: Keyboard.Numeric);
 
-            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out var qty) || qty < 0)
-                return;
+            if (string.IsNullOrWhiteSpace(qtyInput) || !double.TryParse(qtyInput, out var qty) || qty < 0) return;
 
             // Handle qty == 0 - nothing to add
             if (qty == 0)
@@ -2895,6 +2647,7 @@ namespace LaceupMigration.ViewModels
                 detail.Price = expectedPrice;
                 detail.FromOfferPrice = false;
             }
+
             detail.ExpectedPrice = expectedPrice;
             detail.UnitOfMeasure = product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
             detail.Qty = (float)qty;
@@ -2924,7 +2677,8 @@ namespace LaceupMigration.ViewModels
                 {
                     if (string.IsNullOrEmpty(_order.PrintedOrderId))
                     {
-                        if ((_order.AsPresale && Config.GeneratePresaleNumber) || (!_order.AsPresale && Config.GeneratePreorderNum))
+                        if ((_order.AsPresale && Config.GeneratePresaleNumber) ||
+                            (!_order.AsPresale && Config.GeneratePreorderNum))
                         {
                             _order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(_order);
                             _order.Save();
@@ -2936,12 +2690,10 @@ namespace LaceupMigration.ViewModels
 
                     for (int i = 0; i < number; i++)
                     {
-                        if (!printer.PrintOrder(_order, !_order.Finished))
-                            allWent = false;
+                        if (!printer.PrintOrder(_order, !_order.Finished)) allWent = false;
                     }
 
-                    if (!allWent)
-                        return "Error printing order.";
+                    if (!allWent) return "Error printing order.";
                     return string.Empty;
                 });
             }
@@ -2983,11 +2735,11 @@ namespace LaceupMigration.ViewModels
             try
             {
                 await _dialogService.ShowLoadingAsync("Generating PDF...");
-        
+
                 string pdfFile = PdfHelper.GetOrderPdf(_order);
-        
+
                 await _dialogService.HideLoadingAsync();
-        
+
                 if (string.IsNullOrEmpty(pdfFile))
                 {
                     await _dialogService.ShowAlertAsync("Error generating PDF.", "Alert", "OK");
@@ -2995,7 +2747,8 @@ namespace LaceupMigration.ViewModels
                 }
 
                 // Navigate to PDF viewer with both PDF path and orderId
-                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}&orderId={_order.OrderId}");
+                await Shell.Current.GoToAsync(
+                    $"pdfviewer?pdfPath={Uri.EscapeDataString(pdfFile)}&orderId={_order.OrderId}");
             }
             catch (Exception ex)
             {
@@ -3021,15 +2774,16 @@ namespace LaceupMigration.ViewModels
                 if (Config.ShowBillOfLadingPdf)
                 {
                     // Show dialog to select document type
-                    var choice = await _dialogService.ShowActionSheetAsync("Select Type Document", "", "Cancel", new[] { "Invoice", "Bill Of Lading" });
+                    var choice = await _dialogService.ShowActionSheetAsync("Select Type Document", "", "Cancel",
+                        new[] { "Invoice", "Bill Of Lading" });
                     if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
                     {
                         await _dialogService.HideLoadingAsync();
                         return;
                     }
 
-                    pdfFile = choice == "Invoice" 
-                        ? PdfHelper.GetOrderPdf(_order) 
+                    pdfFile = choice == "Invoice"
+                        ? PdfHelper.GetOrderPdf(_order)
                         : PdfHelper.GetOrderPdfBillOfLadin(_order);
                 }
                 else
@@ -3061,8 +2815,7 @@ namespace LaceupMigration.ViewModels
             {
                 await Share.RequestAsync(new ShareFileRequest
                 {
-                    Title = "Share Order as Pdf",
-                    File = new ShareFile(pdfFile)
+                    Title = "Share Order as Pdf", File = new ShareFile(pdfFile)
                 });
             }
             catch (Exception ex)
@@ -3073,4 +2826,3 @@ namespace LaceupMigration.ViewModels
         }
     }
 }
-

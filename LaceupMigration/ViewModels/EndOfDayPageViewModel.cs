@@ -5,6 +5,7 @@ using LaceupMigration.Services;
 using Microsoft.Maui.ApplicationModel;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -13,6 +14,18 @@ namespace LaceupMigration.ViewModels
 {
     public partial class EndOfDayPageViewModel : ObservableObject
     {
+        // EOD send state keys (match Xamarin EndOfDayActivity so we don't resend on retry)
+        private const string OrdersSentIntent = "ordersSentIntent";
+        private const string PaymentsSentIntent = "paymentsSentIntent";
+        private const string LeftOverSentIntent = "leftOverSentIntent";
+        private const string BuildToQtySentIntent = "buildToQtySentIntent";
+        private const string DayReportSentIntent = "dayReportSentIntent";
+        private const string LoadOrderSentIntent = "loadOrderSentIntent";
+        private const string ParlevelSentIntent = "parlevelSentIntent";
+        private const string DailyParlevelSentIntent = "dailyParlevelSentIntent";
+        private const string TransfersSentIntent = "transfersSentIntent";
+        private static readonly string SendAllTempFile = Path.Combine(Config.DataPath, "sendAllTempFile");
+
         private readonly DialogService _dialogService;
         private readonly ILaceupAppService _appService;
         private readonly AdvancedOptionsService _advancedOptionsService;
@@ -81,7 +94,7 @@ namespace LaceupMigration.ViewModels
             _endInventory = Config.EndingInventoryCounted || Config.EmptyTruckAtEndOfDay;
             
             // Check if load order is completed (check if there's a load order that's finished or not pending)
-            _loadOrder = Order.Orders.Any(x => x.OrderType == OrderType.Load && (x.Finished || !x.PendingLoad));
+            // _loadOrder = Order.Orders.Any(x => x.OrderType == OrderType.Load && (x.Finished || !x.PendingLoad));
             
             // Check if par level is completed (check if ParLevel file exists or if temp file doesn't exist)
             var parLevelFile = Config.ParLevelFile;
@@ -741,44 +754,136 @@ namespace LaceupMigration.ViewModels
                 {
                     try
                     {
-                        DataProvider.SendAll();
-
-                        // TODO: test this
-                        if (Config.DexAvailable)
+                        // Get or create EOD state so we don't resend steps that already succeeded (match Xamarin EndOfDayActivity.SendAll)
+                        var state = ActivityState.GetState("EndOfDayActivity");
+                        if (state == null)
                         {
-                            // Refresh.RefreshDexLicense(this);
-                            // TODO: Implement RefreshDexLicense if needed
+                            state = new ActivityState { ActivityType = "EndOfDayActivity" };
+                            ActivityState.AddState(state);
                         }
+
+                        // Build ordersTotals and handle duplicates (match Xamarin lines 1131-1165)
+                        var ordersTotals = new Dictionary<string, double>();
+                        foreach (var order in Order.Orders.Where(x => x.OrderType != OrderType.Load).ToList())
+                        {
+                            if (ordersTotals.ContainsKey(order.UniqueId))
+                            {
+                                Logger.CreateLog("Found two orders with the same UniqueId");
+                                var other = Order.Orders.FirstOrDefault(x => x.UniqueId == order.UniqueId && x.Filename != order.Filename);
+                                if (other != null && other.Details.Count == order.Details.Count)
+                                {
+                                    Logger.CreateLog("Will delete the duplicated order as they have the same number of details");
+                                    order.ForceDelete();
+                                }
+                            }
+                            else
+                                ordersTotals.Add(order.UniqueId, order.OrderTotalCost());
+                        }
+
+                        bool ordersSent = state.State.ContainsKey(OrdersSentIntent) && state.State[OrdersSentIntent] == "1";
+                        var extendedMap = DataProvider.ExtendedSendTheLeftOverInventory(true);
+
+                        if (ordersTotals.Count > 0)
+                        {
+                            SaveSendAllTempFile(ordersTotals, extendedMap);
+                            SendOrdersStep(state);
+                        }
+                        else if (ordersSent)
+                        {
+                            LoadFromSendAllTempFile(out ordersTotals, out extendedMap);
+                        }
+
+                        if (Config.SendPaymentsInEOD)
+                            SendInvoicePaymentsStep(state, ordersTotals);
+
+                        if (File.Exists(Config.ClientProdSortFile))
+                        {
+                            if (Config.UseDraggableTemplate)
+                                DataProvider.SendClientProdSort();
+                            else
+                                File.Delete(Config.ClientProdSortFile);
+                        }
+
+                        if (Config.ButlerCustomization)
+                            DataProvider.SendButlerTransfers();
+                        else if (File.Exists(Config.TransferOnFile) || File.Exists(Config.TransferOffFile))
+                            SendTransfersStep(state);
+
+                        if (Session.session != null)
+                            Session.ClockOutCurrentSession();
+
+                        if (Config.Delivery)
+                            SendTheLeftOverInventoryStep(state, extendedMap);
+
+                        if (BuildToQty.List.Count > 0)
+                            SendBuildToQtyStep(state);
+
+                        if (LaceupMigration.RouteExpenses.CurrentExpenses != null && File.Exists(Config.ExpensesPath))
+                        {
+                            // SendRouteExpenses not exposed on DataProvider; skip or call if added later
+                        }
+
+                        SendDayReportStep(state);
+
+                        SendLoadOrderStep(state);
+
+                        if (Config.SetParLevel)
+                            SendParLevelStep(state);
+
+                        if (File.Exists(Config.SavedDailyParLevelFile))
+                            SendDailyParLevelStep(state);
+
+                        BackgroundDataSync.SendRoute(true);
+
+                        if (Config.SalesByDepartment && ClientDepartment.Departments.Any(x => x.Updated == true))
+                            DataProvider.SendClientDepartments();
+
+                        if (Config.AssetTracking)
+                        {
+                            // SendAssetTracking not exposed on DataProvider; skip if not added
+                        }
+
+                        if (Config.RequestVehicleInformation && VehicleInformation.EODVehicleInformation != null)
+                        {
+                            // SendVehicleInformation not exposed on DataProvider; skip if not added
+                        }
+
+                        DataProvider.DeleteTransferFiles();
+
+                        if (File.Exists(Config.InventoryStoreFile))
+                            File.Delete(Config.InventoryStoreFile);
+
+                        if (File.Exists(SendAllTempFile))
+                            File.Delete(SendAllTempFile);
+
+                        if (File.Exists(Config.DeliveryFile))
+                            File.Delete(Config.DeliveryFile);
+
+                        Config.SessionId = string.Empty;
+                        Config.SaveSessionId();
+                        Config.EndingInventoryCounted = false;
+                        ProductInventory.ClearAll();
 
                         _sentAll = true;
                         _canLeaveScreen = true;
-
                         Config.PendingLoadToAccept = false;
                         Config.ReceivedData = false;
                         Config.LastEndOfDay = DateTime.Now;
-
                         VehicleInformation.Clear();
 
-                        // Clear product inventory
-                        ProductInventory.ClearAll();
-                        
-                        // Clean up EOD flag files - reset state for next day
                         var routeReturnFile = Path.Combine(Config.DataPath, "routeReturn.xml");
                         if (File.Exists(routeReturnFile))
                             File.Delete(routeReturnFile);
-                        
                         if (File.Exists(reportsPrintedFile))
                             File.Delete(reportsPrintedFile);
-                        
-                        // Reset end inventory state
-                        Config.EndingInventoryCounted = false;
-                        
-                        // Reset internal state variables
                         _routeReturns = false;
                         _endInventory = false;
                         _reportsPrinted = false;
-                        // Note: _clockedOut will be checked from SalesmanSession on next load
-                        // Note: _loadOrder and _parLevel are checked from Order/ParLevel data on next load
+
+                        // Remove EOD send state so next EOD starts fresh
+                        var eodState = ActivityState.GetState("EndOfDayActivity");
+                        if (eodState != null)
+                            ActivityState.RemoveState(eodState);
 
                         Config.SaveAppStatus();
                     }
@@ -810,41 +915,290 @@ namespace LaceupMigration.ViewModels
             else
             {
                 Config.SaveLastEndOfDay();
-
-                // Update button states after clearing (in case user navigates back)
                 UpdateButtonStates();
-
-                // [ACTIVITY STATE]: Remove state when end of day completes successfully
-                // This prevents the app from restoring to EndOfDayPage after completion
                 Helpers.NavigationHelper.RemoveNavigationState("endofday");
-
                 await _dialogService.ShowAlertAsync("Data successfully transmitted.", "Success", "OK");
-                
-                // Navigate to MainPage
                 await Shell.Current.GoToAsync("///MainPage");
             }
         }
+
+        private static void SaveSendAllTempFile(Dictionary<string, double> ordersTotals, List<InventorySettlementRow> extendedMap)
+        {
+            if (File.Exists(SendAllTempFile))
+                File.Delete(SendAllTempFile);
+            using (var writer = new StreamWriter(SendAllTempFile, false))
+            {
+                var isFirst = true;
+                foreach (var item in ordersTotals)
+                {
+                    if (!isFirst) writer.Write((char)20);
+                    else isFirst = false;
+                    writer.Write(item.Key + "|" + item.Value.ToString(CultureInfo.InvariantCulture));
+                }
+                writer.WriteLine();
+                isFirst = true;
+                foreach (var item in extendedMap)
+                {
+                    if (!isFirst) writer.Write((char)20);
+                    else isFirst = false;
+                    writer.Write("0|" + item.Serialize());
+                }
+                writer.WriteLine();
+            }
+        }
+
+        private static void LoadFromSendAllTempFile(out Dictionary<string, double> ordersTotals, out List<InventorySettlementRow> extendedMap)
+        {
+            ordersTotals = new Dictionary<string, double>();
+            extendedMap = new List<InventorySettlementRow>();
+            if (!File.Exists(SendAllTempFile)) return;
+            using (var reader = new StreamReader(SendAllTempFile, false))
+            {
+                var line = reader.ReadLine();
+                if (!string.IsNullOrEmpty(line))
+                {
+                    var parts = line.Split((char)20);
+                    foreach (var item in parts)
+                    {
+                        var ot = item.Split('|');
+                        if (ot.Length == 2)
+                            ordersTotals.Add(ot[0], Convert.ToDouble(ot[1], CultureInfo.InvariantCulture));
+                    }
+                }
+                line = reader.ReadLine();
+                if (string.IsNullOrEmpty(line)) return;
+                var parts2 = line.Split((char)20);
+                foreach (var item in parts2)
+                {
+                    var ot = item.Split('|');
+                    if (ot.Length < 14) continue;
+                    var row = new InventorySettlementRow();
+                    var prodId = Convert.ToInt32(ot[1], CultureInfo.InvariantCulture);
+                    row.Product = Product.Find(prodId);
+                    if (row.Product == null) continue;
+                    row.BegInv = Convert.ToSingle(ot[2], CultureInfo.InvariantCulture);
+                    row.LoadOut = Convert.ToSingle(ot[3], CultureInfo.InvariantCulture);
+                    row.Adj = Convert.ToSingle(ot[4], CultureInfo.InvariantCulture);
+                    row.TransferOn = Convert.ToSingle(ot[5], CultureInfo.InvariantCulture);
+                    row.TransferOff = Convert.ToSingle(ot[6], CultureInfo.InvariantCulture);
+                    row.Sales = Convert.ToSingle(ot[7], CultureInfo.InvariantCulture);
+                    row.Dump = Convert.ToSingle(ot[8], CultureInfo.InvariantCulture);
+                    row.Unload = Convert.ToSingle(ot[9], CultureInfo.InvariantCulture);
+                    row.CreditDump = Convert.ToSingle(ot[10], CultureInfo.InvariantCulture);
+                    row.CreditReturns = Convert.ToSingle(ot[11], CultureInfo.InvariantCulture);
+                    row.EndInventory = Convert.ToSingle(ot[12], CultureInfo.InvariantCulture);
+                    row.DamagedInTruck = Convert.ToSingle(ot[13], CultureInfo.InvariantCulture);
+                    if (ot.Length > 14) row.SkipRelated = Convert.ToBoolean(ot[14]);
+                    if (ot.Length > 15) row.Lot = ot[15];
+                    if (ot.Length > 16) row.LoadingError = Convert.ToSingle(ot[16], CultureInfo.InvariantCulture);
+                    if (ot.Length > 17) row.Reshipped = Convert.ToSingle(ot[17], CultureInfo.InvariantCulture);
+                    extendedMap.Add(row);
+                }
+            }
+        }
+
+        private static void SendOrdersStep(ActivityState state)
+        {
+            if (state.State.ContainsKey(OrdersSentIntent) && state.State[OrdersSentIntent] == "1") return;
+            try
+            {
+                var orders = Order.Orders.Where(x => x.OrderType != OrderType.Load && !(x.IsQuote && x.QuoteModified)).ToList();
+                var batches = Batch.List.Where(x => orders.Any(y => y.BatchId == x.Id));
+                foreach (var order in orders)
+                {
+                    if (order.EndDate == DateTime.MinValue) order.EndDate = DateTime.Now;
+                    if (order.AsPresale && Config.GeneratePresaleNumber && string.IsNullOrEmpty(order.PrintedOrderId))
+                        order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
+                    order.Save();
+                }
+                DataProvider.SendTheOrders(batches, orders.Select(x => x.OrderId.ToString()).ToList());
+                RouteEx.ClearAll();
+                state.State[OrdersSentIntent] = "1";
+                ActivityState.Save();
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                state.State[OrdersSentIntent] = "0";
+                ActivityState.Save();
+                throw;
+            }
+        }
+
+        private static void SendInvoicePaymentsStep(ActivityState state, Dictionary<string, double> ordersTotals)
+        {
+            if (state.State.ContainsKey(PaymentsSentIntent) && state.State[PaymentsSentIntent] == "1") return;
+            try
+            {
+                DataProvider.SendInvoicePayments(ordersTotals);
+                state.State[PaymentsSentIntent] = "1";
+                ActivityState.Save();
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                state.State[PaymentsSentIntent] = "0";
+                ActivityState.Save();
+                throw;
+            }
+        }
+
+        private static void SendTransfersStep(ActivityState state)
+        {
+            if (state.State.ContainsKey(TransfersSentIntent) && state.State[TransfersSentIntent] == "1") return;
+            try
+            {
+                DataProvider.SendTransfers();
+                state.State[TransfersSentIntent] = "1";
+                ActivityState.Save();
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                state.State[TransfersSentIntent] = "0";
+                ActivityState.Save();
+                throw;
+            }
+        }
+
+        private static void SendTheLeftOverInventoryStep(ActivityState state, List<InventorySettlementRow> extendedMap)
+        {
+            if (state.State.ContainsKey(LeftOverSentIntent) && state.State[LeftOverSentIntent] == "1") return;
+            try
+            {
+                DataProvider.SendTheLeftOverInventory(extendedMap);
+                var currentInventoryTotal = Product.Products.Sum(x => x.CurrentInventory);
+                BackgroundDataSync.SendInventory(currentInventoryTotal);
+                state.State[LeftOverSentIntent] = "1";
+                ActivityState.Save();
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                state.State[LeftOverSentIntent] = "0";
+                ActivityState.Save();
+                throw;
+            }
+        }
+
+        private static void SendBuildToQtyStep(ActivityState state)
+        {
+            if (state.State.ContainsKey(BuildToQtySentIntent) && state.State[BuildToQtySentIntent] == "1") return;
+            try
+            {
+                DataProvider.SendBuildToQty();
+                state.State[BuildToQtySentIntent] = "1";
+                ActivityState.Save();
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                state.State[BuildToQtySentIntent] = "0";
+                ActivityState.Save();
+                throw;
+            }
+        }
+
+        private static void SendDayReportStep(ActivityState state)
+        {
+            if (state.State.ContainsKey(DayReportSentIntent) && state.State[DayReportSentIntent] == "1") return;
+            try
+            {
+                if (!SalesmanSession.ClockedOut)
+                    SalesmanSession.CloseSession();
+                DataProvider.SendDayReport(Config.SessionId);
+                state.State[DayReportSentIntent] = "1";
+                ActivityState.Save();
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                state.State[DayReportSentIntent] = "0";
+                ActivityState.Save();
+                throw;
+            }
+        }
+
+        private static void SendLoadOrderStep(ActivityState state)
+        {
+            if (state.State.ContainsKey(LoadOrderSentIntent) && state.State[LoadOrderSentIntent] == "1") return;
+            try
+            {
+                LaceupMigration.LoadOrder.SaveListFromOrders();
+                DataProvider.SendLoadOrder();
+                state.State[LoadOrderSentIntent] = "1";
+                ActivityState.Save();
+                foreach (var o in Order.Orders.ToList())
+                    o.ForceDelete();
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                state.State[LoadOrderSentIntent] = "0";
+                ActivityState.Save();
+                throw;
+            }
+        }
+
+        private static void SendParLevelStep(ActivityState state)
+        {
+            if (state.State.ContainsKey(ParlevelSentIntent) && state.State[ParlevelSentIntent] == "1") return;
+            try
+            {
+                ParLevel.LoadList();
+                DataProvider.SendParLevel();
+                state.State[ParlevelSentIntent] = "1";
+                ActivityState.Save();
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                state.State[ParlevelSentIntent] = "0";
+                ActivityState.Save();
+                throw;
+            }
+        }
+
+        private static void SendDailyParLevelStep(ActivityState state)
+        {
+            if (state.State.ContainsKey(DailyParlevelSentIntent) && state.State[DailyParlevelSentIntent] == "1") return;
+            try
+            {
+                if (File.Exists(Config.SavedDailyParLevelFile))
+                {
+                    using (var reader = new StreamReader(Config.SavedDailyParLevelFile))
+                    {
+                        if (string.IsNullOrEmpty(reader.ReadToEnd()))
+                        {
+                            state.State[DailyParlevelSentIntent] = "1";
+                            ActivityState.Save();
+                            return;
+                        }
+                    }
+                }
+                DataProvider.SendDailyParLevel();
+                state.State[DailyParlevelSentIntent] = "1";
+                ActivityState.Save();
+            }
+            catch (Exception e)
+            {
+                Logger.CreateLog(e);
+                state.State[DailyParlevelSentIntent] = "0";
+                ActivityState.Save();
+                throw;
+            }
+        }
+
 
         [RelayCommand(CanExecute = nameof(IsLoadOrderEnabled))]
         private async Task LoadOrder()
         {
             _appService.RecordEvent("LoadOrderButton button");
             
-            // Double-check if load order is already completed (defensive check)
-            if (Order.Orders.Any(x => x.OrderType == OrderType.Load && (x.Finished || !x.PendingLoad)))
-            {
-                _loadOrder = true;
-                UpdateButtonStates();
-                await _dialogService.ShowAlertAsync("Load order is already completed.", "Alert", "OK");
-                return;
-            }
-            
             try
             {
-                _loadOrder = true;
-                _canLeaveScreen = false; // Xamarin line 344: canLeaveScreen = false when LoadOrder clicked
+                _canLeaveScreen = false;
 
-                // Create or get load order for salesman
                 var client = Client.Clients.FirstOrDefault(x => x.ClientName.StartsWith("Salesman: "));
                 if (client == null)
                     client = Client.CreateSalesmanClient();

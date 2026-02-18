@@ -14,6 +14,51 @@ namespace LaceupMigration.Views
             InitializeComponent();
             _viewModel = viewModel;
             BindingContext = _viewModel;
+
+            // Focus the corresponding discount entry when user taps either radio (Add Item page)
+            DiscountPercentageRadio.CheckedChanged += (s, e) =>
+            {
+                if (e.Value && DiscountPercentEntry != null)
+                    DiscountPercentEntry.Focus();
+            };
+            DiscountAmountRadio.CheckedChanged += (s, e) =>
+            {
+                if (e.Value && DiscountAmountEntry != null)
+                    DiscountAmountEntry.Focus();
+            };
+
+            // Select all text when discount entries receive focus
+            Entry_SelectAllOnFocused(DiscountPercentEntry);
+            Entry_SelectAllOnFocused(DiscountAmountEntry);
+        }
+
+        private void Entry_SelectAllOnFocused(Entry entry)
+        {
+            if (entry == null) return;
+            entry.Focused += (s, e) =>
+            {
+                if (s is Entry en)
+                {
+                    Dispatcher.Dispatch(() =>
+                    {
+                        en.CursorPosition = 0;
+                        en.SelectionLength = en.Text?.Length ?? 0;
+                    });
+                }
+            };
+        }
+
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            // When discount section is visible, focus the entry for the currently selected type
+            if (DiscountSection?.IsVisible == true && _viewModel?.ShowDiscountPerLine == true)
+            {
+                if (_viewModel.IsDiscountPercentage)
+                    Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(100), () => DiscountPercentEntry?.Focus());
+                else
+                    Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(100), () => DiscountAmountEntry?.Focus());
+            }
         }
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)

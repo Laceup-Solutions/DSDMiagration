@@ -22,55 +22,57 @@
             <Setter Property="MinimumHeightRequest" Value="20" />
         </Style>
 
+        <!-- 3 columns (delivery): auto, *, auto (stop+icon, content, balance). 2 columns: *, auto (content, balance). Uses bindings for column defs and indices. -->
         <DataTemplate x:Key="ClientItemTemplate" x:DataType="vm:ClientListItemViewModel" >
             <Grid RowDefinitions="Auto,*"
-                  ColumnDefinitions="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToColumnDefinitionsConverter}}"
-                  ColumnSpacing="5"
                   MinimumHeightRequest="60">
-                <!-- Separator at TOP of cell so iOS cell reuse never draws two lines on top of each other -->
+
                 <BoxView Grid.Row="0"
-                         Grid.ColumnSpan="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToColumnSpanConverter}}"
+                         Grid.ColumnSpan="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToColumnSpan3Converter}}"
                          HeightRequest="1"
                          Color="#E0E0E0"
                          VerticalOptions="Start"
                          HorizontalOptions="Fill" />
-                <!-- Content row: padding and center content vertically -->
                 <Grid Grid.Row="1"
-                      ColumnDefinitions="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToColumnDefinitionsConverter}}"
+                      ColumnDefinitions="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToColumnDefinitions3Converter}}"
                       ColumnSpacing="5"
                       Padding="10,8,10,8"
                       VerticalOptions="Center">
-                    <!-- Stop Number (only shown when showing routes, not "All") -->
-                    <Border Grid.Column="0"
-                            BackgroundColor="{Binding StopBadgeBackground}"
-                            StrokeThickness="0"
-                            Padding="6,2"
-                            MinimumWidthRequest="24"
-                            HeightRequest="20"
-                            VerticalOptions="Center"
-                            HorizontalOptions="Start"
-                            IsVisible="{Binding ShowStop}">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="10" />
-                        </Border.StrokeShape>
-                        <Label Text="{Binding StopText}"
-                               FontSize="11"
-                               FontAttributes="Bold"
-                               TextColor="{Binding StopBadgeTextColor}"
-                               HorizontalOptions="Center"
-                               VerticalOptions="Center" />
-                    </Border>
-
-                    <!-- Icon (only shown when showing routes, not "All") -->
-                    <Image Grid.Column="1"
-                           Source="{Binding IconImageSource}"
-                           WidthRequest="24"
-                           HeightRequest="24"
-                           VerticalOptions="Center"
-                           IsVisible="{Binding ShowIcon}" />
-
-                    <!-- Client Name and Address: centered as a block in the row -->
-                    <Grid Grid.Column="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToContentColumnConverter}}"
+                    <!-- Stop + Icon: column 0, only when showing routes -->
+                    <Grid Grid.Column="0"
+                          RowDefinitions="Auto,Auto"
+                          RowSpacing="5"
+                          VerticalOptions="Center"
+                          IsVisible="{Binding HasLeftContent}">
+                        <Border Grid.Row="0"
+                                BackgroundColor="{Binding StopBadgeBackground}"
+                                StrokeThickness="0"
+                                Padding="6,2"
+                                MinimumWidthRequest="24"
+                                HeightRequest="20"
+                                VerticalOptions="Center"
+                                HorizontalOptions="Start"
+                                IsVisible="{Binding ShowStop}">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="10" />
+                            </Border.StrokeShape>
+                            <Label Text="{Binding StopText}"
+                                   FontSize="11"
+                                   FontAttributes="Bold"
+                                   TextColor="{Binding StopBadgeTextColor}"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+                        <Image Grid.Row="1"
+                               Source="{Binding IconImageSource}"
+                               WidthRequest="24"
+                               HeightRequest="24"
+                               VerticalOptions="Center"
+                               IsVisible="{Binding ShowIcon}" />
+                    </Grid>
+                    <!-- Client Name and Address: column 1 when 3 cols, column 0 when 2 cols (remaining space) -->
+                    <Grid Grid.Column="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToContentColumn3Converter}}"
+                          HorizontalOptions="FillAndExpand"
                           RowDefinitions="Auto,Auto"
                           RowSpacing="4"
                           VerticalOptions="Center">
@@ -81,7 +83,6 @@
                                TextColor="{Binding NameColor}"
                                VerticalOptions="Center"
                                LineBreakMode="WordWrap" />
-
                         <Label Grid.Row="1"
                                Text="{Binding Address}"
                                FontSize="12"
@@ -92,16 +93,16 @@
                                LineBreakMode="WordWrap"
                                Margin="0,2,0,0" />
                     </Grid>
-
-                    <!-- Balance -->
-                    <Label Grid.Column="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToBalanceColumnConverter}}"
+                    <!-- Balance: column 2 when 3 cols, column 1 when 2 cols; always has space -->
+                    <Label Grid.Column="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToBalanceColumn3Converter}}"
                            Text="{Binding Balance}"
                            FontSize="14"
                            FontAttributes="Bold"
                            TextColor="{Binding NameColor}"
                            VerticalOptions="Center"
                            HorizontalOptions="End"
-                           LineBreakMode="NoWrap" />
+                           LineBreakMode="NoWrap"
+                           MinimumWidthRequest="64" />
                 </Grid>
             </Grid>
         </DataTemplate>
