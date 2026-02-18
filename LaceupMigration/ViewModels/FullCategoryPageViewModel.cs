@@ -35,7 +35,13 @@ namespace LaceupMigration.ViewModels
         private int? _scannedProductId; // Product ID from camera scan
         private bool _showSendByEmail; // True when opened from main menu or client details catalog
 
-        public ObservableCollection<CategoryViewModel> Categories { get; } = new();
+        private ObservableCollection<CategoryViewModel> _categories = new();
+        /// <summary>Categories list. Replaced (not cleared) on refresh to avoid iOS CollectionView handler crash on Reset.</summary>
+        public ObservableCollection<CategoryViewModel> Categories
+        {
+            get => _categories;
+            private set => SetProperty(ref _categories, value);
+        }
         public ObservableCollection<ProductViewModel> Products { get; } = new();
 
         [ObservableProperty]
@@ -390,8 +396,9 @@ namespace LaceupMigration.ViewModels
                 categoryList = categoryList.Where(x => x.Category.Name.ToLowerInvariant().Contains(searchTerm)).ToList();
             }
 
-            // Update UI (matches Xamarin: categoryList is already ordered in FillCategoryList line 181)
-            Categories.Clear();
+            // Update UI: replace collection instead of Clear+Add to avoid iOS CollectionView handler crash
+            // when restoring state (Reset leaves native handler's cell dictionary out of sync).
+            var newCategories = new ObservableCollection<CategoryViewModel>();
             foreach (var item in categoryList.OrderBy(x => x.Category.Name))
             {
                 // When order is set, only show subcategories that have at least one product in the order list
@@ -418,9 +425,10 @@ namespace LaceupMigration.ViewModels
                     viewModel.Subcategories.Add(subcat);
                 }
                 
-                Categories.Add(viewModel);
+                newCategories.Add(viewModel);
             }
 
+            Categories = newCategories;
             ShowNoCategories = ShowCategories && Categories.Count == 0;
         }
 
