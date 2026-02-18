@@ -276,6 +276,56 @@ namespace LaceupMigration
         {
             dataAccessInstance.SendDeposit();
         }
+
+        public static void SendInvoicePayments(Dictionary<string, double> ordersTotals)
+        {
+            dataAccessInstance.SendInvoicePayments(ordersTotals);
+        }
+
+        public static void SendTheLeftOverInventory(List<InventorySettlementRow> extendedMap)
+        {
+            dataAccessInstance.SendTheLeftOverInventory(extendedMap);
+        }
+
+        public static void SendDayReport(string sessionId)
+        {
+            dataAccessInstance.SendDayReport(sessionId);
+        }
+
+        public static void SendParLevel()
+        {
+            dataAccessInstance.SendParLevel();
+        }
+
+        public static void SendTransfers()
+        {
+            dataAccessInstance.SendTransfers();
+        }
+
+        public static void SendBuildToQty()
+        {
+            dataAccessInstance.SendBuildToQty();
+        }
+
+        public static void SendDailyParLevel()
+        {
+            dataAccessInstance.SendDailyParLevel();
+        }
+
+        public static void SendButlerTransfers()
+        {
+            dataAccessInstance.SendButlerTransfers();
+        }
+
+        public static void SendClientProdSort()
+        {
+            dataAccessInstance.SendClientProdSort();
+        }
+
+        public static void DeleteTransferFiles()
+        {
+            dataAccessInstance.DeleteTransferFiles();
+        }
         #endregion
 
         #region Inventory Operations

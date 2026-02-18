@@ -76,6 +76,26 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _canEditPrice = false;
 
+        /// <summary>Show inline discount per line (Percentage/Amount) when client allows it. Matches Xamarin AddItemActivity.</summary>
+        [ObservableProperty]
+        private bool _showDiscountPerLine = false;
+
+        [ObservableProperty]
+        private bool _isDiscountPercentage = false;
+
+        [ObservableProperty]
+        private bool _isDiscountAmount = true;
+
+        [ObservableProperty]
+        private string _discountPercentText = string.Empty;
+
+        [ObservableProperty]
+        private string _discountAmountText = string.Empty;
+
+        /// <summary>Computed discount amount for percentage (e.g. "1.10" when 20% of 5.50). Shown as "% = [value]".</summary>
+        [ObservableProperty]
+        private string _discountPercentEqualsText = string.Empty;
+
         [ObservableProperty]
         private string _weightText = string.Empty;
 
@@ -309,6 +329,38 @@ namespace LaceupMigration.ViewModels
 
             CanEditPrice = Config.CanChangePrice(_order, _product, _asCreditItem);
 
+            // Discount per line (inline, matches Xamarin AddItemActivity)
+            ShowDiscountPerLine = Config.AllowDiscountPerLine
+                && _order.Client?.UseDiscountPerLine == true
+                && (_order.OrderType == OrderType.Order || _order.OrderType == OrderType.Credit || _order.OrderType == OrderType.Return)
+                && !Config.HidePriceInTransaction
+                && ShowPrice;
+
+            if (ShowDiscountPerLine && _existingDetail != null)
+            {
+                if (_existingDetail.DiscountType == DiscountType.Percent)
+                {
+                    IsDiscountPercentage = true;
+                    IsDiscountAmount = false;
+                    DiscountPercentText = (_existingDetail.Discount * 100).ToString("F0");
+                    DiscountAmountText = string.Empty;
+                }
+                else
+                {
+                    IsDiscountPercentage = false;
+                    IsDiscountAmount = true;
+                    DiscountAmountText = _existingDetail.Discount > 0 ? _existingDetail.Discount.ToString("F2") : string.Empty;
+                    DiscountPercentText = string.Empty;
+                }
+            }
+            else if (ShowDiscountPerLine)
+            {
+                IsDiscountPercentage = false;
+                IsDiscountAmount = true;
+                DiscountPercentText = string.Empty;
+                DiscountAmountText = string.Empty;
+            }
+
             UpdateTotal();
         }
 
@@ -381,6 +433,55 @@ namespace LaceupMigration.ViewModels
             }
         }
 
+        partial void OnIsDiscountPercentageChanged(bool value)
+        {
+            if (value)
+                IsDiscountAmount = false;
+            UpdateTotal();
+        }
+
+        partial void OnIsDiscountAmountChanged(bool value)
+        {
+            if (value)
+                IsDiscountPercentage = false;
+            UpdateTotal();
+        }
+
+        partial void OnDiscountPercentTextChanged(string value)
+        {
+            UpdateTotal();
+        }
+
+        partial void OnDiscountAmountTextChanged(string value)
+        {
+            UpdateTotal();
+        }
+
+        /// <summary>Apply inline discount to detail. Percent: store fraction (e.g. 0.10). Amount: store per unit (Order multiplies by Qty). Matches Xamarin AddItemActivity.</summary>
+        private void ApplyDiscountToDetail(OrderDetail detail, float qty)
+        {
+            if (!ShowDiscountPerLine)
+            {
+                detail.Discount = 0;
+                return;
+            }
+
+            if (IsDiscountPercentage && double.TryParse(DiscountPercentText, out var percent))
+            {
+                detail.DiscountType = DiscountType.Percent;
+                detail.Discount = Math.Round(percent / 100.0, 4);
+            }
+            else if (IsDiscountAmount && double.TryParse(DiscountAmountText, out var amt))
+            {
+                detail.DiscountType = DiscountType.Amount;
+                detail.Discount = Math.Round(amt, 4); // per unit; Order multiplies by Qty
+            }
+            else
+            {
+                detail.Discount = 0;
+            }
+        }
+
         private void UpdateTotal()
         {
             if (_product == null)
@@ -402,7 +503,25 @@ namespace LaceupMigration.ViewModels
                     qty = q;
             }
 
-            var total = price * qty;
+            var lineTotal = price * qty;
+            var discountAmount = 0.0;
+
+            if (ShowDiscountPerLine)
+            {
+                if (IsDiscountPercentage && double.TryParse(DiscountPercentText, out var percent))
+                {
+                    discountAmount = lineTotal * (percent / 100.0);
+                    DiscountPercentEqualsText = discountAmount.ToString("F2");
+                }
+                else if (IsDiscountAmount && double.TryParse(DiscountAmountText, out var amt))
+                {
+                    // Amount is per unit (Order multiplies by Qty)
+                    discountAmount = amt * qty;
+                    DiscountPercentEqualsText = string.Empty;
+                }
+            }
+
+            var total = Math.Max(0, lineTotal - discountAmount);
             TotalText = $"${total:F2}";
         }
 
@@ -466,6 +585,7 @@ namespace LaceupMigration.ViewModels
                 _existingDetail.IsCredit = _asCreditItem;
                 _existingDetail.Damaged = IsDamaged;
                 _existingDetail.ReasonId = _reasonId;
+                ApplyDiscountToDetail(_existingDetail, qty);
                 updatedDetail = _existingDetail;
             }
             else
@@ -481,6 +601,7 @@ namespace LaceupMigration.ViewModels
                 detail.IsCredit = _asCreditItem;
                 detail.Damaged = IsDamaged;
                 detail.ReasonId = _reasonId;
+                ApplyDiscountToDetail(detail, qty);
 
                 // For consignment counting
                 if (_consignmentCounting)

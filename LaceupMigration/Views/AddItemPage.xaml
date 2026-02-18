@@ -64,6 +64,58 @@
                                    Grid.Column="1" />
                         </Grid>
 
+                        <!-- Discount per line (inline, matches Xamarin AddItemActivity) -->
+                        <VerticalStackLayout x:Name="DiscountSection" Spacing="6" IsVisible="{Binding ShowDiscountPerLine}" Margin="0,4,0,0">
+                            <Label Text="Discount:"
+                                   FontSize="14"
+                                   TextColor="{StaticResource Gray900}" />
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <RadioButton x:Name="DiscountPercentageRadio"
+                                             Content="Percentage"
+                                             IsChecked="{Binding IsDiscountPercentage}"
+                                             GroupName="DiscountType"
+                                             FontSize="14"
+                                             VerticalOptions="Center"
+                                             Grid.Column="0" />
+                                <HorizontalStackLayout Spacing="6" VerticalOptions="Center" Grid.Column="1">
+                                    <Entry x:Name="DiscountPercentEntry"
+                                           Text="{Binding DiscountPercentText}"
+                                           Keyboard="Numeric"
+                                           FontSize="14"
+                                           WidthRequest="60"
+                                           IsEnabled="{Binding IsDiscountPercentage}"
+                                           Placeholder="0" />
+                                    <Label Text="% ="
+                                           FontSize="14"
+                                           TextColor="{StaticResource Gray900}"
+                                           VerticalOptions="Center"
+                                           IsVisible="{Binding IsDiscountPercentage}" />
+                                    <Label Text="{Binding DiscountPercentEqualsText}"
+                                           FontSize="14"
+                                           TextColor="{StaticResource Gray900}"
+                                           VerticalOptions="Center"
+                                           IsVisible="{Binding IsDiscountPercentage}" />
+                                </HorizontalStackLayout>
+                            </Grid>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <RadioButton x:Name="DiscountAmountRadio"
+                                             Content="Amount"
+                                             IsChecked="{Binding IsDiscountAmount}"
+                                             GroupName="DiscountType"
+                                             FontSize="14"
+                                             VerticalOptions="Center"
+                                             Grid.Column="0" />
+                                <Entry x:Name="DiscountAmountEntry"
+                                       Text="{Binding DiscountAmountText}"
+                                       Keyboard="Numeric"
+                                       FontSize="14"
+                                       BackgroundColor="Transparent"
+                                       IsEnabled="{Binding IsDiscountAmount}"
+                                       Placeholder="0.00"
+                                       Grid.Column="1" />
+                            </Grid>
+                        </VerticalStackLayout>
+
                         <!-- Total Row -->
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                             <Label Text="Total:"

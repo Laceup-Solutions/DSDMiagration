@@ -2443,7 +2443,12 @@ public class DialogService : IDialogService
         var initialReasonId = existingDetail != null ? existingDetail.ReasonId : 0;
         var initialPriceLevelSelected = existingDetail != null ? (existingDetail.ExtraFields != null ? 
             int.TryParse(UDFHelper.GetSingleUDF("priceLevelSelected", existingDetail.ExtraFields), out var pl) ? pl : 0 : 0) : 0;
-        var initialDiscount = existingDetail != null ? existingDetail.Discount : 0;
+        // For Amount type Order stores discount per unit (total = Discount * Qty). Dialog UI uses "total for line"; convert for display/store.
+        var initialDiscount = existingDetail != null
+            ? (existingDetail.DiscountType == DiscountType.Amount && existingDetail.Qty > 0
+                ? existingDetail.Discount * existingDetail.Qty
+                : existingDetail.Discount)
+            : 0;
         var initialDiscountType = existingDetail != null ? existingDetail.DiscountType : DiscountType.Amount;
 
         // Create dialog content - compact layout matching the "before" image
@@ -2527,6 +2532,7 @@ public class DialogService : IDialogService
         Grid.SetColumn(qtyEntry, 1);
         qtyRow.Children.Add(qtyLabel);
         qtyRow.Children.Add(qtyEntry);
+        SelectAllOnFocusForEntry(qtyEntry);
         content.Children.Add(qtyRow);
 
         // Weight Entry (if EnterWeightInCredits)
@@ -2560,6 +2566,7 @@ public class DialogService : IDialogService
             Grid.SetColumn(weightEntry, 1);
             weightRow.Children.Add(weightLabel);
             weightRow.Children.Add(weightEntry);
+            SelectAllOnFocusForEntry(weightEntry);
             content.Children.Add(weightRow);
         }
 
@@ -2659,11 +2666,12 @@ public class DialogService : IDialogService
                 Grid.SetColumn(lotEntry, 1);
                 lotRow.Children.Add(lotLabel);
                 lotRow.Children.Add(lotEntry);
+                SelectAllOnFocusForEntry(lotEntry);
                 content.Children.Add(lotRow);
             }
         }
 
-        // Comments (no label, just the editor with placeholder)
+        // Comments (no label) - created here, added as last field before buttons
         Editor commentEntry = null;
         if (!Config.HideItemComment || (order.OrderType != OrderType.Order && order.OrderType != OrderType.Credit))
         {
@@ -2675,7 +2683,6 @@ public class DialogService : IDialogService
                 FontSize = 14,
                 Margin = new Thickness(0, 4, 0, 2)
             };
-            content.Children.Add(commentEntry);
         }
 
         // Price Entry (if can change price)
@@ -2713,6 +2720,7 @@ public class DialogService : IDialogService
                 Grid.SetColumn(priceEntry, 1);
                 priceRow.Children.Add(priceLabel);
                 priceRow.Children.Add(priceEntry);
+                SelectAllOnFocusForEntry(priceEntry);
                 content.Children.Add(priceRow);
             }
 
@@ -2970,6 +2978,8 @@ public class DialogService : IDialogService
                     Keyboard = Keyboard.Numeric,
                     Placeholder = "0.00"
                 };
+                SelectAllOnFocusForEntry(percEntry);
+                SelectAllOnFocusForEntry(amountEntry);
                 var calcLabel = new Label { Text = "", FontSize = 12, TextColor = Colors.Gray };
                 void UpdateCalc()
                 {
@@ -2977,8 +2987,24 @@ public class DialogService : IDialogService
                         calcLabel.Text = "= $" + (priceVal * qtyVal * perc / 100).ToString("F2");
                 }
                 percEntry.TextChanged += (_, __) => UpdateCalc();
-                percRadio.CheckedChanged += (_, __) => { if (percRadio.IsChecked) { amountEntry.Text = ""; UpdateCalc(); } };
-                amountRadio.CheckedChanged += (_, __) => { if (amountRadio.IsChecked) { percEntry.Text = ""; calcLabel.Text = ""; } };
+                percRadio.CheckedChanged += (_, __) =>
+                {
+                    if (percRadio.IsChecked)
+                    {
+                        amountEntry.Text = "";
+                        UpdateCalc();
+                        percEntry.Focus();
+                    }
+                };
+                amountRadio.CheckedChanged += (_, __) =>
+                {
+                    if (amountRadio.IsChecked)
+                    {
+                        percEntry.Text = "";
+                        calcLabel.Text = "";
+                        amountEntry.Focus();
+                    }
+                };
 
                 var addBtn = new Button { Text = "Add", HorizontalOptions = LayoutOptions.End };
                 var cancelBtn = new Button { Text = "Cancel", HorizontalOptions = LayoutOptions.Start };
@@ -3097,6 +3123,14 @@ public class DialogService : IDialogService
                     BackgroundColor = Colors.Transparent,
                     Content = discountOverlay
                 };
+                // Focus the entry for the selected discount type when popup opens
+                discountPage.Appearing += (_, __) =>
+                {
+                    if (currentDiscountType == DiscountType.Percent)
+                        percEntry.Focus();
+                    else
+                        amountEntry.Focus();
+                };
 
                 UpdateCalc();
                 await restOfTheDialog?.Navigation.PushModalAsync(discountPage);
@@ -3113,6 +3147,10 @@ public class DialogService : IDialogService
                 };
             }
         }
+
+        // Comments as last field in popup (below Discount, above buttons)
+        if (commentEntry != null)
+            content.Children.Add(commentEntry);
 
         // Buttons with separator line above
         var topSeparator = new BoxView
@@ -3260,7 +3298,11 @@ public class DialogService : IDialogService
                 // TODO: Add reason logic
                 result.ReasonId = initialReasonId;
 
-                result.Discount = currentDiscount;
+                // Order expects Amount discount per unit (it multiplies by Qty). Dialog collects total for line → store per unit.
+                if (currentDiscountType == DiscountType.Amount && result.Qty > 0 && currentDiscount > 0)
+                    result.Discount = currentDiscount / result.Qty;
+                else
+                    result.Discount = currentDiscount;
                 result.DiscountType = currentDiscountType;
 
                 result.Cancelled = false;
@@ -3294,6 +3336,22 @@ public class DialogService : IDialogService
         }
         
         return await tcs.Task;
+    }
+
+    private static void SelectAllOnFocusForEntry(Entry entry)
+    {
+        if (entry == null) return;
+        entry.Focused += (s, e) =>
+        {
+            if (s is Entry en)
+            {
+                en.Dispatcher?.Dispatch(() =>
+                {
+                    en.CursorPosition = 0;
+                    en.SelectionLength = en.Text?.Length ?? 0;
+                });
+            }
+        };
     }
 
     private Page GetCurrentPage()

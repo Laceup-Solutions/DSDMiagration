@@ -16,8 +16,9 @@
     </ContentPage.ToolbarItems>
 
     <ScrollView x:Name="MainScrollView">
-        <VerticalStackLayout Padding="16" Spacing="16">
+        <Grid Padding="16" RowSpacing="5" RowDefinitions="auto, auto, auto, auto, auto, auto">
             <Border BackgroundColor="#BA2D0B"
+                    Grid.Row="0"
                     StrokeShape="RoundRectangle 8"
                     Padding="12"
                     IsVisible="{Binding ShowOverCreditLimit}">
@@ -26,7 +27,7 @@
                        FontAttributes="Bold" />
             </Border>
 
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Grid.Row="1">
                 <Label Text="{Binding ClientName}"
                        FontSize="22"
                        FontAttributes="Bold"
@@ -38,28 +39,32 @@
             </Grid>
 
             <CollectionView x:Name="ClientDetailsCollection"
+                            Grid.Row="2"
                             ItemsSource="{Binding ClientDetails}"
                             SelectionMode="None"
                             ItemSizingStrategy="MeasureFirstItem">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:ClientDetailItemViewModel">
-                        <Label Text="{Binding Text}"
-                               TextColor="{StaticResource Gray900}"
-                               Margin="0,4">
-                            <Label.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenAddressInMapCommand}"
-                                                      CommandParameter="{Binding}" />
-                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenPhoneDialerCommand}"
-                                                      CommandParameter="{Binding}" />
-                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditNotesCommand}"
-                                                      CommandParameter="{Binding}" />
-                            </Label.GestureRecognizers>
-                        </Label>
+                        <Grid ColumnDefinitions="auto,*" ColumnSpacing="5" Margin="0,0,0,5">
+                            <Image Source="{Binding Image}"></Image>
+                            <Label Text="{Binding Text}" Grid.Column="1" VerticalTextAlignment="Center" MaxLines="1"
+                                   TextColor="{StaticResource Gray900}">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenAddressInMapCommand}"
+                                                          CommandParameter="{Binding}" />
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenPhoneDialerCommand}"
+                                                          CommandParameter="{Binding}" />
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditNotesCommand}"
+                                                          CommandParameter="{Binding}" />
+                                </Label.GestureRecognizers>
+                            </Label>
+                        </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
             <Border Padding="12"
+                    Grid.Row="3"
                     BackgroundColor="{StaticResource colorLaceupLight}"
                     StrokeShape="RoundRectangle 8"
                     IsVisible="{Binding ShowGoal}">
@@ -68,57 +73,59 @@
                        FontAttributes="Bold" />
             </Border>
 
-            <StackLayout IsVisible="{Binding ShowOrdersSection}" Spacing="8">
+            <Grid IsVisible="{Binding ShowOrdersSection}" RowSpacing="8" Grid.Row="4" RowDefinitions="auto,*">
                 <Label Text="Transactions"
                        FontAttributes="Bold"
+                       Grid.Row="0"
                        FontSize="18"
                        TextColor="{StaticResource PrimaryDark}" />
                 <CollectionView x:Name="OrdersCollectionView"
+                                Grid.Row="1"
                                 ItemsSource="{Binding Orders}"
                                 SelectionMode="Single"
                                 ItemSizingStrategy="MeasureFirstItem">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="vm:ClientOrderViewModel">
                             <Grid Style="{StaticResource CollectionViewItemStyle}">
-                                <Frame Padding="12"
-                                       Margin="0,0,0,8"
-                                       BackgroundColor="{StaticResource Gray100}"
-                                       HasShadow="False"
-                                       CornerRadius="8"
-                                       InputTransparent="True">
-                                <Frame.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.HandleOrderSelectedCommand}" 
-                                                          CommandParameter="{Binding}" />
-                                </Frame.GestureRecognizers>
-                                <VerticalStackLayout Spacing="4" InputTransparent="True">
-                                    <Label Text="{Binding Title}"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource Gray900}" />
-                                    <Label Text="{Binding Subtitle}"
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray600}" />
-                                    <Label Text="{Binding Status}"
-                                           FontAttributes="Bold"
-                                           FontSize="13"
-                                           TextColor="{Binding StatusColor}" />
-                                </VerticalStackLayout>
-                                </Frame>
+                                <Border  StrokeShape="RoundRectangle 8" InputTransparent="True" Padding="5">
+                                    <Grid RowDefinitions="auto,auto,auto" RowSpacing="4" InputTransparent="True">
+                                        <Label Grid.Row="0" Text="{Binding Title}"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource Gray900}" />
+                                        
+                                        <Grid Grid.Row="1" ColumnDefinitions="*, auto">
+                                            <Label Grid.Column="0" Text="{Binding Subtitle}"
+                                                   FontSize="13"
+                                                   TextColor="{StaticResource Gray600}" />
+                                            <Label Grid.Column="1" Text="{Binding Status}"
+                                                   FontAttributes="Bold"
+                                                   FontSize="13"
+                                                   TextColor="{Binding StatusColor}" />
+                                        </Grid>
+                                        
+                                        <Grid.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.HandleOrderSelectedCommand}" 
+                                                                  CommandParameter="{Binding}" />
+                                        </Grid.GestureRecognizers>
+                                    </Grid>
+                                </Border>
+                                
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
-            </StackLayout>
+            </Grid>
 
-            <StackLayout Spacing="8">
-                <Label Text="Recent and Open Transactions"
+            <Grid RowDefinitions="auto,auto,*" RowSpacing="8" Grid.Row="5">
+                <Label Grid.Row="0" Text="Recent and Open Transactions"
                        FontAttributes="Bold"
                        FontSize="14"
                        TextColor="{StaticResource Gray400}" />
-                <SearchBar Placeholder="Search invoice number" Margin="0,0,0,5"
+                <SearchBar Grid.Row="1" Placeholder="Search invoice number" Margin="0,0,0,5"
                            BackgroundColor="White"
                            Text="{Binding InvoiceSearchQuery}"
                            SearchButtonPressed="SearchBar_SearchButtonPressed"/>
-                <CollectionView x:Name="InvoicesCollectionView"
+                <CollectionView Grid.Row="2" x:Name="InvoicesCollectionView"
                                 ItemsSource="{Binding FilteredInvoices}"
                                 IsGrouped="True"
                                 SelectionMode="Single"
@@ -193,13 +200,13 @@
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
-                <ActivityIndicator IsRunning="{Binding IsInvoiceLoading}"
-                                   IsVisible="{Binding IsInvoiceLoading}" />
-                <Label Text="No invoices found"
+                <ActivityIndicator  Grid.Row="1" IsRunning="{Binding IsInvoiceLoading}"
+                                    IsVisible="{Binding IsInvoiceLoading}" />
+                <Label Text="No invoices found" Grid.Row="2"
                        HorizontalOptions="Center"
                        TextColor="{StaticResource Gray500}"
                        IsVisible="{Binding ShowNoInvoices}" />
-            </StackLayout>
-        </VerticalStackLayout>
+            </Grid>
+        </Grid>
     </ScrollView>
 </local:LaceupContentPage>

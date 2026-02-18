@@ -198,6 +198,69 @@ namespace LaceupMigration.Converters
             throw new NotImplementedException();
         }
     }
+
+    /// <summary>
+    /// 3-column variant: when true returns Auto,*,Auto (left group, content, balance); when false returns *,Auto (content, balance).
+    /// Used when stop+icon are combined in one column.
+    /// </summary>
+    public class HasLeftContentToColumnDefinitions3Converter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            var columnDefinitions = new ColumnDefinitionCollection();
+            if (value is bool hasLeftContent && hasLeftContent)
+            {
+                columnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                columnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                columnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            }
+            else
+            {
+                columnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                columnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            }
+            return columnDefinitions;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// 3-column variant: content column index — true → 1, false → 0.
+    /// </summary>
+    public class HasLeftContentToContentColumn3Converter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => value is bool hasLeftContent && hasLeftContent ? 1 : 0;
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// 3-column variant: balance column index — true → 2, false → 1.
+    /// </summary>
+    public class HasLeftContentToBalanceColumn3Converter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => value is bool hasLeftContent && hasLeftContent ? 2 : 1;
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// 3-column variant: separator span — true → 3, false → 2.
+    /// </summary>
+    public class HasLeftContentToColumnSpan3Converter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => value is bool hasLeftContent && hasLeftContent ? 3 : 2;
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => throw new NotImplementedException();
+    }
     
     /// <summary>
     /// Converter that returns TextDecorations.Underline if value is true, otherwise TextDecorations.None.

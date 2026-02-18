@@ -75,6 +75,25 @@ namespace LaceupMigration
         void SaveRoute(string filename);
         void SendTransfer(string transferFile);
         void SendDeposit();
+        /// <summary>EOD step: send invoice payments (for resumable End of Day).</summary>
+        void SendInvoicePayments(Dictionary<string, double> ordersTotals);
+        /// <summary>EOD step: send left-over inventory (for resumable End of Day).</summary>
+        void SendTheLeftOverInventory(List<InventorySettlementRow> extendedMap);
+        /// <summary>EOD step: send day report (for resumable End of Day).</summary>
+        void SendDayReport(string sessionId);
+        /// <summary>EOD step: send par level (for resumable End of Day).</summary>
+        void SendParLevel();
+        /// <summary>EOD step: send transfers (for resumable End of Day).</summary>
+        void SendTransfers();
+        /// <summary>EOD step: send build-to-qty (for resumable End of Day).</summary>
+        void SendBuildToQty();
+        /// <summary>EOD step: send daily par level (for resumable End of Day).</summary>
+        void SendDailyParLevel();
+        /// <summary>EOD step: send Butler transfers (for resumable End of Day).</summary>
+        void SendButlerTransfers();
+        /// <summary>EOD step: send client product sort (for resumable End of Day).</summary>
+        void SendClientProdSort();
+        void DeleteTransferFiles();
         #endregion
 
         #region Inventory Operations

@@ -10466,7 +10466,7 @@ namespace LaceupMigration
                 return null;
         }
 
-        void SendInvoicePayments(Dictionary<string, double> ordersTotals)
+        public void SendInvoicePayments(Dictionary<string, double> ordersTotals)
         {
             lock (FileOperationsLocker.lockFilesObject)
             {
@@ -11651,7 +11651,7 @@ namespace LaceupMigration
             }
         }
 
-        void SendClientProdSort()
+        public void SendClientProdSort()
         {
             lock (FileOperationsLocker.lockFilesObject)
             {
@@ -11679,7 +11679,38 @@ namespace LaceupMigration
             }
         }
 
-        void SendButlerTransfers()
+        public void SendDailyParLevel()
+        {
+            lock (FileOperationsLocker.lockFilesObject)
+            {
+                try
+                {
+                    //FileOperationsLocker.InUse = true;
+
+                    SendClientDailyParLevel();
+
+                        ClientDailyParLevel.Clear();
+
+                        if (File.Exists(Config.DailyParLevelFile))
+                            File.Delete(Config.DailyParLevelFile);
+
+                        if (File.Exists(Config.SavedDailyParLevelFile))
+                            File.Delete(Config.SavedDailyParLevelFile);
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex);
+
+                    throw;
+                }
+                finally
+                {
+                    //FileOperationsLocker.InUse = false;
+                }
+            }
+        }
+
+        public void SendButlerTransfers()
         {
             try
             {
@@ -11731,7 +11762,7 @@ namespace LaceupMigration
             }
         }
 
-        void SendTransfers()
+        public void SendTransfers()
         {
             try
             {
@@ -11818,7 +11849,7 @@ namespace LaceupMigration
             }
         }
 
-        void SendTheLeftOverInventory(List<InventorySettlementRow> extendedMap)
+        public void SendTheLeftOverInventory(List<InventorySettlementRow> extendedMap)
         {
             lock (FileOperationsLocker.lockFilesObject)
             {
@@ -11933,7 +11964,7 @@ namespace LaceupMigration
             }
         }
 
-        void SendBuildToQty()
+        public void SendBuildToQty()
         {
             lock (FileOperationsLocker.lockFilesObject)
             {
@@ -12013,7 +12044,7 @@ namespace LaceupMigration
             }
         }
 
-        void SendDayReport(string sessionId)
+        public void SendDayReport(string sessionId)
         {
             if (!SendSalesmanSessionsReport(sessionId))
             {
@@ -12254,7 +12285,7 @@ namespace LaceupMigration
             }
         }
 
-        void SendParLevel()
+        public void SendParLevel()
         {
             lock (FileOperationsLocker.lockFilesObject)
             {
@@ -12330,7 +12361,7 @@ namespace LaceupMigration
             }
         }
 
-        void SendDailyParLevel(bool delete = true)
+        public void SendDailyParLevel(bool delete = true)
         {
             lock (FileOperationsLocker.lockFilesObject)
             {
@@ -12364,7 +12395,7 @@ namespace LaceupMigration
             }
         }
 
-        void SendClientDailyParLevel()
+        public static void SendClientDailyParLevel()
         {
             using (var access = new NetAccess())
             {
@@ -12455,7 +12486,7 @@ namespace LaceupMigration
             }
         }
 
-        void DeleteTransferFiles()
+        public void DeleteTransferFiles()
         {
             var transOn = Path.Combine(Config.DataPath, TransferAction.On.ToString() + "_temp_LoadOrderPath.xml");
             var transOff = Path.Combine(Config.DataPath, TransferAction.Off.ToString() + "_temp_LoadOrderPath.xml");

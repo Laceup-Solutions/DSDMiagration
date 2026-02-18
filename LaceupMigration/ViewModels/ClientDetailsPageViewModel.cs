@@ -11,6 +11,8 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using LaceupMigration.Helpers;
+using MauiIcons.Material.Outlined;
 
 namespace LaceupMigration.ViewModels
 {
@@ -175,20 +177,20 @@ namespace LaceupMigration.ViewModels
 
             if (!string.IsNullOrWhiteSpace(_client.ContactName))
             {
-                ClientDetails.Add(new ClientDetailItemViewModel($"Contact: {_client.ContactName}"));
+                ClientDetails.Add(new ClientDetailItemViewModel($"Contact: {_client.ContactName}", MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.PermContactCalendar, Colors.Black)));
             }
 
             if (!string.IsNullOrWhiteSpace(_client.ShipToAddress))
             {
                 // Mark as address item so it can be clicked to open in map
-                var addressItem = new ClientDetailItemViewModel($"Address: {_client.ShipToAddress.Replace("|", " ")}", isAddress: true);
+                var addressItem = new ClientDetailItemViewModel($"Address: {_client.ShipToAddress.Replace("|", " ")}", MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.AddLocationAlt, Colors.Black), isAddress: true);
                 ClientDetails.Add(addressItem);
             }
 
             if (!string.IsNullOrWhiteSpace(_client.ContactPhone))
             {
                 // Mark as phone item so it can be clicked to dial
-                var phoneItem = new ClientDetailItemViewModel($"Phone: {_client.ContactPhone}", isPhone: true);
+                var phoneItem = new ClientDetailItemViewModel($"Phone: {_client.ContactPhone}", MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.PhoneInTalk, Colors.Black), isPhone: true);
                 ClientDetails.Add(phoneItem);
             }
 
@@ -200,23 +202,23 @@ namespace LaceupMigration.ViewModels
                 var currentPayments = InvoicePayment.List.Where(x => x.Client.ClientId == _client.ClientId).ToList();
                 var currentPaymentsTotal = currentPayments.Sum(x => x.TotalPaid);
                 clientBalance -= currentPaymentsTotal;
-                ClientDetails.Add(new ClientDetailItemViewModel($"Balance: {clientBalance.ToCustomString()}"));
+                ClientDetails.Add(new ClientDetailItemViewModel($"Balance: {clientBalance.ToCustomString()}", MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.Payments, Colors.Black)));
             }
 
             var notes = !string.IsNullOrWhiteSpace(_client.Notes) ? _client.Notes : _client.Comment;
             if (!string.IsNullOrWhiteSpace(notes))
             {
                 // Mark as notes item so it can be clicked to edit
-                var notesItem = new ClientDetailItemViewModel($"Notes: {notes}", isNotes: true);
+                var notesItem = new ClientDetailItemViewModel($"Notes: {notes}",  MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.StickyNote2), isNotes: true);
                 ClientDetails.Add(notesItem);
             }
 
             var newestInvoice = _client.Invoices?.OrderByDescending(x => x.Date).FirstOrDefault();
             if (newestInvoice != null)
             {
-                ClientDetails.Add(new ClientDetailItemViewModel($"Last Visit: {newestInvoice.Date.ToShortDateString()}"));
+                ClientDetails.Add(new ClientDetailItemViewModel($"Last Visit: {newestInvoice.Date.ToShortDateString()}", MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.CalendarMonth)));
                 var difference = (DateTime.Now.Date - newestInvoice.Date).TotalDays;
-                ClientDetails.Add(new ClientDetailItemViewModel($"Days since last visit: {(int)difference}"));
+                ClientDetails.Add(new ClientDetailItemViewModel($"Days since last visit: {(int)difference}", MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.DateRange)));
             }
 
             var nextRoute = RouteEx.Routes
@@ -226,13 +228,13 @@ namespace LaceupMigration.ViewModels
 
             if (nextRoute != null)
             {
-                ClientDetails.Add(new ClientDetailItemViewModel($"Next visit date: {nextRoute.Date.ToShortDateString()}"));
+                ClientDetails.Add(new ClientDetailItemViewModel($"Next visit date: {nextRoute.Date.ToShortDateString()}", MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.CalendarMonth)));
             }
 
             if (_client.StartTimeWindows1 != DateTime.MinValue)
             {
                 ClientDetails.Add(new ClientDetailItemViewModel(string.Format(CultureInfo.CurrentCulture,
-                    "Window: {0} - {1}", _client.StartTimeWindows1.ToShortTimeString(), _client.EndTimeWindows1.ToShortTimeString())));
+                    "Window: {0} - {1}", _client.StartTimeWindows1.ToShortTimeString(), _client.EndTimeWindows1.ToShortTimeString()), MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.AccessTime)));
             }
 
             if (_client.ExtraProperties != null)
@@ -244,8 +246,14 @@ namespace LaceupMigration.ViewModels
                     {
                         continue;
                     }
-
-                    ClientDetails.Add(new ClientDetailItemViewModel($"{tuple.Item1}: {tuple.Item2}"));
+                    
+                    if(string.IsNullOrEmpty(tuple.Item1) || string.IsNullOrEmpty(tuple.Item2))
+                        continue;
+                    
+                    if(tuple.Item1.ToLowerInvariant().Contains("email"))
+                        ClientDetails.Add(new ClientDetailItemViewModel($"{tuple.Item1}: {tuple.Item2}", MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.Email)));
+                    else
+                        ClientDetails.Add(new ClientDetailItemViewModel($"{tuple.Item1}: {tuple.Item2}", MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.DataArray)));
                 }
             }
         }
@@ -919,7 +927,31 @@ namespace LaceupMigration.ViewModels
                 await Shell.Current.GoToAsync($"batchdepartment?clientId={_client.ClientId}&batchId={batch.Id}");
                 return;
             }
-
+            
+            // Handle company selection: only when this client has multiple companies (matches Xamarin ClientDetailsActivity)
+            var clientCompanies = SalesmanAvailableCompany.GetCompanies(Config.SalesmanId, _client.ClientId);
+            if (clientCompanies.Count > 1)
+            {
+                var companyOptions = clientCompanies.Select(c =>
+                {
+                    var subtitleParts = new[] { c.CompanyAddress1, c.CompanyAddress2, c.CompanyPhone }
+                        .Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+                    var subtitle = subtitleParts.Length > 0 ? string.Join("\n", subtitleParts) : null;
+                    return (c.CompanyName ?? string.Empty, subtitle);
+                }).ToArray();
+                var selectedIndex = await _dialogService.ShowSingleChoiceDialogAsync("Select Company", companyOptions, 0);
+                if (selectedIndex >= 0 && selectedIndex < clientCompanies.Count)
+                {
+                    CompanyInfo.SelectedCompany = clientCompanies[selectedIndex];
+                }
+                else
+                    return;
+            }
+            else if (clientCompanies.Count == 1)
+            {
+                CompanyInfo.SelectedCompany = clientCompanies[0];
+            }
+            
             // Create batch
             var newBatch = new Batch(_client);
             newBatch.Client = _client;
@@ -1425,44 +1457,6 @@ namespace LaceupMigration.ViewModels
                         selectedSalesmanId = salesmen[0].Id;
                     }
                 }
-            }
-
-            // Handle company selection: only when this client has multiple companies (matches Xamarin ClientDetailsActivity)
-            var clientCompanies = SalesmanAvailableCompany.GetCompanies(Config.SalesmanId, _client.ClientId);
-            if (clientCompanies.Count > 1)
-            {
-                var companyOptions = clientCompanies.Select(c =>
-                {
-                    var subtitleParts = new[] { c.CompanyAddress1, c.CompanyAddress2, c.CompanyPhone }
-                        .Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
-                    var subtitle = subtitleParts.Length > 0 ? string.Join("\n", subtitleParts) : null;
-                    return (c.CompanyName ?? string.Empty, subtitle);
-                }).ToArray();
-                var selectedIndex = await _dialogService.ShowSingleChoiceDialogAsync("Select Company", companyOptions, 0);
-                if (selectedIndex >= 0 && selectedIndex < clientCompanies.Count)
-                {
-                    CompanyInfo.SelectedCompany = clientCompanies[selectedIndex];
-                }
-                else
-                {
-                    batch.Delete();
-
-                    //visually remove it
-                    if (Orders.Any(x => x.OrderId == order.OrderId))
-                    {
-                        var item = Orders.FirstOrDefault(x => x.OrderId == order.OrderId);
-                        if(item != null)
-                            Orders.Remove(item);
-                    }
-                    
-                    order.Delete();
-                   
-                    return;
-                }
-            }
-            else if (clientCompanies.Count == 1)
-            {
-                CompanyInfo.SelectedCompany = clientCompanies[0];
             }
 
             // Handle warehouse/site selection
@@ -2048,14 +2042,16 @@ namespace LaceupMigration.ViewModels
 
     public class ClientDetailItemViewModel
     {
-        public ClientDetailItemViewModel(string text, bool isAddress = false, bool isPhone = false, bool isNotes = false)
+        public ClientDetailItemViewModel(string text, ImageSource image = null, bool isAddress = false, bool isPhone = false, bool isNotes = false)
         {
             Text = text;
             IsAddress = isAddress;
             IsPhone = isPhone;
             IsNotes = isNotes;
+            Image = image;
         }
 
+        public ImageSource Image { get; set; }
         public string Text { get; }
         public bool IsAddress { get; }
         public bool IsPhone { get; }
