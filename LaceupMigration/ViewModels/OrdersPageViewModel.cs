@@ -680,6 +680,8 @@ namespace LaceupMigration.ViewModels
 					return "Consignment";
 				else if (order.OrderType == OrderType.Quote)
 					return "Quote";
+				else if (order.OrderType == OrderType.NoService)
+					return "No Service";
 			}
 
 			return string.Empty;

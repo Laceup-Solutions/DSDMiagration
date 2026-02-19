@@ -16,43 +16,52 @@
             <Button Text="Set Par Level"
                     Command="{Binding SetParLevelCommand}"
                     IsVisible="{Binding ShowSetParLevel}"
+                    Style="{StaticResource PrimaryButton}"
                     IsEnabled="{Binding IsSetParLevelEnabled}" />
 
             <Button Text="Load Order"
                     Command="{Binding LoadOrderCommand}"
                     IsVisible="{Binding ShowLoadOrder}"
+                    Style="{StaticResource PrimaryButton}"
                     IsEnabled="{Binding IsLoadOrderEnabled}" />
 
             <Button Text="Route Returns"
                     Command="{Binding RouteReturnsCommand}"
                     IsVisible="{Binding ShowRouteReturns}"
+                    Style="{StaticResource PrimaryButton}"
                     IsEnabled="{Binding IsRouteReturnsEnabled}" />
 
             <Button Text="End Inventory"
                     Command="{Binding EndInventoryCommand}"
                     IsVisible="{Binding ShowEndInventory}"
+                    Style="{StaticResource PrimaryButton}"
                     IsEnabled="{Binding IsEndInventoryEnabled}" />
 
             <Button Text="Cycle Count"
                     Command="{Binding CycleCountCommand}"
+                    Style="{StaticResource PrimaryButton}"
                     IsVisible="{Binding ShowCycleCount}" />
 
             <Button Text="Clock Out"
                     Command="{Binding ClockOutCommand}"
                     IsVisible="{Binding ShowClockOut}"
+                    Style="{StaticResource PrimaryButton}"
                     IsEnabled="{Binding IsClockOutEnabled}" />
 
             <Button Text="Route Expenses"
                     Command="{Binding RouteExpensesCommand}"
                     IsVisible="{Binding ShowExpenses}"
+                    Style="{StaticResource PrimaryButton}"
                     IsEnabled="{Binding IsRouteExpensesEnabled}" />
 
             <Button Text="Print Reports"
                     Command="{Binding PrintReportsCommand}"
                     IsVisible="{Binding ShowPrintReports}"
+                    Style="{StaticResource PrimaryButton}"
                     IsEnabled="{Binding IsPrintReportsEnabled}" />
 
             <Button Text="End of Day"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding EndOfDayCommand}" />
         </VerticalStackLayout>
     </ScrollView>

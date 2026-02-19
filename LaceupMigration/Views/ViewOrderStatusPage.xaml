@@ -39,6 +39,7 @@
                                Margin="8,0"
                                IsVisible="{Binding ShowButtonsLayout}">
             <Button Text="Print"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding PrintCommand}"
                     HorizontalOptions="FillAndExpand" />
         </HorizontalStackLayout>

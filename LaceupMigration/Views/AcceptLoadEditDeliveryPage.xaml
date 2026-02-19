@@ -9,19 +9,16 @@
         <!-- Print, Search, Done buttons -->
         <HorizontalStackLayout Grid.Row="0" Spacing="8" Margin="16,8">
             <Button Text="Print"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding PrintCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Search"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SearchCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="{Binding FinishButtonText}"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding FinishCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     HorizontalOptions="FillAndExpand" />
         </HorizontalStackLayout>
 
@@ -74,10 +71,9 @@
                                        FontSize="13"
                                        TextColor="{Binding OrderedColor}" />
                                 <Button Grid.Column="1"
+                                        Style="{StaticResource PrimaryButton}"
                                         Text="{Binding QtyText}"
                                         Command="{Binding EditQtyCommand}"
-                                        BackgroundColor="{StaticResource Primary}"
-                                        TextColor="White"
                                         WidthRequest="80" />
                             </Grid>
 

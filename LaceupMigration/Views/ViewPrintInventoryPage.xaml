@@ -20,14 +20,12 @@
 
         <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="16,0">
             <Button Text="Search"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SearchCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Print"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding PrintCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     HorizontalOptions="FillAndExpand"
                     IsVisible="{Binding ShowPrintButton}" />
         </HorizontalStackLayout>

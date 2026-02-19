@@ -143,6 +143,8 @@ namespace LaceupMigration.ViewModels
         }
 
         [ObservableProperty] private string _termsText = "Terms: ";
+        
+        [ObservableProperty] private bool _termsVisible = true;
 
         [ObservableProperty] private string _subtotalText = "Subtotal: $0.00";
 
@@ -321,7 +323,8 @@ namespace LaceupMigration.ViewModels
             ClientName = _order.Client?.ClientName ?? "Unknown Client";
             OrderTypeText = GetOrderTypeText(_order);
             TermsText = "Terms: " + _order.Term;
-            
+            TermsVisible = !string.IsNullOrEmpty(_order.Term);
+
             // Xamarin PreviouslyOrderedTemplateActivity logic:
             // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
             bool isReadOnly = !_order.AsPresale && (_order.Finished || _order.Voided);
@@ -1210,7 +1213,9 @@ namespace LaceupMigration.ViewModels
             var orderAmount = _order.Details.Where(x => !x.IsCredit).Sum(x => x.Qty * x.Price);
             var creditAmount = _order.Details.Where(x => x.IsCredit).Sum(x => x.Qty * x.Price);
             OrderAmountText = $"Order: {orderAmount.ToCustomString()}";
-            CreditAmountText = $"Credit: {creditAmount.ToCustomString()}";
+            
+            var creditStr = creditAmount > 0 ? (creditAmount * -1).ToCustomString() : creditAmount.ToCustomString();
+            CreditAmountText = $"Credit: {creditStr}";
 
             SubtotalText = $"Subtotal: {subtotal.ToCustomString()}";
             DiscountText = $"Discount: {discount.ToCustomString()}";

@@ -13,10 +13,9 @@
             <!-- Print Button and UoM Selector (matches Xamarin layout) -->
             <Grid Grid.Row="0" ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,5">
                 <Button Grid.Column="0"
+                        Style="{StaticResource PrimaryButton}"
                         Text="Print"
                         Command="{Binding PrintCommand}"
-                        BackgroundColor="{StaticResource Primary}"
-                        TextColor="White"
                         FontSize="14"
                         Padding="12,8"
                         IsVisible="{Binding ShowPrintButton}"
@@ -45,10 +44,9 @@
                            BackgroundColor="White"
                            Margin="0" />
                 <Button Grid.Column="1"
+                        Style="{StaticResource PrimaryButton}"
                         Text="{Binding FilterButtonText}"
                         Command="{Binding FilterToggleCommand}"
-                        BackgroundColor="{StaticResource Primary}"
-                        TextColor="White"
                         FontSize="14"
                         Padding="12,8"
                         IsVisible="{Binding ShowFilterButton}"

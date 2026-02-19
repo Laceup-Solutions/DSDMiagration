@@ -33,6 +33,7 @@
                        FontAttributes="Bold"
                        TextColor="{StaticResource Primary}" />
                 <Button Grid.Column="1"
+                        Style="{StaticResource PrimaryButton}"
                         Text="{Binding ClockInButtonText}"
                         Command="{Binding ToggleClockInCommand}"
                         IsVisible="{Binding ShowClockInButton}" />

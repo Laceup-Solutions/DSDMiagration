@@ -35,10 +35,9 @@
                             IsEnabled="{Binding CanGoPrevious}"
                             HorizontalOptions="FillAndExpand" />
                     <Button Text="{Binding NextButtonText}"
+                            Style="{StaticResource PrimaryButton}"
                             Command="{Binding NextStepCommand}"
-                            HorizontalOptions="FillAndExpand"
-                            BackgroundColor="{StaticResource Primary}"
-                            TextColor="White" />
+                            HorizontalOptions="FillAndExpand" />
                 </HorizontalStackLayout>
             </VerticalStackLayout>
         </ScrollView>

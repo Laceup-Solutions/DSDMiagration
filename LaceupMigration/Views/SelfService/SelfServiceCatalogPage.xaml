@@ -31,10 +31,11 @@
                                     <Label Text="{Binding SuggestedLabelText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource colorLaceupGreen}" IsVisible="{Binding IsSuggested}" Margin="0,2,0,0" />
                                 </VerticalStackLayout>
                                 <Button Grid.Column="2" Text="{Binding QuantityButtonText}"
+                                        Style="{StaticResource PrimaryButton}"
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type vmss:SelfServiceCatalogPageViewModel}}, Path=AddButtonClickCommand}"
                                         CommandParameter="{Binding .}"
                                         WidthRequest="56" HeightRequest="56" FontSize="28" FontAttributes="Bold"
-                                        BackgroundColor="{StaticResource PrimaryDark}" TextColor="White" CornerRadius="5"
+                                        CornerRadius="5"
                                         VerticalOptions="Center" HorizontalOptions="End" />
                             </Grid>
                             <CollectionView Grid.Row="1" ItemsSource="{Binding Values}" SelectionMode="None" IsVisible="{Binding HasValues}" Margin="0,4,0,0">
@@ -90,10 +91,10 @@
                                 </Label.GestureRecognizers>
                             </Label>
                             <Button Grid.Column="3" Text="+"
+                                    Style="{StaticResource PrimaryButton}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vmss:SelfServiceCatalogPageViewModel}}, Path=IncrementQuantityCommand}"
                                     CommandParameter="{Binding .}"
-                                    WidthRequest="40" HeightRequest="40" FontSize="18" FontAttributes="Bold"
-                                    BackgroundColor="{StaticResource PrimaryDark}" TextColor="White" />
+                                    WidthRequest="40" HeightRequest="40" FontSize="18" FontAttributes="Bold" />
                         </Grid>
                     </Grid>
                 </Frame>

@@ -11,10 +11,9 @@
     </ContentPage.ToolbarItems>
     <Grid RowDefinitions="Auto,Auto,*">
         <Button Grid.Row="0"
+                Style="{StaticResource PrimaryButton}"
                 Text="Send by Email"
                 Command="{Binding SendByEmailCommand}"
-                BackgroundColor="{StaticResource Primary}"
-                TextColor="White"
                 FontSize="16"
                 Margin="16,8"
                 Padding="16,12" />

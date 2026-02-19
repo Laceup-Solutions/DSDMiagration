@@ -63,6 +63,7 @@
                        VerticalOptions="Center" 
                        Margin="5,0" />
                 <Button Grid.Row="0" Grid.Column="1" 
+                        Style="{StaticResource PrimaryButton}"
                         x:Name="StartDateButton"
                         Text="Select Start Date"
                         Clicked="StartDateButton_Clicked" />
@@ -72,6 +73,7 @@
                        VerticalOptions="Center" 
                        Margin="5,0" />
                 <Button Grid.Row="1" Grid.Column="1" 
+                        Style="{StaticResource PrimaryButton}"
                         x:Name="EndDateButton"
                         Text="Select End Date"
                         Clicked="EndDateButton_Clicked" />
@@ -87,17 +89,18 @@
 
             <!-- Remove Filters Button -->
             <Button Text="Remove Filters" 
-                    BackgroundColor="{StaticResource colorLaceupRed}"
-                    TextColor="White"
+                    Style="{StaticResource PrimaryButton}"
                     Clicked="RemoveFiltersButton_Clicked"
                     Margin="20,10" />
 
             <!-- Action Buttons -->
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,20,0,0">
                 <Button Grid.Column="0" 
+                        Style="{StaticResource PrimaryButton}"
                         Text="Cancel" 
                         Clicked="CancelButton_Clicked" />
                 <Button Grid.Column="1" 
+                        Style="{StaticResource PrimaryButton}"
                         Text="Apply" 
                         Clicked="ApplyButton_Clicked" />
             </Grid>

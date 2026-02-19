@@ -92,74 +92,65 @@
                                Padding="0,10,0,20"
                                BackgroundColor="White">
                 <Button Text="Configure Printer"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding SetupPrinterCommand}"
                         IsVisible="{Binding ShowPrinterButton}"
-                        BackgroundColor="#017CBA"
-                        TextColor="White"
                         FontSize="16"
                         Padding="16,12"
                         Margin="20,5" />
 
                 <Button Text="Select Scanner"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding SetupScannerCommand}"
-                        BackgroundColor="#017CBA"
-                        TextColor="White"
                         FontSize="16"
                         Padding="16,12"
                         Margin="20,5" />
 
                 <Button Text="Select Logo"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding SelectLogoCommand}"
-                        BackgroundColor="#017CBA"
-                        TextColor="White"
                         FontSize="16"
                         Padding="16,12"
                         Margin="20,5" />
 
                 <Button Text="Reset Password"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding ResetPasswordCommand}"
-                        BackgroundColor="#017CBA"
-                        TextColor="White"
                         FontSize="16"
                         Padding="16,12"
                         Margin="20,5" />
 
                 <Button Text="See Log File"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding SeeLogCommand}"
-                        BackgroundColor="#017CBA"
-                        TextColor="White"
                         FontSize="16"
                         Padding="16,12"
                         Margin="20,5" />
 
                 <Button Text="Send Log File"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding SendLogCommand}"
-                        BackgroundColor="#017CBA"
-                        TextColor="White"
                         FontSize="16"
                         Padding="16,12"
                         Margin="20,5" />
 
                 <Button Text="Export Data"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding ExportDataCommand}"
-                        BackgroundColor="#017CBA"
-                        TextColor="White"
                         FontSize="16"
                         Padding="16,12"
                         Margin="20,5" />
 
                 <Button Text="Restore Data"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding RestoreDataCommand}"
-                        BackgroundColor="#017CBA"
-                        TextColor="White"
                         FontSize="16"
                         Padding="16,12"
                         Margin="20,5" />
 
                 <Button Text="Clear Data"
+                        Style="{StaticResource DeleteButton}"
                         Command="{Binding CleanDataCommand}"
-                        BackgroundColor="Red"
-                        TextColor="White"
                         FontSize="16"
                         Padding="16,12"
                         Margin="20,5" />

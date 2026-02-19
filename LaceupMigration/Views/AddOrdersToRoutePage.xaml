@@ -17,9 +17,11 @@
                                Spacing="8"
                                Margin="8,0">
             <Button Text="Select All"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SelectAllCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Add Selected"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding AddSelectedCommand}"
                     HorizontalOptions="FillAndExpand" />
         </HorizontalStackLayout>

@@ -231,15 +231,13 @@
                 <!-- Bottom Buttons -->
                 <Grid Grid.Row="4" ColumnDefinitions="*,*" ColumnSpacing="10" Margin="5">
                     <Button Grid.Column="0"
+                       Style="{StaticResource PrimaryButton}"
                        Text="Cancel"
-                       Command="{Binding CancelCommand}"
-                       BackgroundColor="{StaticResource colorLaceupDark}"
-                       TextColor="White" />
+                       Command="{Binding CancelCommand}" />
                     <Button Grid.Column="1"
+                       Style="{StaticResource PrimaryButton}"
                        Text="Accept"
-                       Command="{Binding AcceptCommand}"
-                       BackgroundColor="{StaticResource colorLaceupDark}"
-                       TextColor="White" />
+                       Command="{Binding AcceptCommand}" />
                 </Grid>
             </Grid>
             </ContentPage.Content>

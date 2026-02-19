@@ -31,12 +31,15 @@
                                Margin="8,0"
                                IsVisible="{Binding ShowButtonsLayout}">
             <Button Text="Print"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding PrintCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Email"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SendByEmailCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Resend"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding ResendCommand}"
                     HorizontalOptions="FillAndExpand" />
         </HorizontalStackLayout>

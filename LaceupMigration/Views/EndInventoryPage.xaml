@@ -10,9 +10,11 @@
                                Spacing="8"
                                Margin="8">
             <Button Text="Save"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SaveCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="{Binding FilterButtonText}"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding ToggleFilterCommand}"
                     HorizontalOptions="FillAndExpand" />
             <!-- <Button Text="Print" -->
@@ -62,12 +64,11 @@
                             </VerticalStackLayout>
                             <VerticalStackLayout Grid.Column="1" Spacing="4">
                                 <Button Text="{Binding EndingQuantity, StringFormat='End: {0:F2}'}"
+                                        Style="{StaticResource PrimaryButton}"
                                         Clicked="OnQuantityButtonClicked"
                                         WidthRequest="100"
                                         FontSize="14"
                                         Padding="8,8"
-                                        BackgroundColor="{StaticResource Gray300}"
-                                        TextColor="Black"
                                         HorizontalOptions="End" />
                             </VerticalStackLayout>
                         </Grid>

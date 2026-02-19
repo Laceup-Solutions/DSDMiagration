@@ -59,10 +59,9 @@
                         FontSize="16"
                         Padding="16,12" />
                 <Button Grid.Column="1"
+                        Style="{StaticResource PrimaryButton}"
                         Text="Save"
                         Command="{Binding SaveCommand}"
-                        BackgroundColor="{StaticResource Primary}"
-                        TextColor="White"
                         FontSize="16"
                         Padding="16,12" />
             </Grid>

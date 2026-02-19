@@ -36,9 +36,11 @@
                        FontAttributes="Bold"
                        IsVisible="{Binding ShowPrices}"/>
                 <Button Text="Send" 
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding SendCommand}"
                         HorizontalOptions="End"/>
                 <Button Text="Pay Bills" 
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding PayBillsCommand}"
                         HorizontalOptions="End"/>
             </HorizontalStackLayout>
@@ -70,10 +72,9 @@
                             </VerticalStackLayout>
                             <Button Grid.Column="2" 
                                     Text="Delete" 
+                                    Style="{StaticResource DeleteButton}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCollectPaymentPageViewModel}}, Path=DeletePaymentCommand}"
                                     CommandParameter="{Binding}"
-                                    BackgroundColor="Red"
-                                    TextColor="White"
                                     WidthRequest="80"/>
                         </Grid>
                     </Frame>

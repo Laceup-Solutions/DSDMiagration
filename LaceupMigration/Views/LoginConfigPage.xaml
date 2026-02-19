@@ -84,9 +84,8 @@
 					</Border>
 					
 						<Button Grid.Row="3" Text="Sign In"
-						        Command="{Binding SignInCommand}"
-						        BackgroundColor="{StaticResource colorLaceupDark}"
-						        TextColor="White" />
+						        Style="{StaticResource PrimaryButton}"
+						        Command="{Binding SignInCommand}" />
 				</Grid>
 				
 				<Button Text="Need help?"

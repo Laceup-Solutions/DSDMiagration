@@ -17,15 +17,19 @@
 
         <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="16,0">
             <Button Text="{Binding FilterButtonText}"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding FilterCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Search"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SearchCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Save"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SaveCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Print"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding PrintCommand}"
                     HorizontalOptions="FillAndExpand" />
         </HorizontalStackLayout>

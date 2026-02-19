@@ -29,14 +29,11 @@
         <!-- Filters -->
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="8,0">
             <Button Grid.Column="0"
+                    Style="{StaticResource PrimaryButton}"
+                    WidthRequest="100"
                     Text="{Binding SelectedTransactionType}"
                     Command="{Binding SelectTransactionTypeCommand}"
-                    BackgroundColor="White"
-                    TextColor="Black"
-                    BorderColor="#E0E0E0"
-                    BorderWidth="1"
-                    CornerRadius="4"
-                    HorizontalOptions="Fill"
+                    HorizontalOptions="Start"
                     VerticalOptions="Center"
                     Padding="12,8" />
             <VerticalStackLayout Grid.Column="1" Spacing="4">
@@ -54,12 +51,15 @@
                                Margin="8,0"
                                IsVisible="{Binding ShowButtonsLayout}">
             <Button Text="Print"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding PrintCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Email"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SendByEmailCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Resend"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding ResendCommand}"
                     HorizontalOptions="FillAndExpand" />
         </HorizontalStackLayout>

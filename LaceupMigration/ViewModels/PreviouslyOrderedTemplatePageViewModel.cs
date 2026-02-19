@@ -66,6 +66,8 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _totalText = "Total: $0.00";
 
         [ObservableProperty] private string _termsText = "Terms: ";
+        
+        [ObservableProperty] private bool _termsVisible = true;
 
         [ObservableProperty] private string _sortByText = "Sort By: Product Name";
 
@@ -89,6 +91,21 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private bool _showTotals = true;
 
         [ObservableProperty] private bool _showDiscount = true;
+
+        [ObservableProperty] private bool _isOrderSummaryExpanded = true;
+
+        public bool ShowTotalInHeader => ShowTotals && !IsOrderSummaryExpanded;
+
+        partial void OnIsOrderSummaryExpandedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowTotalInHeader));
+        }
+
+        [RelayCommand]
+        private void ToggleOrderSummary()
+        {
+            IsOrderSummaryExpanded = !IsOrderSummaryExpanded;
+        }
 
         [ObservableProperty] private bool _canEdit = true;
 
@@ -300,7 +317,8 @@ namespace LaceupMigration.ViewModels
             ClientName = _order.Client?.ClientName ?? "Unknown Client";
             OrderTypeText = GetOrderTypeText(_order);
             TermsText = "Terms: " + _order.Term;
-
+            TermsVisible = !string.IsNullOrEmpty(_order.Term);
+            
             // Company info
             if (!string.IsNullOrEmpty(_order.CompanyName))
             {
@@ -326,7 +344,9 @@ namespace LaceupMigration.ViewModels
             var orderAmount = _order.Details.Where(x => !x.IsCredit).Sum(x => x.Qty * x.Price);
             var creditAmount = _order.Details.Where(x => x.IsCredit).Sum(x => x.Qty * x.Price);
             OrderAmountText = $"Order: {orderAmount.ToCustomString()}";
-            CreditAmountText = $"Credit: {creditAmount.ToCustomString()}";
+            
+            var creditStr = creditAmount > 0 ? (creditAmount * -1).ToCustomString() : creditAmount.ToCustomString();
+            CreditAmountText = $"Credit: {creditStr}";
 
             SubtotalText = $"Subtotal: {subtotal.ToCustomString()}";
             DiscountText = $"Discount: {discount.ToCustomString()}";
@@ -504,6 +524,11 @@ namespace LaceupMigration.ViewModels
                     : $"{Config.ProductCategoryNameIdentifier} Products";
             }
 
+            var factor = existingDetail != null ? -1 : 1;
+            
+            var priceStr = (expectedPrice * factor).ToCustomString();
+            var totalStr = (total * factor).ToCustomString();
+            
             return new PreviouslyOrderedProductViewModel(this)
             {
                 ProductId = product.ProductId,
@@ -516,8 +541,8 @@ namespace LaceupMigration.ViewModels
                 ShowLastVisit = showLastVisit,
                 PerWeekText = $"Per week: {perWeek:F2}",
                 ShowPerWeek = showPerWeek,
-                PriceText = $"Price: {expectedPrice.ToCustomString()}",
-                TotalText = $"Total: {total.ToCustomString()}",
+                PriceText = $"Price: {priceStr}",
+                TotalText = $"Total: {totalStr}",
                 DefaultQuantityFromHistory = orderedItem?.Last?.Quantity,
                 OrderId = _order.OrderId,
                 OrderDetailId = existingDetail?.OrderDetailId,
@@ -601,6 +626,11 @@ namespace LaceupMigration.ViewModels
                 : string.Empty;
             var showUomLabel = orderDetail.UnitOfMeasure != null;
 
+            var factor = orderDetail.IsCredit ? -1 : 1;
+            
+            var priceStr = (orderDetail.Price * factor).ToCustomString();
+            var totalStr = (total * factor).ToCustomString();
+            
             var vm = new PreviouslyOrderedProductViewModel(this)
             {
                 ProductId = product.ProductId,
@@ -613,9 +643,9 @@ namespace LaceupMigration.ViewModels
                 ShowLastVisit = showLastVisit,
                 PerWeekText = $"Per week: {perWeek:F2}",
                 ShowPerWeek = showPerWeek,
-                PriceText = $"Price: {orderDetail.Price.ToCustomString()}",
+                PriceText = $"Price: {priceStr}",
                 UomText = uomText,
-                TotalText = $"Total: {total.ToCustomString()}",
+                TotalText = $"Total: {totalStr}",
                 DefaultQuantityFromHistory = orderedItem?.Last?.Quantity,
                 OrderId = _order.OrderId,
                 OrderDetailId = orderDetail.OrderDetailId,
@@ -2194,8 +2224,11 @@ namespace LaceupMigration.ViewModels
 
             OrderDetailId = orderDetail.OrderDetailId;
 
-            // Update price and UoM from order detail
-            PriceText = $"Price: {orderDetail.Price.ToCustomString()}";
+            var factor = orderDetail.IsCredit ? -1 : 1;
+            
+            var priceStr = (orderDetail.Price * factor).ToCustomString();
+            
+            PriceText = $"Price: {priceStr}";
             UomText = orderDetail.UnitOfMeasure != null ? orderDetail.UnitOfMeasure.Name : string.Empty;
             UomDisplayText = orderDetail.UnitOfMeasure != null
                 ? "UOM: " + orderDetail.UnitOfMeasure.Name
@@ -2263,8 +2296,13 @@ namespace LaceupMigration.ViewModels
             // This ensures the total reflects the actual order detail price
             if (existingDetail != null)
             {
+                var factor = existingDetail.IsCredit ? -1 : 1;
+
                 var total = Quantity * existingDetail.Price;
-                TotalText = $"Total: {total.ToCustomString()}";
+                
+                var totalStr = (total * factor).ToCustomString();
+
+                TotalText = $"Total: {totalStr}";
             }
             else if (Quantity > 0 && product != null && _parent._order != null)
             {

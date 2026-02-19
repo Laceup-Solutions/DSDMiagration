@@ -46,21 +46,23 @@
         
         <HorizontalStackLayout Grid.Row="4" Spacing="8" Margin="0,0,0,10">
             <Button Text="History" 
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding HistoryCommand}"
                     HorizontalOptions="FillAndExpand"/>
             <Button Text="Catalog" 
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding CatalogCommand}"
                     HorizontalOptions="FillAndExpand"/>
             <Button Text="Search" 
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SearchCommand}"
                     HorizontalOptions="FillAndExpand"/>
         </HorizontalStackLayout>
         
         <Button Grid.Row="5" 
+                Style="{StaticResource PrimaryButton}"
                 Text="Send" 
                 Command="{Binding SendCommand}"
-                BackgroundColor="{StaticResource Primary}"
-                TextColor="White"
                 Margin="0,0,0,10"/>
         
         <CollectionView Grid.Row="6" 
@@ -86,10 +88,9 @@
                             </VerticalStackLayout>
                             <Button Grid.Column="1" 
                                     Text="Remove" 
+                                    Style="{StaticResource DeleteButton}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCreditTemplatePageViewModel}}, Path=RemoveLineCommand}"
                                     CommandParameter="{Binding}"
-                                    BackgroundColor="Red"
-                                    TextColor="White"
                                     WidthRequest="80"/>
                         </Grid>
                     </Frame>

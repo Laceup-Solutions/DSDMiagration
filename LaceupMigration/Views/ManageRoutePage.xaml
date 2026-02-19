@@ -8,18 +8,22 @@
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
         <Grid Grid.Row="0" ColumnDefinitions="*,*" ColumnSpacing="8" Margin="8">
             <Button Grid.Column="0"
+                    Style="{StaticResource PrimaryButton}"
                     Text="{Binding SelectedDriver, StringFormat='Driver: {0}'}"
                     Command="{Binding SelectDriverCommand}" />
             <Button Grid.Column="1"
+                    Style="{StaticResource PrimaryButton}"
                     Text="{Binding SelectedSalesman, StringFormat='Salesman: {0}'}"
                     Command="{Binding SelectSalesmanCommand}" />
         </Grid>
 
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="8,0">
             <Button Grid.Column="0"
+                    Style="{StaticResource PrimaryButton}"
                     Text="{Binding SelectedDate, StringFormat='Date: {0}'}"
                     Command="{Binding SelectDateCommand}" />
             <Button Grid.Column="1"
+                    Style="{StaticResource PrimaryButton}"
                     Text="View Map"
                     Command="{Binding ViewMapCommand}" />
         </Grid>
@@ -28,15 +32,19 @@
                                Spacing="8"
                                Margin="8,0">
             <Button Text="Refresh"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding RefreshCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Add Position"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding AddPositionCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Add Order"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding AddOrderCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Add Quotes"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding AddQuotesCommand}"
                     HorizontalOptions="FillAndExpand" />
         </HorizontalStackLayout>
@@ -45,9 +53,11 @@
                                Spacing="8"
                                Margin="8,0">
             <Button Text="Save"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SaveCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Cancel"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding CancelCommand}"
                     HorizontalOptions="FillAndExpand" />
         </HorizontalStackLayout>
@@ -77,6 +87,7 @@
                             </VerticalStackLayout>
                             <VerticalStackLayout Grid.Column="1" Spacing="4">
                                 <Button Text="↑"
+                                        Style="{StaticResource PrimaryButton}"
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.MoveItemUpCommand}"
                                         CommandParameter="{Binding}"
                                         FontSize="16"
@@ -84,6 +95,7 @@
                                         HeightRequest="35"
                                         Padding="0" />
                                 <Button Text="↓"
+                                        Style="{StaticResource PrimaryButton}"
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.MoveItemDownCommand}"
                                         CommandParameter="{Binding}"
                                         FontSize="16"
@@ -93,10 +105,9 @@
                             </VerticalStackLayout>
                             <Button Grid.Column="2"
                                     Text="Delete"
+                                    Style="{StaticResource DeleteButton}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteItemCommand}"
                                     CommandParameter="{Binding}"
-                                    BackgroundColor="Red"
-                                    TextColor="White"
                                     FontSize="12"
                                     Padding="8,4" />
                         </Grid>

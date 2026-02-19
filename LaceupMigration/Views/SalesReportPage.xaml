@@ -44,23 +44,20 @@
 
         <VerticalStackLayout Grid.Row="3" Spacing="8">
             <Button Text="Run Report"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding RunReportCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Run Report With Details"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding RunReportWithDetailsCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     HorizontalOptions="FillAndExpand"
                     IsVisible="{Binding ShowWithDetailsButton}" />
         </VerticalStackLayout>
 
         <Button Grid.Row="4"
+                Style="{StaticResource PrimaryButton}"
                 Text="Send by Email"
                 Command="{Binding SendByEmailCommand}"
-                BackgroundColor="{StaticResource Primary}"
-                TextColor="White"
                 HorizontalOptions="FillAndExpand" />
 
         <ActivityIndicator Grid.Row="5"

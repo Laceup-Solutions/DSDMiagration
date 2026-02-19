@@ -113,7 +113,9 @@ namespace LaceupMigration.ViewModels
             {
                 ShowReasonText = false;
                 ShowReasonButton = true;
-                _selectedReason = _reasons.FirstOrDefault(x => x.Id == _order.ReasonId);
+                
+                if(_order.ReasonId > 0)
+                    _selectedReason = _reasons.FirstOrDefault(x => x.Id == _order.ReasonId);
                 ReasonButtonText = _selectedReason != null ? _selectedReason.Description : "Select Reason";
             }
 

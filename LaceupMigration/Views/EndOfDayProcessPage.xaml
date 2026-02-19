@@ -62,9 +62,8 @@
                    Margin="0,8" />
 
             <Button Text="Process End of Day"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding ProcessEndOfDayCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12"
                     Margin="0,20,0,0"

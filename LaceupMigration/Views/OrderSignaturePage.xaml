@@ -39,10 +39,9 @@
                         BackgroundColor="{StaticResource Gray500}"
                         TextColor="White" />
                 <Button Grid.Column="1"
+                        Style="{StaticResource PrimaryButton}"
                         Text="Save"
-                        Command="{Binding SaveCommand}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White" />
+                        Command="{Binding SaveCommand}" />
             </Grid>
         </VerticalStackLayout>
     </ContentPage.Content>

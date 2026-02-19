@@ -375,14 +375,12 @@
                         <!-- Action Buttons -->
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,10,0,0">
                             <Button Grid.Column="0" 
+                                    Style="{StaticResource PrimaryButton}"
                                     Text="Cancel" 
-                                    BackgroundColor="Gray"
-                                    TextColor="White"
                                     Command="{Binding CloseFilterPopupCommand}" />
                             <Button Grid.Column="1" 
+                                    Style="{StaticResource PrimaryButton}"
                                     Text="Apply" 
-                                    BackgroundColor="{StaticResource colorLaceupDark}"
-                                    TextColor="White"
                                     Command="{Binding ApplyFilterCommand}" />
                         </Grid>
                     </VerticalStackLayout>
