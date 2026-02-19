@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
-	<application tools:replace="android:label,android:allowBackup"  android:allowBackup="false" android:fullBackupOnly="false" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true"  android:usesCleartextTraffic="true">
+	<application tools:replace="android:label,android:allowBackup,android:debuggable"  android:allowBackup="false" android:fullBackupOnly="false" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true"  android:usesCleartextTraffic="true">
         <uses-library android:name="com.symbol.emdk" android:required="false"/>
         <provider
             android:name="androidx.core.content.FileProvider"
