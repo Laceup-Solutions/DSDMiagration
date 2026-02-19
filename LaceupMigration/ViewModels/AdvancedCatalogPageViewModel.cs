@@ -1303,6 +1303,10 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
+            ScannedItemToFocus = null;
+            
+            _skipNextOnAppearingRefresh = true;
+
             try
             {
                 var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
@@ -4186,7 +4190,7 @@ namespace LaceupMigration.ViewModels
                     HistoryText = string.Empty;
                 }
 
-                // Product Image
+                // Product Image (use thumbnails / small files for list performance; list cell shows 60x60)
                 var imagePath = ProductImage.GetProductImage(ProductId);
                 HasImage = !string.IsNullOrEmpty(imagePath);
                 ProductImagePath = imagePath ?? string.Empty;
@@ -4196,6 +4200,9 @@ namespace LaceupMigration.ViewModels
                 OnPropertyChanged(nameof(ShowFreeItemDetailInCell));
                 OnPropertyChanged(nameof(ShowSublinesInCell));
                 OnPropertyChanged(nameof(ShowFreeItemButtonInCell));
+                // Force main cell bindings to refresh (QuantityText, CurrentPriceText) after qty/price changes
+                OnPropertyChanged(nameof(QuantityText));
+                OnPropertyChanged(nameof(CurrentPriceText));
             }
         }
 
