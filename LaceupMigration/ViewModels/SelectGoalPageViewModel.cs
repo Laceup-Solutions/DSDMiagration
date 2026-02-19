@@ -43,10 +43,12 @@ namespace LaceupMigration.ViewModels
             _dialogService = dialogService;
             _appService = appService;
         }
-
+        private bool _hasLoadedData = false;
         public async Task OnAppearingAsync()
         {
-            IsLoading = true;
+            if (!_hasLoadedData)
+            {
+                            IsLoading = true;
             try
             {
                 // Initialize date filters to current month (matching Xamarin OnCreate logic)
@@ -99,20 +101,21 @@ namespace LaceupMigration.ViewModels
                         CreditInvoice = goal.CreditInvoice,
                         Criteria = goal.Criteria,
                         Percentage = progressPercent,
-                        ProgressColor = progressPercent >= 100 ? Colors.DarkGreen : GoalRed // Set initial color
+                        ProgressColor = progressPercent >= 100 ? Colors.DarkGreen : GoalRed
                     };
-                    
+
                     Goals.Add(goalItem);
                     _allGoals.Add(goalItem);
                 }
 
-                // Apply initial filter
-                FilterGoals(SearchText);
-
+                _hasLoadedData = true; 
+                
                 if (_allGoals.Count == 0)
                 {
                     await _dialogService.ShowAlertAsync("No goals available.", "Info", "OK");
                 }
+
+                FilterGoals(SearchText);
             }
             catch (Exception ex)
             {
@@ -123,6 +126,10 @@ namespace LaceupMigration.ViewModels
             {
                 IsLoading = false;
             }
+            
+            }
+
+            FilterGoals(SearchText);
         }
 
         public void FilterGoals(string searchText)
@@ -190,7 +197,7 @@ namespace LaceupMigration.ViewModels
             ShowExpired = _showExpiredGoals;
             FilterStartDate = _startDateFilter == DateTime.MinValue ? null : _startDateFilter;
             FilterEndDate = _endDateFilter == DateTime.MinValue ? null : _endDateFilter;
-            
+
             IsFilterPopupVisible = true;
         }
 
@@ -226,22 +233,18 @@ namespace LaceupMigration.ViewModels
         {
             OnPropertyChanged(nameof(StartDateButtonText));
             OnPropertyChanged(nameof(StartDateButtonTextColor));
-            OnPropertyChanged(nameof(StartDateButtonFontAttributes));
         }
 
         partial void OnFilterEndDateChanged(DateTime? value)
         {
             OnPropertyChanged(nameof(EndDateButtonText));
             OnPropertyChanged(nameof(EndDateButtonTextColor));
-            OnPropertyChanged(nameof(EndDateButtonFontAttributes));
         }
 
-        public string StartDateButtonText => FilterStartDate.HasValue ? FilterStartDate.Value.ToShortDateString() : "Select Start Date";
-        public Color StartDateButtonTextColor => FilterStartDate.HasValue ? Colors.Black : Color.FromRgb(80, 80, 80); // Darker, bolder gray
-        public FontAttributes StartDateButtonFontAttributes => FilterStartDate.HasValue ? FontAttributes.None : FontAttributes.Bold;
-        public string EndDateButtonText => FilterEndDate.HasValue ? FilterEndDate.Value.ToShortDateString() : "Select End Date";
-        public Color EndDateButtonTextColor => FilterEndDate.HasValue ? Colors.Black : Color.FromRgb(80, 80, 80); // Darker, bolder gray
-        public FontAttributes EndDateButtonFontAttributes => FilterEndDate.HasValue ? FontAttributes.None : FontAttributes.Bold;
+        public string StartDateButtonText => FilterStartDate.HasValue ? FilterStartDate.Value.ToShortDateString() : string.Empty;
+        public Color StartDateButtonTextColor => FilterStartDate.HasValue ? Colors.Black : Colors.Gray;
+        public string EndDateButtonText => FilterEndDate.HasValue ? FilterEndDate.Value.ToShortDateString() : string.Empty;
+        public Color EndDateButtonTextColor => FilterEndDate.HasValue ? Colors.Black : Colors.Gray;
 
         [RelayCommand]
         private void RemoveFilters()
@@ -255,14 +258,6 @@ namespace LaceupMigration.ViewModels
             ShowExpired = false;
             FilterStartDate = null;
             FilterEndDate = null;
-            
-            // Notify button text properties
-            OnPropertyChanged(nameof(StartDateButtonText));
-            OnPropertyChanged(nameof(StartDateButtonTextColor));
-            OnPropertyChanged(nameof(StartDateButtonFontAttributes));
-            OnPropertyChanged(nameof(EndDateButtonText));
-            OnPropertyChanged(nameof(EndDateButtonTextColor));
-            OnPropertyChanged(nameof(EndDateButtonFontAttributes));
         }
 
         [RelayCommand]
@@ -292,7 +287,6 @@ namespace LaceupMigration.ViewModels
             _endDateFilter = FilterEndDate ?? DateTime.MinValue;
             _showExpiredGoals = ShowExpired;
 
-            // Apply filters and close popup
             FilterGoals(SearchText);
             IsFilterPopupVisible = false;
         }

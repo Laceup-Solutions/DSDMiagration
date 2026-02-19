@@ -162,13 +162,13 @@
         </Grid>
         
 
-        <CollectionView Grid.Row="6"
+        <CollectionView Grid.Row="4"
                         ItemsSource="{Binding GoalDetails}"
-                        Margin="10,0,10,10">
+                        Margin="10,0,5,10">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:GoalDetailItemViewModel">
                     <!-- Goal Detail Cell (matching Xamarin goalsCellLayout.axml) -->
-                    <Border Margin="0,20,0,10"
+                    <Border Margin="0,5,0,10"
                             Padding="0"
                             BackgroundColor="Transparent"
                             Stroke="{StaticResource colorLaceupDark}"
