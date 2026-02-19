@@ -20,6 +20,7 @@
                        BackgroundColor="White"
                        TextChanged="OnSearchTextChanged"/>
             <Button Grid.Column="1" 
+                    Style="{StaticResource PrimaryButton}"
                     Text="Filter"
                     Command="{Binding FilterCommand}"
                     WidthRequest="80"/>

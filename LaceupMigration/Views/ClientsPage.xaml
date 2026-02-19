@@ -136,22 +136,22 @@
                                HorizontalOptions="Center"
                                IsVisible="{Binding ShowButtonsLayout}">
             <Button Text="View Map Route"
-                    Style="{StaticResource SmallButton}"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding OpenMapRouteCommand}"
                     IsVisible="{Binding ShowMapRouteButton}" />
 
             <Button Text="{Binding ViewButtonText}"
-                    Style="{StaticResource SmallButton}"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding ToggleDisplayModeCommand}"
                     IsVisible="{Binding ShowViewButton}" />
 
             <Button Text="{Binding SelectDayButtonText}"
-                    Style="{StaticResource SmallButton}"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SelectDateCommand}"
                     IsVisible="{Binding ShowSelectDayButton}" />
 
             <Button Text="{Binding EditButtonText}"
-                    Style="{StaticResource SmallButton}"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding ToggleEditCommand}"
                     IsVisible="{Binding ShowEditButton}" />
         </HorizontalStackLayout>

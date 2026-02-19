@@ -214,10 +214,10 @@ namespace LaceupMigration.ViewModels
 
 			switch (choice)
 			{
-				case "Sent Orders":
+				case "View Sent Orders":
 					await SentOrders();
 					break;
-				case "Sent Payments":
+				case "View Sent Payments":
 					await SentPayments();
 					break;
 			}

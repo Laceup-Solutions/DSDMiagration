@@ -29,12 +29,12 @@
                             <Label Text="{Binding PriceText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" HorizontalOptions="End" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCheckOutPageViewModel}}, Path=ShowPrices}" />
                             <Label Text="{Binding TotalText}" FontSize="12" TextColor="{StaticResource Gray600}" HorizontalOptions="End" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCheckOutPageViewModel}}, Path=ShowPrices}" />
                             <Button Text="{Binding QuantityButtonText}"
+                                    Style="{StaticResource PrimaryButton}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceCheckOutPageViewModel}}, Path=ShowAddItemPopupCommand}"
                                     CommandParameter="{Binding .}"
                                     IsEnabled="{Binding IsEnabled}"
                                     WidthRequest="90" HeightRequest="36"
-                                    BackgroundColor="{StaticResource PrimaryDark}"
-                                    TextColor="White" FontSize="18" FontAttributes="Bold"
+                                    FontSize="18" FontAttributes="Bold"
                                     CornerRadius="4" HorizontalOptions="End" Margin="0,2,0,0" />
                         </VerticalStackLayout>
                         <Label Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2" Text="{Binding SuggestedLabelText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource colorLaceupGreen}" IsVisible="{Binding IsSuggested}" Margin="0,4,0,0" />

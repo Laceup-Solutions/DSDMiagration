@@ -12,44 +12,39 @@
         <VerticalStackLayout Padding="20" Spacing="20">
             <!-- View/Print Inventory (matches Xamarin - first in layout but always hidden in code) -->
             <Button Text="{Binding ViewPrintText}"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding ViewPrintInventoryCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12"
                     IsVisible="{Binding ShowViewPrintInventory}" />
 
             <!-- Inventory Summary (matches Xamarin - second in layout, always visible) -->
             <Button Text="Inventory Summary"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding InventorySummaryCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12" />
 
             <!-- Check Inventory (matches Xamarin - third in layout, hidden by default) -->
             <Button Text="Check Inventory"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding CheckInventoryCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12"
                     IsVisible="{Binding ShowCheckInventory}" />
 
             <!-- Set Par Level (matches Xamarin - fourth in layout) -->
             <Button Text="Set Par Level"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SetParLevelCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12"
                     IsVisible="{Binding ShowParLevel}" />
 
             <!-- Create Load Order (matches Xamarin - fifth in layout, text is "Create Load Order") -->
             <Button Text="Create Load Order"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding ViewLoadOrderCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12"
                     IsVisible="{Binding ShowLoadOrder}" />
@@ -64,9 +59,8 @@
 
             <!-- Accept Load (matches Xamarin - seventh in layout) -->
             <Button Text="Accept Load"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding AcceptLoadCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12"
                     IsVisible="{Binding ShowAcceptLoad}"
@@ -74,27 +68,24 @@
 
             <!-- Create Transfer On (matches Xamarin - eighth in layout, text is "Create Transfer On") -->
             <Button Text="Create Transfer On"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding TransferOnCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12"
                     IsVisible="{Binding ShowTransfers}" />
 
             <!-- Create Transfer Off (matches Xamarin - ninth in layout, text is "Create Transfer Off") -->
             <Button Text="Create Transfer Off"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding TransferOffCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12"
                     IsVisible="{Binding ShowTransfers}" />
 
             <!-- Inventory Count (matches Xamarin - tenth in layout, text is "Inventory Count", always hidden) -->
             <Button Text="Inventory Count"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding CycleCountCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12"
                     IsVisible="{Binding ShowCycleCount}" />

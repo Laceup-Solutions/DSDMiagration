@@ -472,33 +472,82 @@
         <Setter Property="SelectedTabColor" Value="{AppThemeBinding Light={StaticResource Gray950}, Dark={StaticResource Gray200}}" />
     </Style>
 
-    <!-- Button Styles -->
-    <Style TargetType="Button" x:Key="PrimaryButton">
-        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource White}}" />
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" />
+    <!-- ~1~ Button Styles @1@ -->
+    <!-- <Style TargetType="Button" x:Key="PrimaryButton"> -->
+    <!--     <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource White}}" /> -->
+    <!--     <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" /> -->
+    <!--     <Setter Property="FontFamily" Value="OpenSansRegular"/> -->
+    <!--     <Setter Property="FontSize" Value="14"/> -->
+    <!--     <Setter Property="BorderWidth" Value="0"/> -->
+    <!--     <Setter Property="CornerRadius" Value="8"/> -->
+    <!--     <Setter Property="Padding" Value="14,10"/> -->
+    <!--     <Setter Property="MinimumHeightRequest" Value="44"/> -->
+    <!--     <Setter Property="MinimumWidthRequest" Value="44"/> -->
+    <!--     <Setter Property="VisualStateManager.VisualStateGroups"> -->
+    <!--         <VisualStateGroupList> -->
+    <!--             <VisualStateGroup x:Name="CommonStates"> -->
+    <!--                 <VisualState x:Name="Normal" /> -->
+    <!--                 <VisualState x:Name="Disabled"> -->
+    <!--                     <VisualState.Setters> -->
+    <!--                         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Gray400}, Dark={StaticResource Gray500}}" /> -->
+    <!--                         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray700}}" /> -->
+    <!--                     </VisualState.Setters> -->
+    <!--                 </VisualState> -->
+    <!--                 <VisualState x:Name="PointerOver" /> -->
+    <!--             </VisualStateGroup> -->
+    <!--         </VisualStateGroupList> -->
+    <!--     </Setter> -->
+    <!-- </Style> -->
+    <!-- -->
+    <LinearGradientBrush x:Key="NicerButtonGradient" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{StaticResource colorLaceupLightBlue}" Offset="0"/>
+        <GradientStop Color="{StaticResource colorLaceupDark}" Offset="0.5"/>
+        <GradientStop Color="{StaticResource colorLaceupDarkerBlue}" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="NicerButtonDisabledBrush" Color="{StaticResource colorLaceupDisable}"/>
+
+    <!-- Gray gradient for disabled state (PrimaryButton and DeleteButton) -->
+    <LinearGradientBrush x:Key="NicerButtonDisabledGradient" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{StaticResource Gray200}" Offset="0"/>
+        <GradientStop Color="{StaticResource Gray300}" Offset="0.5"/>
+        <GradientStop Color="{StaticResource Gray400}" Offset="1"/>
+    </LinearGradientBrush>
+
+    <!-- Red button gradient (based on nicerButtonRed / button_background_red) -->
+    <LinearGradientBrush x:Key="NicerButtonRedGradient" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{StaticResource colorLaceupLightRed}" Offset="0"/>
+        <GradientStop Color="{StaticResource colorLaceupRed}" Offset="0.5"/>
+        <GradientStop Color="{StaticResource colorLaceupDarkerRed}" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="NicerButtonRedDisabledBrush" Color="{StaticResource colorLaceupRedDisable}"/>
+
+    <Style  x:Key="PrimaryButton" TargetType="Button">
+        <Setter Property="TextColor" Value="White"/>
+        <Setter Property="Background" Value="{StaticResource NicerButtonGradient}"/>
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="BorderWidth" Value="0"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="14,10"/>
+        <Setter Property="CornerRadius" Value="5"/>
+        <Setter Property="FontAttributes" Value="Bold"></Setter>
+        <Setter Property="Padding" Value="10,7"/>
         <Setter Property="MinimumHeightRequest" Value="44"/>
         <Setter Property="MinimumWidthRequest" Value="44"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
-                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="Normal"/>
                     <VisualState x:Name="Disabled">
                         <VisualState.Setters>
-                            <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Gray400}, Dark={StaticResource Gray500}}" />
-                            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray700}}" />
+                            <Setter Property="TextColor" Value="White"/>
+                            <Setter Property="Background" Value="{StaticResource NicerButtonDisabledGradient}"/>
                         </VisualState.Setters>
                     </VisualState>
-                    <VisualState x:Name="PointerOver" />
+                    <VisualState x:Name="PointerOver"/>
                 </VisualStateGroup>
             </VisualStateGroupList>
         </Setter>
     </Style>
-
+    
     <Style TargetType="Button" x:Key="SecondaryButton">
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource White}}" />
         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Gray600}}" />
@@ -538,25 +587,27 @@
     </Style>
 
     <Style TargetType="Button" x:Key="DeleteButton">
-        <Setter Property="Padding" Value="14,8" />
-        <Setter Property="Margin" Value="4,0" />
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="BackgroundColor" Value="#D32F2F" />
-        <Setter Property="TextColor" Value="White" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="TextColor" Value="White"/>
+        <Setter Property="Background" Value="{StaticResource NicerButtonRedGradient}"/>
+        <Setter Property="FontFamily" Value="OpenSansRegular"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="BorderWidth" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="14,8"/>
+        <Setter Property="Margin" Value="4,0"/>
         <Setter Property="MinimumHeightRequest" Value="36"/>
         <Setter Property="MinimumWidthRequest" Value="36"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
-                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="Normal"/>
                     <VisualState x:Name="Disabled">
                         <VisualState.Setters>
-                            <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Gray400}, Dark={StaticResource Gray500}}" />
-                            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray700}}" />
+                            <Setter Property="TextColor" Value="White"/>
+                            <Setter Property="Background" Value="{StaticResource NicerButtonDisabledGradient}"/>
                         </VisualState.Setters>
                     </VisualState>
-                    <VisualState x:Name="PointerOver" />
+                    <VisualState x:Name="PointerOver"/>
                 </VisualStateGroup>
             </VisualStateGroupList>
         </Setter>

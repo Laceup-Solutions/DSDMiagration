@@ -9,18 +9,15 @@
                     Margin="8">
         <CollectionView.ItemTemplate>
             <DataTemplate x:DataType="vm:ReportItemViewModel">
-                <Frame Padding="16"
+                <Button Padding="16"
                        Margin="0,4"
+                       Text="{Binding Name}"
+                       Style="{StaticResource PrimaryButton}"
                        BackgroundColor="{StaticResource Gray100}"
-                       HasShadow="False"
+                       Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectReportCommand}"
+                       CommandParameter="{Binding .}"
                        CornerRadius="8">
-                    <Frame.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectReportCommand}" 
-                                              CommandParameter="{Binding}" />
-                    </Frame.GestureRecognizers>
-                    <Label Text="{Binding Name}"
-                           FontSize="16"/>
-                </Frame>
+                </Button>
             </DataTemplate>
         </CollectionView.ItemTemplate>
     </CollectionView>

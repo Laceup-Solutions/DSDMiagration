@@ -9,9 +9,8 @@
         <VerticalStackLayout Padding="20" Spacing="16">
             <!-- Save Button at the top -->
             <Button Text="Save Customer"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SaveCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12"
                     Margin="0,0,0,20" />
@@ -109,6 +108,7 @@
 
             <!-- Add Bill To Address at the bottom -->
             <Button Text="Add Bill To Address"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SelectBillToCommand}"
                     HorizontalOptions="Fill"
                     Margin="0,20,0,0" />

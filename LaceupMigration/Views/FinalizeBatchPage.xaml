@@ -49,11 +49,9 @@
                         IsVisible="{Binding ShowPrintPickTicketButton}" />
 
                 <!-- Done Button -->
-                <Button  
+                <Button Style="{StaticResource PrimaryButton}"
                         Text="Done"
                         Command="{Binding DoneCommand}"
-                        BackgroundColor="{StaticResource PrimaryDark}"
-                        TextColor="White"
                         FontSize="16"/>
 
         </VerticalStackLayout>

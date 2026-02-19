@@ -91,17 +91,15 @@
             <!-- Action Buttons -->
             <HorizontalStackLayout Spacing="12" Margin="0,0,0,12">
                 <Button Text="Duplicate"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding DuplicateCommand}"
-                        BackgroundColor="{StaticResource Primary}"
-                        TextColor="White"
                         FontSize="14"
                         CornerRadius="8"
                         Padding="16,12"
                         HorizontalOptions="FillAndExpand" />
                 <Button Text="Resend"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding ResendCommand}"
-                        BackgroundColor="{StaticResource Primary}"
-                        TextColor="White"
                         FontSize="14"
                         CornerRadius="8"
                         Padding="16,12"

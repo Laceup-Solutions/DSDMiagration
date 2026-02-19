@@ -8,14 +8,12 @@
     <Grid RowDefinitions="Auto,*" RowSpacing="8">
         <HorizontalStackLayout Grid.Row="0" Spacing="8" Margin="16,8">
             <Button Text="Save"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SaveCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Print"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding PrintCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     HorizontalOptions="FillAndExpand"
                     IsVisible="{Binding ShowPrintButton}" />
         </HorizontalStackLayout>
@@ -41,18 +39,16 @@
                                        TextColor="#666666" />
                             </VerticalStackLayout>
                             <Button Grid.Column="1"
+                                    Style="{StaticResource PrimaryButton}"
                                     Text="{Binding QtyText}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SetQuantityCommand}"
                                     CommandParameter="{Binding}"
-                                    BackgroundColor="{StaticResource Primary}"
-                                    TextColor="White"
                                     WidthRequest="80" />
                             <Button Grid.Column="2"
+                                    Style="{StaticResource PrimaryButton}"
                                     Text="+"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.AddQuantityCommand}"
                                     CommandParameter="{Binding}"
-                                    BackgroundColor="{StaticResource Primary}"
-                                    TextColor="White"
                                     WidthRequest="50" />
                         </Grid>
                     </Frame>

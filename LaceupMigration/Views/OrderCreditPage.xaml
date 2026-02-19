@@ -15,18 +15,22 @@
             <!-- Action Buttons -->
             <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*" ColumnSpacing="4" Padding="8,8,8,4">
                 <Button Text="Prod"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding AddProductCommand}"
                         IsEnabled="{Binding CanEdit}"
                         Grid.Column="0" />
                 <Button Text="Cats"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding ViewCategoriesCommand}"
                         IsEnabled="{Binding CanEdit}"
                         Grid.Column="1" />
                 <Button Text="Search"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding SearchCommand}"
                         IsEnabled="{Binding CanEdit}"
                         Grid.Column="2" />
                 <Button Text="{Binding DoneButtonText}"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding DoneCommand}"
                         IsEnabled="{Binding CanEdit}"
                         Grid.Column="3" />
@@ -152,6 +156,7 @@
                                 
                                 <!-- Quantity Button (Right) -->
                                 <Button Grid.Column="1" Grid.Row="1"
+                                        Style="{StaticResource PrimaryButton}"
                                         Text="{Binding QuantityButtonText}"
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type vm:OrderCreditPageViewModel}}, Path=EditLineItemCommand}"
                                         CommandParameter="{Binding .}"

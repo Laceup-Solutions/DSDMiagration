@@ -49,15 +49,18 @@
               HorizontalOptions="Start"
               IsVisible="{Binding ShowButtonsLayout}">
            
-            <Button Grid.Column="0" Command="{Binding SelectDateRangeCommand}" ImageSource="{mi:MaterialOutlined Icon=ArrowDropDown, IconColor=White}" Text="{Binding SelectedDateRange}"/>
+            <Button Grid.Column="0" Style="{StaticResource PrimaryButton}" Command="{Binding SelectDateRangeCommand}" ImageSource="{mi:MaterialOutlined Icon=ArrowDropDown, IconColor=White}" Text="{Binding SelectedDateRange}"/>
             <Button Text="Payment"
+                    Style="{StaticResource PrimaryButton}"
                     Grid.Column="1"
                     Command="{Binding PaymentCommand}"
                     IsVisible="{Binding ShowPaymentButton}" />
             <Button Text="Print"
+                    Style="{StaticResource PrimaryButton}"
                     Grid.Column="2"
                     Command="{Binding PrintCommand}" />
             <Button Text="Send"
+                    Style="{StaticResource PrimaryButton}"
                     Grid.Column="3"
                     Command="{Binding SendCommand}" />
         </Grid>

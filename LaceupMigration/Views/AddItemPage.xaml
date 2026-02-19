@@ -204,17 +204,15 @@
                 <!-- Action Buttons -->
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,4,0,0">
                     <Button Text="Product Details"
+                            Style="{StaticResource PrimaryButton}"
                             Command="{Binding ViewProductDetailsCommand}"
-                            BackgroundColor="{StaticResource PrimaryDark}"
-                            TextColor="White"
                             FontSize="14"
                             HeightRequest="40"
                             CornerRadius="4"
                             Grid.Column="0" />
                     <Button Text="Add Item"
+                            Style="{StaticResource PrimaryButton}"
                             Command="{Binding AddToOrderCommand}"
-                            BackgroundColor="{StaticResource PrimaryDark}"
-                            TextColor="White"
                             FontSize="14"
                             FontAttributes="Bold"
                             HeightRequest="40"

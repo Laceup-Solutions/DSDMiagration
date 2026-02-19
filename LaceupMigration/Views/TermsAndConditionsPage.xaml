@@ -19,6 +19,7 @@
 						   FontSize="14" />
 					
 					<Button Text="Accept Terms and Conditions"
+					        Style="{StaticResource PrimaryButton}"
 							Command="{Binding AcceptCommand}"
 							Padding="16"
 							Margin="0,24,0,0"

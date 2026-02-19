@@ -109,8 +109,7 @@
                                     Text="Delete"
                                     Command="{Binding DeleteImageCommand}"
                                     IsEnabled="{Binding HasImages}"
-                                    BackgroundColor="Red"
-                                    TextColor="White"
+                                    Style="{StaticResource DeleteButton}"
                                     Margin="0" />
                         </Grid>
 

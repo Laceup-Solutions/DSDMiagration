@@ -16,11 +16,15 @@
 
     <Color x:Key="colorLaceupLight">#b6e3f1</Color>
     <Color x:Key="colorLaceupDark">#0379cb</Color>
+    <Color x:Key="colorLaceupDarkerBlue">#0F52BA</Color>
     <Color x:Key="colorLaceupDisable">#b3d6ef</Color>
     <Color x:Key="colorLaceupGray">#c4c4c4</Color>
     <Color x:Key="colorWhite">#FFFFFF</Color>
     <Color x:Key="colorLaceupGreen">#3FBC4D</Color>
     <Color x:Key="colorLaceupRed">#BA2D0B</Color>
+    <Color x:Key="colorLaceupLightRed">#E57373</Color>
+    <Color x:Key="colorLaceupDarkerRed">#8B2008</Color>
+    <Color x:Key="colorLaceupRedDisable">#d4a5a5</Color>
     <!-- Lighter red for goal screens (Pending Days, Missing To Goal, progress bars) -->
     <Color x:Key="colorGoalRed">#E57373</Color>
     <Color x:Key="colorLaceupPurple">#7d3c98</Color>

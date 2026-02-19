@@ -10,17 +10,21 @@
                                Spacing="8"
                                Margin="8">
             <Button Text="{Binding SaveButtonText}"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SaveCommand}"
                     HorizontalOptions="FillAndExpand"
                     IsEnabled="{Binding IsSaved, Converter={StaticResource InvertedBoolConverter}}" />
             <Button Text="{Binding FilterButtonText}"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding ToggleFilterCommand}"
                     HorizontalOptions="FillAndExpand"
                     IsEnabled="{Binding IsSaved, Converter={StaticResource InvertedBoolConverter}}" />
             <Button Text="Print"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding PrintCommand}"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Done"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding DoneCommand}"
                     HorizontalOptions="FillAndExpand"
                     IsVisible="{Binding IsSaved}" />
@@ -104,10 +108,9 @@
                                            FontAttributes="Bold"
                                            HorizontalOptions="Center" />
                                     <Button Text="{Binding DamagedInTruck, StringFormat='{0:F2}'}"
+                                            Style="{StaticResource PrimaryButton}"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditDamagedCommand}"
                                             CommandParameter="{Binding}"
-                                            BackgroundColor="{StaticResource Gray300}"
-                                            TextColor="Black"
                                             FontSize="12"
                                             HeightRequest="30"
                                             WidthRequest="60"
@@ -121,10 +124,9 @@
                                            FontAttributes="Bold"
                                            HorizontalOptions="Center" />
                                     <Button Text="{Binding Unload, StringFormat='{0:F2}'}"
+                                            Style="{StaticResource PrimaryButton}"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditUnloadCommand}"
                                             CommandParameter="{Binding}"
-                                            BackgroundColor="{StaticResource Gray300}"
-                                            TextColor="Black"
                                             FontSize="12"
                                             HeightRequest="30"
                                             WidthRequest="60"

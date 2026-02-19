@@ -37,14 +37,12 @@
 
         <HorizontalStackLayout Grid.Row="2" Spacing="8">
             <Button Text="Run Report"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding RunReportCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     HorizontalOptions="FillAndExpand" />
             <Button Text="Send by Email"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding SendByEmailCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     HorizontalOptions="FillAndExpand" />
         </HorizontalStackLayout>
 

@@ -53,10 +53,9 @@
                                    VerticalOptions="Center" />
                             <Button Grid.Column="2"
                                     Text="Delete"
+                                    Style="{StaticResource DeleteButton}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteExpenseCommand}"
-                                    CommandParameter="{Binding}"
-                                    BackgroundColor="Red"
-                                    TextColor="White" />
+                                    CommandParameter="{Binding}" />
                         </Grid>
                     </Frame>
                 </DataTemplate>

@@ -53,9 +53,8 @@
             </HorizontalStackLayout>
 
             <Button Text="Print Selected Reports"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding PrintReportsCommand}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
                     FontSize="16"
                     Padding="16,12"
                     Margin="0,20,0,0" />

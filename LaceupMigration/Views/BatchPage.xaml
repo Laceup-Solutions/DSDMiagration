@@ -16,18 +16,22 @@
             <!-- Action Buttons -->
             <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*" ColumnSpacing="4" Padding="8,8,8,4">
                 <Button Text="Print"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding PrintCommand}"
                         IsEnabled="{Binding CanPrint}"
                         Grid.Column="0" />
                 <Button Text="Finalize"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding FinalizeCommand}"
                         IsEnabled="{Binding CanFinalize}"
                         Grid.Column="1" />
                 <Button Text="Void"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding VoidCommand}"
                         IsEnabled="{Binding CanVoid}"
                         Grid.Column="2" />
                 <Button Text="Clock Out"
+                        Style="{StaticResource PrimaryButton}"
                         Command="{Binding ClockOutCommand}"
                         IsEnabled="{Binding CanClockOut}"
                         Grid.Column="3" />
