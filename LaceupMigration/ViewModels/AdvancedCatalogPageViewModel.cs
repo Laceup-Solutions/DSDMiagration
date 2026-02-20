@@ -179,11 +179,22 @@ namespace LaceupMigration.ViewModels
         public bool ShowWhatToViewButton => _order != null && (_order.AsPresale || !_order.Finished);
 
         [ObservableProperty] private bool _showPrices = true;
-        partial void OnShowPricesChanged(bool value) => OnPropertyChanged(nameof(ShowPriceAndHistoryInCells));
-        partial void OnIsFromLoadOrderChanged(bool value) => OnPropertyChanged(nameof(ShowPriceAndHistoryInCells));
+        partial void OnShowPricesChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowPriceAndHistoryInCells));
+            OnPropertyChanged(nameof(ShowUomColumnInCells));
+        }
+        partial void OnIsFromLoadOrderChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowPriceAndHistoryInCells));
+            OnPropertyChanged(nameof(ShowUomColumnInCells));
+        }
 
         /// <summary>Show price, history, type, etc. in product cells. False when load order (cells show only OH + Truck Inventory).</summary>
         public bool ShowPriceAndHistoryInCells => ShowPrices && !IsFromLoadOrder;
+
+        /// <summary>Show the right column that contains price (when not load order) and UOM button. True for both normal and load order so UOM works the same.</summary>
+        public bool ShowUomColumnInCells => ShowPriceAndHistoryInCells || IsFromLoadOrder;
 
         public AdvancedCatalogPageViewModel(DialogService dialogService, ILaceupAppService appService,
             IScannerService scannerService, ICameraBarcodeScannerService cameraBarcodeScanner,
@@ -1626,7 +1637,7 @@ namespace LaceupMigration.ViewModels
                 if (item == null) item = Items.FirstOrDefault(i => i.Details.Any(d => d.Detail != null && d.Detail.OrderDetailId == orderDetailId));
                 if (item != null)
                 {
-                    // Find and remove the detail from the collection
+                    // Find and remove the detail from the collection (subline only; main line stays)
                     var detailToRemove = item.Details.FirstOrDefault(d => d.Detail != null && d.Detail.OrderDetailId == orderDetailId);
                     if (detailToRemove != null)
                     {
@@ -1635,6 +1646,7 @@ namespace LaceupMigration.ViewModels
                     detail.Detail = null;
                     
                     item.PrimaryDetail = GetDefaultUomDetail(item);
+                    item.NotifySublinesChanged();
                     item.UpdateDisplayProperties();
                     LoadLineItems(); // Update line items list
                 }
@@ -3897,7 +3909,8 @@ namespace LaceupMigration.ViewModels
         public bool ShowFreeItemDetailInCell => ShowPriceHistoryType && ShowFreeItemDetail;
 
         /// <summary>True when any sublines (free item or UOM) should be shown.</summary>
-        public bool ShowSublinesInCell => ShowPriceHistoryType && (HasFreeItemDetail || HasUomSublines);
+        /// <summary>True when sublines (free item or UOM) should be shown. UOM sublines show for both load order and normal; free item only when not load order.</summary>
+        public bool ShowSublinesInCell => (ShowPriceHistoryType && HasFreeItemDetail) || HasUomSublines;
 
         /// <summary>True when Add Free Item button should be shown (not load).</summary>
         public bool ShowFreeItemButtonInCell => ShowPriceHistoryType && ShowFreeItemButton;
@@ -4007,10 +4020,11 @@ namespace LaceupMigration.ViewModels
         public AdvancedCatalogDetailViewModel? FreeItemDetail => 
             DetailsWithOrderDetail.FirstOrDefault(IsFreeItemDetail);
 
-        /// <summary>Call after adding/updating/removing a subline so the CollectionView and visibility refresh.</summary>
+        /// <summary>Call after adding/updating/removing a subline so the BindableLayout and visibility refresh.</summary>
         public void NotifySublinesChanged()
         {
             OnPropertyChanged(nameof(HasUomSublines));
+            OnPropertyChanged(nameof(HasMultipleDetails));
             OnPropertyChanged(nameof(DetailsWithOrderDetail));
             OnPropertyChanged(nameof(ShowSublinesInCell));
             OnPropertyChanged(nameof(FreeItemDetail));

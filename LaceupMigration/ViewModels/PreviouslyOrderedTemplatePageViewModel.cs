@@ -533,7 +533,7 @@ namespace LaceupMigration.ViewModels
             {
                 ProductId = product.ProductId,
                 ProductName = product.Name,
-                OnHandText = $"OH: {onHand:F0}",
+                OnHandText = $"OH: {Math.Round(onHand, 2)}",
                 ListPriceText = $"List Price: {listPrice.ToCustomString()}",
                 UomDisplayText = string.Empty,
                 ShowUomLabel = false,
@@ -635,7 +635,7 @@ namespace LaceupMigration.ViewModels
             {
                 ProductId = product.ProductId,
                 ProductName = product.Name,
-                OnHandText = $"OH: {onHand:F0}",
+                OnHandText = $"OH: {Math.Round(onHand, 2)}",
                 ListPriceText = $"List Price: {listPrice.ToCustomString()}",
                 UomDisplayText = uomDisplayText,
                 ShowUomLabel = showUomLabel,
@@ -2260,7 +2260,7 @@ namespace LaceupMigration.ViewModels
             var baseInv = product.GetInventory(_parent._order.AsPresale, false);
             var conversion = GetExistingDetail()?.UnitOfMeasure?.Conversion ?? 1f;
             var onHandInUom = conversion != 0 ? baseInv / conversion : baseInv;
-            OnHandText = $"OH: {onHandInUom:F0}";
+            OnHandText = $"OH: {Math.Round(onHandInUom, 2)}";
         }
 
         /// <summary>Sets OrgQtyText and ShowOrgQty for delivery orders when product had original ordered qty > 0 (matches Xamarin PreviouslyOrderedTemplateActivity).</summary>

@@ -2449,70 +2449,70 @@ public class DialogService : IDialogService
             : 0;
         var initialDiscountType = existingDetail != null ? existingDetail.DiscountType : DiscountType.Amount;
 
-        // Create dialog content - compact layout matching the "before" image
+        // Create dialog content - clean layout matching Add Item design
+        var accentBlue = Color.FromArgb("#017CBA");
+        var labelGray = Color.FromArgb("#333333");
         var scrollView = new ScrollView
         {
             Content = new VerticalStackLayout
             {
                 Spacing = 0,
-                Padding = new Thickness(12, 8, 12, 8)
+                Padding = new Thickness(16, 12, 16, 8)
             },
-            MaximumHeightRequest = 500 // Limit height so it can scroll if needed
+            MaximumHeightRequest = 500
         };
 
         var content = (VerticalStackLayout)scrollView.Content;
 
-        // Title in light blue header bar (matching "before" image)
-        var titleHeader = new BoxView
-        {
-            BackgroundColor = Color.FromArgb("#E3F2FD"), // Light blue
-            HeightRequest = 40,
-            VerticalOptions = LayoutOptions.Start
-        };
-        
+        // Title: prominent blue product name + full-width blue line under it (line ignores content padding)
         var titleLabel = new Label
         {
             Text = product.Name,
-            FontSize = 14,
+            FontSize = 16,
             FontAttributes = FontAttributes.Bold,
-            TextColor = Colors.Black,
-            VerticalOptions = LayoutOptions.Center,
-            Padding = new Thickness(12, 0, 12, 0),
-            LineBreakMode = LineBreakMode.WordWrap // Show full product name
+            TextColor = accentBlue,
+            VerticalOptions = LayoutOptions.Start,
+            Margin = new Thickness(0, 0, 0, 4),
+            LineBreakMode = LineBreakMode.WordWrap
         };
-        
-        var titleContainer = new Grid
+        var titleUnderline = new BoxView
         {
-            Children = { titleHeader, titleLabel }
+            HeightRequest = 1,
+            BackgroundColor = accentBlue,
+            Margin = new Thickness(-16, 0, -16, 12) // extend past content padding so line spans full dialog width
         };
-        content.Children.Add(titleContainer);
+        var titleStack = new VerticalStackLayout { Spacing = 0 };
+        titleStack.Children.Add(titleLabel);
+        titleStack.Children.Add(titleUnderline);
+        content.Children.Add(titleStack);
 
-        // Quantity/Weight Entry
+        // Quantity/Weight Entry (no underline)
         Entry qtyEntry = null;
         Label qtyLabel = null;
         if (!order.AsPresale && product.SoldByWeight)
         {
-            qtyLabel = new Label { Text = "Weight:", FontSize = 14, TextColor = Colors.Black };
+            qtyLabel = new Label { Text = "Weight:", FontSize = 14, TextColor = labelGray };
             qtyEntry = new Entry
             {
                 Text = initialWeight.ToString("F2"),
                 Keyboard = Keyboard.Numeric,
                 FontSize = 14,
-                HeightRequest = 36
+                HeightRequest = 36,
+                BackgroundColor = Colors.Transparent
             };
         }
         else
         {
-            qtyLabel = new Label { Text = "Qty:", FontSize = 14, TextColor = Colors.Black };
+            qtyLabel = new Label { Text = "Qty:", FontSize = 14, TextColor = labelGray };
             qtyEntry = new Entry
             {
                 Text = initialQty.ToString("F0"),
                 Keyboard = Config.DontAllowDecimalsInQty ? Keyboard.Numeric : Keyboard.Numeric,
                 FontSize = 14,
-                HeightRequest = 36
+                HeightRequest = 36,
+                BackgroundColor = Colors.Transparent
             };
         }
-
         var qtyRow = new Grid
         {
             ColumnDefinitions = new ColumnDefinitionCollection
@@ -2520,9 +2520,8 @@ public class DialogService : IDialogService
                 new ColumnDefinition { Width = GridLength.Auto },
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             },
-            Margin = new Thickness(0, 4, 0, 2),
-            ColumnSpacing = 8,
-            RowDefinitions = new RowDefinitionCollection { new RowDefinition { Height = GridLength.Auto } }
+            Margin = new Thickness(0, 6, 0, 2),
+            ColumnSpacing = 8
         };
         qtyLabel.VerticalOptions = LayoutOptions.Center;
         qtyEntry.VerticalOptions = LayoutOptions.Center;
@@ -2537,7 +2536,7 @@ public class DialogService : IDialogService
         Entry weightEntry = null;
         if (Config.EnterWeightInCredits && product.SoldByWeight && order.AsPresale && isCredit)
         {
-            var weightLabel = new Label { Text = "Weight:", FontSize = 14, TextColor = Colors.Black };
+            var weightLabel = new Label { Text = "Weight:", FontSize = 14, TextColor = labelGray };
             weightEntry = new Entry
             {
                 Text = initialWeight.ToString("F2"),
@@ -2669,7 +2668,7 @@ public class DialogService : IDialogService
             }
         }
 
-        // Comments (no label) - created here, added as last field before buttons
+        // Comments (with label and bordered editor - added below discount)
         Editor commentEntry = null;
         if (!Config.HideItemComment || (order.OrderType != OrderType.Order && order.OrderType != OrderType.Credit))
         {
@@ -2677,97 +2676,66 @@ public class DialogService : IDialogService
             {
                 Text = initialComments,
                 Placeholder = "Enter comments",
-                HeightRequest = 50,
+                HeightRequest = 60,
                 FontSize = 14,
-                Margin = new Thickness(0, 4, 0, 2)
+                Margin = new Thickness(0, 4, 0, 0),
+                BackgroundColor = Colors.White
             };
         }
 
-        // Price Entry (if can change price)
+        // Price Entry and UoM (order: UoM then Price with Free Item on same row as in design)
             Entry priceEntry = null;
+            CheckBox freeItemCheckbox = null;
             bool canChangePrice = Config.CanChangePrice(order, product, isCredit);
-            // When product has UOM and we're adding (no existing detail), GetPriceForProduct returns base price - display price for initial UOM
             var initialDisplayPrice = initialPrice;
             if (existingDetail == null && initialUoM != null && !string.IsNullOrEmpty(product.UoMFamily))
                 initialDisplayPrice = Math.Round(initialPrice * initialUoM.Conversion, Config.Round);
-            // Note: isVendor is a field in TemplateActivity, not a property on Order
-            // For now, we'll just check canChangePrice
-            if (canChangePrice)
-            {
-                var priceLabel = new Label { Text = "Price:", FontSize = 14, TextColor = Colors.Black };
-                priceEntry = new Entry
-                {
-                    Text = initialDisplayPrice.ToString("F2"),
-                    Keyboard = Keyboard.Numeric,
-                    FontSize = 14,
-                    HeightRequest = 36
-                };
-                var priceRow = new Grid
-                {
-                    ColumnDefinitions = new ColumnDefinitionCollection
-                    {
-                        new ColumnDefinition { Width = GridLength.Auto },
-                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-                    },
-                    Margin = new Thickness(0, 4, 0, 2),
-                    ColumnSpacing = 8
-                };
-                priceLabel.VerticalOptions = LayoutOptions.Center;
-                priceEntry.VerticalOptions = LayoutOptions.Center;
-                Grid.SetColumn(priceLabel, 0);
-                Grid.SetColumn(priceEntry, 1);
-                priceRow.Children.Add(priceLabel);
-                priceRow.Children.Add(priceEntry);
-                SelectAllOnFocusForEntry(priceEntry);
-                content.Children.Add(priceRow);
-            }
 
-        // UoM Spinner (in same row as label)
             Picker uomPicker = null;
             UnitOfMeasure selectedUoM = initialUoM;
+            Grid uomRow = null;
+            Grid priceRow = null;
+
             if (!product.SoldByWeight && !string.IsNullOrEmpty(product.UoMFamily))
             {
                 var familyItems = UnitOfMeasure.List.Where(x => x.FamilyId == product.UoMFamily).ToList();
                 if (familyItems.Count > 0)
                 {
-                    var uomLabel = new Label { Text = "UoM:", FontSize = 14, TextColor = Colors.Black };
+                    var uomLabel = new Label { Text = "UoM:", FontSize = 14, TextColor = labelGray };
                     uomPicker = new Picker
                     {
                         FontSize = 14,
                         ItemsSource = familyItems,
                         ItemDisplayBinding = new Binding("Name"),
-                        HeightRequest = 36
+                        HeightRequest = 36,
+                        BackgroundColor = Colors.Transparent
                     };
-
                     if (initialUoM != null)
                     {
                         var index = familyItems.FindIndex(x => x.Id == initialUoM.Id);
                         if (index >= 0)
                             uomPicker.SelectedIndex = index;
                     }
-
                     uomPicker.SelectedIndexChanged += (s, e) =>
                     {
                         if (uomPicker.SelectedIndex < 0 || uomPicker.SelectedIndex >= familyItems.Count)
                             return;
                         var previousUoM = selectedUoM;
                         selectedUoM = familyItems[uomPicker.SelectedIndex];
-                        // Update price to the conversion for the selected UOM (price per new UOM = price per old UOM * (newConversion / oldConversion))
                         if (priceEntry != null && previousUoM != null && selectedUoM != null && double.TryParse(priceEntry.Text, out var currentPrice))
                         {
                             var newPrice = Math.Round(currentPrice * (selectedUoM.Conversion / previousUoM.Conversion), Config.Round);
                             priceEntry.Text = newPrice.ToString("F2");
                         }
                     };
-
-                    var uomRow = new Grid
+                    uomRow = new Grid
                     {
                         ColumnDefinitions = new ColumnDefinitionCollection
                         {
                             new ColumnDefinition { Width = GridLength.Auto },
                             new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
                         },
-                        Margin = new Thickness(0, 4, 0, 2),
+                        Margin = new Thickness(0, 6, 0, 2),
                         ColumnSpacing = 8
                     };
                     uomLabel.VerticalOptions = LayoutOptions.Center;
@@ -2776,8 +2744,71 @@ public class DialogService : IDialogService
                     Grid.SetColumn(uomPicker, 1);
                     uomRow.Children.Add(uomLabel);
                     uomRow.Children.Add(uomPicker);
-                    content.Children.Add(uomRow);
                 }
+            }
+
+            if (canChangePrice)
+            {
+                var priceLabel = new Label { Text = "Price:", FontSize = 14, TextColor = labelGray };
+                priceEntry = new Entry
+                {
+                    Text = initialDisplayPrice.ToString("F2"),
+                    Keyboard = Keyboard.Numeric,
+                    FontSize = 14,
+                    HeightRequest = 36,
+                    BackgroundColor = Colors.Transparent
+                };
+                SelectAllOnFocusForEntry(priceEntry);
+
+                bool showFreeItemOnRow = order.OrderType == OrderType.Order && Config.AllowFreeItems;
+                priceRow = new Grid
+                {
+                    ColumnDefinitions = new ColumnDefinitionCollection
+                    {
+                        new ColumnDefinition { Width = GridLength.Auto },
+                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                        new ColumnDefinition { Width = GridLength.Auto }
+                    },
+                    Margin = new Thickness(0, 6, 0, 2),
+                    ColumnSpacing = 8
+                };
+                priceLabel.VerticalOptions = LayoutOptions.Center;
+                priceEntry.VerticalOptions = LayoutOptions.Center;
+                Grid.SetColumn(priceLabel, 0);
+                Grid.SetColumn(priceEntry, 1);
+                priceRow.Children.Add(priceLabel);
+                priceRow.Children.Add(priceEntry);
+                if (showFreeItemOnRow)
+                {
+                    freeItemCheckbox = new CheckBox { IsChecked = initialFreeItem };
+                    var freeItemStack = new HorizontalStackLayout { Spacing = 6, VerticalOptions = LayoutOptions.Center };
+                    freeItemStack.Children.Add(freeItemCheckbox);
+                    freeItemStack.Children.Add(new Label { Text = "Free Item", FontSize = 14, TextColor = labelGray, VerticalOptions = LayoutOptions.Center });
+                    Grid.SetColumn(freeItemStack, 2);
+                    priceRow.Children.Add(freeItemStack);
+                    freeItemCheckbox.CheckedChanged += (s, e) =>
+                    {
+                        priceEntry.IsEnabled = !freeItemCheckbox.IsChecked;
+                        if (freeItemCheckbox.IsChecked)
+                            priceEntry.Text = "0.00";
+                    };
+                }
+            }
+
+            // Add UoM then Price in design order (Qty, UoM, Price)
+            if (uomRow != null)
+                content.Children.Add(uomRow);
+            if (priceRow != null)
+                content.Children.Add(priceRow);
+
+            // Free Item on its own row when config allows but price field is not visible (canChangePrice false)
+            if (freeItemCheckbox == null && order.OrderType == OrderType.Order && Config.AllowFreeItems)
+            {
+                freeItemCheckbox = new CheckBox { IsChecked = initialFreeItem };
+                var freeItemRow = new HorizontalStackLayout { Spacing = 6, Margin = new Thickness(0, 6, 0, 2) };
+                freeItemRow.Children.Add(freeItemCheckbox);
+                freeItemRow.Children.Add(new Label { Text = "Free Item", FontSize = 14, TextColor = labelGray, VerticalOptions = LayoutOptions.Center });
+                content.Children.Add(freeItemRow);
             }
 
         // Price Level Picker
@@ -2809,7 +2840,7 @@ public class DialogService : IDialogService
 
                 if (priceLevelOptions.Count > 1) // More than just "Select a Price Level"
                 {
-                    var priceLevelLabel = new Label { Text = "Price Level:", FontSize = 14, TextColor = Colors.Black };
+                    var priceLevelLabel = new Label { Text = "Price Level:", FontSize = 14, TextColor = labelGray };
                     priceLevelPicker = new Picker
                     {
                         FontSize = 14,
@@ -2872,30 +2903,6 @@ public class DialogService : IDialogService
                 }
             }
 
-        // Free Item Checkbox
-            CheckBox freeItemCheckbox = null;
-            if (order.OrderType == OrderType.Order && Config.AllowFreeItems)
-            {
-                freeItemCheckbox = new CheckBox
-                {
-                    IsChecked = initialFreeItem
-                };
-                var freeItemRow = new HorizontalStackLayout { Spacing = 6, Margin = new Thickness(0, 2, 0, 2) };
-                freeItemRow.Children.Add(freeItemCheckbox);
-                freeItemRow.Children.Add(new Label { Text = "Free Item", FontSize = 14, TextColor = Colors.Black, VerticalOptions = LayoutOptions.Center });
-                content.Children.Add(freeItemRow);
-
-                if (priceEntry != null)
-                {
-                    freeItemCheckbox.CheckedChanged += (s, e) =>
-                    {
-                        priceEntry.IsEnabled = !freeItemCheckbox.IsChecked;
-                        if (freeItemCheckbox.IsChecked)
-                            priceEntry.Text = "0.00";
-                    };
-                }
-            }
-
         // Use LSP Checkbox
         CheckBox useLspCheckbox = null;
         if (Config.UseLSP && lastInvoiceDetail != null)
@@ -2906,7 +2913,7 @@ public class DialogService : IDialogService
             };
             var useLspRow = new HorizontalStackLayout { Spacing = 6, Margin = new Thickness(0, 2, 0, 2) };
             useLspRow.Children.Add(useLspCheckbox);
-            useLspRow.Children.Add(new Label { Text = "Use Last Sold Price", FontSize = 14, TextColor = Colors.Black, VerticalOptions = LayoutOptions.Center });
+            useLspRow.Children.Add(new Label { Text = "Use Last Sold Price", FontSize = 14, TextColor = labelGray, VerticalOptions = LayoutOptions.Center });
             content.Children.Add(useLspRow);
 
             if (priceEntry != null)
@@ -2945,7 +2952,7 @@ public class DialogService : IDialogService
             {
                 Text = FormatDiscountText(currentDiscount, currentDiscountType),
                 FontSize = 14,
-                TextColor = Color.FromArgb("#017CBA"),
+                TextColor = accentBlue,
                 TextDecorations = TextDecorations.Underline,
                 Margin = new Thickness(0, 6, 0, 2)
             };
@@ -3146,25 +3153,35 @@ public class DialogService : IDialogService
             }
         }
 
-        // Comments as last field in popup (below Discount, above buttons)
+        // Comments (bordered editor only, no label) as last field before buttons
         if (commentEntry != null)
-            content.Children.Add(commentEntry);
+        {
+            var commentBorder = new Border
+            {
+                Content = commentEntry,
+                Stroke = Color.FromArgb("#E0E0E0"),
+                StrokeThickness = 1,
+                StrokeShape = new RoundRectangle { CornerRadius = 4 },
+                Padding = new Thickness(8, 4),
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+            content.Children.Add(commentBorder);
+        }
 
-        // Buttons with separator line above
+        // Separator and buttons outside padded content so lines span full dialog width (not inset by padding)
         var topSeparator = new BoxView
         {
             HeightRequest = 1,
             BackgroundColor = Color.FromArgb("#E0E0E0"),
             HorizontalOptions = LayoutOptions.Fill,
-            Margin = new Thickness(0, 4, 0, 0)
+            Margin = new Thickness(0, 12, 0, 0)
         };
-        content.Children.Add(topSeparator);
 
         var cancelButton = new Button
         {
             Text = "Cancel",
             BackgroundColor = Colors.Transparent,
-            TextColor = Color.FromArgb("#017CBA"),
+            TextColor = labelGray,
             FontSize = 14,
             FontAttributes = FontAttributes.Bold,
             HeightRequest = 40,
@@ -3175,7 +3192,7 @@ public class DialogService : IDialogService
         {
             Text = "Add",
             BackgroundColor = Colors.Transparent,
-            TextColor = Color.FromArgb("#017CBA"),
+            TextColor = labelGray,
             FontSize = 14,
             FontAttributes = FontAttributes.Bold,
             HeightRequest = 40,
@@ -3208,9 +3225,13 @@ public class DialogService : IDialogService
         buttonRow.Children.Add(cancelButton);
         buttonRow.Children.Add(verticalSeparator);
         buttonRow.Children.Add(addButton);
-        content.Children.Add(buttonRow);
 
-            // Create dialog - compact size
+        // Dialog: padded scroll content + full-width separator + full-width button row (lines not affected by content padding)
+        var dialogMain = new VerticalStackLayout { Spacing = 0 };
+        dialogMain.Children.Add(scrollView);
+        dialogMain.Children.Add(topSeparator);
+        dialogMain.Children.Add(buttonRow);
+
             var dialogBorder = new Border
             {
                 BackgroundColor = Colors.White,
@@ -3220,8 +3241,8 @@ public class DialogService : IDialogService
                 WidthRequest = 320,
                 MaximumWidthRequest = 400,
                 Padding = new Thickness(0),
-                Margin = new Thickness(20, 20, 20, 20), // Reduced margins
-                Content = scrollView
+                Margin = new Thickness(20, 20, 20, 20),
+                Content = dialogMain
             };
 
             var overlayGrid = new Grid
@@ -3277,18 +3298,20 @@ public class DialogService : IDialogService
                 // Get comments
                 result.Comments = commentEntry?.Text ?? string.Empty;
 
-                // Parse price
+                // Get UoM first (needed for price when price not visible)
+                result.SelectedUoM = selectedUoM;
+
+                // Parse price: when price is visible use entry; when not visible use price for selected UOM (conversion)
                 if (priceEntry != null && double.TryParse(priceEntry.Text, out var price))
                     result.Price = price;
                 else
-                    result.Price = initialPrice;
-
-                // Get UoM
-                result.SelectedUoM = selectedUoM;
+                    result.Price = Product.GetPriceForProduct(product, order, out _, isCredit, isDamaged, result.SelectedUoM);
 
                 // Get checkboxes
                 result.IsFreeItem = freeItemCheckbox?.IsChecked ?? false;
                 result.UseLastSoldPrice = useLspCheckbox?.IsChecked ?? false;
+                if (result.IsFreeItem)
+                    result.Price = 0;
 
                 // Get price level
                 result.PriceLevelSelected = selectedPriceLevelId;

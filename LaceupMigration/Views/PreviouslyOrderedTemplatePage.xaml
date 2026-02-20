@@ -172,26 +172,30 @@
                             <Frame.GestureRecognizers>
                                 <TapGestureRecognizer Tapped="OnCellTapped" />
                             </Frame.GestureRecognizers>
-                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="2">
+                            <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="2">
                                 <!-- Product Name and OH -->
                                 <Label Grid.Column="0" Grid.Row="0"
                                        Text="{Binding ProductName}"
                                        FontSize="15"
                                        FontAttributes="Bold"
                                        TextColor="{Binding ProductNameColor}" />
-                                <Label Grid.Column="1" Grid.Row="0"
-                                       Text="{Binding OnHandText}"
-                                       FontSize="13"
-                                       TextColor="{StaticResource PrimaryDark}"
-                                       HorizontalOptions="End" />
                                 
-                                <!-- Product Details (Left) -->
-                                <VerticalStackLayout Grid.Column="0" Grid.Row="1" Spacing="1">
-                                    <Label Text="{Binding UomDisplayText}"
+                                <Grid Grid.Row="1" ColumnDefinitions="*,auto">
+                                    <Label Grid.Column="0" Text="{Binding UomDisplayText}"
                                            FontSize="12"
                                            FontAttributes="Bold"
                                            TextColor="Black"
                                            IsVisible="{Binding ShowUomLabel}" />
+                                    <Label Grid.Column="1"
+                                           Text="{Binding OnHandText}"
+                                           FontSize="13"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource PrimaryDark}"
+                                           HorizontalOptions="End" />
+                                </Grid>
+                                
+                                    <!-- Product Details (Left) -->
+                                <VerticalStackLayout Grid.Column="0" Grid.Row="2" Spacing="1">
                                     <Label Text="{Binding ListPriceText}"
                                            FontSize="12"
                                            TextColor="{StaticResource Gray600}" />
@@ -215,7 +219,7 @@
                                 </VerticalStackLayout>
                                 
                                 <!-- Price and Add Button (Right) -->
-                                <VerticalStackLayout Grid.Column="1" Grid.Row="1" Spacing="2" HorizontalOptions="End">
+                                <VerticalStackLayout Grid.Column="1" Grid.Row="3" Spacing="2" HorizontalOptions="End">
                                     <Label Text="{Binding PriceText}"
                                            FontSize="13"
                                            FontAttributes="Bold"
@@ -253,7 +257,7 @@
                                 </VerticalStackLayout>
 
                                 <!-- Suggested Products Label (Green, at bottom) -->
-                                <Label Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2"
+                                <Label Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="4"
                                        Text="{Binding SuggestedLabelText}"
                                        FontSize="12"
                                        FontAttributes="Bold"

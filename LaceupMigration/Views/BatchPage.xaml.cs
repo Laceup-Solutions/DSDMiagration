@@ -70,7 +70,7 @@ namespace LaceupMigration.Views
             }
             var allOrders = _viewModel.Orders.Select(x => x.Order).ToList();
             bool canLeave = allOrders.Count == 0 || (Config.CanLeaveBatch && allOrders.Any(x => !x.Finished));
-            if (canLeave)
+            if (canLeave || _viewModel.CanLeaveScreen)
             {
                 var batchId = _viewModel?.GetBatchId();
                 if (batchId.HasValue)

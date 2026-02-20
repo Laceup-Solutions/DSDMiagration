@@ -324,7 +324,7 @@ namespace LaceupMigration.ViewModels
                 case OrderType.Order:
                     if (order.AsPresale || (order.IsDelivery && !order.Finished))
                     {
-                        return order.IsQuote ? $"Quote{number}" : $"Sales order{number}";
+                        return order.IsQuote ? $"Quote{number}" : $"Delivery{number}";
                     }
                     return $"Sales invoice{number}";
                 case OrderType.Consignment:
@@ -1253,11 +1253,26 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            // When navigating to batch (e.g. clicking a Delivery in client details), ensure batch has clock-in so BatchPage shows it (matches Xamarin)
-            if (batch.ClockedIn == DateTime.MinValue)
+            // Handle finished orders (non-presale) - navigate to BatchPage
+            if (!order.AsPresale || order.Finished)
             {
-                batch.ClockedIn = DateTime.Now;
-                batch.Save();
+                if (batch.ClockedIn == DateTime.MinValue)
+                {
+                    var msg = $"Would you like to clock in to this Stop? You will not be able to clock out until you have finalized the transaction.";
+
+                    var result = await _dialogService.ShowConfirmAsync(msg, "Warning", "Yes", "No");
+                    if (!result)
+                        return;
+                }
+
+                if (batch.ClockedIn == DateTime.MinValue)
+                {
+                    batch.ClockedIn = DateTime.Now;
+                    batch.Save();
+                }
+                
+                await Shell.Current.GoToAsync($"batch?batchId={batch.Id}");
+                return;
             }
 
             // Handle NoService orders
@@ -1282,13 +1297,6 @@ namespace LaceupMigration.ViewModels
             {
                 // TODO: Navigate to QuotePage when implemented
                 await _dialogService.ShowAlertAsync("Quote viewing is not yet implemented in MAUI version.", "Info");
-                return;
-            }
-
-            // Handle finished orders (non-presale) - navigate to BatchPage
-            if (!order.AsPresale || order.Finished)
-            {
-                await Shell.Current.GoToAsync($"batch?batchId={batch.Id}");
                 return;
             }
 

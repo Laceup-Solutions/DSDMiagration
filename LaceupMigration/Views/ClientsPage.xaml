@@ -36,7 +36,7 @@
                 <Grid Grid.Row="1"
                       ColumnDefinitions="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToColumnDefinitions3Converter}}"
                       ColumnSpacing="5"
-                      Padding="10,8,10,8"
+                      Padding="5"
                       VerticalOptions="Center">
                     <!-- Stop + Icon: column 0, only when showing routes -->
                     <Grid Grid.Column="0"
@@ -74,7 +74,7 @@
                     <Grid Grid.Column="{Binding HasLeftContent, Converter={StaticResource HasLeftContentToContentColumn3Converter}}"
                           HorizontalOptions="FillAndExpand"
                           RowDefinitions="Auto,Auto"
-                          RowSpacing="4"
+                          RowSpacing="1"
                           VerticalOptions="Center">
                         <Label Grid.Row="0"
                                Text="{Binding Name}"
@@ -82,6 +82,7 @@
                                FontAttributes="Bold"
                                TextColor="{Binding NameColor}"
                                VerticalOptions="Center"
+                               MaxLines="1"
                                LineBreakMode="WordWrap" />
                         <Label Grid.Row="1"
                                Text="{Binding Address}"

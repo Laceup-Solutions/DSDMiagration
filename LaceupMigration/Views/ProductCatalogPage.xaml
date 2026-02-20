@@ -32,7 +32,8 @@
             </Frame>
 
             <!-- Product List: main line with + only, sublines (order details) below per product -->
-            <CollectionView Grid.Row="1"
+            <CollectionView x:Name="ProductsCollectionView"
+                            Grid.Row="1"
                             ItemsSource="{Binding FilteredProducts}"
                             SelectionMode="None">
                 <CollectionView.ItemTemplate>
@@ -46,8 +47,17 @@
                                                WidthRequest="60"
                                                HeightRequest="60"
                                                Grid.Column="0"
-                                               IsVisible="{Binding HasImage}" />
+                                               IsVisible="{Binding HasImage}">
+                                            <Image.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ProductCatalogPageViewModel}}, Path=ViewImageCommand}"
+                                                                      CommandParameter="{Binding .}" />
+                                            </Image.GestureRecognizers>
+                                        </Image>
                                         <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                            <VerticalStackLayout.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ProductCatalogPageViewModel}}, Path=ViewProductDetailsCommand}"
+                                                                      CommandParameter="{Binding .}" />
+                                            </VerticalStackLayout.GestureRecognizers>
                                             <Label Text="{Binding ProductName}"
                                                    FontSize="16"
                                                    FontAttributes="Bold"
