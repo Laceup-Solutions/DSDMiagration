@@ -279,32 +279,34 @@
                                            IsVisible="{Binding ShowOrgQty}" />
                                 </VerticalStackLayout>
 
-                                <!-- Price (hidden when load order). Select PL / UOM use Buttons to reduce gesture recognizers. -->
+                                <!-- Price (hidden when load order). UOM column visible for both load order and normal so UOM works the same. -->
                                 <VerticalStackLayout Grid.Row="0" Grid.Column="2"
                                                      HorizontalOptions="End"
                                                      Spacing="2"
-                                                     IsVisible="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ShowPriceAndHistoryInCells}">
-                                    <Label Text="{Binding CurrentPriceText}"
-                                           FontSize="14"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource PrimaryDark}"
-                                           IsEnabled="{Binding CanChangePrice}"
-                                           TextDecorations="{Binding CanChangePrice, Converter={StaticResource BoolToTextDecorationsConverter}}">
-                                        <Label.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=ChangePriceCommand}"
-                                                                  CommandParameter="{Binding .}" />
-                                        </Label.GestureRecognizers>
-                                    </Label>
-                                    <Button Text="Select PL"
-                                            FontSize="11"
-                                            TextColor="{StaticResource PrimaryDark}"
-                                            BackgroundColor="Transparent"
-                                            Padding="0"
-                                            BorderWidth="0"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=SelectPriceLevelCommand}"
-                                            CommandParameter="{Binding .}"
-                                            IsVisible="{Binding ShowSelectPL}"
-                                            HorizontalOptions="End" />
+                                                     IsVisible="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ShowUomColumnInCells}">
+                                    <VerticalStackLayout Spacing="2" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ShowPriceAndHistoryInCells}">
+                                        <Label Text="{Binding CurrentPriceText}"
+                                               FontSize="14"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource PrimaryDark}"
+                                               IsEnabled="{Binding CanChangePrice}"
+                                               TextDecorations="{Binding CanChangePrice, Converter={StaticResource BoolToTextDecorationsConverter}}">
+                                            <Label.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=ChangePriceCommand}"
+                                                                      CommandParameter="{Binding .}" />
+                                            </Label.GestureRecognizers>
+                                        </Label>
+                                        <Button Text="Select PL"
+                                                FontSize="11"
+                                                TextColor="{StaticResource PrimaryDark}"
+                                                BackgroundColor="Transparent"
+                                                Padding="0"
+                                                BorderWidth="0"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AdvancedCatalogPageViewModel}}, Path=SelectPriceLevelCommand}"
+                                                CommandParameter="{Binding .}"
+                                                IsVisible="{Binding ShowSelectPL}"
+                                                HorizontalOptions="End" />
+                                    </VerticalStackLayout>
                                     <Button Text="UOM"
                                             FontSize="11"
                                             TextColor="{StaticResource PrimaryDark}"
@@ -353,13 +355,14 @@
                                                   ColumnSpacing="8"
                                                   Margin="0,2"
                                                   VerticalOptions="Center">
-                                                <HorizontalStackLayout Grid.Column="0" Spacing="8" VerticalOptions="Center" HorizontalOptions="FillAndExpand">
-                                                    <Label Text="FREE" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" VerticalOptions="Center"
+                                                <Grid Grid.Column="0" RowSpacing="3" VerticalOptions="Center" HorizontalOptions="FillAndExpand" RowDefinitions="auto,auto,auto">
+                                                    <Label Grid.Row="0" Text="FREE" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" VerticalOptions="Center"
                                                            IsVisible="{Binding Detail.IsFreeItem}" />
-                                                    <Label Text="{Binding UomText, StringFormat='UoM: {0}'}" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource Gray600}" VerticalOptions="Center"
+                                                    <Label Grid.Row="1" Text="{Binding UomText, StringFormat='UoM: {0}'}" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource Gray600}" VerticalOptions="Center"
                                                            IsVisible="{Binding UomText, Converter={StaticResource IsStringNotEmptyConverter}}" />
-                                                    <Label Text="{Binding PriceText, StringFormat='Price: {0}'}" FontSize="11" TextColor="{StaticResource Gray600}" VerticalOptions="Center" />
-                                                </HorizontalStackLayout>
+                                                    <Label Grid.Row="2" Text="{Binding PriceText, StringFormat='Price: {0}'}" FontSize="11" TextColor="{StaticResource Gray600}" VerticalOptions="Center"
+                                                           IsVisible="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.IsFromLoadOrder, Converter={StaticResource InvertedBoolConverter}}" />
+                                                </Grid>
                                                 <Button Grid.Column="1" Text="-"
                                                         Style="{StaticResource PrimaryButton}"
                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DecrementQuantityCommand}"

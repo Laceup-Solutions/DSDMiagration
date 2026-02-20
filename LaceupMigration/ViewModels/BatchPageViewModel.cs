@@ -21,6 +21,9 @@ namespace LaceupMigration.ViewModels
         private bool _initialized;
         private bool _canLeaveScreen = true;
 
+        /// <summary>Intent/state key for whether user can leave batch (Xamarin BatchActivity.CanGetOutIntent).</summary>
+        private const string CanGetOutIntent = "CanGetOutIntent";
+
         public ObservableCollection<BatchOrderViewModel> Orders { get; } = new();
 
         /// <summary>
@@ -127,10 +130,27 @@ namespace LaceupMigration.ViewModels
 
             _initialized = true;
 
+            // Restore canGetOut from ActivityState (Xamarin reads from Intent; we persist so restore when re-entering batch)
+            var state = ActivityState.GetState("BatchActivity");
+            if (state?.State != null && state.State.TryGetValue(CanGetOutIntent, out var canGetOutVal) && canGetOutVal == "0")
+                _canLeaveScreen = false;
+
             // Recalculate qty based on inventory and subtract inventory for delivery (matches Xamarin BatchActivity OnCreate)
             SubtractInventoryForDeliveryBatch();
 
             LoadBatchData();
+        }
+
+        /// <summary>Marks that the user cannot leave the batch until e.g. voided orders are printed. Persists to ActivityState (Xamarin BatchActivity.CannotGetoutNow).</summary>
+        public void CannotGetoutNow()
+        {
+            _canLeaveScreen = false;
+            var state = ActivityState.GetState("BatchActivity");
+            if (state != null)
+            {
+                state.State[CanGetOutIntent] = "0";
+                ActivityState.Save();
+            }
         }
 
         /// <summary>
@@ -231,17 +251,6 @@ namespace LaceupMigration.ViewModels
 
         public async Task OnAppearingAsync()
         {
-            if (!_initialized)
-            {
-                _canLeaveScreen = true; // Initialize on first appearance
-                return;
-            }
-
-            // Xamarin OnResume: refreshes adapter and calls UpdateStates()
-            // Reset canLeaveScreen when returning to screen (unless operation is in progress)
-            // Note: If we're returning from FinalizeBatchActivity, the operation should be complete
-            _canLeaveScreen = true;
-            
             await RefreshAsync();
         }
 
@@ -617,19 +626,17 @@ namespace LaceupMigration.ViewModels
         private async Task FinalizeAsync()
         {
             // Xamarin BatchActivity: CannotGetoutNow() is called at the start of FinalizeButton_Click
-            _canLeaveScreen = false;
+            CannotGetoutNow();
 
             var selectedOrders = GetSelectedActiveOrders();
             if (selectedOrders.Count == 0)
             {
-                _canLeaveScreen = true; // Reset if validation fails
                 await _dialogService.ShowAlertAsync("Please select valid orders to finalize.", "Alert");
                 return;
             }
 
             if (selectedOrders.Any(x => x.Reshipped || x.Voided || x.Finished))
             {
-                _canLeaveScreen = true; // Reset if validation fails
                 await _dialogService.ShowAlertAsync("Cannot finalize orders that are already finalized, voided, or reshipped.", "Alert");
                 return;
             }
@@ -660,22 +667,17 @@ namespace LaceupMigration.ViewModels
                 // Reset canLeaveScreen after navigation (operation will complete in FinalizeBatchPage)
                 // Note: canLeaveScreen will be reset when returning from FinalizeBatchPage in OnAppearingAsync
             }
-            else
-            {
-                _canLeaveScreen = true; // Reset if user cancels
-            }
         }
 
         [RelayCommand]
         private async Task VoidAsync()
         {
             // Xamarin BatchActivity: CannotGetoutNow() is called at the start of VoidButton_Click
-            _canLeaveScreen = false;
+            CannotGetoutNow();
 
             var selectedOrders = GetSelectedOrders();
             if (selectedOrders.Count == 0)
             {
-                _canLeaveScreen = true; // Reset if validation fails
                 await _dialogService.ShowAlertAsync("Please select orders to void.", "Alert");
                 return;
             }
@@ -686,7 +688,6 @@ namespace LaceupMigration.ViewModels
                 .ToList();
             if (voidableOrders.Count == 0)
             {
-                _canLeaveScreen = true;
                 var allVoided = selectedOrders.All(o => o.Voided);
                 var msg = allVoided
                     ? "Selected orders are already voided."
@@ -704,10 +705,6 @@ namespace LaceupMigration.ViewModels
             if (result)
             {
                 await VoidOrdersAsync(voidableOrders);
-            }
-            else
-            {
-                _canLeaveScreen = true; // Reset if user cancels
             }
         }
 
@@ -894,15 +891,12 @@ namespace LaceupMigration.ViewModels
                 // Refresh UI to show finalized status in list
                 LoadBatchData();
                 
-                // Reset canLeaveScreen after operation completes
-                _canLeaveScreen = true;
-                
                 await _dialogService.ShowAlertAsync("Orders finalized successfully.", "Success");
             }
             catch (Exception ex)
             {
                 Logger.CreateLog(ex);
-                _canLeaveScreen = true; // Reset on error
+                
                 await _dialogService.ShowAlertAsync("Error finalizing orders.", "Error");
             }
         }
@@ -958,15 +952,12 @@ namespace LaceupMigration.ViewModels
                 // Refresh UI to show voided status in list
                 LoadBatchData();
                 
-                // Reset canLeaveScreen after operation completes
-                _canLeaveScreen = true;
-                
                 await _dialogService.ShowAlertAsync("Orders voided successfully.", "Success");
             }
             catch (Exception ex)
             {
                 Logger.CreateLog(ex);
-                _canLeaveScreen = true; // Reset on error
+
                 await _dialogService.ShowAlertAsync("Error voiding orders.", "Error");
             }
         }

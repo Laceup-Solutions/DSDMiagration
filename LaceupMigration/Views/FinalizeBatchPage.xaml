@@ -12,6 +12,7 @@
             <!-- Action Buttons -->
                 <!-- Signature Button -->
                 <Button 
+                        Style="{StaticResource PrimaryButton}"
                         Text="Approved By"
                         Command="{Binding SignatureCommand}"
                         IsEnabled="{Binding IsSignatureEnabled}"
@@ -19,6 +20,7 @@
 
                 <!-- Payment Button -->
                 <Button  
+                        Style="{StaticResource PrimaryButton}"
                         Text="Collect Payment"
                         Command="{Binding PaymentCommand}"
                         IsEnabled="{Binding IsPaymentEnabled}"
@@ -26,24 +28,28 @@
 
                 <!-- Print Button -->
                 <Button 
+                        Style="{StaticResource PrimaryButton}"
                         Text="Print Batch"
                         Command="{Binding PrintCommand}"
                         IsVisible="{Binding ShowPrintButton}" />
 
                 <!-- Send By Email Button -->
                 <Button 
+                        Style="{StaticResource PrimaryButton}"
                         Text="Send By Email"
                         Command="{Binding SendByEmailCommand}"
                         IsVisible="{Binding ShowSendByEmailButton}" />
 
                 <!-- Print Proof of Delivery Button -->
                 <Button
+                        Style="{StaticResource PrimaryButton}"
                         Text="Print POD"
                         Command="{Binding PrintProofOfDeliveryCommand}"
                         IsVisible="{Binding ShowPrintProofOfDeliveryButton}" />
 
                 <!-- Print Pick Ticket Button -->
                 <Button 
+                        Style="{StaticResource PrimaryButton}"
                         Text="Print Pick Ticket"
                         Command="{Binding PrintPickTicketCommand}"
                         IsVisible="{Binding ShowPrintPickTicketButton}" />

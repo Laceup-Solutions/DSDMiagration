@@ -43,6 +43,9 @@ namespace LaceupMigration.ViewModels
         private bool _onlyDamage = false;
         private bool _isShowingSuggested = false;
 
+        /// <summary>When true, next OnAppearingAsync skips refresh to preserve scroll position (returning from ProductDetails or ViewImage).</summary>
+        private bool _skipNextOnAppearingRefresh;
+
         public ObservableCollection<CatalogItemViewModel> Products { get; } = new();
         public ObservableCollection<CatalogItemViewModel> FilteredProducts { get; } = new();
 
@@ -213,6 +216,13 @@ namespace LaceupMigration.ViewModels
             if (!_initialized)
                 return;
 
+            // Skip refresh when returning from ProductDetails or ViewImage so scroll position is preserved
+            if (_skipNextOnAppearingRefresh)
+            {
+                _skipNextOnAppearingRefresh = false;
+                return;
+            }
+
             await RefreshAsync();
         }
 
@@ -302,10 +312,9 @@ namespace LaceupMigration.ViewModels
 
                 catalogItem.Line.LastInvoiceDetail = catalogItem.Line.History?.FirstOrDefault();
                 catalogItem.Line.Product = product;
-                catalogItem.Line.ExpectedPrice = Product.GetPriceForProduct(product, _order, _asCreditItem, false);
                 catalogItem.Line.IsCredit = _asCreditItem;
 
-                // Handle UoM
+                // Handle UoM and list price (price per selected UoM)
                 if (!string.IsNullOrEmpty(product.UoMFamily))
                 {
                     UnitOfMeasure? uom = null;
@@ -321,9 +330,8 @@ namespace LaceupMigration.ViewModels
                     }
 
                     catalogItem.Line.UoM = uom;
-                    if (catalogItem.Line.UoM != null)
-                        catalogItem.Line.ExpectedPrice *= catalogItem.Line.UoM.Conversion;
                 }
+                catalogItem.Line.ExpectedPrice = Product.GetPriceForProduct(product, _order, out _, _asCreditItem, false, catalogItem.Line.UoM);
 
                 if (Config.UseLSP && catalogItem.Line.LastInvoiceDetail != null)
                     catalogItem.Line.PreviousOrderedPrice = Math.Round(catalogItem.Line.LastInvoiceDetail.Price, Config.Round);
@@ -610,6 +618,29 @@ namespace LaceupMigration.ViewModels
             await AddButton_ClickAsync(item);
         }
 
+        /// <summary>Opens the product image in full-screen (ViewImagePage).</summary>
+        [RelayCommand]
+        private async Task ViewImageAsync(CatalogItemViewModel? item)
+        {
+            if (item == null || !item.HasImage || string.IsNullOrEmpty(item.ProductImg))
+                return;
+            _skipNextOnAppearingRefresh = true;
+            await Shell.Current.GoToAsync($"viewimage?imagePath={Uri.EscapeDataString(item.ProductImg)}");
+        }
+
+        /// <summary>Navigates to product details page.</summary>
+        [RelayCommand]
+        private async Task ViewProductDetailsAsync(CatalogItemViewModel? item)
+        {
+            if (item == null || item.ProductId <= 0)
+                return;
+            _skipNextOnAppearingRefresh = true;
+            var route = _order != null
+                ? $"productdetails?productId={item.ProductId}&orderId={_order.OrderId}"
+                : $"productdetails?productId={item.ProductId}";
+            await Shell.Current.GoToAsync(route);
+        }
+        
         /// <summary>Edit an existing subline (order detail). Opens RestOfTheAddDialog with that detail for editing. Matches Xamarin EditButton_Click on subline.</summary>
         [RelayCommand]
         private async Task EditSublineAsync(OdLine? line)
@@ -843,7 +874,10 @@ namespace LaceupMigration.ViewModels
                 detail.ReasonId = result.ReasonId;
                 detail.Discount = result.Discount;
                 detail.DiscountType = result.DiscountType;
-                double expectedPrice = Product.GetPriceForProduct(product, _order, true, damaged);
+                var selectedUoM = result.SelectedUoM ?? product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.UnitOfMeasure = selectedUoM;
+                // Price and ExpectedPrice must be in the selected UoM (per selling unit), not base
+                double expectedPrice = Product.GetPriceForProduct(product, _order, out _, true, damaged, selectedUoM);
                 double price = result.Price;
                 if (result.UseLastSoldPrice && _order.Client != null)
                 {
@@ -859,7 +893,8 @@ namespace LaceupMigration.ViewModels
                 {
                     if (Offer.ProductHasSpecialPriceForClient(product, _order.Client, out var offerPrice))
                     {
-                        detail.Price = offerPrice;
+                        // Offer price may be base; convert to selected UoM for display/order
+                        detail.Price = selectedUoM != null ? Math.Round(offerPrice * selectedUoM.Conversion, Config.Round) : offerPrice;
                         detail.FromOfferPrice = true;
                     }
                     else
@@ -874,7 +909,6 @@ namespace LaceupMigration.ViewModels
                     detail.FromOfferPrice = false;
                 }
                 detail.ExpectedPrice = expectedPrice;
-                detail.UnitOfMeasure = result.SelectedUoM ?? product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
                 detail.Qty = result.Qty;
                 detail.Weight = result.Weight;
                 detail.Lot = result.Lot;
@@ -966,9 +1000,12 @@ namespace LaceupMigration.ViewModels
             {
                 // Create new detail
                 var detail = new OrderDetail(product, 0, _order);
-                double expectedPrice = Product.GetPriceForProduct(product, _order, false, false);
+                var selectedUoM = result.SelectedUoM ?? product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
+                detail.UnitOfMeasure = selectedUoM;
+                // Price and ExpectedPrice must be in the selected UoM (per selling unit), not base
+                double expectedPrice = Product.GetPriceForProduct(product, _order, out _, false, false, selectedUoM);
                 double price = result.Price;
-                
+
                 // If UseLastSoldPrice, get from last invoice detail (from client history)
                 if (result.UseLastSoldPrice && _order.Client != null)
                 {
@@ -982,11 +1019,12 @@ namespace LaceupMigration.ViewModels
                 }
                 else if (price == 0)
                 {
-                    // Get price from offers or default
+                    // Get price from offers or default (in selected UoM)
                     double offerPrice = 0;
                     if (Offer.ProductHasSpecialPriceForClient(product, _order.Client, out offerPrice))
                     {
-                        detail.Price = offerPrice;
+                        // Offer price may be base; convert to selected UoM
+                        detail.Price = selectedUoM != null ? Math.Round(offerPrice * selectedUoM.Conversion, Config.Round) : offerPrice;
                         detail.FromOfferPrice = true;
                     }
                     else
@@ -1002,7 +1040,6 @@ namespace LaceupMigration.ViewModels
                 }
 
                 detail.ExpectedPrice = expectedPrice;
-                detail.UnitOfMeasure = result.SelectedUoM ?? product.UnitOfMeasures.FirstOrDefault(x => x.IsDefault);
                 detail.Qty = result.Qty;
                 detail.Weight = result.Weight;
                 detail.Lot = result.Lot;
@@ -1073,14 +1110,19 @@ namespace LaceupMigration.ViewModels
             }
             else
             {
-                // Add or update the detail
+                // Add or update the detail; price follows selected UOM (popup has no price field)
+                var selectedUoM = result.selectedUoM ?? currentUoM;
+                double priceForUoM = Product.GetPriceForProduct(product, _order, out _, false, false, selectedUoM);
+
                 OrderDetail det;
                 if (existingDetail == null)
                 {
                     det = new OrderDetail(product, (float)qty, _order)
                     {
                         LoadStarting = -1, // Mark as new/modified
-                        UnitOfMeasure = result.selectedUoM ?? currentUoM,
+                        UnitOfMeasure = selectedUoM,
+                        ExpectedPrice = priceForUoM,
+                        Price = priceForUoM,
                         Comments = result.comments ?? string.Empty
                     };
                     _order.Details.Add(det);
@@ -1104,7 +1146,10 @@ namespace LaceupMigration.ViewModels
 
                     det.Qty = (float)qty;
                     det.Comments = result.comments ?? string.Empty;
-                    det.UnitOfMeasure = result.selectedUoM ?? currentUoM;
+                    det.UnitOfMeasure = selectedUoM;
+                    // When UOM changes (or any update), set price for the selected UOM since popup has no price field
+                    det.ExpectedPrice = priceForUoM;
+                    det.Price = priceForUoM;
                 }
             }
 
@@ -1582,9 +1627,14 @@ namespace LaceupMigration.ViewModels
             if (Line == null)
                 return;
 
-            // Update on hand
-            // Format as integer (matching screenshot: OH:93, OH:94, etc.)
-            var oh = _Inventory;
+            // Update on hand: show in line's UoM when applicable (e.g. cases vs each) so OH matches how user orders
+            double baseInv = double.TryParse(_Inventory, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed) ? parsed : 0;
+            double displayInv = baseInv;
+            if (Line.UoM != null && Line.UoM.Conversion > 0)
+                displayInv = baseInv / Line.UoM.Conversion;
+            var oh = displayInv >= 0 && displayInv == Math.Floor(displayInv)
+                ? displayInv.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)
+                : Math.Round(displayInv, Config.Round).ToString(System.Globalization.CultureInfo.InvariantCulture);
             OnHandText = $"OH:{oh}";
 
             // Update UoM

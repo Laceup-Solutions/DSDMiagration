@@ -1,6 +1,7 @@
 using LaceupMigration.ViewModels;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.Views
 {
@@ -71,13 +72,14 @@ namespace LaceupMigration.Views
                 }
             }
             Helpers.NavigationHelper.SaveNavigationState(route);
+            
+            UpdateToolbar();
         }
 
         protected override async void OnAppearing()
         {
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
-            UpdateToolbar();
         }
 
         protected override string? GetRouteName() => "productcatalog";
