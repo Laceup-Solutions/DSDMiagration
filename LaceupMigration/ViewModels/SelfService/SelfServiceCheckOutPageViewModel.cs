@@ -261,6 +261,9 @@ namespace LaceupMigration.ViewModels.SelfService
             var uomText = orderDetail.UnitOfMeasure != null ? orderDetail.UnitOfMeasure.Name : string.Empty;
             var imagePath = ProductImage.GetProductImageWithPlaceholder(product.ProductId);
 
+            if(orderDetail.UnitOfMeasure != null)
+                onHand /= orderDetail.UnitOfMeasure.Conversion;
+            
             var ohStr = onHand > 0 ? "In Stock" : "Out of Stock";
             var color = onHand > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
             
