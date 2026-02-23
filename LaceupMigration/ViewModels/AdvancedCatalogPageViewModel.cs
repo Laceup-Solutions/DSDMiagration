@@ -1359,15 +1359,15 @@ namespace LaceupMigration.ViewModels
                         return;
                     }
 
-                    // Not from load: set search and go to add item page
+                    var cItem = FilteredItems.FirstOrDefault(i => i.ProductId == product.ProductId);
+
+                    foreach (var i in FilteredItems)
+                        i.IsHighlightedFromScan = false;
+                    cItem.IsHighlightedFromScan = true;
+                    ScannedItemToFocus = cItem;
+                    
                     SearchQuery = scanResult;
                     await Task.Delay(500);
-                    var route = $"additem?orderId={_order.OrderId}&productId={product.ProductId}";
-                    if (_itemType == 1)
-                        route += "&asCreditItem=1";
-                    if (_itemType == 2)
-                        route += "&asReturnItem=1";
-                    await Shell.Current.GoToAsync(route);
                 }
                 else
                 {

@@ -740,6 +740,10 @@ namespace LaceupMigration
         public bool UseLastSoldPrice { get; set; }
         public bool AdvancedCatalogOffer { get; set; }
         public bool ManuallyChanged { get; set; }
+        
+        public string OHColor { get; set; }
+        public string OH { get; set; }
+
     }
 
     #region Product Catalog

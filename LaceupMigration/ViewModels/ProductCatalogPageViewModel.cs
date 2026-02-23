@@ -286,6 +286,7 @@ namespace LaceupMigration.ViewModels
             foreach (var product in productsForOrder)
             {
                 var img = ProductImage.GetProductImage(product.ProductId);
+                var def_uom = UnitOfMeasure.List.FirstOrDefault(x => x.IsDefault && x.FamilyId == product.UoMFamily);
 
                 var catalogItem = new CatalogItemViewModel
                 {
@@ -297,7 +298,9 @@ namespace LaceupMigration.ViewModels
                     Code = product.Code ?? "",
                     ProductImg = img,
                     HasImage = !string.IsNullOrEmpty(img),
-                    Inventory = Math.Round(product.GetInventory(_order.AsPresale), 2).ToString()
+                    Inventory = Math.Round(product.GetInventory(_order.AsPresale), 2).ToString(),
+                    DefaultUomName = def_uom != null ? def_uom.Name : "",
+                    DefaultUomConversion = def_uom != null ? def_uom.Conversion : 1
                 };
 
                 var clientSourceKey = clientSource.Keys.FirstOrDefault(x => x.ProductId == product.ProductId);
@@ -352,6 +355,20 @@ namespace LaceupMigration.ViewModels
                     if (orderDetail.Product.ProductId != product.ProductId)
                         continue;
 
+                    var onHand = product.GetInventory(_order.AsPresale);
+
+                    if (orderDetail.UnitOfMeasure != null)
+                        onHand /= orderDetail.UnitOfMeasure.Conversion;
+                    
+                    var ohStr = onHand > 0 ? "In Stock" : "Out of Stock";
+                    var color = onHand > 0 ? "#3FBC4D" : "#BA2D0B";
+            
+                    if (Config.ShowOHQtyInSelfService || !Config.EnableSelfServiceModule)
+                    {
+                        ohStr = $"OH: {onHand:F0}";
+                        color = "#1f1f1f";
+                    }
+
                     var odLine = new OdLine
                     {
                         OrderDetail = orderDetail,
@@ -373,7 +390,9 @@ namespace LaceupMigration.ViewModels
                         ReasonId = orderDetail.ReasonId,
                         LotExp = orderDetail.LotExpiration,
                         ManuallyChanged = orderDetail.ModifiedManually,
-                        PriceLevelSelected = orderDetail.PriceLevelSelected
+                        PriceLevelSelected = orderDetail.PriceLevelSelected,
+                        OH = ohStr,
+                        OHColor = color
                     };
 
                     catalogItem.Values.Add(odLine);
@@ -1566,6 +1585,12 @@ namespace LaceupMigration.ViewModels
         
         [ObservableProperty]
         private int _productId = 0;
+             
+        [ObservableProperty]
+        private string _defaultUomName = string.Empty;
+               
+        [ObservableProperty]
+        private double _defaultUomConversion = 0;
         
         [ObservableProperty]
         private int _orderId = 0;
@@ -1642,15 +1667,15 @@ namespace LaceupMigration.ViewModels
             // Update on hand: show in line's UoM when applicable (e.g. cases vs each) so OH matches how user orders
             double baseInv = double.TryParse(_Inventory, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed) ? parsed : 0;
             double displayInv = baseInv;
-            if (Line.UoM != null && Line.UoM.Conversion > 0)
-                displayInv = baseInv / Line.UoM.Conversion;
+            if (DefaultUomConversion > 1)
+                displayInv = baseInv / DefaultUomConversion;
             
             var ohStr = displayInv > 0 ? "In Stock" : "Out of Stock";
             var color = displayInv > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
             
-            if (Config.ShowOHQtyInSelfService)
+            if (Config.ShowOHQtyInSelfService || !Config.EnableSelfServiceModule)
             {
-                ohStr = $"OH: {displayInv:F0}";
+                ohStr = $"OH: {displayInv:F0} {DefaultUomName ?? ""}";
                 color = Color.FromArgb("#1f1f1f");
             }
 

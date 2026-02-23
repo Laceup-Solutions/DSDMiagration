@@ -227,6 +227,7 @@ namespace LaceupMigration.ViewModels.SelfService
 
             foreach (var product in productsForOrder)
             {
+                var def_uom = UnitOfMeasure.List.FirstOrDefault(x => x.IsDefault && x.FamilyId == product.UoMFamily);
                 var img = ProductImage.GetProductImage(product.ProductId);
                 var catalogItem = new CatalogItemViewModel
                 {
@@ -238,7 +239,9 @@ namespace LaceupMigration.ViewModels.SelfService
                     Code = product.Code ?? "",
                     ProductImg = img,
                     HasImage = !string.IsNullOrEmpty(img),
-                    Inventory = Math.Round(product.GetInventory(_order.AsPresale), 2).ToString()
+                    Inventory = Math.Round(product.GetInventory(_order.AsPresale), 2).ToString(),
+                    DefaultUomName = def_uom != null ? def_uom.Name : "",
+                    DefaultUomConversion = def_uom != null ? def_uom.Conversion : 1
                 };
                 
                 var clientSourceKey = clientSource.Keys.FirstOrDefault(x => x.ProductId == product.ProductId);
@@ -270,6 +273,20 @@ namespace LaceupMigration.ViewModels.SelfService
 
                 foreach (var orderDetail in _order.Details.Where(d => !d.IsCredit && d.Product?.ProductId == product.ProductId))
                 {
+                    var onHand = product.GetInventory(_order.AsPresale);
+
+                    if (orderDetail.UnitOfMeasure != null)
+                        onHand /= orderDetail.UnitOfMeasure.Conversion;
+                    
+                    var ohStr = onHand > 0 ? "In Stock" : "Out of Stock";
+                    var color = onHand > 0 ? "#3FBC4D" : "#BA2D0B";
+            
+                    if (Config.ShowOHQtyInSelfService)
+                    {
+                        ohStr = $"OH: {onHand:F0}";
+                        color = "#1f1f1f";
+                    }
+                    
                     catalogItem.Values.Add(new OdLine
                     {
                         OrderDetail = orderDetail,
@@ -291,7 +308,9 @@ namespace LaceupMigration.ViewModels.SelfService
                         ReasonId = orderDetail.ReasonId,
                         LotExp = orderDetail.LotExpiration,
                         ManuallyChanged = orderDetail.ModifiedManually,
-                        PriceLevelSelected = orderDetail.PriceLevelSelected
+                        PriceLevelSelected = orderDetail.PriceLevelSelected,
+                        OH = ohStr,
+                        OHColor = color
                     });
                 }
                 catalogItem.UpdateDisplay();
@@ -532,6 +551,20 @@ namespace LaceupMigration.ViewModels.SelfService
             if (product == null) return;
             foreach (var orderDetail in _order.Details.Where(d => !d.IsCredit && d.Product?.ProductId == product.ProductId))
             {
+                var onHand = product.GetInventory(_order.AsPresale);
+
+                if (orderDetail.UnitOfMeasure != null)
+                    onHand /= orderDetail.UnitOfMeasure.Conversion;
+                    
+                var ohStr = onHand > 0 ? "In Stock" : "Out of Stock";
+                var color = onHand > 0 ? "#3FBC4D" : "#BA2D0B";
+            
+                if (Config.ShowOHQtyInSelfService)
+                {
+                    ohStr = $"OH: {onHand:F0}";
+                    color = "#1f1f1f";
+                }
+
                 item.Values.Add(new OdLine
                 {
                     OrderDetail = orderDetail,
@@ -553,7 +586,9 @@ namespace LaceupMigration.ViewModels.SelfService
                     ReasonId = orderDetail.ReasonId,
                     LotExp = orderDetail.LotExpiration,
                     ManuallyChanged = orderDetail.ModifiedManually,
-                    PriceLevelSelected = orderDetail.PriceLevelSelected
+                    PriceLevelSelected = orderDetail.PriceLevelSelected,
+                    OH = ohStr,
+                    OHColor = color
                 });
             }
             item.UpdateDisplay();
