@@ -40,11 +40,12 @@
                       VerticalOptions="Center">
                     <!-- Stop + Icon: column 0, only when showing routes -->
                     <Grid Grid.Column="0"
-                          RowDefinitions="Auto,Auto"
+                          ColumnDefinitions="Auto,Auto"
                           RowSpacing="5"
+                          ColumnSpacing="3"
                           VerticalOptions="Center"
                           IsVisible="{Binding HasLeftContent}">
-                        <Border Grid.Row="0"
+                        <Border Grid.Column="0"
                                 BackgroundColor="{Binding StopBadgeBackground}"
                                 StrokeThickness="0"
                                 Padding="6,2"
@@ -63,7 +64,7 @@
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center" />
                         </Border>
-                        <Image Grid.Row="1"
+                        <Image Grid.Column="1"
                                Source="{Binding IconImageSource}"
                                WidthRequest="24"
                                HeightRequest="24"
