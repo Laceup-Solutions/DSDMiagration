@@ -322,25 +322,25 @@ namespace LaceupMigration.ViewModels
             switch (order.OrderType)
             {
                 case OrderType.Order:
-                    if (order.AsPresale || (order.IsDelivery && !order.Finished))
-                    {
-                        return order.IsQuote ? $"Quote{number}" : $"Delivery{number}";
-                    }
-                    return $"Sales invoice{number}";
+                    if (order.AsPresale)
+                        return order.IsQuote ? $"Quote{number}" : $"Sales Order{number}";
+                    if (order.IsDelivery && !order.Finished)
+                        return $"Delivery{number}";
+                    return $"Sales Invoice{number}";
                 case OrderType.Consignment:
                     if (order.AsPresale || (order.IsDelivery && !order.Finished))
-                        return $"Sales order{number}";
-                    return $"Sales invoice{number}";
+                        return $"Sales Order{number}";
+                    return $"Sales Invoice{number}";
                 case OrderType.Credit:
                     if (order.AsPresale || (order.IsDelivery && !order.Finished))
-                        return $"Credit order{number}";
-                    return $"Credit invoice{number}";
+                        return $"Credit Order{number}";
+                    return $"Credit Invoice{number}";
                 case OrderType.Return:
                     if (order.AsPresale || (order.IsDelivery && !order.Finished))
-                        return $"Return order{number}";
-                    return $"Return invoice{number}";
+                        return $"Return Order{number}";
+                    return $"Return Invoice{number}";
                 case OrderType.NoService:
-                    return "No service";
+                    return "No Service";
                 default:
                     return $"Invoice{number}";
             }
