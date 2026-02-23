@@ -34,25 +34,19 @@ namespace LaceupMigration.ViewModels.SelfService
         [RelayCommand]
         private async Task AddCompany()
         {
-            var serverAddress = await _dialogService.ShowPromptAsync("Login into New Company", "Server Address", "OK", "Cancel", "");
-            if (string.IsNullOrEmpty(serverAddress) || serverAddress == "Cancel")
+            var result = await _dialogService.ShowLoginNewCompanyDialogAsync();
+            if (result == null)
                 return;
 
-            var portString = await _dialogService.ShowPromptAsync("Login into New Company", "Port ID", "OK", "Cancel", "");
-            if (string.IsNullOrEmpty(portString) || portString == "Cancel")
-                return;
+            var (serverAddress, port, userId) = result.Value;
+            await ContinueToLoginAsync(serverAddress, port, userId);
+        }
 
-            var userIdString = await _dialogService.ShowPromptAsync("Login into New Company", "User ID", "OK", "Cancel", "");
-            if (string.IsNullOrEmpty(userIdString) || userIdString == "Cancel")
-                return;
-
-            if (!int.TryParse(portString, out var port) || !int.TryParse(userIdString, out var userId) || port <= 0 || userId <= 0)
-            {
-                await _dialogService.ShowAlertAsync("The Company Id or Salesman Id is invalid", "Alert", "OK");
-                return;
-            }
-
-            await ContinueToLoginAsync(serverAddress.Trim(), port, userId);
+        [RelayCommand]
+        private async Task SelectCompany(SelfServiceCompany company)
+        {
+            if (company != null)
+                await SelectCompanyAsync(company);
         }
 
         public async Task SelectCompanyAsync(SelfServiceCompany company)
@@ -76,6 +70,8 @@ namespace LaceupMigration.ViewModels.SelfService
         {
             try
             {
+                await _dialogService.ShowLoadingAsync("Downloading data...");
+
                 if (Config.EnableSelfServiceModule)
                 {
                     if (!string.IsNullOrEmpty(server) && port > 0 && userId > 0)
@@ -88,6 +84,7 @@ namespace LaceupMigration.ViewModels.SelfService
             }
             catch (Exception ex)
             {
+                await _dialogService.HideLoadingAsync();
                 await _dialogService.ShowAlertAsync("Please check your configuration", "Alert", "OK");
                 Logger.CreateLog($"Error trying to autologin self service ==> {ex}");
             }
@@ -154,6 +151,8 @@ namespace LaceupMigration.ViewModels.SelfService
             {
                 Logger.CreateLog(ex);
             }
+
+            await _dialogService.HideLoadingAsync();
 
             if (error == 0)
             {

@@ -51,8 +51,8 @@
         <CollectionView x:Name="CompanyCollectionView"
                         Grid.Row="2"
                         ItemsSource="{Binding Companies}"
-                        SelectionMode="Single"
-                        SelectionChanged="OnCompanySelected"
+                        SelectionMode="None"
+                        BackgroundColor="White"
                         EmptyView="No companies. Tap Add Company to add one."
                         ItemSizingStrategy="MeasureFirstItem">
             <CollectionView.ItemTemplate>
@@ -60,6 +60,10 @@
                     <Grid RowDefinitions="*,Auto"
                           Padding="10,8,10,4"
                           MinimumHeightRequest="60">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelfServiceSelectCompanyPageViewModel}}, Path=SelectCompanyCommand}"
+                                                  CommandParameter="{Binding .}" />
+                        </Grid.GestureRecognizers>
                         <Grid Grid.Row="0" RowDefinitions="Auto,Auto,Auto" RowSpacing="4" Margin="0,0,0,12">
                             <Label Text="{Binding CompanyName}"
                                    Grid.Row="0"

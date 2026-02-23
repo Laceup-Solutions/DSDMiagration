@@ -15,6 +15,7 @@ namespace LaceupMigration.Views.SelfService
             Routing.RegisterRoute("selfservice/categories", typeof(SelfServiceCategoriesPage));
             Routing.RegisterRoute("selfservice/collectpayment", typeof(SelfServiceCollectPaymentPage));
             Routing.RegisterRoute("selfservice/credittemplate", typeof(SelfServiceCreditTemplatePage));
+            Routing.RegisterRoute("offers", typeof(SelfServiceOffersPage));
             // More options: View Captured Images, PDF viewer (Send by Email)
             Routing.RegisterRoute("viewcapturedimages", typeof(LaceupMigration.Views.ViewCapturedImagesPage));
             Routing.RegisterRoute("pdfviewer", typeof(LaceupMigration.UtilDlls.PdfViewer));

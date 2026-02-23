@@ -30,6 +30,8 @@ public interface IDialogService
     Task<RestOfTheAddDialogResult> ShowRestOfTheAddDialogAsync(Product product, Order order, OrderDetail existingDetail = null, bool isCredit = false, bool isDamaged = false, bool isDelivery = false);
     /// <summary>Shows a dialog to pick one of the product's UOMs. Returns selected UOM or null if cancelled.</summary>
     Task<UnitOfMeasure?> ShowPickUomForProductAsync(Product product, string title = "Select UOM");
+    /// <summary>Shows a single popup for Login into new company: Server Address, Port, Salesman Id. Returns (serverAddress, port, salesmanId) or null if cancelled.</summary>
+    Task<(string serverAddress, int port, int salesmanId)?> ShowLoginNewCompanyDialogAsync();
 }
 
 /// <summary>Result of ShowRestOfTheAddDialogAsync (add/edit item popup).</summary>

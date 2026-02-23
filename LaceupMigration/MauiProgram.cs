@@ -289,6 +289,8 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.SelfService.SelfServiceCollectPaymentPageViewModel>();
 		builder.Services.AddTransient<Views.SelfService.SelfServiceCreditTemplatePage>();
 		builder.Services.AddTransient<ViewModels.SelfService.SelfServiceCreditTemplatePageViewModel>();
+		builder.Services.AddTransient<Views.SelfService.SelfServiceOffersPage>();
+		builder.Services.AddTransient<ViewModels.SelfService.SelfServiceOffersPageViewModel>();
 		builder.Services.AddTransient<SortByDialogPage>();
 		builder.Services.AddTransient<ViewModels.SortByDialogViewModel>();
 

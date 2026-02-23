@@ -8,6 +8,8 @@ using LaceupMigration.Services;
 using LaceupMigration;
 using LaceupMigration.Helpers;
 using LaceupMigration.ViewModels;
+using LaceupMigration.Business.Interfaces;
+using LaceupMigration.Controls;
 
 namespace LaceupMigration.ViewModels.SelfService
 {
@@ -17,10 +19,11 @@ namespace LaceupMigration.ViewModels.SelfService
         private readonly ILaceupAppService _appService;
         private readonly AdvancedOptionsService _advancedOptionsService;
         private readonly MainPageViewModel _mainPageViewModel;
+        private readonly ICameraBarcodeScannerService _cameraBarcodeScanner;
         private Order _order;
         private List<SelfServiceOrderProductViewModel> _mergedList = new();
-        private bool _listInitialized;
-        private bool _needsFullRefresh;
+        private bool _needsFullRefresh = true;
+        private bool _noNeedToRefresh = false;
 
         [ObservableProperty]
         private string _clientName = string.Empty;
@@ -112,12 +115,13 @@ namespace LaceupMigration.ViewModels.SelfService
             RefilterDisplay();
         }
 
-        public SelfServiceCheckOutPageViewModel(IDialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService, MainPageViewModel mainPageViewModel)
+        public SelfServiceCheckOutPageViewModel(IDialogService dialogService, ILaceupAppService appService, AdvancedOptionsService advancedOptionsService, MainPageViewModel mainPageViewModel, ICameraBarcodeScannerService cameraBarcodeScanner)
         {
             _dialogService = dialogService;
             _appService = appService;
             _advancedOptionsService = advancedOptionsService;
             _mainPageViewModel = mainPageViewModel;
+            _cameraBarcodeScanner = cameraBarcodeScanner;
             UseAdvancedCatalogStyle = Config.UseLaceupAdvancedCatalog;
             ShowPrices = !Config.HidePriceInSelfService;
             ShowOnHand = !Config.HideOHinSelfService;
@@ -131,9 +135,7 @@ namespace LaceupMigration.ViewModels.SelfService
                 if (_order != null)
                 {
                     ClientName = _order.Client.ClientName;
-                    _listInitialized = false;
-                    if (query.TryGetValue("fromCatalog", out var fromCat) && "1".Equals(fromCat?.ToString()))
-                        _needsFullRefresh = true;
+                    _needsFullRefresh = true;
                 }
             }
         }
@@ -144,7 +146,14 @@ namespace LaceupMigration.ViewModels.SelfService
             ShowPrices = !Config.HidePriceInSelfService;
             ShowOnHand = !Config.HideOHinSelfService;
             if (_order == null) return;
-            if (_needsFullRefresh || !_listInitialized)
+
+            if (_noNeedToRefresh)
+            {
+                _noNeedToRefresh = false;
+                return;
+            }
+            
+            if (_needsFullRefresh)
             {
                 _ = LoadOrderAsync();
                 return;
@@ -164,10 +173,9 @@ namespace LaceupMigration.ViewModels.SelfService
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
                     RefilterDisplay();
-                    _listInitialized = true;
-                    _needsFullRefresh = false;
                     RefreshTotals();
                     IsLoadingList = false;
+                    _needsFullRefresh = false;
                 }).ConfigureAwait(false);
             }
             finally
@@ -243,17 +251,30 @@ namespace LaceupMigration.ViewModels.SelfService
             var showLastVisit = false;
             if (orderedItem?.Last != null && orderedItem.Last.Date != DateTime.MinValue)
             {
-                lastVisitText = $"Last Visit: {orderedItem.Last.Date:MM/dd}, {orderedItem.Last.Quantity}, {orderedItem.Last.Price.ToCustomString()}";
+                if (Config.HidePriceInSelfService)
+                    lastVisitText = $"Last Visit: {orderedItem.Last.Date:MM/dd}, {orderedItem.Last.Quantity}";
+                else
+                    lastVisitText = $"Last Visit: {orderedItem.Last.Date:MM/dd}, {orderedItem.Last.Quantity}, {orderedItem.Last.Price.ToCustomString()}";
                 showLastVisit = true;
             }
             var total = orderDetail.Qty * orderDetail.Price;
             var uomText = orderDetail.UnitOfMeasure != null ? orderDetail.UnitOfMeasure.Name : string.Empty;
             var imagePath = ProductImage.GetProductImageWithPlaceholder(product.ProductId);
+
+            var ohStr = onHand > 0 ? "In Stock" : "Out of Stock";
+            var color = onHand > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
+            
+            if (Config.ShowOHQtyInSelfService)
+            {
+                ohStr = $"OH: {onHand:F0}";
+                color = Color.FromArgb("#1f1f1f");
+            }
+            
             return new SelfServiceOrderProductViewModel(this)
             {
                 Product = product,
                 ProductName = product.Name,
-                OnHandText = $"OH: {onHand:F0}",
+                OnHandText = ohStr,
                 ListPriceText = $"List Price: {listPrice.ToCustomString()}",
                 LastVisitText = lastVisitText,
                 ShowLastVisit = showLastVisit,
@@ -267,7 +288,8 @@ namespace LaceupMigration.ViewModels.SelfService
                 ProductImagePath = imagePath ?? string.Empty,
                 HasImage = !string.IsNullOrEmpty(ProductImage.GetProductImage(product.ProductId)),
                 QuantityText = orderDetail.Qty.ToString("F0"),
-                HistoryText = showLastVisit ? lastVisitText : "No previous orders"
+                HistoryText = showLastVisit ? lastVisitText : "No previous orders",
+                OhColor = color
             };
         }
 
@@ -280,17 +302,32 @@ namespace LaceupMigration.ViewModels.SelfService
             var showLastVisit = false;
             if (orderedItem.Last != null && orderedItem.Last.Date != DateTime.MinValue)
             {
-                lastVisitText = $"Last Visit: {orderedItem.Last.Date:MM/dd}, {orderedItem.Last.Quantity}, {orderedItem.Last.Price.ToCustomString()}";
+                if (Config.HidePriceInSelfService)
+                    lastVisitText =
+                        $"Last Visit: {orderedItem.Last.Date:MM/dd}, {orderedItem.Last.Quantity}";
+                else
+                    lastVisitText = $"Last Visit: {orderedItem.Last.Date:MM/dd}, {orderedItem.Last.Quantity}, {orderedItem.Last.Price.ToCustomString()}";
+                
                 showLastVisit = true;
             }
             var isSuggested = _order != null && _order.Client != null && Product.IsSuggestedForClient(_order.Client, product);
             var suggestedLabelText = isSuggested ? (string.IsNullOrEmpty(Config.ProductCategoryNameIdentifier) ? "Suggested Products" : $"{Config.ProductCategoryNameIdentifier} Products") : string.Empty;
             var imagePath = ProductImage.GetProductImageWithPlaceholder(product.ProductId);
+            
+            var ohStr = onHand > 0 ? "In Stock" : "Out of Stock";
+            var color = onHand > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
+            
+            if (Config.ShowOHQtyInSelfService)
+            {
+                ohStr = $"OH: {onHand:F0}";
+                color = Color.FromArgb("#1f1f1f");
+            }
+
             return new SelfServiceOrderProductViewModel(this)
             {
                 Product = product,
                 ProductName = product.Name,
-                OnHandText = $"OH: {onHand:F0}",
+                OnHandText = ohStr,
                 ListPriceText = $"List Price: {listPrice.ToCustomString()}",
                 LastVisitText = lastVisitText,
                 ShowLastVisit = showLastVisit,
@@ -306,7 +343,8 @@ namespace LaceupMigration.ViewModels.SelfService
                 ProductImagePath = imagePath ?? string.Empty,
                 HasImage = !string.IsNullOrEmpty(ProductImage.GetProductImage(product.ProductId)),
                 QuantityText = "0",
-                HistoryText = showLastVisit ? lastVisitText : "No previous orders"
+                HistoryText = showLastVisit ? lastVisitText : "No previous orders",
+                OhColor = color
             };
         }
 
@@ -322,7 +360,7 @@ namespace LaceupMigration.ViewModels.SelfService
             DisplayProducts = new ObservableCollection<SelfServiceOrderProductViewModel>(toShow);
         }
 
-        /// <summary>Update one or more rows in place from current order (no full list rebuild).</summary>
+        /// <summary>Update one or more rows in place from current order (no full list rebuild). When ShowRecentlyOrdered is false, refilter so removed items (ExistingDetail=null) disappear from the list.</summary>
         private void UpdateAffectedRows(params int[] productIds)
         {
             if (_order == null || productIds == null || productIds.Length == 0) return;
@@ -333,7 +371,12 @@ namespace LaceupMigration.ViewModels.SelfService
                 var detail = _order.Details.FirstOrDefault(x => x.Product?.ProductId == productId && !x.IsCredit);
                 var row = _mergedList.FirstOrDefault(x => x.Product?.ProductId == productId);
                 if (row != null)
+                {
                     RefreshRowInPlace(row, detail);
+                    // When item was removed (detail is null), we must refilter so the row drops out of DisplayProducts when ShowRecentlyOrdered is false.
+                    if (detail == null)
+                        needRefilter = true;
+                }
                 else if (detail != null)
                 {
                     var newRow = CreateRowFromOrderDetail(detail);
@@ -375,8 +418,7 @@ namespace LaceupMigration.ViewModels.SelfService
         {
             if (item?.Product == null || _order == null) return;
             var product = item.Product;
-            var addQty = item.ExistingDetail == null && item.OrderedItem?.Last != null ? (float)item.OrderedItem.Last.Quantity : 1f;
-            if (addQty <= 0) addQty = 1f;
+            var addQty = 1f;
             var existingDetail = _order.Details.FirstOrDefault(x => x.Product.ProductId == product.ProductId);
             if (existingDetail != null)
                 existingDetail.Qty += addQty;
@@ -425,6 +467,8 @@ namespace LaceupMigration.ViewModels.SelfService
                 }
             }
 
+            _noNeedToRefresh = true;
+
             OrderDetail existingDetail = item.ExistingDetail != null && !item.ExistingDetail.IsCredit ? item.ExistingDetail : null;
             var result = await _dialogService.ShowRestOfTheAddDialogAsync(
                 item.Product,
@@ -438,16 +482,31 @@ namespace LaceupMigration.ViewModels.SelfService
 
             if (result.Qty == 0)
             {
-                if (existingDetail != null)
+                var confirm = await _dialogService.ShowConfirmAsync("Are you sure you want to delete this item?",
+                    "Remove Item", "Yes", "No");
+
+                if (confirm)
                 {
-                    _order.DeleteDetail(existingDetail);
-                    _order.Save();
+                    _noNeedToRefresh = false;
+
+                    item.ExistingDetail = null;
+                    
+                    if (existingDetail != null)
+                    {
+                        _order.DeleteDetail(existingDetail);
+                        _order.Save();
+                    }
+
+                    UpdateAffectedRows(item.Product.ProductId);
+
+                    RefreshTotals();
                 }
-                UpdateAffectedRows(item.Product.ProductId);
-                RefreshTotals();
+                
                 return;
             }
 
+            _noNeedToRefresh = false;
+            
             // Inventory check when adding (same as PreviouslyOrderedTemplatePageViewModel)
             if (!_order.AsPresale && !Config.CanGoBelow0)
             {
@@ -720,6 +779,8 @@ namespace LaceupMigration.ViewModels.SelfService
             var detail = item.ExistingDetail;
             if (detail.Qty <= 1f)
             {
+                item.ExistingDetail = null;
+
                 _order.Details.Remove(detail);
                 _order.RecalculateDiscounts();
                 _order.Save();
@@ -752,6 +813,8 @@ namespace LaceupMigration.ViewModels.SelfService
                     var result = await _dialogService.ShowConfirmationAsync("Are you sure you want to delete this item?", "Warning", "Yes", "No");
                     if (result)
                     {
+                        item.ExistingDetail = null;
+                        
                         _order.Details.Remove(detail);
                         _order.RecalculateDiscounts();
                         _order.Save();
@@ -781,17 +844,22 @@ namespace LaceupMigration.ViewModels.SelfService
             await Shell.Current.GoToAsync($"selfservice/categories?orderId={OrderId}");
         }
 
-        /// <summary>Open search popup: user types Name, Code, UPC, or SKU; navigate to product catalog with filter if match, else "Product not found".</summary>
+        /// <summary>Open search popup: user types Name, Code, UPC, or SKU, or taps camera to scan; navigate to product catalog with filter/productId like categories does.</summary>
         [RelayCommand]
         private async Task GoToSearch()
         {
+            _noNeedToRefresh = true;
+            
             if (OrderId == null || _order?.Client == null) return;
             var searchInput = await _dialogService.ShowPromptAsync(
                 "Search Product",
                 "Enter Name, Code, UPC, or SKU",
                 "OK",
                 "Cancel",
-                placeholder: "Name, Code, UPC, or SKU");
+                placeholder: "Name, Code, UPC, or SKU",
+                showScanIcon: true,
+                scanAction: ScanProductForSearchAsync);
+            
             if (string.IsNullOrWhiteSpace(searchInput)) return;
             var searchTrim = searchInput.Trim();
             var products = Product.GetProductListForOrder(_order, false, 0).ToList();
@@ -813,6 +881,33 @@ namespace LaceupMigration.ViewModels.SelfService
             }
         }
 
+        /// <summary>Scan barcode from Search Product dialog. Popup is closed by DialogService before this runs. If product found, navigate to catalog; else show "Product not found".</summary>
+        private async Task<string> ScanProductForSearchAsync()
+        {
+            try
+            {
+                var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
+                if (string.IsNullOrEmpty(scanResult)) return string.Empty;
+                var product = Product.Products.FirstOrDefault(p =>
+                    (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
+                if (product != null && _order != null)
+                {
+                    await Shell.Current.GoToAsync($"selfservice/catalog?orderId={_order.OrderId}&categoryId={product.CategoryId}&productId={product.ProductId}&fromCheckout=1");
+                    return DialogService.ScanResultAddedAndClose;
+                }
+                await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Search");
+                return string.Empty;
+            }
+            catch (System.Exception ex)
+            {
+                Logger.CreateLog($"Error scanning barcode: {ex.Message}");
+                await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
+                return string.Empty;
+            }
+        }
+
         /// <summary>More options (bottom bar): View Offers, Select Ship Date, Add Comment, Send by Email, Delete Order, View Captured Images (multi-client). Same as Xamarin SelfServiceCheckOutActivity.</summary>
         [RelayCommand]
         private async Task GoToMore()
@@ -825,8 +920,8 @@ namespace LaceupMigration.ViewModels.SelfService
                 "Send by Email",
                 "Delete Order"
             };
-            if (Client.Clients.Count > 1)
-                options.Add("View Captured Images");
+            if (Config.CaptureImages)
+                options.Add("Attach Photo");
 
             var choice = await _dialogService.ShowActionSheetAsync("More Options", null, "Cancel", options.ToArray());
             if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
@@ -841,7 +936,7 @@ namespace LaceupMigration.ViewModels.SelfService
                 await SendByEmailAsync();
             else if (choice == "Delete Order")
                 await DeleteOrderAsync();
-            else if (choice == "View Captured Images")
+            else if (choice == "Attach Photo")
                 await ViewCapturedImagesAsync();
         }
 
@@ -936,12 +1031,10 @@ namespace LaceupMigration.ViewModels.SelfService
         [RelayCommand]
         private async Task ShowToolbarMenuAsync()
         {
-            var options = new List<string> { "Advanced Options" };
+            var options = new List<string> {  "Sync Data From Server", "Advanced Options" };
             if (Client.Clients.Count == 1)
-            {
-                options.Insert(0, "Sync Data From Server");
                 options.Add("Sign Out");
-            }
+            
             var choice = await _dialogService.ShowActionSheetAsync("Menu", null, "Cancel", options.ToArray());
             if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
             if (choice == "Sync Data From Server")
@@ -970,7 +1063,10 @@ namespace LaceupMigration.ViewModels.SelfService
         private string _onHandText = "OH: 0";
 
         [ObservableProperty]
-        private string _listPriceText = string.Empty;
+        private string _listPriceText = string.Empty;   
+        
+        [ObservableProperty]
+        private Color _ohColor = Color.FromArgb("#1f1f1f");
 
         [ObservableProperty]
         private string _lastVisitText = string.Empty;

@@ -20,6 +20,8 @@ namespace LaceupMigration.ViewModels.SelfService
         private readonly IDialogService _dialogService;
         private readonly ILaceupAppService _appService;
         private readonly ICameraBarcodeScannerService _cameraBarcodeScanner;
+        private readonly AdvancedOptionsService _advancedOptionsService;
+
         private Order _order;
         private Category _category;
 
@@ -75,11 +77,20 @@ namespace LaceupMigration.ViewModels.SelfService
         [ObservableProperty]
         private bool _isLoadingList;
 
-        public SelfServiceCatalogPageViewModel(IDialogService dialogService, ILaceupAppService appService, ICameraBarcodeScannerService cameraBarcodeScanner)
+        /// <summary>Set when navigating with productId (e.g. from scan in categories) or when scan matches an item; view scrolls to it. Match AdvancedCatalogPageViewModel.ScannedItemToFocus.</summary>
+        [ObservableProperty]
+        private CatalogItemViewModel? _scannedItemToFocus;
+
+        private int? _productIdToFocus; // From query (e.g. scan from categories page); applied after list loads.
+        private bool _fromCheckout; // True when opened from Checkout via Search/scan (no categories in stack); back only pops once.
+
+        public SelfServiceCatalogPageViewModel(IDialogService dialogService, ILaceupAppService appService, ICameraBarcodeScannerService cameraBarcodeScanner, AdvancedOptionsService advancedOptionsService)
         {
             _dialogService = dialogService;
             _appService = appService;
             _cameraBarcodeScanner = cameraBarcodeScanner;
+            _advancedOptionsService = advancedOptionsService;
+            
             UseAdvancedCatalogStyle = Config.UseLaceupAdvancedCatalog;
             ShowPrices = !Config.HidePriceInSelfService;
             ShowOnHand = !Config.HideOHinSelfService;
@@ -106,6 +117,18 @@ namespace LaceupMigration.ViewModels.SelfService
                 try { productSearch = Uri.UnescapeDataString(productSearch); } catch { }
                 SearchText = productSearch.Trim();
                 SearchQuery = SearchText;
+            }
+
+            if (query.TryGetValue("productId", out var productIdObj) && productIdObj != null && int.TryParse(productIdObj.ToString(), out var productId) && productId > 0)
+            {
+                _productIdToFocus = productId;
+            }
+
+            _fromCheckout = false;
+            if (query.TryGetValue("fromCheckout", out var fromCheckoutObj) && fromCheckoutObj != null &&
+                (string.Equals(fromCheckoutObj.ToString(), "1", StringComparison.Ordinal) || string.Equals(fromCheckoutObj.ToString(), "true", StringComparison.OrdinalIgnoreCase)))
+            {
+                _fromCheckout = true;
             }
 
             PageTitle = _category != null ? _category.Name : "Products";
@@ -138,6 +161,17 @@ namespace LaceupMigration.ViewModels.SelfService
                     ShowImages = _atLeastOneImage;
                     _listInitialized = true;
                     ApplyFilter();
+                    // When opened with productId (e.g. from scan in categories), scroll to that product once list is ready.
+                    if (_productIdToFocus.HasValue)
+                    {
+                        var itemToFocus = FilteredProducts.FirstOrDefault(i => i.ProductId == _productIdToFocus.Value);
+                        if (itemToFocus != null)
+                        {
+                            HighlightItemOnly(itemToFocus);
+                            ScannedItemToFocus = itemToFocus;
+                        }
+                        _productIdToFocus = null;
+                    }
                     IsLoadingList = false;
                 }).ConfigureAwait(false);
             }
@@ -193,6 +227,7 @@ namespace LaceupMigration.ViewModels.SelfService
 
             foreach (var product in productsForOrder)
             {
+                var img = ProductImage.GetProductImage(product.ProductId);
                 var catalogItem = new CatalogItemViewModel
                 {
                     ProductId = product.ProductId, 
@@ -200,7 +235,10 @@ namespace LaceupMigration.ViewModels.SelfService
                     ProductName = product.Name,
                     Upc = product.Upc ?? "",
                     Sku = product.Sku ?? "",
-                    Code = product.Code ?? ""
+                    Code = product.Code ?? "",
+                    ProductImg = img,
+                    HasImage = !string.IsNullOrEmpty(img),
+                    Inventory = Math.Round(product.GetInventory(_order.AsPresale), 2).ToString()
                 };
                 
                 var clientSourceKey = clientSource.Keys.FirstOrDefault(x => x.ProductId == product.ProductId);
@@ -312,6 +350,7 @@ namespace LaceupMigration.ViewModels.SelfService
                 return;
             try
             {
+                ScannedItemToFocus = null;
                 var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
                 if (string.IsNullOrEmpty(scanResult)) return;
                 var product = Product.Products.FirstOrDefault(p =>
@@ -323,15 +362,16 @@ namespace LaceupMigration.ViewModels.SelfService
                     SearchQuery = scanResult;
                     SearchText = scanResult;
                     _searchCriteria = scanResult;
-                    ApplyFilter();
-                    await _dialogService.ShowAlertAsync($"Found product: {product.Name}", "Barcode Scan");
+
+                    var catalogItem = FilteredProducts.FirstOrDefault(i => i.ProductId == product.ProductId);
+                    if (catalogItem != null)
+                    {
+                        HighlightItemOnly(catalogItem);
+                        ScannedItemToFocus = catalogItem;
+                    }
                 }
                 else
                 {
-                    SearchQuery = scanResult;
-                    SearchText = scanResult;
-                    _searchCriteria = scanResult;
-                    ApplyFilter();
                     await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
                 }
             }
@@ -387,8 +427,8 @@ namespace LaceupMigration.ViewModels.SelfService
             if (result.Qty == 0)
             {
                 _order.DeleteDetail(existingDetail);
-            _order.Save();
-            PrepareProductList();
+                _order.Save();
+                PrepareProductList();
                 ApplyFilter();
                 return;
             }
@@ -411,6 +451,8 @@ namespace LaceupMigration.ViewModels.SelfService
             _order.Save();
             PrepareProductList();
             ApplyFilter();
+            var editedItem = FilteredProducts.FirstOrDefault(i => i.ProductId == product.ProductId);
+            if (editedItem != null) HighlightItemOnly(editedItem);
         }
 
         /// <summary>+ button for Advanced Catalog style: add 1 to first detail or create new detail with qty 1.</summary>
@@ -444,6 +486,7 @@ namespace LaceupMigration.ViewModels.SelfService
             _order.RecalculateDiscounts();
             _order.Save();
             RefreshCatalogItem(item);
+            HighlightItemOnly(item);
         }
 
         /// <summary>- button for Advanced Catalog style: subtract 1 or remove detail if qty becomes 0.</summary>
@@ -469,6 +512,16 @@ namespace LaceupMigration.ViewModels.SelfService
                 _order.Save();
             }
             RefreshCatalogItem(item);
+            HighlightItemOnly(item);
+        }
+
+        /// <summary>Moves highlight to the given item (light blue background) without scrolling. Use when user adds/decrements. Match AdvancedCatalogPageViewModel.HighlightItemOnly.</summary>
+        private void HighlightItemOnly(CatalogItemViewModel? item)
+        {
+            foreach (var i in Products)
+                i.IsHighlightedFromScan = false;
+            if (item != null)
+                item.IsHighlightedFromScan = true;
         }
 
         private void RefreshCatalogItem(CatalogItemViewModel item)
@@ -555,6 +608,8 @@ namespace LaceupMigration.ViewModels.SelfService
             _order.Save();
             PrepareProductList();
             ApplyFilter();
+            var addedItem = FilteredProducts.FirstOrDefault(i => i.ProductId == item.ProductId);
+            if (addedItem != null) HighlightItemOnly(addedItem);
         }
 
         partial void OnSearchTextChanged(string value)
@@ -565,15 +620,22 @@ namespace LaceupMigration.ViewModels.SelfService
             ApplyFilter();
         }
 
-        /// <summary>Return to SelfServiceCheckOutPage (toolbar Checkout button). When entered from Categories (Catalog → Select Category), pop twice to land on Checkout.</summary>
+        /// <summary>Return to SelfServiceCheckOutPage (toolbar Checkout button). When entered from Search/scan (fromCheckout), only pop once; when from Categories, pop twice.</summary>
         [RelayCommand]
         private async Task GoToCheckout()
         {
             if (_order == null)
                 return;
             await Shell.Current.GoToAsync("..");
-            if (_category != null)
+            if (!_fromCheckout && _category != null)
                 await Shell.Current.GoToAsync("..");
+        }
+        
+        /// <summary>Toolbar: show help/menu (Sync Data, Advanced Options, Sign Out).</summary>
+        [RelayCommand]
+        private async Task ShowToolbarMenuAsync()
+        {
+            await _advancedOptionsService.ShowAdvancedOptionsAsync();
         }
     }
 }

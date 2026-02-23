@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using LaceupMigration;
 using LaceupMigration.ViewModels.SelfService;
+using Microsoft.Maui.Controls;
 
 namespace LaceupMigration.Views.SelfService
 {
@@ -11,6 +12,19 @@ namespace LaceupMigration.Views.SelfService
             InitializeComponent();
             BindingContext = viewModel;
             OverrideBaseMenu = true; // No MENU toolbar item on this page; only Checkout
+
+            // Match AdvancedCatalogPage: scroll to scanned item with short delay so layout is ready
+            viewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(SelfServiceCatalogPageViewModel.ScannedItemToFocus) && viewModel.ScannedItemToFocus is { } item)
+                {
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        await Task.Delay(100);
+                        CatalogCollectionView.ScrollTo(item, position: ScrollToPosition.Center, animate: true);
+                    });
+                }
+            };
         }
 
         protected override string? GetRouteName() => "selfservice/catalog";

@@ -12,20 +12,21 @@
              Shell.TabBarIsVisible="False"
              Title="{Binding PageTitle}">
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Checkout" Order="Primary" Priority="0" Command="{Binding GoToCheckoutCommand}" />
+        <ToolbarItem Text="" Order="Primary" Priority="0" IconImageSource="{mi:MaterialOutlined Icon=HelpOutline, IconColor=Black}" Command="{Binding ShowToolbarMenuCommand}" />
+        <ToolbarItem Text="" Order="Primary" Priority="1" IconImageSource="{mi:MaterialOutlined Icon=ShoppingCart, IconColor=Black}" Command="{Binding GoToCheckoutCommand}" />
     </ContentPage.ToolbarItems>
     <ContentPage.Resources>
         <ResourceDictionary>
             <!-- Standard: ProductCatalog style - main line + sublines (when UseLaceupAdvancedCatalog=false) -->
             <DataTemplate x:Key="SelfServiceCatalogStandardTemplate" x:DataType="vm:CatalogItemViewModel">
                 <Grid Style="{StaticResource CollectionViewItemStyle}">
-                    <Frame Padding="12" Margin="8,2" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                    <Frame Padding="12" Margin="8,2" HasShadow="False" CornerRadius="8" BackgroundColor="{Binding RowBackgroundColor}">
                         <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
                             <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                                <Image Source="dotnet_bot.png" WidthRequest="60" HeightRequest="60" Grid.Column="0" IsVisible="{Binding HasImage}" />
+                                <Image Source="{Binding ProductImg}" WidthRequest="60" HeightRequest="60" Grid.Column="0" Aspect="AspectFill" IsVisible="{Binding HasImage}" />
                                 <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
                                     <Label Text="{Binding ProductName}" FontSize="16" FontAttributes="Bold" TextColor="{Binding ProductNameColor}" />
-                                    <Label Text="{Binding OnHandText}" FontSize="13" TextColor="{StaticResource Gray600}" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vmss:SelfServiceCatalogPageViewModel}}, Path=ShowOnHand}" />
+                                    <Label Text="{Binding OnHandText}"  FontAttributes="Bold" FontSize="13" TextColor="{Binding OhColor}" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vmss:SelfServiceCatalogPageViewModel}}, Path=ShowOnHand}" />
                                     <Label Text="{Binding ListPriceText}" FontSize="13" TextColor="{StaticResource Gray600}" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vmss:SelfServiceCatalogPageViewModel}}, Path=ShowPrices}" />
                                     <Label Text="{Binding TotalText}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" IsVisible="{Binding HasValues, Converter={StaticResource ShowWhenHasValuesAndPricesConverter}}" />
                                     <Label Text="{Binding SuggestedLabelText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource colorLaceupGreen}" IsVisible="{Binding IsSuggested}" Margin="0,2,0,0" />
@@ -34,7 +35,7 @@
                                         Style="{StaticResource PrimaryButton}"
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type vmss:SelfServiceCatalogPageViewModel}}, Path=AddButtonClickCommand}"
                                         CommandParameter="{Binding .}"
-                                        WidthRequest="56" HeightRequest="56" FontSize="28" FontAttributes="Bold"
+                                        WidthRequest="60" HeightRequest="56" FontSize="28" FontAttributes="Bold"
                                         CornerRadius="5"
                                         VerticalOptions="Center" HorizontalOptions="End" />
                             </Grid>
@@ -61,15 +62,15 @@
             </DataTemplate>
             <!-- Advanced: UseLaceupAdvancedCatalog - one row with image, OH green, price blue, [-] qty [+] -->
             <DataTemplate x:Key="SelfServiceCatalogAdvancedTemplate" x:DataType="vm:CatalogItemViewModel">
-                <Frame Padding="12" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                <Frame Padding="12" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{Binding RowBackgroundColor}">
                     <Frame.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vmss:SelfServiceCatalogPageViewModel}}, Path=AddButtonClickCommand}" CommandParameter="{Binding .}" />
                     </Frame.GestureRecognizers>
                     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
-                        <Image Source="dotnet_bot.png" WidthRequest="60" HeightRequest="60" Grid.Row="0" Grid.Column="0" Grid.RowSpan="3" IsVisible="{Binding HasImage}" />
+                        <Image Source="{Binding ProductImg}" WidthRequest="60" HeightRequest="60" Grid.Row="0" Grid.Column="0" Grid.RowSpan="3" Aspect="AspectFill" IsVisible="{Binding HasImage}" />
                         <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="2">
                             <Label Text="{Binding ProductName}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource Gray900}" />
-                            <Label Text="{Binding OnHandText}" FontSize="12" TextColor="Green" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vmss:SelfServiceCatalogPageViewModel}}, Path=ShowOnHand}" />
+                            <Label Text="{Binding OnHandText}"  FontAttributes="Bold" FontSize="12" TextColor="{Binding OhColor}" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vmss:SelfServiceCatalogPageViewModel}}, Path=ShowOnHand}" />
                             <Label Text="{Binding ListPriceText}" FontSize="12" TextColor="{StaticResource Gray600}" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vmss:SelfServiceCatalogPageViewModel}}, Path=ShowPrices}" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Row="0" Grid.Column="2" HorizontalOptions="End" VerticalOptions="Start" Spacing="0">
@@ -79,6 +80,7 @@
                             <Button Grid.Column="1" Text="-"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vmss:SelfServiceCatalogPageViewModel}}, Path=DecrementQuantityCommand}"
                                     CommandParameter="{Binding .}"
+                                    Style="{StaticResource PrimaryButton}"
                                     IsEnabled="{Binding HasValues}"
                                     WidthRequest="40" HeightRequest="40" FontSize="18" FontAttributes="Bold"
                                     BackgroundColor="{Binding HasValues, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#0379cb|#ACACAC'}"
@@ -133,7 +135,8 @@
             </Grid>
             <!-- Product List: template selector - ProductCatalog style (sublines) when UseAdvancedCatalogStyle=false, Advanced style (-/+) when true -->
             <Grid Grid.Row="4">
-                <CollectionView ItemsSource="{Binding FilteredProducts}"
+                <CollectionView x:Name="CatalogCollectionView"
+                                ItemsSource="{Binding FilteredProducts}"
                                 SelectionMode="None"
                                 ItemTemplate="{StaticResource SelfServiceCatalogLineTemplateSelector}">
                     <CollectionView.EmptyView>

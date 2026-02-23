@@ -11,19 +11,6 @@ namespace LaceupMigration.Views.SelfService
         }
 
         protected override string? GetRouteName() => "selfservice/selectcompany";
-
-        private async void OnCompanySelected(object sender, SelectionChangedEventArgs e)
-        {
-            if (e.CurrentSelection.FirstOrDefault() is SelfServiceCompany company && BindingContext is SelfServiceSelectCompanyPageViewModel vm)
-            {
-                await vm.SelectCompanyAsync(company);
-            }
-
-            if (sender is CollectionView collectionView)
-            {
-                collectionView.SelectedItem = null;
-            }
-        }
     }
 }
 

@@ -1575,7 +1575,10 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty]
         private string _onHandText = "OH: 0";
-
+        
+        [ObservableProperty]
+        private Color _ohColor = Color.FromArgb("#1f1f1f");
+        
         [ObservableProperty]
         private string _totalText = "$0.00";
 
@@ -1621,6 +1624,15 @@ namespace LaceupMigration.ViewModels
         /// <summary>Sum of qty across all sublines (Values). Used for Advanced Catalog style [-] qty [+] display.</summary>
         [ObservableProperty]
         private float _totalQty;
+
+        /// <summary>True when this line was just scanned or added/decremented; row shows light blue background. Match AdvancedCatalogPageViewModel.</summary>
+        [ObservableProperty]
+        private bool _isHighlightedFromScan;
+
+        partial void OnIsHighlightedFromScanChanged(bool value) => OnPropertyChanged(nameof(RowBackgroundColor));
+
+        /// <summary>Row background color; light blue when highlighted, else white. Match AdvancedCatalogPageViewModel.</summary>
+        public Color RowBackgroundColor => IsHighlightedFromScan ? Color.FromArgb("#ADD8E6") : Colors.White;
         
         public void UpdateDisplay()
         {
@@ -1632,11 +1644,19 @@ namespace LaceupMigration.ViewModels
             double displayInv = baseInv;
             if (Line.UoM != null && Line.UoM.Conversion > 0)
                 displayInv = baseInv / Line.UoM.Conversion;
-            var oh = displayInv >= 0 && displayInv == Math.Floor(displayInv)
-                ? displayInv.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)
-                : Math.Round(displayInv, Config.Round).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            OnHandText = $"OH:{oh}";
+            
+            var ohStr = displayInv > 0 ? "In Stock" : "Out of Stock";
+            var color = displayInv > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
+            
+            if (Config.ShowOHQtyInSelfService)
+            {
+                ohStr = $"OH: {displayInv:F0}";
+                color = Color.FromArgb("#1f1f1f");
+            }
 
+            OnHandText = ohStr;
+            OhColor = color;
+            
             // Update UoM
             UomText = Line.UoM != null ? Line.UoM.Name : string.Empty;
 

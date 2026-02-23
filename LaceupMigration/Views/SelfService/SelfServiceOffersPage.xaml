@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views"
+             x:Class="LaceupMigration.Views.SelfService.SelfServiceOffersPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels.SelfService"
+             x:DataType="vm:SelfServiceOffersPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Offers">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="MENU" Order="Primary" Priority="0" Command="{Binding ShowToolbarMenuCommand}" />
+    </ContentPage.ToolbarItems>
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="10">
+        <!-- Offers available for customer: -->
+        <VerticalStackLayout Grid.Row="0" Spacing="4" Margin="0,0,0,8">
+            <Label Text="Offers available for customer:"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray600}" />
+            <Label Text="{Binding ClientName}"
+                   FontSize="16"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource Gray900}"
+                   LineBreakMode="TailTruncation" />
+        </VerticalStackLayout>
+
+        <!-- Search bar -->
+        <SearchBar Grid.Row="1"
+                   Placeholder="Search offers..."
+                   Text="{Binding SearchText, Mode=TwoWay}"
+                   BackgroundColor="White"
+                   Margin="0,0,0,10" />
+
+        <!-- Offer list -->
+        <CollectionView Grid.Row="3"
+                        ItemsSource="{Binding Offers}"
+                        EmptyView="No offers available for this customer.">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:OfferItemViewModel">
+                    <Grid RowDefinitions="Auto,Auto" Padding="0" Margin="0">
+                        <!-- Content -->
+                        <Grid Grid.Row="0" ColumnDefinitions="*,*" Padding="12,10" ColumnSpacing="12">
+                            <VerticalStackLayout Grid.Column="0" Spacing="4" VerticalOptions="Start">
+                                <Label Text="{Binding TitleLine1}"
+                                       FontSize="15"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource Gray900}"
+                                       LineBreakMode="WordWrap" />
+                                <Label Text="{Binding TitleLine2}"
+                                       FontSize="14"
+                                       TextColor="{StaticResource Gray700}"
+                                       IsVisible="{Binding TitleLine2, Converter={StaticResource IsStringNotEmptyConverter}}"
+                                       LineBreakMode="WordWrap" />
+                                <Label Text="{Binding RegPriceText}"
+                                       FontSize="13"
+                                       TextColor="{StaticResource Gray700}"
+                                       IsVisible="{Binding ShowPrice}" />
+                                <Label Text="{Binding DiscountText}"
+                                       FontSize="13"
+                                       TextColor="{StaticResource Gray700}"
+                                       IsVisible="{Binding ShowPrice}" />
+                                <Label Text="{Binding StartDateText}"
+                                       FontSize="13"
+                                       TextColor="{StaticResource Gray600}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Start" HorizontalOptions="End">
+                                <Label Text="{Binding OfferLine1}"
+                                       FontSize="13"
+                                       TextColor="{StaticResource Gray700}"
+                                       HorizontalOptions="End"
+                                       IsVisible="{Binding ShowPrice}" />
+                                <Label Text="{Binding OfferLine2}"
+                                       FontSize="13"
+                                       TextColor="{StaticResource Gray700}"
+                                       HorizontalOptions="End"
+                                       IsVisible="{Binding OfferLine2, Converter={StaticResource IsStringNotEmptyConverter}}" />
+                                <Label Text="{Binding EndDateText}"
+                                       FontSize="13"
+                                       TextColor="{StaticResource Gray600}"
+                                       HorizontalOptions="End" />
+                            </VerticalStackLayout>
+                        </Grid>
+                        <!-- Separator line -->
+                        <BoxView Grid.Row="1" HeightRequest="1" Color="{StaticResource Gray300}" Margin="12,0,0,0" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</local:LaceupContentPage>
