@@ -4,6 +4,7 @@
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
              x:Class="LaceupMigration.Views.ViewCapturedImagesPage"
              x:DataType="vm:ViewCapturedImagesPageViewModel"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              Shell.NavBarIsVisible="True"
              Shell.TabBarIsVisible="False"
              Shell.BackgroundColor="{StaticResource White}"
@@ -21,17 +22,19 @@
             </Grid>
 
             <!-- Take Picture area -->
-            <Border Grid.Row="1" StrokeThickness="1" Stroke="{StaticResource Gray300}"
-                    BackgroundColor="{StaticResource White}" Padding="20" Margin="16,8">
+            <Border Grid.Row="1" StrokeThickness="1" Stroke="{StaticResource Gray300}" HeightRequest="120" WidthRequest="140"
+                    BackgroundColor="{StaticResource White}" Padding="0" Margin="16,8">
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="8" />
                 </Border.StrokeShape>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding TakePhotoCommand}" />
                 </Border.GestureRecognizers>
-                <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8" >
+                    <Image Source="{mi:MaterialOutlined Icon=AddAPhoto, IconColor={StaticResource PrimaryDark}}"></Image>
                     <Label Text="Take Picture"
                            FontSize="16"
+                           HorizontalTextAlignment="Center"
                            FontAttributes="Bold"
                            TextColor="{StaticResource PrimaryDark}"
                            HorizontalOptions="Center" />
@@ -74,16 +77,10 @@
                                                                        CommandParameter="{Binding .}" />
                                             </Image.GestureRecognizers>
                                         </Image>
-                                        <Label Grid.Column="1" Text="{Binding Caption}"
-                                               FontSize="14"
-                                               TextColor="{StaticResource Gray900}"
-                                               VerticalOptions="Center" />
+                                       
                                         <Button Grid.Column="2"
                                                 Text="Delete"
-                                                BackgroundColor="#DC3545"
-                                                TextColor="White"
-                                                FontSize="14"
-                                                Padding="12,6"
+                                                Style="{StaticResource DeleteButton}"
                                                 VerticalOptions="Center"
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ViewCapturedImagesPageViewModel}}, Path=DeleteImageCommand}"
                                                 CommandParameter="{Binding .}" />

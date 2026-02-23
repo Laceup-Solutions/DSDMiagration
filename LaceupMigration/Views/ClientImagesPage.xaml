@@ -25,27 +25,21 @@
             <ScrollView Grid.Row="1">
                 <VerticalStackLayout Padding="16" Spacing="16">
                     <!-- Take Picture section with camera icon -->
-                    <Border StrokeThickness="1"
-                            Stroke="{StaticResource Gray300}"
-                            BackgroundColor="{StaticResource White}"
-                            Padding="20"
-                            Margin="0,0,0,16">
+                    <!-- Take Picture area -->
+                    <Border StrokeThickness="1" Stroke="{StaticResource Gray300}" HeightRequest="120" WidthRequest="140"
+                            BackgroundColor="{StaticResource White}" Padding="0" Margin="16,8">
                         <Border.StrokeShape>
                             <RoundRectangle CornerRadius="8" />
                         </Border.StrokeShape>
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding TakePhotoCommand}" />
                         </Border.GestureRecognizers>
-                        <VerticalStackLayout HorizontalOptions="Center"
-                                             Spacing="8">
-                            <Image Source="{mi:MaterialOutlined Icon=CameraAlt, IconColor={StaticResource PrimaryDark}}"
-                                   Aspect="AspectFit"
-                                   HeightRequest="60"
-                                   WidthRequest="60"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center" />
+                        <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8" >
+                            <Image Source="{mi:MaterialOutlined Icon=AddAPhoto, IconColor={StaticResource PrimaryDark}}"></Image>
                             <Label Text="Take Picture"
-                                   FontSize="14"
+                                   FontSize="16"
+                                   HorizontalTextAlignment="Center"
+                                   FontAttributes="Bold"
                                    TextColor="{StaticResource PrimaryDark}"
                                    HorizontalOptions="Center" />
                         </VerticalStackLayout>
@@ -78,10 +72,7 @@
                                     </Image>
                                     <Button Grid.Column="2"
                                             Text="Delete"
-                                            BackgroundColor="#DC3545"
-                                            TextColor="White"
-                                            FontSize="14"
-                                            Padding="12,6"
+                                            Style="{StaticResource DeleteButton}"
                                             VerticalOptions="Center"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ClientImagesPageViewModel}}, Path=DeleteImageCommand}"
                                             CommandParameter="{Binding .}" />

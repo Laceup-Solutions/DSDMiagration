@@ -198,21 +198,19 @@ public class DialogService : IDialogService
             Padding = new Thickness(8, 0, 0, 0)
         };
 
-        // Handle scan button click: if scan returns ScanResultAddedAndClose, close without filling text
+        // Handle scan button click: always close the popup first, then run scan (camera). Caller handles navigate/alert.
         scanButton.Clicked += async (s, e) =>
         {
             try
             {
+                // Close popup immediately so it is never visible behind the camera or after scan result
+                if (page != null && page.Navigation.ModalStack.Count > 0)
+                    await page.Navigation.PopModalAsync();
+                tcs.SetResult(null);
+
+                // Run scan after popup is closed (opens camera; caller navigates or shows alert)
                 var scanResult = await scanAction();
-                if (scanResult == ScanResultAddedAndClose)
-                {
-                    if (page != null && page.Navigation.ModalStack.Count > 0)
-                        await page.Navigation.PopModalAsync();
-                    tcs.SetResult(null);
-                    return;
-                }
-                if (!string.IsNullOrEmpty(scanResult))
-                    entry.Text = scanResult;
+                // Result is ignored here; caller already navigated or showed "not found"
             }
             catch (Exception ex)
             {
@@ -442,6 +440,217 @@ public class DialogService : IDialogService
             entry.CursorPosition = 0;
             entry.SelectionLength = entry.Text.Length;
         }
+
+        return await tcs.Task;
+    }
+
+    public async Task<(string serverAddress, int port, int salesmanId)?> ShowLoginNewCompanyDialogAsync()
+    {
+        var page = GetCurrentPage();
+        if (page == null)
+            return null;
+
+        var tcs = new TaskCompletionSource<(string serverAddress, int port, int salesmanId)?>();
+
+        var titleLabel = new Label
+        {
+            Text = "Login into new company",
+            FontSize = 18,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Color.FromArgb("#0379cb"),
+            HorizontalOptions = LayoutOptions.Center,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+        var titleSection = new VerticalStackLayout
+        {
+            Spacing = 0,
+            Padding = new Thickness(24, 20),
+            Children = { titleLabel }
+        };
+
+        var titleLine = new BoxView
+        {
+            HeightRequest = 1,
+            Color = Color.FromArgb("#0379cb"),
+            HorizontalOptions = LayoutOptions.Fill,
+            Margin = new Thickness(0, 0, 0, 16)
+        };
+
+        var serverEntry = new Entry
+        {
+            Placeholder = "Server Address",
+            FontSize = 16,
+            BackgroundColor = Colors.White,
+            HeightRequest = 44,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+        var portEntry = new Entry
+        {
+            Placeholder = "Port",
+            Keyboard = Keyboard.Numeric,
+            FontSize = 16,
+            BackgroundColor = Colors.White,
+            HeightRequest = 44,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+        var salesmanEntry = new Entry
+        {
+            Placeholder = "Salesman Id",
+            Keyboard = Keyboard.Numeric,
+            FontSize = 16,
+            BackgroundColor = Colors.White,
+            HeightRequest = 44,
+            Margin = new Thickness(0, 0, 0, 0)
+        };
+        var entriesSection = new VerticalStackLayout
+        {
+            Spacing = 0,
+            Padding = new Thickness(24, 0, 24, 16),
+            Children = { serverEntry, portEntry, salesmanEntry }
+        };
+
+        var buttonSeparatorLine = new BoxView
+        {
+            HeightRequest = 1,
+            Color = Color.FromArgb("#E0E0E0"),
+            HorizontalOptions = LayoutOptions.Fill
+        };
+
+        var cancelButton = new Button
+        {
+            Text = "Cancel",
+            FontSize = 14,
+            TextColor = Color.FromArgb("#424242"),
+            BackgroundColor = Colors.White,
+            BorderWidth = 0
+        };
+        var signInButton = new Button
+        {
+            Text = "Sign In",
+            FontSize = 14,
+            TextColor = Color.FromArgb("#424242"),
+            BackgroundColor = Colors.White,
+            BorderWidth = 0
+        };
+
+        var buttonRow = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            },
+            ColumnSpacing = 0
+        };
+        var buttonDivider = new BoxView { WidthRequest = 1, Color = Color.FromArgb("#E0E0E0"), VerticalOptions = LayoutOptions.Fill };
+        Grid.SetColumn(cancelButton, 0);
+        Grid.SetColumn(buttonDivider, 1);
+        Grid.SetColumn(signInButton, 2);
+        buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(buttonDivider);
+        buttonRow.Children.Add(signInButton);
+
+        var content = new VerticalStackLayout
+        {
+            Spacing = 0,
+            Padding = new Thickness(0),
+            Children =
+            {
+                titleSection,
+                titleLine,
+                entriesSection,
+                buttonSeparatorLine,
+                buttonRow
+            }
+        };
+
+        var screenWidth = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density;
+        var dialogWidth = Math.Min(screenWidth * 0.85, 400);
+
+        var dialogBorder = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 0,
+            Padding = 0,
+            Margin = new Thickness(20),
+            WidthRequest = dialogWidth,
+            MaximumWidthRequest = dialogWidth,
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Content = content
+        };
+
+        var overlayGrid = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"),
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            },
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+        Grid.SetRow(dialogBorder, 1);
+        Grid.SetColumn(dialogBorder, 1);
+        overlayGrid.Children.Add(dialogBorder);
+
+        var dialog = new ContentPage
+        {
+            BackgroundColor = Colors.Transparent,
+            Content = overlayGrid
+        };
+
+        async Task CloseAsync()
+        {
+            try
+            {
+                if (page != null && page.Navigation.ModalStack.Count > 0)
+                    await page.Navigation.PopModalAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error closing Login New Company dialog: {ex.Message}");
+            }
+        }
+
+        signInButton.Clicked += async (s, e) =>
+        {
+            var server = serverEntry.Text?.Trim() ?? "";
+            var portStr = portEntry.Text?.Trim() ?? "";
+            var salesmanStr = salesmanEntry.Text?.Trim() ?? "";
+            if (string.IsNullOrEmpty(server))
+            {
+                await ShowAlertAsync("Please enter Server Address.", "Login into new company");
+                return;
+            }
+            if (!int.TryParse(portStr, out var port) || port <= 0)
+            {
+                await ShowAlertAsync("Please enter a valid Port.", "Login into new company");
+                return;
+            }
+            if (!int.TryParse(salesmanStr, out var salesmanId) || salesmanId <= 0)
+            {
+                await ShowAlertAsync("Please enter a valid Salesman Id.", "Login into new company");
+                return;
+            }
+            await CloseAsync();
+            tcs.SetResult((server, port, salesmanId));
+        };
+
+        cancelButton.Clicked += async (s, e) =>
+        {
+            await CloseAsync();
+            tcs.SetResult(null);
+        };
+
+        await page.Navigation.PushModalAsync(dialog);
+        serverEntry.Focus();
 
         return await tcs.Task;
     }

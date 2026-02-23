@@ -671,7 +671,7 @@ namespace LaceupMigration.ViewModels
             var selectedItems = InvoiceItems.Where(x => x.IsSelected).ToList();
             if (selectedItems.Count == 0)
             {
-                await _dialogService.ShowAlertAsync("Please select at least one invoice or order.", "Alert");
+                await _dialogService.ShowAlertAsync("Please select at least one invoice.", "Alert");
                 return;
             }
 
