@@ -593,6 +593,15 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
+            // Template flow (NewOrderTemplate / NewCreditTemplate): use simple product list (name + OH) then NewOrderTemplateDetailsPage
+            if ((_comingFrom == "OrderTemplate" || _comingFrom == "CreditTemplate") && _orderId.HasValue)
+            {
+                var order = Order.Orders.FirstOrDefault(x => x.OrderId == _orderId.Value);
+                var route = $"fullproductlist?orderId={_orderId.Value}&categoryId={categoryId}&fromCreditTemplate={(_comingFrom == "CreditTemplate" ? 1 : 0)}&asPresale={((order?.AsPresale ?? false) ? 1 : 0)}";
+                await Shell.Current.GoToAsync(route);
+                return;
+            }
+
             if (Config.UseLaceupAdvancedCatalog && _orderId.HasValue)
             {
                 var route = $"advancedcatalog?orderId={_orderId.Value}&categoryId={categoryId}";
@@ -677,6 +686,21 @@ namespace LaceupMigration.ViewModels
         {
             if (item == null || item.Product == null || _order == null)
                 return;
+
+            // Template flow: go to NewOrderTemplateDetailsPage (product selected from FullCategoryPage products list)
+            if (_comingFrom == "OrderTemplate" || _comingFrom == "CreditTemplate")
+            {
+                int itemType = 0;
+                if (_comingFrom == "CreditTemplate")
+                {
+                    var choice = await _dialogService.ShowActionSheetAsync("Add as", null, "Cancel", "Dump", "Return");
+                    if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+                    itemType = choice == "Dump" ? 1 : 2;
+                }
+                var route = $"newordertemplatedetails?orderId={_order.OrderId}&productId={item.Product.ProductId}&itemType={itemType}&fromCreditTemplate={(_comingFrom == "CreditTemplate" ? 1 : 0)}";
+                await Shell.Current.GoToAsync(route);
+                return;
+            }
 
             // Self-service: go to dedicated catalog page with +/- for this category
             if (_comingFrom == "SelfService")

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using LaceupMigration;
 
 namespace LaceupMigration.Helpers
 {
@@ -47,6 +48,9 @@ namespace LaceupMigration.Helpers
             { "ordercredit", "OrderCreditActivity" },
             { "superordertemplate", "SuperOrderTemplateActivity" },
             { "previouslyorderedtemplate", "PreviouslyOrderedTemplateActivity" },
+            { "newordertemplate", "NewOrderTemplateActivity" },
+            { "newcredittemplate", "NewCreditTemplateActivity" },
+            { "newordertemplatedetails", "NewOrderTemplateDetailsActivity" },
             { "batch", "BatchActivity" },
             { "finalizebatch", "FinalizeBatchActivity" },
             { "ordersignature", "OrderSignatureActivity" },
@@ -65,6 +69,7 @@ namespace LaceupMigration.Helpers
             { "advancedcatalog", "AdvancedCatalogActivity" },
             { "productcatalog", "ProductCatalogActivity" },
             { "fullcategory", "FullCategoryActivity" },
+            { "fullproductlist", "FullProductListActivity" },
             { "productdetails", "ProductDetailsActivity" },
             { "productimage", "ProductImageActivity" },
             { "additem", "AddItemActivity" },
@@ -121,6 +126,30 @@ namespace LaceupMigration.Helpers
             { "clientimages", "ClientImagesActivity" },
             { "managedepartments", "ManageDepartmentsActivity" },
         };
+
+        /// <summary>
+        /// Returns the order template route based on Config.ItemGroupedTemplateKey (ItemGroupedTemplate).
+        /// When ItemGroupedTemplate is true: Order type → newordertemplate, Credit/Return → newcredittemplate.
+        /// When false: returns previouslyorderedtemplate (same for all order types in UseCatalog path).
+        /// </summary>
+        public static string GetOrderTemplateRoute(int orderId, bool asPresale, OrderType orderType)
+        {
+            if (!Config.ItemGroupedTemplate)
+                return $"previouslyorderedtemplate?orderId={orderId}&asPresale={(asPresale ? 1 : 0)}";
+            if (orderType == OrderType.Credit || orderType == OrderType.Return)
+                return $"newcredittemplate?orderId={orderId}&asPresale={(asPresale ? 1 : 0)}";
+            return $"newordertemplate?orderId={orderId}&asPresale={(asPresale ? 1 : 0)}";
+        }
+
+        /// <summary>
+        /// Returns the order template route for the given order (uses order.OrderId, order.AsPresale, order.OrderType).
+        /// </summary>
+        public static string GetOrderTemplateRoute(Order order)
+        {
+            if (order == null)
+                return "previouslyorderedtemplate";
+            return GetOrderTemplateRoute(order.OrderId, order.AsPresale, order.OrderType);
+        }
 
         /// <summary>
         /// Navigates to a route and saves ActivityState.
@@ -370,6 +399,44 @@ namespace LaceupMigration.Helpers
             await Shell.Current.GoToAsync("..");
             RemoveNavigationState(routeToRemoveSecond);
             await Shell.Current.GoToAsync("..");
+        }
+
+        /// <summary>
+        /// Maps page type names to route names for state removal when popping.
+        /// </summary>
+        private static string? GetRouteFromPageType(string? typeName)
+        {
+            if (string.IsNullOrEmpty(typeName)) return null;
+            return typeName switch
+            {
+                "FullProductListPage" => "fullproductlist",
+                "FullCategoryPage" => "fullcategory",
+                "NewOrderTemplateDetailsPage" => "newordertemplatedetails",
+                "NewOrderTemplatePage" => "newordertemplate",
+                "NewCreditTemplatePage" => "newcredittemplate",
+                "ProductCatalogPage" => "productcatalog",
+                "AdvancedCatalogPage" => "advancedcatalog",
+                _ => null
+            };
+        }
+
+        /// <summary>
+        /// Pops all screens back to the order or credit template page, removing navigation state for each popped page.
+        /// Call from NewOrderTemplateDetailsPage Save so we land on NewOrderTemplatePage or NewCreditTemplatePage with a clean stack.
+        /// </summary>
+        public static async Task PopBackToOrderOrCreditTemplateAsync(string templateRoute)
+        {
+            RemoveNavigationState("newordertemplatedetails");
+            await Shell.Current.GoToAsync("..");
+
+            while (Shell.Current.CurrentPage != null && Shell.Current.Navigation.NavigationStack.Count > 1)
+            {
+                var route = GetRouteFromPageType(Shell.Current.CurrentPage?.GetType().Name);
+                if (route == "newordertemplate" || route == "newcredittemplate")
+                    break;
+                RemoveNavigationState(route ?? "");
+                await Shell.Current.GoToAsync("..");
+            }
         }
 
         /// <summary>

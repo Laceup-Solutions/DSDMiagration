@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using Microsoft.Maui.Graphics;
 using System;
@@ -1723,6 +1724,10 @@ namespace LaceupMigration.ViewModels
                 {
                     await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
                 }
+                else if (Config.ItemGroupedTemplate)
+                {
+                    await Shell.Current.GoToAsync(NavigationHelper.GetOrderTemplateRoute(order.OrderId, false, order.OrderType));
+                }
                 else
                     await Shell.Current.GoToAsync($"ordercredit?orderId={order.OrderId}&asPresale=0&fromOneDoc=0");
                 
@@ -1751,7 +1756,7 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=0");
+            await Shell.Current.GoToAsync(NavigationHelper.GetOrderTemplateRoute(order.OrderId, false, order.OrderType));
         }
 
         private async Task ShowAdvancedOptionsAsync()

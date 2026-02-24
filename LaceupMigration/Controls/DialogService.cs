@@ -3594,6 +3594,451 @@ public class DialogService : IDialogService
         // Fallback to Application Windows
         return Application.Current?.Windows?.FirstOrDefault()?.Page;
     }
-    
+
+    /// <summary>
+    /// Shows a single popup to input all add-qty fields (Items/Weight, Price, Weight, Lot) matching the old app.
+    /// Returns null if cancelled.
+    /// </summary>
+    public async Task<LaceupMigration.ViewModels.TemplateAddQtyResult?> ShowTemplateAddQtyPopupAsync(
+        string productName,
+        bool isSoldByWeight,
+        double defaultPrice,
+        bool showPrice,
+        string lastSoldPriceDisplay,
+        bool needLot,
+        System.Collections.Generic.List<(string Lot, DateTime Exp)> lots,
+        bool useLotExpiration)
+    {
+        var page = GetCurrentPage();
+        if (page == null) return null;
+
+        var tcs = new TaskCompletionSource<LaceupMigration.ViewModels.TemplateAddQtyResult?>();
+        var itemsEntry = new Entry
+        {
+            Text = "1",
+            Keyboard = Keyboard.Numeric,
+            Placeholder = "1"
+        };
+        var qtyEntry = new Entry
+        {
+            Text = "",
+            Keyboard = Keyboard.Numeric,
+            Placeholder = isSoldByWeight ? "Weight" : "1",
+            IsVisible = isSoldByWeight
+        };
+        var priceEntry = new Entry
+        {
+            Text = defaultPrice.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Keyboard = Keyboard.Numeric,
+            Placeholder = "0",
+            IsVisible = showPrice
+        };
+        Entry? lotEntry = null;
+        Button? lotPickerButton = null;
+        if (needLot && lots != null && lots.Count > 0)
+        {
+            lotPickerButton = new Button { Text = "Select Lot" };
+            lotEntry = new Entry { Placeholder = "Lot", IsVisible = false };
+        }
+        else if (needLot)
+            lotEntry = new Entry { Placeholder = "Lot" };
+
+        string selectedLot = "";
+        DateTime selectedExp = DateTime.MinValue;
+        if (lotPickerButton != null && lots != null && lots.Count > 0)
+        {
+            lotPickerButton.Clicked += async (s, e) =>
+            {
+                var names = lots.Select(x => "Lot: " + x.Lot + (x.Exp != DateTime.MinValue ? "  Exp: " + x.Exp.ToShortDateString() : "")).ToArray();
+                var choice = await ShowActionSheetAsync("Select Lot", null, "Cancel", names);
+                if (!string.IsNullOrEmpty(choice) && choice != "Cancel")
+                {
+                    var idx = names.ToList().IndexOf(choice);
+                    if (idx >= 0 && idx < lots.Count)
+                    {
+                        selectedLot = lots[idx].Lot;
+                        selectedExp = lots[idx].Exp;
+                        lotPickerButton.Text = selectedLot;
+                    }
+                }
+            };
+        }
+
+        var addBtn = new Button { Text = "Add", BackgroundColor = Color.FromArgb("#0379cb"), TextColor = Colors.White };
+        var cancelBtn = new Button { Text = "Cancel", BackgroundColor = Colors.White, TextColor = Colors.Black };
+
+        cancelBtn.Clicked += (s, e) =>
+        {
+            tcs.TrySetResult(null);
+            page.Navigation.PopModalAsync();
+        };
+
+        addBtn.Clicked += async (s, e) =>
+        {
+            if (!int.TryParse(itemsEntry.Text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lineCount) || lineCount < 1)
+            {
+                await page.DisplayAlert("Alert", "Please enter how many lines to add (Items must be at least 1).", "OK");
+                return;
+            }
+            double weight = 0;
+            float qty = 1f;
+            if (isSoldByWeight)
+            {
+                if (!double.TryParse(qtyEntry.Text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out weight) || weight <= 0)
+                {
+                    await page.DisplayAlert("Alert", "You must enter the weight to add the items.", "OK");
+                    return;
+                }
+            }
+            double price = defaultPrice;
+            if (showPrice && priceEntry.IsVisible && !string.IsNullOrEmpty(priceEntry.Text))
+            {
+                if (!double.TryParse(priceEntry.Text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out price))
+                {
+                    await page.DisplayAlert("Alert", "Not a valid number.", "OK");
+                    return;
+                }
+            }
+            string lot = selectedLot;
+            if (lotEntry != null && lotEntry.IsVisible && string.IsNullOrEmpty(lot))
+                lot = lotEntry.Text?.Trim() ?? "";
+
+            tcs.TrySetResult(new LaceupMigration.ViewModels.TemplateAddQtyResult
+            {
+                LineCount = lineCount,
+                Qty = qty,
+                Price = Math.Round(price, Config.Round),
+                Weight = weight,
+                Lot = lot,
+                LotExpiration = selectedExp
+            });
+            await page.Navigation.PopModalAsync();
+        };
+
+        var promptLabel = new Label
+        {
+            Text = "How many items do you want to add?",
+            FontSize = 14,
+            TextColor = Colors.Black,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+        var itemsLabel = new Label { Text = "Items:", FontSize = 14 };
+        var priceLabel = new Label { Text = "Price:", FontSize = 14, IsVisible = showPrice };
+        var weightLabel = new Label { Text = "Weight:", FontSize = 14, IsVisible = isSoldByWeight };
+        var lspLabel = new Label
+        {
+            Text = lastSoldPriceDisplay,
+            FontSize = 13,
+            TextColor = Color.FromArgb("#3FBC4D"),
+            IsVisible = !string.IsNullOrEmpty(lastSoldPriceDisplay),
+            Margin = new Thickness(0, 4, 0, 0)
+        };
+
+        var form = new VerticalStackLayout
+        {
+            Spacing = 8,
+            Padding = new Thickness(16, 12, 16, 16),
+            Children =
+            {
+                new Label { Text = productName, FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0379cb") },
+                promptLabel,
+                itemsLabel,
+                itemsEntry,
+                weightLabel,
+                qtyEntry,
+                priceLabel,
+                priceEntry,
+                lspLabel
+            }
+        };
+        if (lotPickerButton != null)
+        {
+            form.Children.Add(new Label { Text = "Lot:", FontSize = 14 });
+            form.Children.Add(lotPickerButton);
+        }
+        else if (lotEntry != null)
+        {
+            form.Children.Add(new Label { Text = "Lot:", FontSize = 14 });
+            form.Children.Add(lotEntry);
+        }
+        var buttonRow = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new ColumnDefinition(), new ColumnDefinition() }, ColumnSpacing = 8, Margin = new Thickness(0, 16, 0, 0) };
+        buttonRow.Children.Add(cancelBtn);
+        buttonRow.Children.Add(addBtn);
+        Grid.SetColumn(addBtn, 1);
+        form.Children.Add(buttonRow);
+
+        var border = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 1,
+            Stroke = Color.FromArgb("#E0E0E0"),
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = new Thickness(0),
+            Content = form
+        };
+        var overlay = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"),
+            RowDefinitions = { new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }, new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = new GridLength(1, GridUnitType.Star) } },
+            ColumnDefinitions = { new ColumnDefinition(), new ColumnDefinition { Width = new GridLength(320) }, new ColumnDefinition() },
+            Padding = new Thickness(24)
+        };
+        Grid.SetRow(border, 1);
+        Grid.SetColumn(border, 1);
+        overlay.Children.Add(border);
+
+        var popupPage = new ContentPage { BackgroundColor = Colors.Transparent, Content = overlay };
+        popupPage.Appearing += (_, __) => itemsEntry.Focus();
+
+        await page.Navigation.PushModalAsync(popupPage);
+        return await tcs.Task;
+    }
+
+    /// <summary>
+    /// Shows a single popup to edit a line: Price, Weight, Qty, Comments, FreeItem checkbox (and optionally Lot, UoM).
+    /// Returns null if cancelled.
+    /// </summary>
+    public async Task<LaceupMigration.ViewModels.TemplateEditLineResult?> ShowTemplateEditLinePopupAsync(
+        string productName,
+        bool isSoldByWeight,
+        bool showPrice,
+        bool allowFreeItems,
+        float initialQty,
+        double initialWeight,
+        double initialPrice,
+        string initialComments,
+        bool initialFreeItem,
+        bool needLot,
+        System.Collections.Generic.List<(string Lot, DateTime Exp)>? lots,
+        string initialLot,
+        DateTime initialLotExp,
+        Product product,
+        UnitOfMeasure? initialUom = null)
+    {
+        var page = GetCurrentPage();
+        if (page == null) return null;
+
+        var tcs = new TaskCompletionSource<LaceupMigration.ViewModels.TemplateEditLineResult?>();
+
+        var qtyWeightEntry = new Entry
+        {
+            Text = isSoldByWeight ? initialWeight.ToString(System.Globalization.CultureInfo.InvariantCulture) : initialQty.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Keyboard = Keyboard.Numeric,
+            Placeholder = isSoldByWeight ? "Weight" : "Qty"
+        };
+        var priceEntry = new Entry
+        {
+            Text = initialPrice.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Keyboard = Keyboard.Numeric,
+            Placeholder = "0",
+            IsVisible = showPrice
+        };
+        var commentsEntry = new Entry
+        {
+            Text = initialComments ?? "",
+            Placeholder = "Comments"
+        };
+        var freeItemCheckbox = new CheckBox
+        {
+            IsChecked = initialFreeItem,
+            IsVisible = allowFreeItems
+        };
+        var freeItemLabel = new Label { Text = "Free item", FontSize = 14, IsVisible = allowFreeItems };
+        if (allowFreeItems)
+        {
+            freeItemCheckbox.CheckedChanged += (s, e) =>
+            {
+                priceEntry.IsEnabled = !freeItemCheckbox.IsChecked;
+                if (freeItemCheckbox.IsChecked) priceEntry.Text = "0";
+            };
+            priceEntry.IsEnabled = !initialFreeItem;
+        }
+
+        Entry? lotEntry = null;
+        Button? lotPickerButton = null;
+        if (needLot && lots != null && lots.Count > 0)
+        {
+            lotPickerButton = new Button { Text = string.IsNullOrEmpty(initialLot) ? "Select Lot" : initialLot };
+            lotEntry = new Entry { Placeholder = "Lot", IsVisible = false };
+        }
+        else if (needLot)
+            lotEntry = new Entry { Text = initialLot ?? "", Placeholder = "Lot" };
+
+        string selectedLot = initialLot ?? "";
+        DateTime selectedExp = initialLotExp;
+        if (lotPickerButton != null && lots != null && lots.Count > 0)
+        {
+            lotPickerButton.Clicked += async (s, e) =>
+            {
+                var names = lots.Select(x => "Lot: " + x.Lot + (x.Exp != DateTime.MinValue ? "  Exp: " + x.Exp.ToShortDateString() : "")).ToArray();
+                var choice = await ShowActionSheetAsync("Select Lot", null, "Cancel", names);
+                if (!string.IsNullOrEmpty(choice) && choice != "Cancel")
+                {
+                    var idx = names.ToList().IndexOf(choice);
+                    if (idx >= 0 && idx < lots.Count)
+                    {
+                        selectedLot = lots[idx].Lot;
+                        selectedExp = lots[idx].Exp;
+                        lotPickerButton.Text = selectedLot;
+                    }
+                }
+            };
+        }
+
+        UnitOfMeasure? selectedUom = initialUom;
+        Picker? uomPicker = null;
+        var uomList = product?.UnitOfMeasures;
+        if (uomList != null && uomList.Count > 0)
+        {
+            uomPicker = new Picker { Title = "Select UoM" };
+            for (int i = 0; i < uomList.Count; i++)
+                uomPicker.Items.Add(uomList[i].Name ?? "");
+            var toSelect = initialUom ?? product.UnitOfMeasures?.FirstOrDefault();
+            if (toSelect != null)
+            {
+                var idx = uomList.IndexOf(toSelect);
+                if (idx >= 0) uomPicker.SelectedIndex = idx;
+            }
+        }
+
+        var saveBtn = new Button { Text = "Save", BackgroundColor = Color.FromArgb("#0379cb"), TextColor = Colors.White };
+        var cancelBtn = new Button { Text = "Cancel", BackgroundColor = Colors.White, TextColor = Colors.Black };
+
+        cancelBtn.Clicked += (s, e) =>
+        {
+            tcs.TrySetResult(null);
+            page.Navigation.PopModalAsync();
+        };
+
+        saveBtn.Clicked += async (s, e) =>
+        {
+            double weight = 0;
+            float qty;
+            if (isSoldByWeight)
+            {
+                if (!double.TryParse(qtyWeightEntry.Text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out weight) || weight <= 0)
+                {
+                    await page.DisplayAlert("Alert", "Please enter a valid weight.", "OK");
+                    return;
+                }
+                qty = 1f;
+            }
+            else
+            {
+                if (!float.TryParse(qtyWeightEntry.Text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out qty) || qty <= 0)
+                {
+                    await page.DisplayAlert("Alert", "Please enter a valid quantity.", "OK");
+                    return;
+                }
+            }
+            qty = (float)Math.Round(qty, Config.Round);
+            if (isSoldByWeight) weight = Math.Round(weight, Config.Round);
+
+            double price = initialPrice;
+            if (showPrice && priceEntry.IsVisible)
+            {
+                if (!double.TryParse(priceEntry.Text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out price))
+                {
+                    await page.DisplayAlert("Alert", "Not a valid price.", "OK");
+                    return;
+                }
+                price = Math.Round(price, Config.Round);
+            }
+            if (freeItemCheckbox.IsChecked) price = 0;
+
+            string lot = selectedLot;
+            if (lotEntry != null && lotEntry.IsVisible && string.IsNullOrEmpty(lot))
+                lot = lotEntry.Text?.Trim() ?? "";
+
+            if (uomPicker != null && uomPicker.SelectedIndex >= 0 && uomList != null && uomPicker.SelectedIndex < uomList.Count)
+                selectedUom = uomList[uomPicker.SelectedIndex];
+
+            tcs.TrySetResult(new LaceupMigration.ViewModels.TemplateEditLineResult
+            {
+                Qty = qty,
+                Weight = weight,
+                Price = price,
+                Comments = commentsEntry.Text?.Trim() ?? "",
+                FreeItem = freeItemCheckbox.IsChecked,
+                Lot = lot,
+                LotExpiration = selectedExp,
+                SelectedUoM = selectedUom
+            });
+            await page.Navigation.PopModalAsync();
+        };
+
+        var form = new VerticalStackLayout
+        {
+            Spacing = 10,
+            Padding = new Thickness(16, 12, 16, 16),
+            Children =
+            {
+                new Label { Text = productName, FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#0379cb") },
+                new Label { Text = isSoldByWeight ? "Weight:" : "Qty:", FontSize = 14 },
+                qtyWeightEntry,
+                new Label { Text = "Comments:", FontSize = 14 },
+                commentsEntry
+            }
+        };
+        if (showPrice)
+        {
+            form.Children.Insert(3, new Label { Text = "Price:", FontSize = 14 });
+            form.Children.Insert(4, priceEntry);
+        }
+        if (allowFreeItems)
+        {
+            var freeRow = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new ColumnDefinition { Width = GridLength.Auto }, new ColumnDefinition() }, ColumnSpacing = 8 };
+            freeRow.Children.Add(freeItemCheckbox);
+            freeRow.Children.Add(freeItemLabel);
+            Grid.SetColumn(freeItemLabel, 1);
+            form.Children.Add(freeRow);
+        }
+        if (lotPickerButton != null)
+        {
+            form.Children.Add(new Label { Text = "Lot:", FontSize = 14 });
+            form.Children.Add(lotPickerButton);
+        }
+        else if (lotEntry != null)
+        {
+            form.Children.Add(new Label { Text = "Lot:", FontSize = 14 });
+            form.Children.Add(lotEntry);
+        }
+        if (uomPicker != null)
+        {
+            form.Children.Add(new Label { Text = "UoM:", FontSize = 14 });
+            form.Children.Add(uomPicker);
+        }
+        var buttonRow = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new ColumnDefinition(), new ColumnDefinition() }, ColumnSpacing = 8, Margin = new Thickness(0, 16, 0, 0) };
+        buttonRow.Children.Add(cancelBtn);
+        buttonRow.Children.Add(saveBtn);
+        Grid.SetColumn(saveBtn, 1);
+        form.Children.Add(buttonRow);
+
+        var border = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 1,
+            Stroke = Color.FromArgb("#E0E0E0"),
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = new Thickness(0),
+            Content = new ScrollView { Content = form }
+        };
+        var overlay = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"),
+            RowDefinitions = { new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }, new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = new GridLength(1, GridUnitType.Star) } },
+            ColumnDefinitions = { new ColumnDefinition(), new ColumnDefinition { Width = new GridLength(320) }, new ColumnDefinition() },
+            Padding = new Thickness(24)
+        };
+        Grid.SetRow(border, 1);
+        Grid.SetColumn(border, 1);
+        overlay.Children.Add(border);
+
+        var popupPage = new ContentPage { BackgroundColor = Colors.Transparent, Content = overlay };
+        popupPage.Appearing += (_, __) => qtyWeightEntry.Focus();
+
+        await page.Navigation.PushModalAsync(popupPage);
+        return await tcs.Task;
+    }
     
 }

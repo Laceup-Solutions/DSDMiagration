@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using Microsoft.Maui.Graphics;
 using System;
@@ -682,7 +683,7 @@ namespace LaceupMigration.ViewModels
                 await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
             }
             else
-                await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=1");
+                await Shell.Current.GoToAsync(NavigationHelper.GetOrderTemplateRoute(order));
         }
 
         [RelayCommand]
