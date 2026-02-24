@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LaceupMigration.Controls;
+using LaceupMigration.Helpers;
 using LaceupMigration.Services;
 using System;
 using System.Collections.Generic;
@@ -228,7 +229,7 @@ namespace LaceupMigration.ViewModels
                 }
                 else if (Config.UseCatalog)
                 {
-                    await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
+                    await Shell.Current.GoToAsync(NavigationHelper.GetOrderTemplateRoute(_order));
                 }
                 else
                 {
@@ -260,11 +261,11 @@ namespace LaceupMigration.ViewModels
                 }
                 else if (Config.UseCatalog)
                 {
-                    Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
+                    await Shell.Current.GoToAsync(NavigationHelper.GetOrderTemplateRoute(_order));
                 }
                 else
                 {
-                    Shell.Current.GoToAsync($"orderdetails?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
+                    await Shell.Current.GoToAsync($"orderdetails?orderId={_order.OrderId}&asPresale={(_asPresale ? 1 : 0)}");
                 }
             }
         }

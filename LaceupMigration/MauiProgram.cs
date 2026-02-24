@@ -120,6 +120,12 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.SuperOrderTemplatePageViewModel>();
 		builder.Services.AddTransient<PreviouslyOrderedTemplatePage>();
 		builder.Services.AddTransient<ViewModels.PreviouslyOrderedTemplatePageViewModel>();
+		builder.Services.AddTransient<Views.ItemGroupedTemplate.NewOrderTemplatePage>();
+		builder.Services.AddTransient<ViewModels.NewOrderTemplatePageViewModel>();
+		builder.Services.AddTransient<Views.ItemGroupedTemplate.NewCreditTemplatePage>();
+		builder.Services.AddTransient<ViewModels.NewCreditTemplatePageViewModel>();
+		builder.Services.AddTransient<Views.ItemGroupedTemplate.NewOrderTemplateDetailsPage>();
+		builder.Services.AddTransient<ViewModels.NewOrderTemplateDetailsPageViewModel>();
 		builder.Services.AddTransient<BatchDepartmentPage>();
 		builder.Services.AddTransient<ViewModels.BatchDepartmentPageViewModel>();
 		builder.Services.AddTransient<WorkOrderPage>();
@@ -138,6 +144,8 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.ViewInvoiceImagesPageViewModel>();
 		builder.Services.AddTransient<FullCategoryPage>();
 		builder.Services.AddTransient<ViewModels.FullCategoryPageViewModel>();
+		builder.Services.AddTransient<FullProductListPage>();
+		builder.Services.AddTransient<ViewModels.FullProductListPageViewModel>();
 		builder.Services.AddTransient<AddItemPage>();
 		builder.Services.AddTransient<ViewModels.AddItemPageViewModel>();
 		builder.Services.AddTransient<AdvancedCatalogPage>();

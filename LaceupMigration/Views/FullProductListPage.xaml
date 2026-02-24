@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.FullProductListPage"
+             x:DataType="vm:FullProductListPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="{Binding Title}">
+    <ContentPage.Content>
+        <Grid RowDefinitions="Auto,*" Padding="8">
+            <SearchBar Grid.Row="0" Placeholder="Search products..."
+                       Text="{Binding SearchQuery, Mode=TwoWay}"
+                       Margin="0,0,0,8" />
+            <CollectionView Grid.Row="1" x:Name="ProductsList"
+                            ItemsSource="{Binding Products}"
+                            SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:FullProductListRowViewModel">
+                        <Frame Padding="12,10" Margin="0,2" HasShadow="False" BorderColor="{StaticResource Gray200}">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectProductCommand}"
+                                                     CommandParameter="{Binding .}" />
+                            </Frame.GestureRecognizers>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Grid.Column="0" Text="{Binding Name}" FontSize="16" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="{Binding OnHandText}" FontSize="14" VerticalOptions="Center"
+                                       TextColor="{StaticResource Gray600}" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </ContentPage.Content>
+</local:LaceupContentPage>

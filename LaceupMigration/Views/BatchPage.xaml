@@ -12,7 +12,7 @@
         <ToolbarItem Text="MENU" Command="{Binding ShowMenuCommand}" Order="Primary" Priority="0" />
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
-        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+        <Grid RowDefinitions="Auto,Auto,*">
             <!-- Action Buttons -->
             <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*" ColumnSpacing="4" Padding="8,8,8,4">
                 <Button Text="Print"

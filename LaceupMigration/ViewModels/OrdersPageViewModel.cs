@@ -960,7 +960,7 @@ namespace LaceupMigration.ViewModels
 				}
 				else if (Config.UseCatalog)
 				{
-					await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=1");
+					await Shell.Current.GoToAsync(NavigationHelper.GetOrderTemplateRoute(order.OrderId, true, order.OrderType));
 				}
 				else
 				{
@@ -1053,7 +1053,7 @@ namespace LaceupMigration.ViewModels
 			// If UseCatalog is TRUE (and UseLaceupAdvancedCatalog is FALSE)
 			if (Config.UseCatalog)
 			{
-				await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=1");
+				await Shell.Current.GoToAsync(NavigationHelper.GetOrderTemplateRoute(order.OrderId, true, order.OrderType));
 				return;
 			}
 			

@@ -596,14 +596,13 @@
         <Setter Property="TextColor" Value="White"/>
         <Setter Property="Background" Value="{StaticResource NicerButtonDeleteGradient}"/>
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="FontAttributes" Value="Bold"/>
+        <Setter Property="FontSize" Value="14"/>
         <Setter Property="BorderWidth" Value="0"/>
-        <Setter Property="CornerRadius" Value="6"/>
-        <Setter Property="Padding" Value="14,8"/>
-        <Setter Property="Margin" Value="4,0"/>
-        <Setter Property="MinimumHeightRequest" Value="36"/>
-        <Setter Property="MinimumWidthRequest" Value="36"/>
+        <Setter Property="CornerRadius" Value="5"/>
+        <Setter Property="FontAttributes" Value="Bold"></Setter>
+        <Setter Property="Padding" Value="10,7"/>
+        <Setter Property="MinimumHeightRequest" Value="44"/>
+        <Setter Property="MinimumWidthRequest" Value="44"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">

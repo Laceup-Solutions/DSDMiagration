@@ -1325,6 +1325,10 @@ namespace LaceupMigration.ViewModels
                 {
                     await Shell.Current.GoToAsync($"advancedcatalog?orderId={order.OrderId}");
                 }
+                else if (Config.ItemGroupedTemplate)
+                {
+                    await Shell.Current.GoToAsync(NavigationHelper.GetOrderTemplateRoute(order));
+                }
                 else
                     await Shell.Current.GoToAsync($"ordercredit?orderId={order.OrderId}&asPresale=1&fromOneDoc=0");
                 
@@ -1413,7 +1417,7 @@ namespace LaceupMigration.ViewModels
                 return;
             }
             
-            await Shell.Current.GoToAsync($"previouslyorderedtemplate?orderId={order.OrderId}&asPresale=1");
+            await Shell.Current.GoToAsync(NavigationHelper.GetOrderTemplateRoute(order));
         }
         
         private bool HasClientOrderHistory(Client client)

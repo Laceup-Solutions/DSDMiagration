@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.ItemGroupedTemplate.NewOrderTemplateDetailsPage"
+             x:DataType="vm:NewOrderTemplateDetailsPageViewModel"
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False"
+             Title="Add Items">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="12" Spacing="8">
+                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="5" Margin="0,0,0,0">
+                    <Button Grid.Column="0" Text="Product Details"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding OpenProductDetailsCommand}" />
+                    <Button Grid.Column="1" Text="Save"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding SaveCommand}" />
+                </Grid>
+                <!-- Product header -->
+                <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="{Binding ProductName}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" />
+                        <Label Text="{Binding OnHandText}" FontSize="14" TextColor="{Binding OnHandColor}" />
+                        <Label Text="{Binding TypeText}" FontSize="14" FontAttributes="Bold" TextColor="{Binding TypeColor}" IsVisible="{Binding TypeText, Converter={StaticResource IsStringNotEmptyConverter}}" />
+                        <Label Text="{Binding PriceText}" FontSize="14" TextColor="{Binding PriceColor}" IsVisible="{Binding ShowPrice}" />
+                        <Label Text="{Binding UomText}" FontSize="13" TextColor="{StaticResource Gray600}" IsVisible="{Binding UomText, Converter={StaticResource IsStringNotEmptyConverter}}" />
+                       
+                        <Grid ColumnDefinitions="auto, *">
+                            <Label Grid.Column="0" HorizontalOptions="End"  Text="{Binding AvgWeightText}" FontSize="15" TextColor="{StaticResource Gray600}" IsVisible="{Binding ShowAvgWeight}" />
+                            <Label Grid.Column="1" Text="Sold By Weight" FontAttributes="Bold" HorizontalOptions="End" HorizontalTextAlignment="End" FontSize="15" TextColor="{StaticResource colorLaceupGreen}" IsVisible="{Binding ShowSoldByWeight}" />
+
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,4,0,0">
+                            <Label Text="{Binding AmountText}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" />
+                            <Label Grid.Column="1" Text="{Binding TotalQtyText}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="5">
+                    
+                    <!-- Delete all (when there are lines) -->
+                    <Button Grid.Column="0" Text="Delete all lines"
+                            Style="{StaticResource DeleteButton}"
+                            Command="{Binding DeleteAllCommand}"
+                            IsEnabled="{Binding CanEdit}"
+                            IsVisible="{Binding HasDetailLines}" />
+                    <!-- Add Qty -->
+                    <Button Text="Add Qty"
+                            Grid.Column="1"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding AddQtyCommand}"
+                            IsEnabled="{Binding CanEdit}"
+                            HorizontalOptions="Fill" />
+
+                </Grid>
+               
+                <!-- Details list -->
+                <Label Text="Lines" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray900}" Margin="0,8,0,0" />
+                <CollectionView ItemsSource="{Binding DetailRows}" SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:OrderTemplateDetailRowViewModel">
+                            <Frame Padding="10" Margin="0,4" HasShadow="False" CornerRadius="6" BackgroundColor="{StaticResource colorLaceupLight}">
+                                <Grid RowDefinitions="auto,*">
+                                    <Label Grid.Row="0" Text="{Binding StatusText}" FontSize="13" FontAttributes="Bold" TextColor="{Binding StatusColor}" VerticalOptions="Center" />
+                                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" RowSpacing="0">
+                                        <Label Grid.Column="0" Text="{Binding PriceText}" FontSize="14" VerticalOptions="Center" />
+                                        <Button Grid.Column="1" Text="{Binding QtyButtonText}"
+                                                Style="{StaticResource PrimaryButton}"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditDetailCommand}"
+                                                CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.CanEdit}"
+                                                WidthRequest="56" FontSize="14" VerticalOptions="Center" />
+                                        <Button Grid.Column="2" Text="Del"
+                                                Style="{StaticResource DeleteButton}"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteDetailCommand}"
+                                                CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.CanEdit}"
+                                                WidthRequest="56" VerticalOptions="Center" />
+                                    </Grid>
+                                </Grid>
+                               
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    <CollectionView.EmptyView>
+                        <Label Text="No lines yet. Tap Add Qty to add."
+                               FontSize="14" TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center" Margin="0,16,0,0" />
+                    </CollectionView.EmptyView>
+                </CollectionView>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</local:LaceupContentPage>
