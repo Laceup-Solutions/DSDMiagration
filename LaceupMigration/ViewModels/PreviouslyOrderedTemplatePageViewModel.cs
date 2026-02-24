@@ -1332,7 +1332,11 @@ namespace LaceupMigration.ViewModels
                     options.Add(new MenuOption("Send by Email", async () => { await SendByEmailAsync(); }));
                 }
 
-                options.Add(new MenuOption("Select Driver", async () => { await SelectSalesmanAsync(); }));
+                // Select Driver - visible only when presale and no work order asset (matches TemplateActivity OnPrepareOptionsMenu)
+                if (string.IsNullOrEmpty(asset))
+                {
+                    options.Add(new MenuOption("Select Driver", async () => { await SelectSalesmanAsync(); }));
+                }
 
                 // Other Charges - Xamarin order: after Select Driver (presaleMenu.xml)
                 if (!string.IsNullOrEmpty(asset) || Config.AllowOtherCharges)
@@ -1374,12 +1378,6 @@ namespace LaceupMigration.ViewModels
 
                 // Delete (presale) - Xamarin shows "Delete" (deleteLabel)
                 options.Add(new MenuOption("Delete", async () => { await DeleteOrderAsync(); }));
-
-                // Share (presale) - Xamarin: visible when !isSplitClient (presaleMenu.xml order after Delete)
-                if (!isSplitClient)
-                {
-                    options.Add(new MenuOption("Share", async () => { await SharePdfAsync(); }));
-                }
 
                 // Ship Via (presale) - Config.ShowShipVia
                 if (Config.ShowShipVia)
@@ -1472,7 +1470,6 @@ namespace LaceupMigration.ViewModels
                 if (!isSplitClient)
                 {
                     options.Add(new MenuOption("Send by Email", async () => { await SendByEmailAsync(); }));
-                    options.Add(new MenuOption("Share", async () => { await SharePdfAsync(); }));
                 }
 
                 // Service Report (non-presale)
@@ -1913,8 +1910,29 @@ namespace LaceupMigration.ViewModels
         private async Task SelectSalesmanAsync()
         {
             if (_order == null) return;
-            // TODO: Implement salesman selection dialog
-            await _dialogService.ShowAlertAsync("Select Driver functionality is not yet fully implemented.", "Info");
+
+            // Match TemplateActivity.SelectSalesman(): Driver | DSD, InventorySiteId > 0 and != BranchSiteId
+            var selectedRole = SalesmanRole.Driver | SalesmanRole.DSD;
+            var salesmen = Salesman.List
+                .Where(x => ((int)x.Roles & (int)selectedRole) > 0)
+                .Where(x => x.InventorySiteId > 0 && x.InventorySiteId != Config.BranchSiteId)
+                .OrderBy(x => x.Name)
+                .ToList();
+
+            if (salesmen.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("No drivers available to select.", "Select Driver");
+                return;
+            }
+
+            var driverNames = salesmen.Select(x => x.Name).ToArray();
+            var selectedIndex = await _dialogService.ShowSelectionAsync("Select Driver", driverNames);
+            if (selectedIndex < 0 || selectedIndex >= salesmen.Count)
+                return;
+
+            _order.ExtraFields = UDFHelper.SyncSingleUDF("Salesman", salesmen[selectedIndex].Id.ToString(), _order.ExtraFields);
+            _order.Save();
+            LoadOrderData();
         }
 
         private async Task SelectPriceLevelAsync()

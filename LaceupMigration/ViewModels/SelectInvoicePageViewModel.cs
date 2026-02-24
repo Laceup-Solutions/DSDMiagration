@@ -591,7 +591,11 @@ namespace LaceupMigration.ViewModels
             _masterList = sortedList;
             FilterInvoices();
 
-            CanAddPayment = InvoiceItems.Count > 0;
+            // Add Payment (and related actions) disabled until at least one invoice is selected (UpdateTotals sets them when selection changes)
+            var hasSelection = InvoiceItems.Any(x => x.IsSelected);
+            CanAddPayment = hasSelection;
+            CanCreditAccount = hasSelection;
+            CanPaymentCard = hasSelection;
             ShowCreditAccount = Config.UseCreditAccount && !Config.HidePriceInTransaction;
             ShowPaymentCard = false;
             

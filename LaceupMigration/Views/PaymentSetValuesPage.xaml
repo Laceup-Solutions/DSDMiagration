@@ -182,8 +182,44 @@
                                                 </Border>
                                             </VerticalStackLayout>
                                         </Grid>
+                                        
+                                        <Grid ColumnDefinitions="0.6*,0.4*" ColumnSpacing="5" IsVisible="{Binding ShowRef}">
+                                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                                <Label Text="{Binding RefLabelText}" FontSize="14" />
+                                                <Border Stroke="#B0BEC5" StrokeThickness="1" BackgroundColor="#ECEFF1"
+                                                        Padding="12,10" HeightRequest="44" StrokeShape="RoundRectangle 6">
+                                                    <Button Text="{Binding RefDisplayText}"
+                                                            Clicked="Ref_Clicked"
+                                                            IsEnabled="{Binding IsEditable}"
+                                                            BackgroundColor="Transparent"
+                                                            TextColor="#263238"
+                                                            FontSize="14"
+                                                            HorizontalOptions="Fill"
+                                                            VerticalOptions="Fill"
+                                                            Padding="0"
+                                                            Margin="-12,-10" />
+                                                </Border>
+                                            </VerticalStackLayout>
 
-                                        <!-- Image row: full width, Add / View / Change / Remove -->
+                                            <VerticalStackLayout Grid.Column="1" Spacing="2" IsVisible="{Binding ShowPostedDate}">
+                                                <Label Text="Posted Date:" FontSize="14" />
+                                                <Border Stroke="#B0BEC5" StrokeThickness="1" BackgroundColor="#ECEFF1"
+                                                        Padding="12,10" HeightRequest="44" StrokeShape="RoundRectangle 6">
+                                                    <Button Text="{Binding PostedDate, StringFormat='{0:d}'}"
+                                                            Clicked="PostedDate_Clicked"
+                                                            IsEnabled="{Binding IsEditable}"
+                                                            BackgroundColor="Transparent"
+                                                            TextColor="#263238"
+                                                            FontSize="14"
+                                                            HorizontalOptions="Fill"
+                                                            VerticalOptions="Fill"
+                                                            Padding="0"
+                                                            Margin="-12,-10" />
+                                                </Border>
+                                            </VerticalStackLayout>
+                                        </Grid>
+
+                                         <!-- Image row: full width, Add / View / Change / Remove -->
                                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                                             <Label Grid.Column="0" Text="Image:" FontSize="14" VerticalOptions="Center" />
                                             <HorizontalStackLayout Grid.Column="1" Spacing="10" VerticalOptions="Center">
@@ -229,42 +265,6 @@
                                                     </Grid>
                                                 </HorizontalStackLayout>
                                             </HorizontalStackLayout>
-                                        </Grid>
-
-                                        <Grid ColumnDefinitions="0.6*,0.4*" ColumnSpacing="5" IsVisible="{Binding ShowRef}">
-                                            <VerticalStackLayout Grid.Column="0" Spacing="2">
-                                                <Label Text="{Binding RefLabelText}" FontSize="14" />
-                                                <Border Stroke="#B0BEC5" StrokeThickness="1" BackgroundColor="#ECEFF1"
-                                                        Padding="12,10" HeightRequest="44" StrokeShape="RoundRectangle 6">
-                                                    <Button Text="{Binding RefDisplayText}"
-                                                            Clicked="Ref_Clicked"
-                                                            IsEnabled="{Binding IsEditable}"
-                                                            BackgroundColor="Transparent"
-                                                            TextColor="#263238"
-                                                            FontSize="14"
-                                                            HorizontalOptions="Fill"
-                                                            VerticalOptions="Fill"
-                                                            Padding="0"
-                                                            Margin="-12,-10" />
-                                                </Border>
-                                            </VerticalStackLayout>
-
-                                            <VerticalStackLayout Grid.Column="1" Spacing="2" IsVisible="{Binding ShowPostedDate}">
-                                                <Label Text="Posted Date:" FontSize="14" />
-                                                <Border Stroke="#B0BEC5" StrokeThickness="1" BackgroundColor="#ECEFF1"
-                                                        Padding="12,10" HeightRequest="44" StrokeShape="RoundRectangle 6">
-                                                    <Button Text="{Binding PostedDate, StringFormat='{0:d}'}"
-                                                            Clicked="PostedDate_Clicked"
-                                                            IsEnabled="{Binding IsEditable}"
-                                                            BackgroundColor="Transparent"
-                                                            TextColor="#263238"
-                                                            FontSize="14"
-                                                            HorizontalOptions="Fill"
-                                                            VerticalOptions="Fill"
-                                                            Padding="0"
-                                                            Margin="-12,-10" />
-                                                </Border>
-                                            </VerticalStackLayout>
                                         </Grid>
 
                                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" IsVisible="{Binding ShowBank}">

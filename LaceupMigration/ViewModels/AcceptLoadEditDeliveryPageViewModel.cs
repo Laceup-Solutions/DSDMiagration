@@ -42,19 +42,21 @@ namespace LaceupMigration.ViewModels
             _dialogService = dialogService;
             _appService = appService;
             _file = Path.Combine(Config.DataPath, "accpetInventoryResume.xml");
-            
+
             // Match Xamarin ReadOnly property logic
-            ReadOnly = Config.AcceptInventoryReadOnly || !Config.AcceptLoadEditable || !Config.NewSyncLoadOnDemand || !_canLeave;
+            ReadOnly = Config.AcceptInventoryReadOnly || !Config.AcceptLoadEditable || !Config.NewSyncLoadOnDemand ||
+                       !_canLeave;
         }
 
-        public async Task InitializeAsync(string ordersIds, bool changed = false, bool inventoryAccepted = false, bool canLeave = true, string uniqueId = null)
+        public async Task InitializeAsync(string ordersIds, bool changed = false, bool inventoryAccepted = false,
+            bool canLeave = true, string uniqueId = null)
         {
             _ordersIds = ordersIds ?? string.Empty;
             _changed = changed;
-            _inventoryAccepted = inventoryAccepted;
+            // Preserve true once we've accepted (ApplyQueryAttributes can be called again with original query and would pass false)
+            _inventoryAccepted = _inventoryAccepted || inventoryAccepted;
             _canLeave = canLeave;
-            if (!string.IsNullOrEmpty(uniqueId))
-                _uniqueId = uniqueId;
+            if (!string.IsNullOrEmpty(uniqueId)) _uniqueId = uniqueId;
 
             if (string.IsNullOrEmpty(_ordersIds))
             {
@@ -75,7 +77,26 @@ namespace LaceupMigration.ViewModels
 
         private void RefreshReadOnly()
         {
-            ReadOnly = Config.AcceptInventoryReadOnly || !Config.AcceptLoadEditable || !Config.NewSyncLoadOnDemand || !_canLeave;
+            ReadOnly = Config.AcceptInventoryReadOnly || !Config.AcceptLoadEditable || !Config.NewSyncLoadOnDemand ||
+                       !_canLeave;
+        }
+
+        /// <summary>
+        /// Persist current page state (including _inventoryAccepted) so app restore loads with the same state and does not accept the load twice.
+        /// </summary>
+        private void SaveNavigationStateWithCurrentState()
+        {
+            var parts = new List<string>
+            {
+                "orderIds=" + Uri.EscapeDataString(_ordersIds ?? string.Empty),
+                "changed=" + (_changed ? "true" : "false"),
+                "inventoryAccepted=" + (_inventoryAccepted ? "true" : "false"),
+                "canLeave=" + (_canLeave ? "true" : "false")
+            };
+            if (!string.IsNullOrEmpty(_uniqueId))
+                parts.Add("uniqueId=" + Uri.EscapeDataString(_uniqueId));
+            var route = "acceptloadeditdelivery?" + string.Join("&", parts);
+            NavigationHelper.SaveNavigationState(route);
         }
 
         private async Task LoadProductListAsync()
@@ -97,8 +118,7 @@ namespace LaceupMigration.ViewModels
                         if (int.TryParse(item, out int id))
                         {
                             var order = Order.Orders.FirstOrDefault(x => x.OrderId == id);
-                            if (order == null)
-                                continue;
+                            if (order == null) continue;
 
                             foreach (var det in order.Details.Where(x => !x.IsCredit))
                             {
@@ -144,9 +164,9 @@ namespace LaceupMigration.ViewModels
         private InventoryLine GetSimilar(List<InventoryLine> productList, OrderDetail det)
         {
             return productList.FirstOrDefault(x => x.Product.ProductId == det.Product.ProductId &&
-                x.Lot == det.Lot && x.Weight == det.Weight &&
-                ((x.UoM == null && det.UnitOfMeasure == null) || (x.UoM != null && det.UnitOfMeasure != null
-                && x.UoM.Id == det.UnitOfMeasure.Id)));
+                                                   x.Lot == det.Lot && x.Weight == det.Weight &&
+                                                   ((x.UoM == null && det.UnitOfMeasure == null) || (x.UoM != null &&
+                                                       det.UnitOfMeasure != null && x.UoM.Id == det.UnitOfMeasure.Id)));
         }
 
         private void LoadListFromFile(List<InventoryLine> productList)
@@ -169,10 +189,8 @@ namespace LaceupMigration.ViewModels
                                     var item = new InventoryLine() { Product = prod };
                                     productList.Add(item);
 
-                                    if (float.TryParse(parts[1], out float starting))
-                                        item.Starting = starting;
-                                    if (float.TryParse(parts[2], out float real))
-                                        item.Real = real;
+                                    if (float.TryParse(parts[1], out float starting)) item.Starting = starting;
+                                    if (float.TryParse(parts[2], out float real)) item.Real = real;
 
                                     if (int.TryParse(parts[3], out int uomId))
                                     {
@@ -180,8 +198,7 @@ namespace LaceupMigration.ViewModels
                                         item.UoM = uom;
                                     }
 
-                                    if (float.TryParse(parts[4], out float weight))
-                                        item.Weight = weight;
+                                    if (float.TryParse(parts[4], out float weight)) item.Weight = weight;
                                 }
                             }
                         }
@@ -219,8 +236,7 @@ namespace LaceupMigration.ViewModels
                 else
                 {
                     var _qty = item.Real;
-                    if (item.UoM != null)
-                        _qty *= item.UoM.Conversion;
+                    if (item.UoM != null) _qty *= item.UoM.Conversion;
 
                     qty += _qty;
                     items += item.Real;
@@ -246,8 +262,7 @@ namespace LaceupMigration.ViewModels
             {
                 PrinterProvider.PrintDocument((int copies) =>
                 {
-                    if (copies < 1)
-                        return "Please enter a valid number of copies.";
+                    if (copies < 1) return "Please enter a valid number of copies.";
 
                     CompanyInfo.SelectedCompany = CompanyInfo.Companies[0];
                     IPrinter printer = PrinterProvider.CurrentPrinter();
@@ -258,24 +273,18 @@ namespace LaceupMigration.ViewModels
                     {
                         result = printer.PrintAcceptLoad(source, "", false);
 
-                        if (Config.OldPrinter > 0)
-                            System.Threading.Thread.Sleep(2000);
+                        if (Config.OldPrinter > 0) System.Threading.Thread.Sleep(2000);
 
-                        if (!result)
-                            return "Error printing";
+                        if (!result) return "Error printing";
 
-                        if (printer is ZebraGenericPrinter)
-                        {
-                            IPrinter zebraPrinter;
-                            if (printer is ZebraFourInchesPrinter)
-                                zebraPrinter = new ZebraFourInchesPrinter1();
-                            else
-                                zebraPrinter = new ZebraThreeInchesPrinter1();
-                            
-                            result = zebraPrinter.PrintAcceptedOrders(GetOrdersList(), _inventoryAccepted);
-                            if (!result)
-                                return "Error printing";
-                        }
+                        IPrinter zebraPrinter;
+                        if (printer is ZebraFourInchesPrinter)
+                            zebraPrinter = new ZebraFourInchesPrinter1();
+                        else
+                            zebraPrinter = new ZebraThreeInchesPrinter1();
+
+                        result = zebraPrinter.PrintAcceptedOrders(GetOrdersList(), _inventoryAccepted);
+                        if (!result) return "Error printing";
                     }
 
                     return string.Empty;
@@ -294,17 +303,17 @@ namespace LaceupMigration.ViewModels
             _appService.RecordEvent("SearchClicked button");
 
             // Match Xamarin: show dialog with empty text initially
-            var searchText = await _dialogService.ShowPromptAsync("Enter Product Name", "Search", "OK", "Cancel", "Product Name", initialValue: "");
-            
+            var searchText = await _dialogService.ShowPromptAsync("Enter Product Name", "Search", "OK", "Cancel",
+                "Product Name", initialValue: "");
+
             // If user cancelled, don't change the list
-            if (searchText == null)
-                return;
+            if (searchText == null) return;
 
             // Match Xamarin: if searchText is empty, show all products (Contains("") matches everything)
             // If searchText has value, filter the list
             string upper = (searchText ?? "").ToUpper();
             List<InventoryLine> filteredList;
-            
+
             if (string.IsNullOrEmpty(upper))
             {
                 // Empty search = show all products
@@ -354,8 +363,7 @@ namespace LaceupMigration.ViewModels
                 if (int.TryParse(item, out int id))
                 {
                     var order = Order.Orders.FirstOrDefault(x => x.OrderId == id);
-                    if (order != null)
-                        orders.Add(order);
+                    if (order != null) orders.Add(order);
                 }
             }
 
@@ -399,10 +407,13 @@ namespace LaceupMigration.ViewModels
             }
             else
             {
+                _inventoryAccepted = true;
+                SaveNavigationStateWithCurrentState();
                 FinishButtonText = "Done";
                 RefreshProductLines();
 
-                var print = await _dialogService.ShowConfirmationAsync("Do you want to print the accepted load?", "Alert", "Yes", "No");
+                var print = await _dialogService.ShowConfirmationAsync("Do you want to print the accepted load?",
+                    "Alert", "Yes", "No");
                 if (print)
                 {
                     await PrintAcceptedAsync();
@@ -428,7 +439,7 @@ namespace LaceupMigration.ViewModels
                     result += string.Format("NewOrder{0}{1}{0}{2}\n", (char)20, item.OriginalOrderId, Config.SessionId);
                 else
                     result += string.Format("NewOrder{0}{1}\n", (char)20, item.OriginalOrderId);
-                
+
                 foreach (var det in item.Details)
                 {
                     var qty = det.Qty;
@@ -436,25 +447,16 @@ namespace LaceupMigration.ViewModels
                     if (det.Product.SoldByWeight && !Config.UsePallets && det.Product.InventoryByWeight)
                         qty = det.Weight;
 
-                    result += string.Format("{1}{0}{2}{0}{3}{0}{4}{0}{5}|\n",
-                        (char)20,
-                        det.OriginalId,
-                        qty,
-                        det.UnitOfMeasure != null ? det.UnitOfMeasure.Id : 0,
-                        det.Lot,
-                        det.Weight);
+                    result += string.Format("{1}{0}{2}{0}{3}{0}{4}{0}{5}|\n", (char)20, det.OriginalId, qty,
+                        det.UnitOfMeasure != null ? det.UnitOfMeasure.Id : 0, det.Lot, det.Weight);
                 }
             }
+
             result += string.Format("{1}{0}{2}\n", (char)20, "UpdatedInventory", _uniqueId);
 
             foreach (var item in _allProductList)
-                result += string.Format("{1}{0}{2}{0}{3}{0}{4}{0}{5}|\n",
-                    (char)20,
-                    item.Product.ProductId,
-                    item.Real,
-                    item.UoM != null ? item.UoM.Id : 0,
-                    item.Lot,
-                    item.Weight);
+                result += string.Format("{1}{0}{2}{0}{3}{0}{4}{0}{5}|\n", (char)20, item.Product.ProductId, item.Real,
+                    item.UoM != null ? item.UoM.Id : 0, item.Lot, item.Weight);
 
             await _dialogService.ShowLoadingAsync("Accepting Inventory");
 
@@ -474,8 +476,7 @@ namespace LaceupMigration.ViewModels
 
                             using (NetAccess netaccess = new NetAccess())
                             {
-                                using (StreamWriter writer = new StreamWriter(tempFile))
-                                    writer.WriteLine(result);
+                                using (StreamWriter writer = new StreamWriter(tempFile)) writer.WriteLine(result);
 
                                 netaccess.OpenConnection();
                                 netaccess.WriteStringToNetwork("HELO");
@@ -499,15 +500,13 @@ namespace LaceupMigration.ViewModels
                                 _canLeave = true;
                             }
 
-                            if (File.Exists(tempFile))
-                                File.Delete(tempFile);
+                            if (File.Exists(tempFile)) File.Delete(tempFile);
                         }
                         catch (Exception ex)
                         {
                             Logger.CreateLog(ex);
 
-                            if (File.Exists(tempFile))
-                                File.Delete(tempFile);
+                            if (File.Exists(tempFile)) File.Delete(tempFile);
 
                             _canLeave = false;
                             throw;
@@ -537,27 +536,21 @@ namespace LaceupMigration.ViewModels
             }
             else
             {
+                // Set on UI thread so it's not lost if ApplyQueryAttributes/InitializeAsync runs again before PrintAcceptedAsync
+                _inventoryAccepted = true;
+                SaveNavigationStateWithCurrentState();
                 FinishButtonText = "Done";
                 RefreshProductLines();
 
-                var print = await _dialogService.ShowConfirmationAsync("Do you want to print the accepted load?", "Alert", "Yes", "No");
+                var print = await _dialogService.ShowConfirmationAsync("Do you want to print the accepted load?",
+                    "Alert", "Yes", "No");
                 if (print)
                 {
                     await PrintAcceptedAsync();
                 }
                 else
                 {
-                    // Check RouteOrdersCount after RecalculateRoutes() was called
-                    // If no more loads to accept, go to main (clients tab)
-                    // Otherwise, go back to Accept Load page
-                    if (Config.RouteOrdersCount == 0)
-                    {
-                        await GoBackToMainAfterAcceptAsync();
-                    }
-                    else
-                    {
-                        await GoBackToLoadListAsync(true);
-                    }
+                    await GoBackToLoadListAsync(true);
                 }
             }
         }
@@ -576,25 +569,20 @@ namespace LaceupMigration.ViewModels
         {
             string result = "";
 
-            Dictionary<int, List<OrderDetail>> values = orders.ToDictionary(x => x.OriginalOrderId, y => y.Details.Where(z => z.Ordered != z.Qty || z.OriginalUoM != z.UnitOfMeasure).ToList());
+            Dictionary<int, List<OrderDetail>> values = orders.ToDictionary(x => x.OriginalOrderId,
+                y => y.Details.Where(z => z.Ordered != z.Qty || z.OriginalUoM != z.UnitOfMeasure).ToList());
 
             foreach (var item in values)
             {
-                if (item.Value.Count == 0)
-                    continue;
+                if (item.Value.Count == 0) continue;
 
                 result += string.Format("NewOrder{0}{1}\n", (char)20, item.Key);
                 foreach (var det in item.Value)
                 {
                     var qty = det.Qty;
-                    if (det.Product.SoldByWeight && det.Product.InventoryByWeight)
-                        qty = det.Weight;
-                    result += string.Format("{1}{0}{2}{0}{3}{0}{4}|\n",
-                        (char)20,
-                        det.OriginalId,
-                        qty,
-                        det.UnitOfMeasure != null ? det.UnitOfMeasure.Id : 0,
-                        det.Lot);
+                    if (det.Product.SoldByWeight && det.Product.InventoryByWeight) qty = det.Weight;
+                    result += string.Format("{1}{0}{2}{0}{3}{0}{4}|\n", (char)20, det.OriginalId, qty,
+                        det.UnitOfMeasure != null ? det.UnitOfMeasure.Id : 0, det.Lot);
                 }
             }
 
@@ -603,8 +591,7 @@ namespace LaceupMigration.ViewModels
 
         private void UpdateOrdersExtraFields(List<Order> orders)
         {
-            if (!Config.RequireCodeForVoidInvoices)
-                return;
+            if (!Config.RequireCodeForVoidInvoices) return;
 
             using (var netaccess = new NetAccess())
             {
@@ -632,8 +619,7 @@ namespace LaceupMigration.ViewModels
                 {
                     var parts = result.Split((char)20);
 
-                    for (int x = 0; x < orders.Count && x < parts.Length; x++)
-                        orders[x].ExtraFields = parts[x];
+                    for (int x = 0; x < orders.Count && x < parts.Length; x++) orders[x].ExtraFields = parts[x];
                 }
                 catch (Exception ex)
                 {
@@ -648,23 +634,25 @@ namespace LaceupMigration.ViewModels
 
         void UpdateInventoryAndOrderStatus(List<Order> orders)
         {
-            if (_inventoryAccepted)
-                return;
+            if (_inventoryAccepted) return;
 
             // Match Xamarin: UpdateInventoryAndOrderStatus - only updates product inventory, not order details
             // Order details are sent to server via AcceptInventoryCommand, server handles the updates
             foreach (var item in _allProductList)
             {
-                if (item.Real == 0)
-                    continue;
+                if (item.Real == 0) continue;
 
-                item.Product.UpdateInventory(item.Real, item.UoM, item.Product.UseLot ? item.Lot : "", item.Expiration, 1, item.Weight);
-                
+                item.Product.UpdateInventory(item.Real, item.UoM, item.Product.UseLot ? item.Lot : "", item.Expiration,
+                    1, item.Weight);
+
                 //sub the inventory in wh (not working before)
-                item.Product.UpdateWarehouseInventory(item.Real, item.UoM, item.Product.UseLot ? item.Lot : "", item.Expiration, -1, item.Weight);
-                
-                item.Product.AddRequestedInventory(item.Starting, item.UoM, item.Product.UseLot ? item.Lot : "", item.Expiration, item.Weight);
-                item.Product.AddLoadedInventory(item.Real, item.UoM, item.Product.UseLot ? item.Lot : "", item.Expiration, item.Weight);
+                item.Product.UpdateWarehouseInventory(item.Real, item.UoM, item.Product.UseLot ? item.Lot : "",
+                    item.Expiration, -1, item.Weight);
+
+                item.Product.AddRequestedInventory(item.Starting, item.UoM, item.Product.UseLot ? item.Lot : "",
+                    item.Expiration, item.Weight);
+                item.Product.AddLoadedInventory(item.Real, item.UoM, item.Product.UseLot ? item.Lot : "",
+                    item.Expiration, item.Weight);
             }
 
             foreach (var order in orders)
@@ -676,9 +664,9 @@ namespace LaceupMigration.ViewModels
 
                     if (Config.DeleteZeroItemsOnDelivery)
                     {
-                        List<OrderDetail> detailsToRemove = new List<OrderDetail>(order.Details.Where(x => !x.Product.SoldByWeight && x.Qty == 0));
-                        foreach (var item in detailsToRemove)
-                            order.Details.Remove(item);
+                        List<OrderDetail> detailsToRemove =
+                            new List<OrderDetail>(order.Details.Where(x => !x.Product.SoldByWeight && x.Qty == 0));
+                        foreach (var item in detailsToRemove) order.Details.Remove(item);
                     }
                 }
                 else
@@ -689,15 +677,15 @@ namespace LaceupMigration.ViewModels
 
             // Set client Editable to false when finalizing orders (matches Xamarin BatchActivity.cs line 1828)
             // Only set once per client (use first order's client)
-            var firstFinishedOrder = orders.FirstOrDefault(o => !o.IsDelivery && o.Client != null && o.Client.ClientId <= 0);
+            var firstFinishedOrder =
+                orders.FirstOrDefault(o => !o.IsDelivery && o.Client != null && o.Client.ClientId <= 0);
             if (firstFinishedOrder?.Client != null)
             {
                 firstFinishedOrder.Client.Editable = false;
                 Client.Save();
             }
 
-            if (Config.RecalculateStops)
-                RecalculateStops();
+            if (Config.RecalculateStops) RecalculateStops();
 
             _inventoryAccepted = true;
             ProductInventory.Save();
@@ -705,7 +693,10 @@ namespace LaceupMigration.ViewModels
 
         void RecalculateStops()
         {
-            var l = RouteEx.Routes.Where(x => x.Date.Date.Subtract(DateTime.Now).Days <= 0 && x.Order != null && !x.Order.PendingLoad).OrderBy(x => x.Stop).ToList();
+            var l = RouteEx.Routes
+                .Where(x => x.Date.Date.Subtract(DateTime.Now).Days <= 0 && x.Order != null && !x.Order.PendingLoad)
+                .OrderBy(x => x.Stop)
+                .ToList();
 
             int stop = 1;
 
@@ -742,7 +733,9 @@ namespace LaceupMigration.ViewModels
 
                         netaccess.WriteStringToNetwork("GetRouteOrdersCountCommand");
                         var showAll = Config.ShowAllAvailableLoads ? "1" : "0";
-                        netaccess.WriteStringToNetwork(Config.SalesmanId.ToString(CultureInfo.InvariantCulture) + "," + DateTime.Today.ToString(CultureInfo.InvariantCulture) + "," + showAll);
+                        netaccess.WriteStringToNetwork(Config.SalesmanId.ToString(CultureInfo.InvariantCulture) + "," +
+                                                       DateTime.Today.ToString(CultureInfo.InvariantCulture) + "," +
+                                                       showAll);
                         string result = netaccess.ReadStringFromNetwork();
                         int routeCount = 0;
                         int.TryParse(result, out routeCount);
@@ -752,13 +745,14 @@ namespace LaceupMigration.ViewModels
                         {
                             string deliveriesInSite = Path.GetTempFileName();
                             netaccess.WriteStringToNetwork("GetDeliveriesInSalesmanSiteCommand");
-                            netaccess.WriteStringToNetwork(Config.SalesmanId.ToString(CultureInfo.InvariantCulture) + "," + DateTime.Now.ToString(CultureInfo.InvariantCulture) + ",yes");
+                            netaccess.WriteStringToNetwork(Config.SalesmanId.ToString(CultureInfo.InvariantCulture) +
+                                                           "," + DateTime.Now.ToString(CultureInfo.InvariantCulture) +
+                                                           ",yes");
                             netaccess.ReceiveFile(deliveriesInSite);
 
                             DataProvider.LoadDeliveriesInSite(deliveriesInSite);
 
-                            if (File.Exists(deliveriesInSite))
-                                File.Delete(deliveriesInSite);
+                            if (File.Exists(deliveriesInSite)) File.Delete(deliveriesInSite);
                         }
                         catch (Exception ex)
                         {
@@ -784,8 +778,7 @@ namespace LaceupMigration.ViewModels
             {
                 PrinterProvider.PrintDocument((int copies) =>
                 {
-                    if (copies < 1)
-                        return "Please enter a valid number of copies.";
+                    if (copies < 1) return "Please enter a valid number of copies.";
 
                     CompanyInfo.SelectedCompany = CompanyInfo.Companies[0];
                     IPrinter printer = PrinterProvider.CurrentPrinter();
@@ -796,41 +789,23 @@ namespace LaceupMigration.ViewModels
                     {
                         result = printer.PrintAcceptLoad(source, "", true);
 
-                        if (Config.OldPrinter > 0)
-                            System.Threading.Thread.Sleep(2000);
+                        if (Config.OldPrinter > 0) System.Threading.Thread.Sleep(2000);
 
-                        if (!result)
-                            return "Error printing";
+                        if (!result) return "Error printing";
 
-                        if (printer is ZebraGenericPrinter)
-                        {
-                            IPrinter zebraPrinter;
-                            if (printer is ZebraFourInchesPrinter)
-                                zebraPrinter = new ZebraFourInchesPrinter1();
-                            else
-                                zebraPrinter = new ZebraThreeInchesPrinter1();
-                            
-                            result = zebraPrinter.PrintAcceptedOrders(GetOrdersList(), _inventoryAccepted);
-                            if (!result)
-                                return "Error printing";
-                        }
+                        IPrinter zebraPrinter;
+                        if (printer is ZebraFourInchesPrinter)
+                            zebraPrinter = new ZebraFourInchesPrinter1();
+                        else
+                            zebraPrinter = new ZebraThreeInchesPrinter1();
+
+                        result = zebraPrinter.PrintAcceptedOrders(GetOrdersList(), _inventoryAccepted);
+                        if (!result) return "Error printing";
                     }
 
+                    GoBackToLoadListAsync(true);
                     return string.Empty;
                 });
-
-                // Check RouteOrdersCount after RecalculateRoutes() was called (only for NewSyncLoadOnDemand)
-                // If no more loads to accept, go to main (clients tab)
-                // Otherwise, go back to Accept Load page
-                // For old sync method, always navigate back to Accept Load and let RefreshAsync check the count
-                if (Config.NewSyncLoadOnDemand && Config.RouteOrdersCount == 0)
-                {
-                    await GoBackToMainAfterAcceptAsync();
-                }
-                else
-                {
-                    await GoBackToLoadListAsync(true);
-                }
             }
             catch (Exception ex)
             {
@@ -841,29 +816,30 @@ namespace LaceupMigration.ViewModels
 
         public async Task GoBackToLoadListAsync(bool refresh = false)
         {
-            if (File.Exists(_file))
-                File.Delete(_file);
+            if (File.Exists(_file)) File.Delete(_file);
 
-            await Shell.Current.GoToAsync($"acceptload?needRefresh={(refresh ? "1" : "0")}");
+            if (refresh) AcceptLoadPageViewModel.PendingNeedRefreshFromEditDelivery = true;
+
+            NavigationHelper.RemoveNavigationState("acceptloadeditdelivery");
+            await Shell.Current.GoToAsync("..");
         }
 
         public async Task EditQuantityAsync(AcceptLoadEditDeliveryLineViewModel lineViewModel)
         {
             var line = lineViewModel.InventoryLine;
             var currentQty = line.Real;
-            if (line.Product.SoldByWeight && line.Product.InventoryByWeight)
-                currentQty = (float)line.Weight;
+            if (line.Product.SoldByWeight && line.Product.InventoryByWeight) currentQty = (float)line.Weight;
 
-            var qtyText = await _dialogService.ShowPromptAsync("Set Quantity", "Enter Quantity", "OK", "Cancel", "Quantity", keyboard: Microsoft.Maui.Keyboard.Numeric, initialValue: currentQty.ToString(CultureInfo.InvariantCulture));
+            var qtyText = await _dialogService.ShowPromptAsync("Set Quantity", "Enter Quantity", "OK", "Cancel",
+                "Quantity", keyboard: Microsoft.Maui.Keyboard.Numeric,
+                initialValue: currentQty.ToString(CultureInfo.InvariantCulture));
 
             // If user cancelled, don't change anything
-            if (qtyText == null)
-                return;
+            if (qtyText == null) return;
 
             // Match Xamarin: parse and round the quantity
             float newQty = 0;
-            if (!float.TryParse(qtyText, out newQty))
-                return;
+            if (!float.TryParse(qtyText, out newQty)) return;
 
             // Match Xamarin: round the quantity using Config.Round
             newQty = (float)Math.Round(newQty, Config.Round);
@@ -987,4 +963,3 @@ namespace LaceupMigration.ViewModels
         }
     }
 }
-

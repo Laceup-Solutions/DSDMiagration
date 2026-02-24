@@ -131,12 +131,14 @@
                            BackgroundColor="White"
                            Text="{Binding SearchQuery}"
                            SearchButtonPressed="SearchBar_SearchButtonPressed" />
-                <Button Grid.Column="1"
-                        Text="⚙"
-                        FontSize="18"
-                        BackgroundColor="Transparent"
-                        Command="{Binding SearchMenuCommand}"
-                        WidthRequest="40" />
+                <ImageButton Grid.Column="1"
+                             Source="{mi:MaterialOutlined Icon=MoreVert, IconColor=Black, IconSize=20}"
+                             WidthRequest="20"
+                             HeightRequest="20"
+                             Padding="0"
+                             Margin="0"
+                             BackgroundColor="Transparent"
+                             Command="{Binding SearchMenuCommand}" />
             </Grid>
         </Border>
 

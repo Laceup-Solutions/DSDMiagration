@@ -231,10 +231,8 @@ namespace LaceupMigration.ViewModels
 				}
 				
 				RefreshListHeader();
-				// Don't update IsSelectAllChecked here - it's already set by the user's click
-				// Just verify it matches the actual state
-				var totalInvoices = FlatInvoiceList.Count(x => !x.IsGroupHeader);
-				var shouldBeChecked = totalInvoices > 0 && SelectedInvoices.Count == totalInvoices;
+				// Sync "Select All": checked when 1+ selected (same rule as UpdateSelectAllState)
+				var shouldBeChecked = SelectedInvoices.Count > 0;
 				if (IsSelectAllChecked != shouldBeChecked)
 				{
 					IsSelectAllChecked = shouldBeChecked;
@@ -660,13 +658,22 @@ namespace LaceupMigration.ViewModels
 			UpdateSelectAllState();
 		}
 
+		/// <summary>Sync "Select All" checkbox: checked when 1 or more are selected, so unchecking it deselects all at that moment. Uses flag so programmatic check does not trigger SelectAll logic.</summary>
 		private void UpdateSelectAllState()
 		{
-			var totalInvoices = FlatInvoiceList.Count(x => !x.IsGroupHeader);
-			var shouldBeChecked = totalInvoices > 0 && SelectedInvoices.Count == totalInvoices;
+			var shouldBeChecked = SelectedInvoices.Count > 0;
 			if (IsSelectAllChecked != shouldBeChecked)
 			{
-				IsSelectAllChecked = shouldBeChecked;
+				_isUpdatingSelectAll = true;
+				try
+				{
+					IsSelectAllChecked = shouldBeChecked;
+				}
+				finally
+				{
+					// Clear flag after UI so CheckBox_CheckedChanged does not run SelectAll()
+					MainThread.BeginInvokeOnMainThread(() => _isUpdatingSelectAll = false);
+				}
 			}
 		}
 

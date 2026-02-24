@@ -26,9 +26,12 @@
                     Stroke="{StaticResource Gray400}"
                     BackgroundColor="White"
                     HeightRequest="300">
-                <GraphicsView x:Name="SignaturePad"
-                              Drawable="{Binding SignatureDrawable}"
-                              BackgroundColor="White" />
+                <Grid RowDefinitions="auto,*">
+                    <Button Grid.Row="0" Command="{Binding ClearSignatureCommand}" BackgroundColor="Transparent" Text="Clear" TextColor="Black" FontAttributes="Bold" WidthRequest="70" HorizontalOptions="End"></Button>
+                    <GraphicsView Grid.Row="1" x:Name="SignaturePad"
+                                  Drawable="{Binding SignatureDrawable}"
+                                  BackgroundColor="White" />
+                </Grid>
             </Border>
 
             <!-- Action Buttons -->

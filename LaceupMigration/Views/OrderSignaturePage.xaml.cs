@@ -19,6 +19,9 @@ namespace LaceupMigration.Views
             SignaturePad.StartInteraction += OnSignaturePadStart;
             SignaturePad.DragInteraction += OnSignaturePadDrag;
             SignaturePad.EndInteraction += OnSignaturePadEnd;
+
+            // Redraw when drawable is cleared (or loaded) so the view updates
+            _viewModel.SignatureDrawable.Invalidated += () => SignaturePad.Invalidate();
         }
 
         private void OnSignaturePadStart(object? sender, TouchEventArgs e)

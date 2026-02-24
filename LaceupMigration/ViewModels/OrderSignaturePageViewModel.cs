@@ -111,6 +111,21 @@ namespace LaceupMigration.ViewModels
             SignatureName = string.Empty;
             _signatureDrawable.Clear();
         }
+        
+        [RelayCommand]
+        private async Task ClearSignatureAsync()
+        {
+            _appService.RecordEvent("ClearSignature selected");
+
+            foreach (var order in _orders)
+            {
+                order.SignaturePoints = null;
+                order.Save();
+            }
+
+            _signatureDrawable.Clear();
+        }
+        
 
         [RelayCommand]
         private async Task SaveAsync()
@@ -130,8 +145,8 @@ namespace LaceupMigration.ViewModels
             var signaturePoints = _signatureDrawable.GetPoints();
             if (signaturePoints == null || signaturePoints.Count == 0)
             {
-                await _dialogService.ShowAlertAsync("Signature is too small.", "Alert", "OK");
-                return;
+                Logger.CreateLog("Signature is too small or signature removed.");
+                signaturePoints = new List<PointF>();
             }
 
             // Save raw points like Laceup - no scaling, no rounding to 32 (scaling caused black square in ZPL)

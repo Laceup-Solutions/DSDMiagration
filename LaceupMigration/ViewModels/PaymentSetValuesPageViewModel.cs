@@ -635,11 +635,11 @@ namespace LaceupMigration.ViewModels
 
             AmountLabel = (_amount + _totalDiscount).ToCustomString();
             OpenLabel = open.ToCustomString();
-            // Set color: green if $0 or $0.00, otherwise black (matching Xamarin)
+            // Red when open > 0, green when paid ($0)
             if (open == 0 || OpenLabel == "$0" || OpenLabel == "$0.00")
                 OpenLabelColor = Colors.Green;
             else
-                OpenLabelColor = Colors.Black;
+                OpenLabelColor = Colors.Red;
             PaidLabel = currentPaymentAmount.ToCustomString();
 
             if (ShowCreditAmount)
@@ -945,6 +945,12 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
+            if (PaymentComponents.Any(x => x.PaymentMethod != InvoicePaymentMethod.Cash && string.IsNullOrEmpty(x.Ref)))
+            {
+                await _dialogService.ShowAlertAsync("You need to provide either a check or a reference number for all payments other than cash.", "Alert", "OK");
+                return false;
+            }
+            
             var currentPaymentAmount = PaymentComponents.Sum(x => x.Amount);
             var open = _amount - currentPaymentAmount;
 
@@ -1677,7 +1683,7 @@ namespace LaceupMigration.ViewModels
             AmountText = Amount.ToCustomString();
             ShowRef = PaymentMethod != InvoicePaymentMethod.Cash;
             ShowPostedDate = PaymentMethod == InvoicePaymentMethod.Check;
-            ShowBank = PaymentMethod == InvoicePaymentMethod.Check || PaymentMethod == InvoicePaymentMethod.Credit_Card;
+            ShowBank = Config.CheckCommunicatorVersion("45.0.0") && Config.ShowInvoicesCreditsInPayments && (PaymentMethod == InvoicePaymentMethod.Check || PaymentMethod == InvoicePaymentMethod.Credit_Card);
             RefLabelText = PaymentMethod == InvoicePaymentMethod.Check ? "Check Number" :
                 PaymentMethod == InvoicePaymentMethod.Credit_Card ? "Card Number" : "Ref Number";
             RefDisplayText = FormatRefForDisplay(Ref);

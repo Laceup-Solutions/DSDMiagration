@@ -9870,7 +9870,24 @@ namespace LaceupMigration
         {
             try
             {
-                return Config.CommunicatorVersion > new Version(min);
+                string current = Config.CommunicatorVersion?.ToString() ?? "";
+                if (string.IsNullOrEmpty(current))
+                    return false;
+
+                var c_parts = current.Split('.');
+                var m_parts = min.Split('.');
+
+                int minLength = c_parts.Length > m_parts.Length ? m_parts.Length : c_parts.Length;
+
+                for (int i = 0; i < minLength; i++)
+                {
+                    if (int.Parse(c_parts[i]) > int.Parse(m_parts[i]))
+                        return true;
+                    if (int.Parse(c_parts[i]) < int.Parse(m_parts[i]))
+                        return false;
+                }
+
+                return true;
             }
             catch
             {

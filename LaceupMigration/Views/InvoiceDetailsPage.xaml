@@ -65,7 +65,7 @@
                            Margin="10,0,10,10">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:InvoiceDetailItemViewModel">
-                        <Frame Padding="12" Margin="0,0,0,8" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource Gray100}" InputTransparent="True">
+                        <Border Padding="12" Margin="0,0,0,8" StrokeShape="RoundRectangle 12" InputTransparent="True">
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="{Binding ProductName}"
                                        FontSize="14"
@@ -105,7 +105,7 @@
                                        TextColor="{StaticResource Gray600}"
                                        Margin="0,4,0,0" />
                             </VerticalStackLayout>
-                        </Frame>
+                        </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>

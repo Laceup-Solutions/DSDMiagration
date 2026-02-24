@@ -1020,11 +1020,15 @@ namespace LaceupMigration.ViewModels
                         await SendByEmailAsync();
                     }));
 
-                    options.Add(new MenuOption("Share PDF", async () =>
+                }
+
+                // Select Driver (presale only, hidden when work order asset - matches TemplateActivity)
+                var asset = UDFHelper.GetSingleUDF("workOrderAsset", _order.ExtraFields);
+                if (string.IsNullOrEmpty(asset))
+                {
+                    options.Add(new MenuOption("Select Driver", async () =>
                     {
-                        await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.",
-                            "Info");
-                        // TODO: Implement PDF sharing
+                        await SelectSalesmanAsync();
                     }));
                 }
             }
@@ -1075,12 +1079,6 @@ namespace LaceupMigration.ViewModels
                         await SendByEmailAsync();
                     }));
 
-                    options.Add(new MenuOption("Share PDF", async () =>
-                    {
-                        await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.",
-                            "Info");
-                        // TODO: Implement PDF sharing
-                    }));
                 }
             }
 
@@ -1122,6 +1120,35 @@ namespace LaceupMigration.ViewModels
             if (_order == null)
                 return;
             await Shell.Current.GoToAsync($"viewcapturedimages?orderId={_order.OrderId}");
+        }
+
+        private async Task SelectSalesmanAsync()
+        {
+            if (_order == null)
+                return;
+
+            // Match TemplateActivity.SelectSalesman(): Driver | DSD, InventorySiteId > 0 and != BranchSiteId
+            var selectedRole = SalesmanRole.Driver | SalesmanRole.DSD;
+            var salesmen = Salesman.List
+                .Where(x => ((int)x.Roles & (int)selectedRole) > 0)
+                .Where(x => x.InventorySiteId > 0 && x.InventorySiteId != Config.BranchSiteId)
+                .OrderBy(x => x.Name)
+                .ToList();
+
+            if (salesmen.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("No drivers available to select.", "Select Driver");
+                return;
+            }
+
+            var driverNames = salesmen.Select(x => x.Name).ToArray();
+            var selectedIndex = await _dialogService.ShowSelectionAsync("Select Driver", driverNames);
+            if (selectedIndex < 0 || selectedIndex >= salesmen.Count)
+                return;
+
+            _order.ExtraFields = UDFHelper.SyncSingleUDF("Salesman", salesmen[selectedIndex].Id.ToString(), _order.ExtraFields);
+            _order.Save();
+            await RefreshAsync();
         }
 
         private async Task PrintAsync()

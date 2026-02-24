@@ -237,10 +237,24 @@ namespace LaceupMigration.ViewModels
                     "Window: {0} - {1}", _client.StartTimeWindows1.ToShortTimeString(), _client.EndTimeWindows1.ToShortTimeString()), MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.AccessTime)));
             }
 
+            bool termAdded = false;
+            if (_client.TermId > 0)
+            {
+                var term = Term.List.FirstOrDefault(x => x.Id == _client.TermId);
+                if (term != null)
+                {
+                    ClientDetails.Add(new ClientDetailItemViewModel($"Terms: {term.Name}", MaterialIconHelper.GetImageSource(MaterialOutlinedIcons.DataArray)));
+                    termAdded = true;
+                }
+            }
+
             if (_client.ExtraProperties != null)
             {
                 foreach (var tuple in _client.ExtraProperties)
                 {
+                    if(tuple.Item1.ToLowerInvariant().Contains("term") && termAdded)
+                        continue;
+                    
                     if (tuple.Item1.Equals("prodsort", StringComparison.InvariantCultureIgnoreCase) ||
                         tuple.Item1.Equals("duns", StringComparison.InvariantCultureIgnoreCase))
                     {
@@ -408,6 +422,8 @@ namespace LaceupMigration.ViewModels
                 FilteredInvoices.Clear();
                 IsInvoiceLoading = false;
                 await LoadInvoicesPageAsync();
+                // Refresh client details so Last Visit / Days since last visit are filled now that invoices are loaded
+                BuildClientDetails();
             });
         }
 
@@ -1252,7 +1268,17 @@ namespace LaceupMigration.ViewModels
                     order.Save();
                 }
             }
-
+            
+            // Handle NoService orders
+            if (order.OrderType == OrderType.NoService)
+            {
+                if (Config.CaptureImages)
+                {
+                    await Shell.Current.GoToAsync($"noservice?orderId={order.OrderId}");
+                }
+                return;
+            }
+            
             // Handle finished orders (non-presale) - navigate to BatchPage
             if (!order.AsPresale || order.Finished)
             {
@@ -1272,16 +1298,6 @@ namespace LaceupMigration.ViewModels
                 }
                 
                 await Shell.Current.GoToAsync($"batch?batchId={batch.Id}");
-                return;
-            }
-
-            // Handle NoService orders
-            if (order.OrderType == OrderType.NoService)
-            {
-                if (Config.CaptureImages)
-                {
-                    await Shell.Current.GoToAsync($"noservice?orderId={order.OrderId}");
-                }
                 return;
             }
 
@@ -1642,10 +1658,8 @@ namespace LaceupMigration.ViewModels
                     return;
                 }
 
-                // Navigate to PDF viewer with the PDF path (matching MAUI pattern used by SendOrderByEmail, SendGoalByEmail, etc.)
-                // The PDF viewer has a "Send by Email" button that works correctly
-                // Statements are detected by filename (contains "statement" or "reportstatement")
-                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfPath)}");
+                // Navigate to PDF viewer with the PDF path and email subject for "Send by Email"
+                await Shell.Current.GoToAsync($"pdfviewer?pdfPath={Uri.EscapeDataString(pdfPath)}&emailSubject={Uri.EscapeDataString("Client Statement")}");
             }
             catch (Exception ex)
             {

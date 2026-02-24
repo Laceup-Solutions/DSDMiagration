@@ -1,4 +1,5 @@
 using Microsoft.Maui.Graphics;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,6 +7,9 @@ namespace LaceupMigration.Controls
 {
     public class SignatureDrawable : IDrawable
     {
+        /// <summary>Raised when content changed and the host GraphicsView should redraw (e.g. after Clear or LoadPoints).</summary>
+        public event Action? Invalidated;
+
         private List<PointF> _points = new();
         private List<List<PointF>> _strokes = new();
         private List<PointF> _currentStroke = new();
@@ -73,6 +77,7 @@ namespace LaceupMigration.Controls
             _points.Clear();
             _strokes.Clear();
             _currentStroke.Clear();
+            Invalidated?.Invoke();
         }
 
         public List<PointF> GetPoints()
@@ -117,6 +122,8 @@ namespace LaceupMigration.Controls
             {
                 _strokes.Add(currentStroke);
             }
+
+            Invalidated?.Invoke();
         }
     }
 }

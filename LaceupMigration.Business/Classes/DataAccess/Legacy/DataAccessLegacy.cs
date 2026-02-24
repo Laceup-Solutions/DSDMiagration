@@ -7913,7 +7913,14 @@ namespace LaceupMigration
                 return "";
             }
         }
-                
+
+        public void GetInactiveProducts(List<int> productIds)
+        {
+            if (productIds == null || productIds.Count == 0)
+                return;
+            DataAccess.Deprecated.DataAccess.GetInactiveProducts(productIds);
+        }
+
         public void AddDeliveryClient(Client client)
         {
             string s = string.Format("{1}{0}{2}{0}{3}{0}{4}{0}{5}{0}{6}{0}{7}{0}{8}{0}{9}{0}{10}{0}{11}{0}{12}{0}{13}{0}{14}" +
