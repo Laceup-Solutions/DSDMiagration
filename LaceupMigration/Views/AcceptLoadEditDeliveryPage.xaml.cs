@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LaceupMigration.Views
 {
-    public partial class AcceptLoadEditDeliveryPage : IQueryAttributable
+    public partial class AcceptLoadEditDeliveryPage : LaceupContentPage, IQueryAttributable
     {
         private readonly AcceptLoadEditDeliveryPageViewModel _viewModel;
 

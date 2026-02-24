@@ -274,11 +274,13 @@ namespace LaceupMigration
 
                 IPdfProvider pdfGenerator = GetPdfProvider();
 
-                if (string.IsNullOrEmpty(order.PrintedOrderId) && !order.AsPresale)
+                if (string.IsNullOrEmpty(order.PrintedOrderId))
                 {
-                    order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
-
-                    order.Save();
+                    if ((order.AsPresale && Config.GeneratePresaleNumber) || (!order.AsPresale && Config.GeneratePreorderNum))
+                    {
+                        order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
+                        order.Save();
+                    }
                 }
 
                 if ((Config.GroupLinesWhenPrinting || Config.GroupRelatedWhenPrinting) && !OrderDiscount.HasDiscounts && !order.Details.Any(x => x.Product.UseLot))
@@ -321,10 +323,13 @@ namespace LaceupMigration
 
                 foreach (var order in orders)
                 {
-                    if (string.IsNullOrEmpty(order.PrintedOrderId) && !order.AsPresale)
+                    if (string.IsNullOrEmpty(order.PrintedOrderId))
                     {
-                        order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
-                        order.Save();
+                        if ((order.AsPresale && Config.GeneratePresaleNumber) || (!order.AsPresale && Config.GeneratePreorderNum))
+                        {
+                            order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
+                            order.Save();
+                        }
                     }
 
                     if ((Config.GroupLinesWhenPrinting || Config.GroupRelatedWhenPrinting) && !OrderDiscount.HasDiscounts)
@@ -368,10 +373,13 @@ namespace LaceupMigration
 
                 IPdfProvider pdfGenerator = GetPdfProvider();
 
-                if (string.IsNullOrEmpty(order.PrintedOrderId) && !order.AsPresale)
+                if (string.IsNullOrEmpty(order.PrintedOrderId))
                 {
-                    order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
-                    order.Save();
+                    if ((order.AsPresale && Config.GeneratePresaleNumber) || (!order.AsPresale && Config.GeneratePreorderNum))
+                    {
+                        order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
+                        order.Save();
+                    }
                 }
 
                 pdfFile = pdfGenerator.GetConsignmentPdf(order, counting);
@@ -405,10 +413,13 @@ namespace LaceupMigration
 
                 IPdfProvider pdfGenerator = GetPdfProvider();
 
-                if (string.IsNullOrEmpty(order.PrintedOrderId) && !order.AsPresale)
+                if (string.IsNullOrEmpty(order.PrintedOrderId))
                 {
-                    order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
-                    order.Save();
+                    if ((order.AsPresale && Config.GeneratePresaleNumber) || (!order.AsPresale && Config.GeneratePreorderNum))
+                    {
+                        order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
+                        order.Save();
+                    }
                 }
 
                 if ((Config.GroupLinesWhenPrinting || Config.GroupRelatedWhenPrinting) && !OrderDiscount.HasDiscounts)
@@ -487,11 +498,13 @@ namespace LaceupMigration
 
                 IPdfProvider.IXlsxProvider xlsxGenerator = GetXlsxProvider();
 
-                if (string.IsNullOrEmpty(order.PrintedOrderId) && !order.AsPresale)
+                if (string.IsNullOrEmpty(order.PrintedOrderId))
                 {
-                    order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
-
-                    order.Save();
+                    if ((order.AsPresale && Config.GeneratePresaleNumber) || (!order.AsPresale && Config.GeneratePreorderNum))
+                    {
+                        order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
+                        order.Save();
+                    }
                 }
 
                 pdfFile = xlsxGenerator.GetOrderXlsx(order);
@@ -1346,11 +1359,13 @@ namespace LaceupMigration
 
                 IPdfProvider pdfGenerator = new MilagroBillOfLadingPdfGenerator();
 
-                if (string.IsNullOrEmpty(order.PrintedOrderId) && !order.AsPresale)
+                if (string.IsNullOrEmpty(order.PrintedOrderId))
                 {
-                    order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
-
-                    order.Save();
+                    if ((order.AsPresale && Config.GeneratePresaleNumber) || (!order.AsPresale && Config.GeneratePreorderNum))
+                    {
+                        order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(order);
+                        order.Save();
+                    }
                 }
 
                 pdfFile = pdfGenerator.GetOrderPdf(order);

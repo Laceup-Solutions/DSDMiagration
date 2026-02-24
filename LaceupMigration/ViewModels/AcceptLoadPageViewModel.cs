@@ -24,6 +24,10 @@ namespace LaceupMigration.ViewModels
         private bool[] _selectedOrders = Array.Empty<bool>();
         private bool _ordersAlreadyLoaded = false;
         private bool _isNavigatingToAcceptLoad = false;
+        private bool _isUpdatingSelectAll = false;
+
+        /// <summary>Set by AcceptLoadEditDeliveryPageViewModel before popping, so OnAppearingAsync can run RefreshAsync.</summary>
+        public static bool PendingNeedRefreshFromEditDelivery { get; set; }
 
         [ObservableProperty] private ObservableCollection<AcceptLoadOrderItemViewModel> _orders = new();
         [ObservableProperty] private string _selectedDateText = string.Empty;
@@ -128,6 +132,14 @@ namespace LaceupMigration.ViewModels
         {
             // Reset flag when coming back to the page
             _isNavigatingToAcceptLoad = false;
+
+            // When returning from AcceptLoadEditDelivery via pop, refresh and optionally go back to main
+            if (PendingNeedRefreshFromEditDelivery)
+            {
+                PendingNeedRefreshFromEditDelivery = false;
+                await RefreshAsync(true);
+                return;
+            }
             
             // [MIGRATION]: Preserve the current date when appearing
             // Store the date before any operations to ensure it's not reset
@@ -366,14 +378,19 @@ namespace LaceupMigration.ViewModels
         {
             if (index >= 0 && index < _selectedOrders.Length)
             {
+                _isUpdatingSelectAll = true;
                 _selectedOrders[index] = isSelected;
                 SelectAll = _selectedOrders.All(x => x);
+                _isUpdatingSelectAll = false;
                 RefreshTotals();
             }
         }
 
         public void UpdateSelectAll(bool isSelected)
         {
+            if (_isUpdatingSelectAll)
+                return;
+
             for (int i = 0; i < _selectedOrders.Length; i++)
                 _selectedOrders[i] = isSelected;
 
@@ -486,6 +503,14 @@ namespace LaceupMigration.ViewModels
             // 3. Page is disappearing and not navigating forward to accept load
             // This deletes pending load orders that haven't been accepted yet
             DataProvider.DeletePengingLoads();
+        }
+
+        /// <summary>
+        /// Call before navigating away to accept a load (e.g. from OrderTappedAsync) so OnDisappearing does not delete pending loads.
+        /// </summary>
+        public void SetNavigatingToAcceptLoad(bool value)
+        {
+            _isNavigatingToAcceptLoad = value;
         }
 
         public void OnDisappearing()
@@ -711,6 +736,8 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private async Task OrderTappedAsync()
         {
+            _parent.SetNavigatingToAcceptLoad(true);
+
             // Match Xamarin: HandleClick -> GoToAcceptLoad(orderId) -> ModifyOrderToAcceptActivity
             // But user wants to go to AcceptLoadEditDelivery instead
             // Navigate to Edit Delivery with this order's ID

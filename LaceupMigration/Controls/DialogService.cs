@@ -1742,8 +1742,9 @@ public class DialogService : IDialogService
             VerticalOptions = LayoutOptions.Center
         };
 
+        var commVersion = Config.CheckCommunicatorVersion("46.2.0");
         // Show In PDF section: visible when communicator supports it, or when we hid the category section (already in a category)
-        bool filtersVisible = Config.CheckCommunicatorVersion("46.2.0") || hideCategorySection;
+        bool filtersVisible = commVersion || hideCategorySection;
 
         // Handle price checkbox visibility/state (matches Xamarin logic)
         if (Config.DisableSendCatalogWithPrices || Config.HidePriceInTransaction)

@@ -116,6 +116,24 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
+            // When product is not found locally, fetch inactive products from backend (matches Xamarin InvoiceDetailsActivity)
+            var details = _invoice.Details;
+            if (details.Count > 0)
+            {
+                var inactiveProd = details.Where(d => Product.Find(d.ProductId) == null).Select(d => d.ProductId).Distinct().ToList();
+                if (inactiveProd.Count > 0)
+                {
+                    try
+                    {
+                        await Task.Run(() => DataProvider.GetInactiveProducts(inactiveProd));
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog($"Error fetching inactive products: {ex.Message}");
+                    }
+                }
+            }
+
             ClientName = $"Customer: {_invoice.Client.ClientName}";
 
             if (!string.IsNullOrEmpty(_invoice.CompanyName) && CompanyInfo.Companies.Count > 1)
@@ -142,7 +160,6 @@ namespace LaceupMigration.ViewModels
 
             DatesText = $"Date: {_invoice.Date.ToShortDateString()} | Due: {_invoice.DueDate.ToShortDateString()}";
 
-            var details = _invoice.Details;
             if (details.Count > 0 && !Config.HidePriceInTransaction)
             {
                 var totalByDetails = details.Sum(x => x.Quantity * x.Price);
@@ -178,9 +195,13 @@ namespace LaceupMigration.ViewModels
                     }
                 }
 
+                var product = detail.Product;
+                if (product.Name.Contains("PRODUCT NOT FOUND"))
+                    product = Product.Find(detail.ProductId, true) ?? detail.Product;
+                
                 InvoiceDetails.Add(new InvoiceDetailItemViewModel
                 {
-                    ProductName = detail.Product?.Name ?? $"PRODUCT NOT FOUND",
+                    ProductName = product?.Name ?? $"PRODUCT NOT FOUND",
                     QuantityText = $"Qty: {detail.Quantity}",
                     PriceText = $"Price: {detail.Price.ToCustomString()}",
                     TotalText = $"Total: {(detail.Quantity * detail.Price).ToCustomString()}",

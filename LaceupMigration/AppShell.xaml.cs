@@ -58,6 +58,7 @@ namespace LaceupMigration
             Routing.RegisterRoute("productdetails", typeof(ProductDetailsPage));
             Routing.RegisterRoute("viewinvoiceimages", typeof(ViewInvoiceImagesPage));
             Routing.RegisterRoute("timesheet", typeof(TimeSheetPage));
+            Routing.RegisterRoute("offers", typeof(Views.SelfService.SelfServiceOffersPage));
 
             // Menu routes
             Routing.RegisterRoute("addclient", typeof(AddClientPage));

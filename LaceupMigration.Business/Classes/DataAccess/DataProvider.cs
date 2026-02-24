@@ -127,6 +127,14 @@ namespace LaceupMigration
             return dataAccessInstance.GetInvoiceDetails(invoiceId, clientId);
         }
 
+        /// <summary>Fetch inactive/missing products from backend so invoice details can resolve product names (matches Xamarin InvoiceDetailsActivity).</summary>
+        public static void GetInactiveProducts(List<int> productIds)
+        {
+            if (productIds == null || productIds.Count == 0)
+                return;
+            dataAccessInstance.GetInactiveProducts(productIds);
+        }
+
         public static void AddDeliveryClient(Client client)
         {
             dataAccessInstance.AddDeliveryClient(client);

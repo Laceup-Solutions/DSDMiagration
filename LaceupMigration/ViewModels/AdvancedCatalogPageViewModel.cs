@@ -168,6 +168,20 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty] private bool _showDiscount = true;
 
+        /// <summary>Client's AllowOneDoc. When false (Order type), totals use simple layout without Credit line.</summary>
+        [ObservableProperty] private bool _allowOneDoc = true;
+
+        /// <summary>True when totals should use simple 2-row layout: Lines|Subtotal|Tax and Qty Sold|Discount|Total (no Credit).</summary>
+        public bool UseSimpleTotalsLayout => _order != null && _order.OrderType == OrderType.Order && !AllowOneDoc;
+
+        public bool ShowOneDocTotalsLayout => !UseSimpleTotalsLayout;
+
+        partial void OnAllowOneDocChanged(bool value)
+        {
+            OnPropertyChanged(nameof(UseSimpleTotalsLayout));
+            OnPropertyChanged(nameof(ShowOneDocTotalsLayout));
+        }
+
         [ObservableProperty] private string _sortByText = "Sort By: Product Name";
 
         [ObservableProperty] private string _filterText = "Filter";
@@ -335,6 +349,7 @@ namespace LaceupMigration.ViewModels
             OrderTypeText = GetOrderTypeText(_order);
             TermsText = "Terms: " + _order.Term;
             TermsVisible = !string.IsNullOrEmpty(_order.Term);
+            AllowOneDoc = _order.Client?.AllowOneDoc ?? false;
 
             // Xamarin PreviouslyOrderedTemplateActivity logic:
             // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
@@ -2971,10 +2986,14 @@ namespace LaceupMigration.ViewModels
                     }));
                 }
                 
-                options.Add(new MenuOption("Select Driver", async () =>
+                // Select Driver - visible only when presale and no work order asset (matches TemplateActivity OnPrepareOptionsMenu)
+                if (string.IsNullOrEmpty(asset))
                 {
-                    await SelectSalesmanAsync();
-                }));
+                    options.Add(new MenuOption("Select Driver", async () =>
+                    {
+                        await SelectSalesmanAsync();
+                    }));
+                }
                 
                 // Other Charges - Xamarin order: after Select Driver (presaleMenu.xml)
                 if (!string.IsNullOrEmpty(asset) || Config.AllowOtherCharges)
@@ -3038,15 +3057,6 @@ namespace LaceupMigration.ViewModels
                 {
                     await DeleteOrderAsync();
                 }));
-
-                // Share (presale) - Xamarin: Share visible when !isSplitClient (presaleMenu.xml order after Delete)
-                if (!isSplitClient)
-                {
-                    options.Add(new MenuOption("Share", async () =>
-                    {
-                        await SharePdfAsync();
-                    }));
-                }
 
                 // Ship Via (presale) - Config.ShowShipVia
                 if (Config.ShowShipVia)
@@ -3162,10 +3172,6 @@ namespace LaceupMigration.ViewModels
                     options.Add(new MenuOption("Send by Email", async () =>
                     {
                         await SendByEmailAsync();
-                    }));
-                    options.Add(new MenuOption("Share", async () =>
-                    {
-                        await SharePdfAsync();
                     }));
                 }
 
@@ -3410,13 +3416,6 @@ namespace LaceupMigration.ViewModels
             }
         }
 
-        private async Task SharePdfAsync()
-        {
-            if (_order == null)
-                return;
-            await _dialogService.ShowAlertAsync("Share PDF functionality is not yet fully implemented.", "Info");
-        }
-
         private async Task DeleteOrderAsync()
         {
             if (_order == null)
@@ -3513,7 +3512,28 @@ namespace LaceupMigration.ViewModels
         {
             if (_order == null)
                 return;
-            await _dialogService.ShowAlertAsync("Select Driver functionality is not yet fully implemented.", "Info");
+
+            // Match TemplateActivity.SelectSalesman(): Driver | DSD, InventorySiteId > 0 and != BranchSiteId
+            var selectedRole = SalesmanRole.Driver | SalesmanRole.DSD;
+            var salesmen = Salesman.List
+                .Where(x => ((int)x.Roles & (int)selectedRole) > 0)
+                .Where(x => x.InventorySiteId > 0 && x.InventorySiteId != Config.BranchSiteId)
+                .OrderBy(x => x.Name)
+                .ToList();
+
+            if (salesmen.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("No drivers available to select.", "Select Driver");
+                return;
+            }
+
+            var driverNames = salesmen.Select(x => x.Name).ToArray();
+            var selectedIndex = await _dialogService.ShowSelectionAsync("Select Driver", driverNames);
+            if (selectedIndex < 0 || selectedIndex >= salesmen.Count)
+                return;
+
+            _order.ExtraFields = UDFHelper.SyncSingleUDF("Salesman", salesmen[selectedIndex].Id.ToString(), _order.ExtraFields);
+            _order.Save();
         }
 
         private async Task SelectPriceLevelAsync()
@@ -4103,7 +4123,7 @@ namespace LaceupMigration.ViewModels
                 // ShowFreeItemButton: only visible for Sales items (ItemType == 0) and OrderType.Order (not Credit or Return)
                 ShowFreeItemButton = order != null && 
                                      order.OrderType == OrderType.Order && 
-                                     ItemType == 0;
+                                     ItemType == 0 && Config.AllowFreeItems;
 
                 // CanAddFreeItem: enabled if main line has qty > 0 and no free items exist yet
                 // Only available for Sales items in Order orders

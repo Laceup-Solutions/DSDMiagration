@@ -21,6 +21,7 @@ namespace LaceupMigration.UtilDlls
         private Order _order;
         private string _invoiceNumber;
         private string _clientEmailForInvoice;
+        private string _emailSubject;
 
         public PdfViewer()
         {
@@ -47,6 +48,8 @@ namespace LaceupMigration.UtilDlls
                 _invoiceNumber = Uri.UnescapeDataString(invoiceNumberValue.ToString());
             if (query.TryGetValue("clientEmail", out var clientEmailValue) && clientEmailValue != null)
                 _clientEmailForInvoice = Uri.UnescapeDataString(clientEmailValue.ToString());
+            if (query.TryGetValue("emailSubject", out var emailSubjectValue) && emailSubjectValue != null)
+                _emailSubject = Uri.UnescapeDataString(emailSubjectValue.ToString());
         }
 
         protected override async void OnAppearing()
@@ -176,8 +179,12 @@ namespace LaceupMigration.UtilDlls
                     {
                         var emailMessage = new EmailMessage();
 
-                        // Set subject and body if Config.SoutoBottomEmailText is set (matches Xamarin)
-                        if (!string.IsNullOrEmpty(Config.SoutoBottomEmailText))
+                        // Use subject from query (e.g. "Client Statement") when provided; else Souto/config or default
+                        if (!string.IsNullOrEmpty(_emailSubject))
+                        {
+                            emailMessage.Subject = _emailSubject;
+                        }
+                        else if (!string.IsNullOrEmpty(Config.SoutoBottomEmailText))
                         {
                             emailMessage.Subject = "Souto Foods Product Catalog";
                             emailMessage.BodyFormat = EmailBodyFormat.Html;
@@ -185,7 +192,6 @@ namespace LaceupMigration.UtilDlls
                         }
                         else
                         {
-                            // Default subject if no custom text
                             emailMessage.Subject = "Product Catalog";
                         }
 

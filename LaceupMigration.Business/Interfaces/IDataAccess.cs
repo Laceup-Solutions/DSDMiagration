@@ -38,6 +38,8 @@ namespace LaceupMigration
         string GetExternalInvoiceImages(string invoiceNumber);
         void GetExternalInvoiceSignature(Invoice invoice);
         string GetInvoiceDetails(int invoiceId, int clientId);
+        /// <summary>Fetch inactive/missing products from backend so invoice details can resolve product names.</summary>
+        void GetInactiveProducts(List<int> productIds);
         void AddDeliveryClient(Client client);
         DriverRoute GetRouteForDriverShipDate(int driverId, DateTime date);
         #endregion

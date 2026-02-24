@@ -24,6 +24,10 @@
     <Color x:Key="colorLaceupRed">#BA2D0B</Color>
     <Color x:Key="colorLaceupLightRed">#E57373</Color>
     <Color x:Key="colorLaceupDarkerRed">#8B2008</Color>
+    <!-- Lighter delete button gradient (combines more with primary button) -->
+    <Color x:Key="colorDeleteLight">#F0A8A8</Color>
+    <Color x:Key="colorDeleteMid">#D45C3C</Color>
+    <Color x:Key="colorDeleteDark">#A83818</Color>
     <Color x:Key="colorLaceupRedDisable">#d4a5a5</Color>
     <!-- Lighter red for goal screens (Pending Days, Missing To Goal, progress bars) -->
     <Color x:Key="colorGoalRed">#E57373</Color>

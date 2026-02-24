@@ -120,53 +120,32 @@
                                    TextColor="{StaticResource Gray600}"
                                    Margin="0,0,0,0" />
                         </Grid>
-                        <!-- Order Metrics (Left Column) -->
-                        <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="2">
-                            <Label Text="{Binding LinesText}"
-                                   FontSize="13"
-                                   FontAttributes="Bold"
-                                   TextColor="{StaticResource Gray900}" />
-                            <Label Text="{Binding QtySoldText}"
-                                   FontSize="13"
-                                   FontAttributes="Bold"
-                                   TextColor="{StaticResource Gray900}" />
-                        </VerticalStackLayout>
-                        <!-- Order Financials (Middle Column) -->
-                        <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="2">
-                            <Label Text="{Binding OrderAmountText}"
-                                   FontSize="13"
-                                   FontAttributes="Bold"
-                                   TextColor="{StaticResource Gray900}"
-                                   IsVisible="{Binding ShowTotals}" />
-                            <Label Text="{Binding CreditAmountText}"
-                                   FontSize="13"
-                                   TextColor="{StaticResource Gray900}"
-                                   FontAttributes="Bold"
-                                   IsVisible="{Binding ShowTotals}" />
-                            <Label Text="{Binding SubtotalText}"
-                                   FontSize="13"
-                                   FontAttributes="Bold"
-                                   TextColor="{StaticResource Gray900}"
-                                   IsVisible="{Binding ShowTotals}" />
-                        </VerticalStackLayout>
-                        <!-- Order Financials (Right Column) -->
-                        <VerticalStackLayout Grid.Row="1" Grid.Column="2" Spacing="2">
-                            <Label Text="{Binding TaxText}"
-                                   FontSize="13"
-                                   FontAttributes="Bold"
-                                   TextColor="{StaticResource Gray900}"
-                                   IsVisible="{Binding ShowTotals}" />
-                            <Label Text="{Binding DiscountText}"
-                                   FontSize="13"
-                                   TextColor="{StaticResource Gray900}"
-                                   FontAttributes="Bold"
-                                   IsVisible="{Binding ShowDiscount}" />
-                            <Label Text="{Binding TotalText}"
-                                   FontSize="13"
-                                   FontAttributes="Bold"
-                                   TextColor="{StaticResource PrimaryDark}"
-                                   IsVisible="{Binding ShowTotals}" />
-                        </VerticalStackLayout>
+                        <!-- OneDoc layout: Lines/QtySold | Order/Credit/Subtotal | Tax/Discount/Total -->
+                        <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,*,*" ColumnSpacing="3" RowSpacing="4" IsVisible="{Binding ShowOneDocTotalsLayout}">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                <Label Text="{Binding LinesText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" />
+                                <Label Text="{Binding QtySoldText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label Text="{Binding OrderAmountText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowTotals}" />
+                                <Label Text="{Binding CreditAmountText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowTotals}" />
+                                <Label Text="{Binding SubtotalText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowTotals}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="2" Spacing="2">
+                                <Label Text="{Binding TaxText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowTotals}" />
+                                <Label Text="{Binding DiscountText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowDiscount}" />
+                                <Label Text="{Binding TotalText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" IsVisible="{Binding ShowTotals}" />
+                            </VerticalStackLayout>
+                        </Grid>
+                        <!-- Simple totals when OneDoc is false: Row1 Lines|Subtotal|Tax, Row2 Qty Sold|Discount|Total (no Credit) -->
+                        <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="3" RowSpacing="4" IsVisible="{Binding UseSimpleTotalsLayout}">
+                            <Label Grid.Row="0" Grid.Column="0" Text="{Binding LinesText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" />
+                            <Label Grid.Row="0" Grid.Column="1" Text="{Binding SubtotalText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" />
+                            <Label Grid.Row="0" Grid.Column="2" Text="{Binding TaxText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" />
+                            <Label Grid.Row="1" Grid.Column="0" Text="{Binding QtySoldText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" />
+                            <Label Grid.Row="1" Grid.Column="1" Text="{Binding DiscountText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowDiscount}" />
+                            <Label Grid.Row="1" Grid.Column="2" Text="{Binding TotalText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" />
+                        </Grid>
                     </Grid>
                 </Grid>
             </Frame>
