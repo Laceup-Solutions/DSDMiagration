@@ -1308,6 +1308,12 @@ namespace LaceupMigration.ViewModels
                     UpdateRoute(true);
                 }
 
+                if (_order.AsPresale && Config.GeneratePresaleNumber && string.IsNullOrEmpty(_order.PrintedOrderId))
+                {
+                    _order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(_order);
+                    _order.Save();
+                }
+                
                 _order.Modified = true;
                 _order.Save();
                 return true;
@@ -2183,33 +2189,37 @@ namespace LaceupMigration.ViewModels
             // Check if order is presale and show dialog with 3 options (only for non-empty orders)
             if (_order.AsPresale)
             {
-                // Show action options dialog (matching Xamarin PreviouslyOrderedTemplateActivity logic)
-                var options = new[] { "Send Order", "Save Order To Send Later", "Stay In The Order" };
+                // Transaction name varies by order type (Order, Credit, Return, etc.)
+                var transName = _order.OrderType == OrderType.Order ? "Order" : "Credit";
+                // Option templates: {0} = trans name. Order of items defines action index.
+                var optionTemplates = new[]
+                {
+                    "Send {0}",
+                    "Save {0} To Send Later",
+                    "Stay In The {0}"
+                };
+                var options = optionTemplates.Select(t => string.Format(t, transName)).ToArray();
 
                 var choice = await _dialogService.ShowActionSheetAsync("Action Options", "", "Cancel", options);
 
                 if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel") return; // User cancelled, stay in order
 
-                switch (choice)
+                // Match by position (index) so we don't depend on exact trans name
+                var choiceIndex = Array.IndexOf(options, choice);
+                switch (choiceIndex)
                 {
-                    case "Send Order":
-                        // Call SendOrderAsync which handles validation and sending
+                    case 0: // Send
                         await SendOrderAsync();
                         break;
-                    case "Save Order To Send Later":
-                        // Continue after alert - finalize order and navigate
+                    case 1: // Save To Send Later
                         var canNavigate = await FinalizeOrderAsync();
                         if (canNavigate)
                         {
-                            // [ACTIVITY STATE]: Remove state when navigating away programmatically
                             Helpers.NavigationHelper.RemoveNavigationState("previouslyorderedtemplate");
-
                             await Shell.Current.GoToAsync("..");
                         }
-
                         break;
-                    case "Stay In The Order":
-                        // Do nothing, stay in the order
+                    case 2: // Stay In The ...
                         return;
                 }
             }

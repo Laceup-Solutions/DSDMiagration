@@ -1,6 +1,8 @@
 using Microsoft.Maui.Controls.Shapes;
 using LaceupMigration;
 using LaceupMigration.Helpers;
+using LaceupMigration.ViewModels;
+using LaceupMigration.Views;
 using MauiIcons.Core;
 using MauiIcons.Material.Outlined;
 using MauiIcons.Material; 
@@ -2840,6 +2842,141 @@ public class DialogService : IDialogService
         return await tcs.Task;
     }
 
+    /// <summary>Shows the line discount popup (percentage or amount). Called from RestOfTheAddDialog when user taps Discount link.</summary>
+    private async Task<(double discount, DiscountType type)> ShowLineDiscountPopupAsync(
+        Product product,
+        Order order,
+        OrderDetail? existingDetail,
+        double currentDiscount,
+        DiscountType currentDiscountType,
+        double qtyVal,
+        double priceVal)
+    {
+        var parentPage = GetCurrentPage();
+        if (parentPage == null) return (currentDiscount, currentDiscountType);
+
+        var tcs = new TaskCompletionSource<(double, DiscountType)>();
+        string FormatDiscountText(double d, DiscountType t)
+        {
+            if (d == 0) return "Discount = $0.00";
+            if (t == DiscountType.Percent) return "Discount = " + (d * 100).ToString("F0") + "%";
+            return "Discount = $" + d.ToString("F2");
+        }
+
+        var percRadio = new RadioButton { Content = "Percentage", IsChecked = currentDiscountType == DiscountType.Percent };
+        var percEntry = new Entry
+        {
+            Text = currentDiscountType == DiscountType.Percent ? (currentDiscount * 100).ToString("F0") : "",
+            Keyboard = Keyboard.Numeric,
+            Placeholder = "0"
+        };
+        var amountRadio = new RadioButton { Content = "Amount", IsChecked = currentDiscountType == DiscountType.Amount };
+        var amountEntry = new Entry
+        {
+            Text = currentDiscountType == DiscountType.Amount ? currentDiscount.ToString("F2") : "",
+            Keyboard = Keyboard.Numeric,
+            Placeholder = "0.00"
+        };
+        SelectAllOnFocusForEntry(percEntry);
+        SelectAllOnFocusForEntry(amountEntry);
+        var calcLabel = new Label { Text = "", FontSize = 12, TextColor = Colors.Gray };
+        void UpdateCalc()
+        {
+            if (percRadio.IsChecked && double.TryParse(percEntry.Text, out var perc))
+                calcLabel.Text = "= $" + (priceVal * qtyVal * perc / 100).ToString("F2");
+        }
+        percEntry.TextChanged += (_, _) => UpdateCalc();
+        percRadio.CheckedChanged += (_, _) => { if (percRadio.IsChecked) { amountEntry.Text = ""; UpdateCalc(); percEntry.Focus(); } };
+        amountRadio.CheckedChanged += (_, _) => { if (amountRadio.IsChecked) { percEntry.Text = ""; calcLabel.Text = ""; amountEntry.Focus(); } };
+
+        var addBtn = new Button { Text = "Add", HorizontalOptions = LayoutOptions.End };
+        var cancelBtn = new Button { Text = "Cancel", HorizontalOptions = LayoutOptions.Start };
+        addBtn.Clicked += async (_, _) =>
+        {
+            var lineTotal = qtyVal * priceVal;
+            double newDiscount = currentDiscount;
+            var newType = currentDiscountType;
+            if (percRadio.IsChecked)
+            {
+                if (!double.TryParse(percEntry.Text, out var percent)) percent = 0;
+                if (percent > 100) { await parentPage.DisplayAlert("Alert", "Discount cannot exceed 100% of the line total.", "OK"); return; }
+                if (!order.CanAddLineDiscount(percent, DiscountType.Percent, qtyVal, priceVal, existingDetail))
+                { await parentPage.DisplayAlert("Alert", "Cannot give more than " + Config.MaxDiscountPerOrder + "% discount to the order.", "OK"); return; }
+                newDiscount = percent / 100;
+                newType = DiscountType.Percent;
+            }
+            else
+            {
+                if (!double.TryParse(amountEntry.Text, out var amt)) amt = 0;
+                if (amt > lineTotal) { await parentPage.DisplayAlert("Alert", "Discount cannot exceed the line total ($" + lineTotal.ToString("F2") + ").", "OK"); return; }
+                if (!order.CanAddLineDiscount(amt, DiscountType.Amount, qtyVal, priceVal, existingDetail))
+                { await parentPage.DisplayAlert("Alert", "Cannot give more than " + Config.MaxDiscountPerOrder + "% discount to the order.", "OK"); return; }
+                newDiscount = amt;
+                newType = DiscountType.Amount;
+            }
+            await parentPage.Navigation.PopModalAsync();
+            tcs.TrySetResult((newDiscount, newType));
+        };
+        cancelBtn.Clicked += async (_, _) =>
+        {
+            await parentPage.Navigation.PopModalAsync();
+            tcs.TrySetResult((currentDiscount, currentDiscountType));
+        };
+
+        var discountTitleBar = new BoxView { BackgroundColor = Color.FromArgb("#E3F2FD"), HeightRequest = 40 };
+        var discountTitleLabel = new Label { Text = product.Name, FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = Colors.Black, VerticalOptions = LayoutOptions.Center, Padding = new Thickness(12, 0, 12, 0) };
+        var discountTitleGrid = new Grid { Children = { discountTitleBar, discountTitleLabel } };
+        var discountForm = new VerticalStackLayout
+        {
+            Spacing = 8,
+            Padding = new Thickness(16, 12, 16, 16),
+            Children =
+            {
+                discountTitleGrid,
+                percRadio,
+                percEntry,
+                calcLabel,
+                amountRadio,
+                amountEntry,
+                new Grid
+                {
+                    ColumnDefinitions = { new ColumnDefinition(), new ColumnDefinition() },
+                    ColumnSpacing = 8,
+                    Children = { cancelBtn, addBtn },
+                    Margin = new Thickness(0, 8, 0, 0)
+                }
+            }
+        };
+        Grid.SetColumn(cancelBtn, 0);
+        Grid.SetColumn(addBtn, 1);
+        var discountPopupBorder = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 1,
+            Stroke = Color.FromArgb("#E0E0E0"),
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            WidthRequest = 280,
+            MaximumWidthRequest = 340,
+            Padding = new Thickness(0),
+            Content = discountForm
+        };
+        var discountOverlay = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"),
+            RowDefinitions = new RowDefinitionCollection { new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }, new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = new GridLength(1, GridUnitType.Star) } },
+            ColumnDefinitions = new ColumnDefinitionCollection { new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }, new ColumnDefinition { Width = GridLength.Auto }, new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) } },
+            Padding = new Thickness(24)
+        };
+        Grid.SetRow(discountPopupBorder, 1);
+        Grid.SetColumn(discountPopupBorder, 1);
+        discountOverlay.Children.Add(discountPopupBorder);
+        var discountPage = new ContentPage { BackgroundColor = Colors.Transparent, Content = discountOverlay };
+        discountPage.Appearing += (_, _) => { if (currentDiscountType == DiscountType.Percent) percEntry.Focus(); else amountEntry.Focus(); };
+        UpdateCalc();
+        await parentPage.Navigation.PushModalAsync(discountPage);
+        return await tcs.Task;
+    }
+
     public async Task<RestOfTheAddDialogResult> ShowRestOfTheAddDialogAsync(
         Product product, 
         Order order, 
@@ -2867,943 +3004,41 @@ public class DialogService : IDialogService
         var initialFreeItem = existingDetail != null && existingDetail.IsFreeItem;
         var initialUseLSP = false;
         
-        // Get last invoice detail from client history (matches Xamarin l.Line.LastInvoiceDetail)
         InvoiceDetail? lastInvoiceDetail = null;
         if (order.Client != null)
         {
             var clientHistory = InvoiceDetail.ClientProduct(order.Client.ClientId, product.ProductId);
             if (clientHistory != null && clientHistory.Count > 0)
-            {
                 lastInvoiceDetail = clientHistory.OrderByDescending(x => x.Date).FirstOrDefault();
-            }
         }
-        
         if (Config.UseLSP && lastInvoiceDetail != null)
-        {
-            var previousPrice = lastInvoiceDetail.Price;
-            initialUseLSP = Math.Abs(initialPrice - previousPrice) < 0.01;
-        }
+            initialUseLSP = Math.Abs(initialPrice - lastInvoiceDetail.Price) < 0.01;
         var initialReasonId = existingDetail != null ? existingDetail.ReasonId : 0;
-        var initialPriceLevelSelected = existingDetail != null ? (existingDetail.ExtraFields != null ? 
-            int.TryParse(UDFHelper.GetSingleUDF("priceLevelSelected", existingDetail.ExtraFields), out var pl) ? pl : 0 : 0) : 0;
-        // For Amount type Order stores discount per unit (total = Discount * Qty). Dialog UI uses "total for line"; convert for display/store.
+        var initialPriceLevelSelected = existingDetail != null ? (existingDetail.ExtraFields != null ? int.TryParse(UDFHelper.GetSingleUDF("priceLevelSelected", existingDetail.ExtraFields), out var pl) ? pl : 0 : 0) : 0;
         var initialDiscount = existingDetail != null
-            ? (existingDetail.DiscountType == DiscountType.Amount && existingDetail.Qty > 0
-                ? existingDetail.Discount * existingDetail.Qty
-                : existingDetail.Discount)
+            ? (existingDetail.DiscountType == DiscountType.Amount && existingDetail.Qty > 0 ? existingDetail.Discount * existingDetail.Qty : existingDetail.Discount)
             : 0;
         var initialDiscountType = existingDetail != null ? existingDetail.DiscountType : DiscountType.Amount;
 
-        // Create dialog content - clean layout matching Add Item design
-        var accentBlue = Color.FromArgb("#017CBA");
-        var labelGray = Color.FromArgb("#333333");
-        var scrollView = new ScrollView
-        {
-            Content = new VerticalStackLayout
-            {
-                Spacing = 0,
-                Padding = new Thickness(16, 12, 16, 8)
-            },
-            MaximumHeightRequest = 500
-        };
-
-        var content = (VerticalStackLayout)scrollView.Content;
-
-        // Title: prominent blue product name + full-width blue line under it (line ignores content padding)
-        var titleLabel = new Label
-        {
-            Text = product.Name,
-            FontSize = 16,
-            FontAttributes = FontAttributes.Bold,
-            TextColor = accentBlue,
-            VerticalOptions = LayoutOptions.Start,
-            Margin = new Thickness(0, 0, 0, 4),
-            LineBreakMode = LineBreakMode.WordWrap
-        };
-        var titleUnderline = new BoxView
-        {
-            HeightRequest = 1,
-            BackgroundColor = accentBlue,
-            Margin = new Thickness(-16, 0, -16, 12) // extend past content padding so line spans full dialog width
-        };
-        var titleStack = new VerticalStackLayout { Spacing = 0 };
-        titleStack.Children.Add(titleLabel);
-        titleStack.Children.Add(titleUnderline);
-        content.Children.Add(titleStack);
-
-        // Quantity/Weight Entry (no underline)
-        Entry qtyEntry = null;
-        Label qtyLabel = null;
-        if (!order.AsPresale && product.SoldByWeight)
-        {
-            qtyLabel = new Label { Text = "Weight:", FontSize = 14, TextColor = labelGray };
-            qtyEntry = new Entry
-            {
-                Text = initialWeight.ToString("F2"),
-                Keyboard = Keyboard.Numeric,
-                FontSize = 14,
-                HeightRequest = 36,
-                BackgroundColor = Colors.Transparent
-            };
-        }
-        else
-        {
-            qtyLabel = new Label { Text = "Qty:", FontSize = 14, TextColor = labelGray };
-            qtyEntry = new Entry
-            {
-                Text = initialQty.ToString("F0"),
-                Keyboard = Config.DontAllowDecimalsInQty ? Keyboard.Numeric : Keyboard.Numeric,
-                FontSize = 14,
-                HeightRequest = 36,
-                BackgroundColor = Colors.Transparent
-            };
-        }
-        var qtyRow = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitionCollection
-            {
-                new ColumnDefinition { Width = GridLength.Auto },
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-            },
-            Margin = new Thickness(0, 6, 0, 2),
-            ColumnSpacing = 8
-        };
-        qtyLabel.VerticalOptions = LayoutOptions.Center;
-        qtyEntry.VerticalOptions = LayoutOptions.Center;
-        Grid.SetColumn(qtyLabel, 0);
-        Grid.SetColumn(qtyEntry, 1);
-        qtyRow.Children.Add(qtyLabel);
-        qtyRow.Children.Add(qtyEntry);
-        SelectAllOnFocusForEntry(qtyEntry);
-        content.Children.Add(qtyRow);
-
-        // Weight Entry (if EnterWeightInCredits)
-        Entry weightEntry = null;
-        if (Config.EnterWeightInCredits && product.SoldByWeight && order.AsPresale && isCredit)
-        {
-            var weightLabel = new Label { Text = "Weight:", FontSize = 14, TextColor = labelGray };
-            weightEntry = new Entry
-            {
-                Text = initialWeight.ToString("F2"),
-                Keyboard = Keyboard.Numeric,
-                FontSize = 14,
-                HeightRequest = 36
-            };
-            qtyEntry.IsEnabled = false;
-            qtyEntry.Text = "1";
-
-            var weightRow = new Grid
-            {
-                ColumnDefinitions = new ColumnDefinitionCollection
-                {
-                    new ColumnDefinition { Width = GridLength.Auto },
-                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-                },
-                Margin = new Thickness(0, 4, 0, 2),
-                ColumnSpacing = 8
-            };
-            weightLabel.VerticalOptions = LayoutOptions.Center;
-            weightEntry.VerticalOptions = LayoutOptions.Center;
-            Grid.SetColumn(weightLabel, 0);
-            Grid.SetColumn(weightEntry, 1);
-            weightRow.Children.Add(weightLabel);
-            weightRow.Children.Add(weightEntry);
-            SelectAllOnFocusForEntry(weightEntry);
-            content.Children.Add(weightRow);
-        }
-
-        // Lot Entry
-        Entry lotEntry = null;
-        Button lotButton = null;
-        Button expButton = null;
-        if (!order.AsPresale && !isDamaged && (product.UseLot || product.UseLotAsReference))
-        {
-            if (product.UseLot)
-            {
-                // Product lot button
-                lotButton = new Button
-                {
-                    Text = initialLot,
-                    FontSize = 14,
-                    BackgroundColor = Colors.LightGray,
-                    HeightRequest = 36
-                };
-                // TODO: Add lot selection logic
-                var lotLabel = new Label { Text = "Lot:", FontSize = 14, TextColor = Colors.Black };
-                lotButton.HeightRequest = 36;
-                var lotButtonRow = new Grid
-                {
-                    ColumnDefinitions = new ColumnDefinitionCollection
-                    {
-                        new ColumnDefinition { Width = GridLength.Auto },
-                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-                    },
-                    Margin = new Thickness(0, 4, 0, 2),
-                    ColumnSpacing = 8
-                };
-                lotLabel.VerticalOptions = LayoutOptions.Center;
-                lotButton.VerticalOptions = LayoutOptions.Center;
-                Grid.SetColumn(lotLabel, 0);
-                Grid.SetColumn(lotButton, 1);
-                lotButtonRow.Children.Add(lotLabel);
-                lotButtonRow.Children.Add(lotButton);
-                content.Children.Add(lotButtonRow);
-
-                if (Config.UseLotExpiration)
-                {
-                    expButton = new Button
-                    {
-                        Text = existingDetail?.LotExpiration != null && existingDetail.LotExpiration != DateTime.MinValue 
-                            ? existingDetail.LotExpiration.ToShortDateString() 
-                            : "",
-                        FontSize = 14,
-                        BackgroundColor = Colors.LightGray,
-                        HeightRequest = 36
-                    };
-                    // TODO: Add date picker logic
-                    var expLabel = new Label { Text = "Expiration:", FontSize = 14, TextColor = Colors.Black };
-                    expButton.HeightRequest = 36;
-                    var expButtonRow = new Grid
-                    {
-                        ColumnDefinitions = new ColumnDefinitionCollection
-                        {
-                            new ColumnDefinition { Width = GridLength.Auto },
-                            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-                        },
-                        Margin = new Thickness(0, 4, 0, 2),
-                        ColumnSpacing = 8
-                    };
-                    expLabel.VerticalOptions = LayoutOptions.Center;
-                    expButton.VerticalOptions = LayoutOptions.Center;
-                    Grid.SetColumn(expLabel, 0);
-                    Grid.SetColumn(expButton, 1);
-                    expButtonRow.Children.Add(expLabel);
-                    expButtonRow.Children.Add(expButton);
-                    content.Children.Add(expButtonRow);
-                }
-            }
-            else
-            {
-                // Simple lot entry
-                var lotLabel = new Label { Text = "Lot:", FontSize = 14, TextColor = Colors.Black };
-                lotEntry = new Entry
-                {
-                    Text = initialLot,
-                    FontSize = 14,
-                    HeightRequest = 36
-                };
-                var lotRow = new Grid
-                {
-                    ColumnDefinitions = new ColumnDefinitionCollection
-                    {
-                        new ColumnDefinition { Width = GridLength.Auto },
-                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-                    },
-                    Margin = new Thickness(0, 4, 0, 2),
-                    ColumnSpacing = 8
-                };
-                lotLabel.VerticalOptions = LayoutOptions.Center;
-                lotEntry.VerticalOptions = LayoutOptions.Center;
-                Grid.SetColumn(lotLabel, 0);
-                Grid.SetColumn(lotEntry, 1);
-                lotRow.Children.Add(lotLabel);
-                lotRow.Children.Add(lotEntry);
-                SelectAllOnFocusForEntry(lotEntry);
-                content.Children.Add(lotRow);
-            }
-        }
-
-        // Comments (with label and bordered editor - added below discount)
-        Editor commentEntry = null;
-        if (!Config.HideItemComment || (order.OrderType != OrderType.Order && order.OrderType != OrderType.Credit))
-        {
-            commentEntry = new Editor
-            {
-                Text = initialComments,
-                Placeholder = "Enter comments",
-                HeightRequest = 60,
-                FontSize = 14,
-                Margin = new Thickness(0, 4, 0, 0),
-                BackgroundColor = Colors.White
-            };
-        }
-
-        // Price Entry and UoM (order: UoM then Price with Free Item on same row as in design)
-            Entry priceEntry = null;
-            CheckBox freeItemCheckbox = null;
-            bool canChangePrice = Config.CanChangePrice(order, product, isCredit);
-            var initialDisplayPrice = initialPrice;
-            if (existingDetail == null && initialUoM != null && !string.IsNullOrEmpty(product.UoMFamily))
-                initialDisplayPrice = Math.Round(initialPrice * initialUoM.Conversion, Config.Round);
-
-            Picker uomPicker = null;
-            UnitOfMeasure selectedUoM = initialUoM;
-            Grid uomRow = null;
-            Grid priceRow = null;
-
-            if (!product.SoldByWeight && !string.IsNullOrEmpty(product.UoMFamily))
-            {
-                var familyItems = UnitOfMeasure.List.Where(x => x.FamilyId == product.UoMFamily).ToList();
-                if (familyItems.Count > 0)
-                {
-                    var uomLabel = new Label { Text = "UoM:", FontSize = 14, TextColor = labelGray };
-                    uomPicker = new Picker
-                    {
-                        FontSize = 14,
-                        ItemsSource = familyItems,
-                        ItemDisplayBinding = new Binding("Name"),
-                        HeightRequest = 36,
-                        BackgroundColor = Colors.Transparent
-                    };
-                    if (initialUoM != null)
-                    {
-                        var index = familyItems.FindIndex(x => x.Id == initialUoM.Id);
-                        if (index >= 0)
-                            uomPicker.SelectedIndex = index;
-                    }
-                    uomPicker.SelectedIndexChanged += (s, e) =>
-                    {
-                        if (uomPicker.SelectedIndex < 0 || uomPicker.SelectedIndex >= familyItems.Count)
-                            return;
-                        var previousUoM = selectedUoM;
-                        selectedUoM = familyItems[uomPicker.SelectedIndex];
-                        if (priceEntry != null && previousUoM != null && selectedUoM != null && double.TryParse(priceEntry.Text, out var currentPrice))
-                        {
-                            var newPrice = Math.Round(currentPrice * (selectedUoM.Conversion / previousUoM.Conversion), Config.Round);
-                            priceEntry.Text = newPrice.ToString("F2");
-                        }
-                    };
-                    uomRow = new Grid
-                    {
-                        ColumnDefinitions = new ColumnDefinitionCollection
-                        {
-                            new ColumnDefinition { Width = GridLength.Auto },
-                            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-                        },
-                        Margin = new Thickness(0, 6, 0, 2),
-                        ColumnSpacing = 8
-                    };
-                    uomLabel.VerticalOptions = LayoutOptions.Center;
-                    uomPicker.VerticalOptions = LayoutOptions.Center;
-                    Grid.SetColumn(uomLabel, 0);
-                    Grid.SetColumn(uomPicker, 1);
-                    uomRow.Children.Add(uomLabel);
-                    uomRow.Children.Add(uomPicker);
-                }
-            }
-
-            if (canChangePrice)
-            {
-                var priceLabel = new Label { Text = "Price:", FontSize = 14, TextColor = labelGray };
-                priceEntry = new Entry
-                {
-                    Text = initialDisplayPrice.ToString("F2"),
-                    Keyboard = Keyboard.Numeric,
-                    FontSize = 14,
-                    HeightRequest = 36,
-                    BackgroundColor = Colors.Transparent
-                };
-                SelectAllOnFocusForEntry(priceEntry);
-
-                bool showFreeItemOnRow = order.OrderType == OrderType.Order && Config.AllowFreeItems;
-                priceRow = new Grid
-                {
-                    ColumnDefinitions = new ColumnDefinitionCollection
-                    {
-                        new ColumnDefinition { Width = GridLength.Auto },
-                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
-                        new ColumnDefinition { Width = GridLength.Auto }
-                    },
-                    Margin = new Thickness(0, 6, 0, 2),
-                    ColumnSpacing = 8
-                };
-                priceLabel.VerticalOptions = LayoutOptions.Center;
-                priceEntry.VerticalOptions = LayoutOptions.Center;
-                Grid.SetColumn(priceLabel, 0);
-                Grid.SetColumn(priceEntry, 1);
-                priceRow.Children.Add(priceLabel);
-                priceRow.Children.Add(priceEntry);
-                if (showFreeItemOnRow)
-                {
-                    freeItemCheckbox = new CheckBox { IsChecked = initialFreeItem };
-                    var freeItemStack = new HorizontalStackLayout { Spacing = 6, VerticalOptions = LayoutOptions.Center };
-                    freeItemStack.Children.Add(freeItemCheckbox);
-                    freeItemStack.Children.Add(new Label { Text = "Free Item", FontSize = 14, TextColor = labelGray, VerticalOptions = LayoutOptions.Center });
-                    Grid.SetColumn(freeItemStack, 2);
-                    priceRow.Children.Add(freeItemStack);
-                    freeItemCheckbox.CheckedChanged += (s, e) =>
-                    {
-                        priceEntry.IsEnabled = !freeItemCheckbox.IsChecked;
-                        if (freeItemCheckbox.IsChecked)
-                            priceEntry.Text = "0.00";
-                    };
-                }
-            }
-
-            // Add UoM then Price in design order (Qty, UoM, Price)
-            if (uomRow != null)
-                content.Children.Add(uomRow);
-            if (priceRow != null)
-                content.Children.Add(priceRow);
-
-            // Free Item on its own row when config allows but price field is not visible (canChangePrice false)
-            if (freeItemCheckbox == null && order.OrderType == OrderType.Order && Config.AllowFreeItems)
-            {
-                freeItemCheckbox = new CheckBox { IsChecked = initialFreeItem };
-                var freeItemRow = new HorizontalStackLayout { Spacing = 6, Margin = new Thickness(0, 6, 0, 2) };
-                freeItemRow.Children.Add(freeItemCheckbox);
-                freeItemRow.Children.Add(new Label { Text = "Free Item", FontSize = 14, TextColor = labelGray, VerticalOptions = LayoutOptions.Center });
-                content.Children.Add(freeItemRow);
-            }
-
-        // Price Level Picker
-        Picker priceLevelPicker = null;
-        int selectedPriceLevelId = initialPriceLevelSelected;
-        if (canChangePrice)
-        {
-            // Get ProductPrice entries for this product
-            var productPrices = ProductPrice.Pricelist.Where(x => x.ProductId == product.ProductId).ToList();
-            if (productPrices.Any())
-            {
-                var priceLevelOptions = new List<string> { "Select a Price Level" };
-                var priceLevelIds = new List<int> { 0 };
-                var productPriceList = new List<ProductPrice>();
-                var conversion = selectedUoM != null ? selectedUoM.Conversion : 1.0;
-
-                // Build price level list from ProductPrice entries
-                foreach (var pp in productPrices)
-                {
-                    var priceLevel = PriceLevel.List.FirstOrDefault(x => x.Id == pp.PriceLevelId);
-                    if (priceLevel != null)
-                    {
-                        var convertedPrice = Math.Round(pp.Price * conversion, Config.Round);
-                        priceLevelOptions.Add($"{priceLevel.Name}: {convertedPrice.ToCustomString()}");
-                        priceLevelIds.Add(pp.PriceLevelId);
-                        productPriceList.Add(pp);
-                    }
-                }
-
-                if (priceLevelOptions.Count > 1) // More than just "Select a Price Level"
-                {
-                    var priceLevelLabel = new Label { Text = "Price Level:", FontSize = 14, TextColor = labelGray };
-                    priceLevelPicker = new Picker
-                    {
-                        FontSize = 14,
-                        ItemsSource = priceLevelOptions,
-                        HeightRequest = 36
-                    };
-
-                    // Set initial selection
-                    if (initialPriceLevelSelected > 0)
-                    {
-                        var index = priceLevelIds.IndexOf(initialPriceLevelSelected);
-                        if (index > 0) // index 0 is "Select a Price Level"
-                            priceLevelPicker.SelectedIndex = index;
-                        else
-                            priceLevelPicker.SelectedIndex = 0;
-                    }
-                    else
-                    {
-                        priceLevelPicker.SelectedIndex = 0; // "Select a Price Level"
-                    }
-
-                    priceLevelPicker.SelectedIndexChanged += (s, e) =>
-                    {
-                        if (priceLevelPicker.SelectedIndex > 0 && priceLevelPicker.SelectedIndex <= priceLevelIds.Count)
-                        {
-                            selectedPriceLevelId = priceLevelIds[priceLevelPicker.SelectedIndex];
-                            // Update price when price level changes
-                            if (priceEntry != null && productPriceList.Count > priceLevelPicker.SelectedIndex - 1)
-                            {
-                                var selectedPP = productPriceList[priceLevelPicker.SelectedIndex - 1];
-                                var currentConversion = selectedUoM != null ? selectedUoM.Conversion : 1.0;
-                                var newPrice = Math.Round(selectedPP.Price * currentConversion, Config.Round);
-                                priceEntry.Text = newPrice.ToString("F2");
-                            }
-                        }
-                        else
-                        {
-                            selectedPriceLevelId = 0;
-                        }
-                    };
-
-                    var priceLevelRow = new Grid
-                    {
-                        ColumnDefinitions = new ColumnDefinitionCollection
-                        {
-                            new ColumnDefinition { Width = GridLength.Auto },
-                            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-                        },
-                        Margin = new Thickness(0, 4, 0, 2),
-                        ColumnSpacing = 8
-                    };
-                    priceLevelLabel.VerticalOptions = LayoutOptions.Center;
-                    priceLevelPicker.VerticalOptions = LayoutOptions.Center;
-                    Grid.SetColumn(priceLevelLabel, 0);
-                    Grid.SetColumn(priceLevelPicker, 1);
-                    priceLevelRow.Children.Add(priceLevelLabel);
-                    priceLevelRow.Children.Add(priceLevelPicker);
-                    content.Children.Add(priceLevelRow);
-                }
-                }
-            }
-
-        // Use LSP Checkbox
-        CheckBox useLspCheckbox = null;
-        if (Config.UseLSP && lastInvoiceDetail != null)
-        {
-            useLspCheckbox = new CheckBox
-            {
-                IsChecked = initialUseLSP
-            };
-            var useLspRow = new HorizontalStackLayout { Spacing = 6, Margin = new Thickness(0, 2, 0, 2) };
-            useLspRow.Children.Add(useLspCheckbox);
-            useLspRow.Children.Add(new Label { Text = "Use Last Sold Price", FontSize = 14, TextColor = labelGray, VerticalOptions = LayoutOptions.Center });
-            content.Children.Add(useLspRow);
-
-            if (priceEntry != null)
-            {
-                useLspCheckbox.CheckedChanged += (s, e) =>
-                {
-                    priceEntry.IsEnabled = !useLspCheckbox.IsChecked;
-                    if (useLspCheckbox.IsChecked && lastInvoiceDetail != null)
-                        priceEntry.Text = lastInvoiceDetail.Price.ToString("F2");
-                };
-            }
-        }
-
-        // Discount per line (link) - matches Xamarin PreviouslyOrderedTemplateActivity CatalogAddDiscountLink / DiscountLink_Click
-        double currentDiscount = initialDiscount;
-        DiscountType currentDiscountType = initialDiscountType;
-        ContentPage restOfTheDialog = null; // set when dialog is created; discount tap uses restOfTheDialog.Navigation
-        bool showDiscountLink = Config.AllowDiscountPerLine
-            && order.Client?.UseDiscountPerLine == true
-            && (order.OrderType == OrderType.Order || order.OrderType == OrderType.Credit || order.OrderType == OrderType.Return)
-            && !Config.HidePriceInTransaction
-            && !initialFreeItem;
-
-        Label discountLinkLabel = null;
-        if (showDiscountLink)
-        {
-            string FormatDiscountText(double discount, DiscountType dType)
-            {
-                if (discount == 0) return "Discount = $0.00";
-                if (dType == DiscountType.Percent)
-                    return "Discount = " + (discount * 100).ToString("F0") + "%";
-                return "Discount = $" + discount.ToString("F2");
-            }
-
-            discountLinkLabel = new Label
-            {
-                Text = FormatDiscountText(currentDiscount, currentDiscountType),
-                FontSize = 14,
-                TextColor = accentBlue,
-                TextDecorations = TextDecorations.Underline,
-                Margin = new Thickness(0, 6, 0, 2)
-            };
-            var discountTap = new TapGestureRecognizer();
-            discountTap.Tapped += async (s, e) =>
-            {
-                // Get current qty and price from form (for validation)
-                double qtyVal = 1;
-                float.TryParse(qtyEntry?.Text, out var qtyF);
-                qtyVal = qtyF;
-                if (product.SoldByWeight && order.AsPresale)
-                    qtyVal *= product.Weight;
-                double priceVal = initialPrice;
-                if (priceEntry != null && double.TryParse(priceEntry.Text, out var p))
-                    priceVal = p;
-
-                var percRadio = new RadioButton { Content = "Percentage", IsChecked = currentDiscountType == DiscountType.Percent };
-                var percEntry = new Entry
-                {
-                    Text = currentDiscountType == DiscountType.Percent ? (currentDiscount * 100).ToString("F0") : "",
-                    Keyboard = Keyboard.Numeric,
-                    Placeholder = "0"
-                };
-                var amountRadio = new RadioButton { Content = "Amount", IsChecked = currentDiscountType == DiscountType.Amount };
-                var amountEntry = new Entry
-                {
-                    Text = currentDiscountType == DiscountType.Amount ? currentDiscount.ToString("F2") : "",
-                    Keyboard = Keyboard.Numeric,
-                    Placeholder = "0.00"
-                };
-                SelectAllOnFocusForEntry(percEntry);
-                SelectAllOnFocusForEntry(amountEntry);
-                var calcLabel = new Label { Text = "", FontSize = 12, TextColor = Colors.Gray };
-                void UpdateCalc()
-                {
-                    if (percRadio.IsChecked && double.TryParse(percEntry.Text, out var perc))
-                        calcLabel.Text = "= $" + (priceVal * qtyVal * perc / 100).ToString("F2");
-                }
-                percEntry.TextChanged += (_, __) => UpdateCalc();
-                percRadio.CheckedChanged += (_, __) =>
-                {
-                    if (percRadio.IsChecked)
-                    {
-                        amountEntry.Text = "";
-                        UpdateCalc();
-                        percEntry.Focus();
-                    }
-                };
-                amountRadio.CheckedChanged += (_, __) =>
-                {
-                    if (amountRadio.IsChecked)
-                    {
-                        percEntry.Text = "";
-                        calcLabel.Text = "";
-                        amountEntry.Focus();
-                    }
-                };
-
-                var addBtn = new Button { Text = "Add", HorizontalOptions = LayoutOptions.End };
-                var cancelBtn = new Button { Text = "Cancel", HorizontalOptions = LayoutOptions.Start };
-                addBtn.Clicked += async (s, e) =>
-                {
-                    var lineTotal = qtyVal * priceVal;
-                    if (percRadio.IsChecked)
-                    {
-                        if (!double.TryParse(percEntry.Text, out var percent)) percent = 0;
-                        if (percent > 100)
-                        {
-                            await GetCurrentPage()?.DisplayAlert("Alert", "Discount cannot exceed 100% of the line total.", "OK");
-                            return;
-                        }
-                        if (!order.CanAddLineDiscount(percent, DiscountType.Percent, qtyVal, priceVal, existingDetail))
-                        {
-                            await GetCurrentPage()?.DisplayAlert("Alert", "Cannot give more than " + Config.MaxDiscountPerOrder + "% discount to the order.", "OK");
-                            return;
-                        }
-                        currentDiscount = percent / 100;
-                        currentDiscountType = DiscountType.Percent;
-                    }
-                    else
-                    {
-                        if (!double.TryParse(amountEntry.Text, out var amt)) amt = 0;
-                        if (amt > lineTotal)
-                        {
-                            await GetCurrentPage()?.DisplayAlert("Alert", "Discount cannot exceed the line total ($" + lineTotal.ToString("F2") + ").", "OK");
-                            return;
-                        }
-                        if (!order.CanAddLineDiscount(amt, DiscountType.Amount, qtyVal, priceVal, existingDetail))
-                        {
-                            await GetCurrentPage()?.DisplayAlert("Alert", "Cannot give more than " + Config.MaxDiscountPerOrder + "% discount to the order.", "OK");
-                            return;
-                        }
-                        currentDiscount = amt;
-                        currentDiscountType = DiscountType.Amount;
-                    }
-                    discountLinkLabel.Text = FormatDiscountText(currentDiscount, currentDiscountType);
-                    await restOfTheDialog?.Navigation.PopModalAsync();
-                };
-                cancelBtn.Clicked += async (s, e) => await restOfTheDialog?.Navigation.PopModalAsync();
-
-                // Popup content: title bar + form (match RestOfThe dialog style)
-                var discountTitleBar = new BoxView { BackgroundColor = Color.FromArgb("#E3F2FD"), HeightRequest = 40 };
-                var discountTitleLabel = new Label
-                {
-                    Text = product.Name,
-                    FontSize = 14,
-                    FontAttributes = FontAttributes.Bold,
-                    TextColor = Colors.Black,
-                    VerticalOptions = LayoutOptions.Center,
-                    Padding = new Thickness(12, 0, 12, 0)
-                };
-                var discountTitleGrid = new Grid { Children = { discountTitleBar, discountTitleLabel } };
-
-                var discountForm = new VerticalStackLayout
-                {
-                    Spacing = 8,
-                    Padding = new Thickness(16, 12, 16, 16),
-                    Children =
-                    {
-                        discountTitleGrid,
-                        percRadio,
-                        percEntry,
-                        calcLabel,
-                        amountRadio,
-                        amountEntry,
-                        new Grid
-                        {
-                            ColumnDefinitions = { new ColumnDefinition(), new ColumnDefinition() },
-                            ColumnSpacing = 8,
-                            Children = { cancelBtn, addBtn },
-                            Margin = new Thickness(0, 8, 0, 0)
-                        }
-                    }
-                };
-                Grid.SetColumn(cancelBtn, 0);
-                Grid.SetColumn(addBtn, 1);
-
-                var discountPopupBorder = new Border
-                {
-                    BackgroundColor = Colors.White,
-                    StrokeThickness = 1,
-                    Stroke = Color.FromArgb("#E0E0E0"),
-                    StrokeShape = new RoundRectangle { CornerRadius = 8 },
-                    WidthRequest = 280,
-                    MaximumWidthRequest = 340,
-                    Padding = new Thickness(0),
-                    Content = discountForm
-                };
-
-                var discountOverlay = new Grid
-                {
-                    BackgroundColor = Color.FromArgb("#80000000"),
-                    RowDefinitions = new RowDefinitionCollection
-                    {
-                        new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
-                        new RowDefinition { Height = GridLength.Auto },
-                        new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
-                    },
-                    ColumnDefinitions = new ColumnDefinitionCollection
-                    {
-                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
-                        new ColumnDefinition { Width = GridLength.Auto },
-                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-                    },
-                    Padding = new Thickness(24)
-                };
-                Grid.SetRow(discountPopupBorder, 1);
-                Grid.SetColumn(discountPopupBorder, 1);
-                discountOverlay.Children.Add(discountPopupBorder);
-
-                var discountPage = new ContentPage
-                {
-                    BackgroundColor = Colors.Transparent,
-                    Content = discountOverlay
-                };
-                // Focus the entry for the selected discount type when popup opens
-                discountPage.Appearing += (_, __) =>
-                {
-                    if (currentDiscountType == DiscountType.Percent)
-                        percEntry.Focus();
-                    else
-                        amountEntry.Focus();
-                };
-
-                UpdateCalc();
-                await restOfTheDialog?.Navigation.PushModalAsync(discountPage);
-            };
-            discountLinkLabel.GestureRecognizers.Add(discountTap);
-            content.Children.Add(discountLinkLabel);
-
-            if (freeItemCheckbox != null)
-            {
-                freeItemCheckbox.CheckedChanged += (s, e) =>
-                {
-                    if (discountLinkLabel != null)
-                        discountLinkLabel.IsVisible = !(freeItemCheckbox.IsChecked);
-                };
-            }
-        }
-
-        // Comments (bordered editor only, no label) as last field before buttons
-        if (commentEntry != null)
-        {
-            var commentBorder = new Border
-            {
-                Content = commentEntry,
-                Stroke = Color.FromArgb("#E0E0E0"),
-                StrokeThickness = 1,
-                StrokeShape = new RoundRectangle { CornerRadius = 4 },
-                Padding = new Thickness(8, 4),
-                Margin = new Thickness(0, 10, 0, 0)
-            };
-            content.Children.Add(commentBorder);
-        }
-
-        // Separator and buttons outside padded content so lines span full dialog width (not inset by padding)
-        var topSeparator = new BoxView
-        {
-            HeightRequest = 1,
-            BackgroundColor = Color.FromArgb("#E0E0E0"),
-            HorizontalOptions = LayoutOptions.Fill,
-            Margin = new Thickness(0, 12, 0, 0)
-        };
-
-        var cancelButton = new Button
-        {
-            Text = "Cancel",
-            BackgroundColor = Colors.Transparent,
-            TextColor = labelGray,
-            FontSize = 14,
-            FontAttributes = FontAttributes.Bold,
-            HeightRequest = 40,
-            Margin = new Thickness(0)
-        };
-
-        var addButton = new Button
-        {
-            Text = "Add",
-            BackgroundColor = Colors.Transparent,
-            TextColor = labelGray,
-            FontSize = 14,
-            FontAttributes = FontAttributes.Bold,
-            HeightRequest = 40,
-            Margin = new Thickness(0)
-        };
-
-        var buttonRow = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitionCollection
-            {
-                new ColumnDefinition { Width = GridLength.Star },
-                new ColumnDefinition { Width = 1 },
-                new ColumnDefinition { Width = GridLength.Star }
-            },
-            ColumnSpacing = 0,
-            Margin = new Thickness(0, 0, 0, 0),
-            HeightRequest = 40
-        };
-
-        var verticalSeparator = new BoxView
-        {
-            WidthRequest = 1,
-            BackgroundColor = Color.FromArgb("#E0E0E0"),
-            VerticalOptions = LayoutOptions.Fill
-        };
-
-        Grid.SetColumn(cancelButton, 0);
-        Grid.SetColumn(verticalSeparator, 1);
-        Grid.SetColumn(addButton, 2);
-        buttonRow.Children.Add(cancelButton);
-        buttonRow.Children.Add(verticalSeparator);
-        buttonRow.Children.Add(addButton);
-
-        // Dialog: padded scroll content + full-width separator + full-width button row (lines not affected by content padding)
-        var dialogMain = new VerticalStackLayout { Spacing = 0 };
-        dialogMain.Children.Add(scrollView);
-        dialogMain.Children.Add(topSeparator);
-        dialogMain.Children.Add(buttonRow);
-
-            var dialogBorder = new Border
-            {
-                BackgroundColor = Colors.White,
-                StrokeThickness = 1,
-                Stroke = Color.FromArgb("#E0E0E0"),
-                StrokeShape = new RoundRectangle { CornerRadius = 8 },
-                WidthRequest = 320,
-                MaximumWidthRequest = 400,
-                Padding = new Thickness(0),
-                Margin = new Thickness(20, 20, 20, 20),
-                Content = dialogMain
-            };
-
-            var overlayGrid = new Grid
-            {
-                BackgroundColor = Color.FromArgb("#80000000"),
-                RowDefinitions = new RowDefinitionCollection
-                {
-                    new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
-                    new RowDefinition { Height = GridLength.Auto },
-                    new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
-                },
-                ColumnDefinitions = new ColumnDefinitionCollection
-                {
-                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
-                    new ColumnDefinition { Width = GridLength.Auto },
-                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-                },
-                Padding = new Thickness(8)
-            };
-
-            Grid.SetRow(dialogBorder, 1);
-            Grid.SetColumn(dialogBorder, 1);
-            overlayGrid.Children.Add(dialogBorder);
-
-            restOfTheDialog = new ContentPage
-            {
-                BackgroundColor = Colors.Transparent,
-                Content = overlayGrid
-            };
-
-            addButton.Clicked += async (s, e) =>
-            {
-                var result = new RestOfTheAddDialogResult();
-
-                // Parse qty
-                if (float.TryParse(qtyEntry.Text, out var qty))
-                    result.Qty = qty;
-                else
-                    result.Qty = 0;
-
-                // Parse weight
-                if (weightEntry != null && float.TryParse(weightEntry.Text, out var weight))
-                    result.Weight = weight;
-                else
-                    result.Weight = result.Qty; // Default to qty if no weight entry
-
-                // Get lot
-                if (lotEntry != null)
-                    result.Lot = lotEntry.Text ?? string.Empty;
-                else if (lotButton != null)
-                    result.Lot = lotButton.Text ?? string.Empty;
-
-                // Get comments
-                result.Comments = commentEntry?.Text ?? string.Empty;
-
-                // Get UoM first (needed for price when price not visible)
-                result.SelectedUoM = selectedUoM;
-
-                // Parse price: when price is visible use entry; when not visible use price for selected UOM (conversion)
-                if (priceEntry != null && double.TryParse(priceEntry.Text, out var price))
-                    result.Price = price;
-                else
-                    result.Price = Product.GetPriceForProduct(product, order, out _, isCredit, isDamaged, result.SelectedUoM);
-
-                // Get checkboxes
-                result.IsFreeItem = freeItemCheckbox?.IsChecked ?? false;
-                result.UseLastSoldPrice = useLspCheckbox?.IsChecked ?? false;
-                if (result.IsFreeItem)
-                    result.Price = 0;
-
-                // Get price level
-                result.PriceLevelSelected = selectedPriceLevelId;
-                
-                // TODO: Add reason logic
-                result.ReasonId = initialReasonId;
-
-                // Order expects Amount discount per unit (it multiplies by Qty). Dialog collects total for line → store per unit.
-                if (currentDiscountType == DiscountType.Amount && result.Qty > 0 && currentDiscount > 0)
-                    result.Discount = currentDiscount / result.Qty;
-                else
-                    result.Discount = currentDiscount;
-                result.DiscountType = currentDiscountType;
-
-                result.Cancelled = false;
-
-                await page.Navigation.PopModalAsync();
-                tcs.SetResult(result);
-            };
-
-            cancelButton.Clicked += async (s, e) =>
+        var vm = new RestOfTheAddDialogViewModel();
+        vm.Initialize(
+            product, order, existingDetail, isCredit, isDamaged, isDelivery,
+            lastInvoiceDetail,
+            initialQty, initialWeight, initialLot, initialComments, initialPrice,
+            initialUoM, initialFreeItem, initialUseLSP, initialPriceLevelSelected,
+            initialDiscount, initialDiscountType, initialReasonId,
+            onCompleteAsync: async (result) =>
             {
                 await page.Navigation.PopModalAsync();
-                tcs.SetResult(new RestOfTheAddDialogResult { Cancelled = true });
-            };
+                tcs.TrySetResult(result);
+            },
+            showDiscountPopupAsync: (d, t, qtyVal, priceVal) => ShowLineDiscountPopupAsync(product, order, existingDetail, d, t, qtyVal, priceVal));
 
-        await page.Navigation.PushModalAsync(restOfTheDialog);
-        
-        // Auto-focus the Qty/Weight field when dialog appears and select all text
-        // If weight entry is shown, focus that instead (since qty is disabled in that case)
-        Entry fieldToFocus = weightEntry != null ? weightEntry : qtyEntry;
-        if (fieldToFocus != null)
-        {
-            // Use a small delay to ensure the dialog is fully rendered before focusing
-            await Task.Delay(100);
-            fieldToFocus.Focus();
-            // Select all text so typing replaces the value (matching Xamarin: SetSelectAllOnFocus)
-            if (!string.IsNullOrEmpty(fieldToFocus.Text))
-            {
-                fieldToFocus.CursorPosition = 0;
-                fieldToFocus.SelectionLength = fieldToFocus.Text.Length;
-            }
-        }
-        
+        var dialogPage = new RestOfTheAddDialogPage(vm);
+        await page.Navigation.PushModalAsync(dialogPage);
         return await tcs.Task;
     }
-
+    
     private static void SelectAllOnFocusForEntry(Entry entry)
     {
         if (entry == null) return;

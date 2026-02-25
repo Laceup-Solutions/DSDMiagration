@@ -103,38 +103,29 @@ namespace LaceupMigration.ViewModels
         [RelayCommand]
         private void SelectAll()
         {
-            if (_isUpdatingSelectAll) return;
+            if(_isUpdatingASingleCell)
+                return;
             
             _isUpdatingSelectAll = true;
-            try
-            {
-                if (IsSelectAllChecked)
-                {
-                    SelectedPayments.Clear();
-                    foreach (var item in SentPayments)
-                    {
-                        item.IsChecked = false;
-                    }
-                }
-                else
-                {
-                    SelectedPayments.Clear();
-                    foreach (var item in SentPayments)
-                    {
-                        if (!SelectedPayments.Any(x => x.OrderUniqueId == item.Payment.OrderUniqueId && x.ClientId == item.Payment.ClientId))
-                        {
-                            SelectedPayments.Add(item.Payment);
-                            item.IsChecked = true;
-                        }
-                    }
-                }
 
+            SelectedPayments.Clear();
+
+            if (!IsSelectAllChecked)
+            {
+                foreach (var item in SentPayments)
+                    item.IsChecked = false;
                 RefreshListHeader();
             }
-            finally
+            else
             {
-                _isUpdatingSelectAll = false;
+                foreach (var item in SentPayments)
+                    SelectedPayments.Add(item.Payment);
+                RefreshListHeader();
+                foreach (var item in SentPayments)
+                    item.IsChecked = true;
             }
+
+            _isUpdatingSelectAll = false;
         }
 
         [RelayCommand]
@@ -156,15 +147,13 @@ namespace LaceupMigration.ViewModels
 
                     foreach (var sentPayment in SelectedPayments)
                     {
-                        // Find the actual InvoicePayment from the OrderUniqueId
-                        InvoicePayment? invoicePayment = null;
-                        if (!string.IsNullOrEmpty(sentPayment.OrderUniqueId))
+                        var packagePath = sentPayment.PackagePath;
+                        if (string.IsNullOrEmpty(packagePath))
                         {
-                            invoicePayment = InvoicePayment.List.FirstOrDefault(x => 
-                                !string.IsNullOrEmpty(x.OrderId) && 
-                                x.OrderId.Contains(sentPayment.OrderUniqueId));
+                            var pkg = SentPaymentPackage.Packages().FirstOrDefault(p => p.PackageContent().Any(c => c.ClientId == sentPayment.ClientId && c.OrderUniqueId == sentPayment.OrderUniqueId));
+                            packagePath = pkg?.PackagePath;
                         }
-
+                        var invoicePayment = SentPaymentPackage.CreateTemporalPaymentFromFile(packagePath, sentPayment);
                         if (invoicePayment == null)
                             continue;
 
@@ -198,37 +187,61 @@ namespace LaceupMigration.ViewModels
 
             try
             {
-                // Find the actual InvoicePayment from the OrderUniqueId
                 var payments = new List<InvoicePayment>();
                 foreach (var sentPayment in SelectedPayments)
                 {
-                    if (!string.IsNullOrEmpty(sentPayment.OrderUniqueId))
+                    var packagePath = sentPayment.PackagePath;
+                    if (string.IsNullOrEmpty(packagePath))
                     {
-                        var payment = InvoicePayment.List.FirstOrDefault(x => 
-                            !string.IsNullOrEmpty(x.OrderId) && 
-                            x.OrderId.Contains(sentPayment.OrderUniqueId));
-                        if (payment != null)
-                            payments.Add(payment);
+                        var pkg = SentPaymentPackage.Packages().FirstOrDefault(p => p.PackageContent().Any(c => c.ClientId == sentPayment.ClientId && c.OrderUniqueId == sentPayment.OrderUniqueId));
+                        packagePath = pkg?.PackagePath;
                     }
+                    var payment = SentPaymentPackage.CreateTemporalPaymentFromFile(packagePath, sentPayment);
+                    if (payment != null)
+                        payments.Add(payment);
                 }
 
                 if (payments.Count == 0)
                 {
-                    await _dialogService.ShowAlertAsync("Could not find payments to send.", "Alert", "OK");
+                    await _dialogService.ShowAlertAsync("Could not find or decode payments to send.", "Alert", "OK");
                     return;
                 }
 
-                // Send each payment by email (matches Xamarin payment email sending)
+                // Send each payment by email (matches PaymentSetValuesPageViewModel: GetPaymentPdf + SendPaymentByEmail)
                 foreach (var payment in payments)
                 {
-                    // InvoicePayment has an Invoices() method that returns the invoices associated with the payment
-                    var invoices = payment.Invoices();
-                    foreach (var invoice in invoices)
+                    var pdfFile = PdfHelper.GetPaymentPdf(payment);
+                    if (string.IsNullOrEmpty(pdfFile))
                     {
-                        await PdfHelper.SendInvoiceByEmail(invoice);
-                        // Small delay between multiple PDFs to avoid opening all at once
-                        await Task.Delay(500);
+                        await _dialogService.ShowAlertAsync("PDF could not be generated for a payment.", "Alert", "OK");
+                        continue;
                     }
+
+                    string toEmail = string.Empty;
+                    if (payment.Client != null)
+                        toEmail = UDFHelper.GetSingleUDF("email", payment.Client.ExtraPropertiesAsString);
+
+                    string subject;
+                    string body;
+                    if (Config.EcoSkyWaterCustomEmail)
+                    {
+                        subject = "Eco SkyWater Payment";
+                        body = string.Format(@"<html><body>Thank you for choosing Eco SkyWater the most sustainable bottled water on earth, every contribution helps towards a healthier plastic free environment.<br><br>For more information on how our water and plant based bottles are made, please visit <a href='{0}' >www.ecoskywater.com</a><br><br>Payments can be made through bank transfer using the attached banking information link: <a href='{1}'>https://ecoskywater-my.sharepoint.com/:b:/p/philip/EQdUS4WWb4tMhHQilv2-FzgBRy2w8yEbNW6XSCsp9ww1Vw?e=e65jGO</a><br><br>Please reach out to us with any feedback as we are continually improving our products.<br><br><br>Do Good Live Great,<br><br>Eco SkyWater<br><b> <span style='color:blue'>Local . Sustainable . Pure</span></b><br><br>E: <a href='{2}'>Sales@ecoskywater.com</a><br>IG: @ecoskywater<br>FB: @ecoskyh2o<br>T: 1 (246) 572-4587<br>C: 1 (246) 235-3269<br>Lot 1B Walkes Spring, St. Thomas, Barbados</body></html>",
+                            "www.ecoskywater.com",
+                            "https://ecoskywater-my.sharepoint.com/:b:/p/philip/EQdUS4WWb4tMhHQilv2-FzgBRy2w8yEbNW6XSCsp9ww1Vw?e=e65jGO",
+                            "Sales@ecoskywater.com");
+                    }
+                    else
+                    {
+                        subject = "Payment Attached";
+                        body = string.Empty;
+                    }
+
+                    var toAddresses = new List<string>();
+                    if (!string.IsNullOrEmpty(toEmail))
+                        toAddresses.Add(toEmail);
+                    Config.helper?.SendOrderByEmail(pdfFile, subject, body, toAddresses);
+                    await Task.Delay(500);
                 }
             }
             catch (Exception ex)
@@ -247,12 +260,64 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // TODO: Implement resend functionality
-            await _dialogService.ShowAlertAsync("Resend functionality to be implemented.", "Info", "OK");
+            try
+            {
+                await _dialogService.ShowLoadingAsync("Re-sending...");
+
+                string err = string.Empty;
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        var packageLocations = new List<string>();
+                        foreach (var p in SelectedPayments)
+                        {
+                            if (!string.IsNullOrEmpty(p.PackagePath) && !packageLocations.Contains(p.PackagePath))
+                                packageLocations.Add(p.PackagePath);
+                        }
+
+                        foreach (var package in packageLocations)
+                        {
+                            if (string.IsNullOrEmpty(package) || !System.IO.File.Exists(package))
+                                continue;
+
+                            string dstFileZipped = package + ".zip";
+                            ZipMethods.ZipFile(package, dstFileZipped);
+                            DataProvider.SendThePayments(dstFileZipped);
+                            System.IO.File.Delete(dstFileZipped);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog(ex);
+                        err = ex.Message;
+                    }
+                });
+
+                await _dialogService.HideLoadingAsync();
+
+                if (string.IsNullOrEmpty(err))
+                    await _dialogService.ShowAlertAsync("Payments sent.", "Info", "OK");
+                else
+                    await _dialogService.ShowAlertAsync(err, "Alert", "OK");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync(ex.Message, "Alert", "OK");
+                _appService.TrackError(ex);
+            }
         }
 
+        private bool _isUpdatingASingleCell = false;
         public void TogglePaymentSelection(SentPayment payment)
         {
+            if (_isUpdatingSelectAll)
+                return;
+
+            _isUpdatingASingleCell = true;
+            
             var existing = SelectedPayments.FirstOrDefault(x => x.OrderUniqueId == payment.OrderUniqueId && x.ClientId == payment.ClientId);
             if (existing != null)
             {
@@ -264,6 +329,9 @@ namespace LaceupMigration.ViewModels
             }
 
             RefreshListHeader();
+            
+            _isUpdatingASingleCell = false;
+
         }
 
         private void RefreshListView()
@@ -289,12 +357,14 @@ namespace LaceupMigration.ViewModels
 
         private void RefreshListHeader()
         {
+            // Only show Select All as checked when ALL items are selected (not when just one or some)
+            bool allSelected = SentPayments.Count > 0 && SelectedPayments.Count == SentPayments.Count;
             if (!_isUpdatingSelectAll)
             {
                 _isUpdatingSelectAll = true;
                 try
                 {
-                    IsSelectAllChecked = SelectedPayments.Count > 0;
+                    IsSelectAllChecked = allSelected;
                 }
                 finally
                 {
@@ -303,10 +373,10 @@ namespace LaceupMigration.ViewModels
             }
             else
             {
-                IsSelectAllChecked = SelectedPayments.Count > 0;
+                IsSelectAllChecked = allSelected;
             }
-            
-            if (IsSelectAllChecked)
+
+            if (SelectedPayments.Count > 0)
             {
                 SelectAllText = $"Selected: {SelectedPayments.Count}";
                 TotalText = $"Total: {SelectedPayments.Sum(x => x.Amount).ToCustomString()}";
@@ -349,33 +419,9 @@ namespace LaceupMigration.ViewModels
         public SentPayment Payment => _payment;
 
         [RelayCommand]
-        private async Task ViewDetails()
+        private void ViewDetails()
         {
-            // Find the package path for this payment
-            var packages = SentPaymentPackage.Packages();
-            string? packagePath = null;
-
-            foreach (var pck in packages)
-            {
-                var packagePayments = pck.PackageContent();
-                if (packagePayments.Any(x => x.OrderUniqueId == _payment.OrderUniqueId))
-                {
-                    packagePath = pck.PackagePath;
-                    break;
-                }
-            }
-
-            if (packagePath != null)
-            {
-                await Shell.Current.GoToAsync($"sentpaymentsinpackage?packagePath={Uri.EscapeDataString(packagePath)}");
-            }
-            else
-            {
-                if (DialogHelper._dialogService != null)
-                {
-                    await DialogHelper._dialogService.ShowAlertAsync("Package not found for this payment.", "Error", "OK");
-                }
-            }
+            IsChecked = !IsChecked;
         }
     }
 }

@@ -54,6 +54,30 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty] private bool _showDiscount = true;
 
+        [ObservableProperty] private bool _isOrderSummaryExpanded = true;
+
+        public bool ShowTotalInHeader => ShowTotals && !IsOrderSummaryExpanded;
+
+        partial void OnIsOrderSummaryExpandedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowTotalInHeader));
+        }
+
+        [RelayCommand]
+        private void ToggleOrderSummary()
+        {
+            IsOrderSummaryExpanded = !IsOrderSummaryExpanded;
+        }
+
+        [ObservableProperty] private string _orderAmountText = "Order: $0.00";
+
+        [ObservableProperty] private string _creditAmountText = "Credit: $0.00";
+
+        /// <summary>When order is Credit, hide "Order" line in totals so Credit and Subtotal move up one row.</summary>
+        public bool ShowOrderAmountInTotals => ShowTotals && (_order == null || _order.OrderType != OrderType.Credit);
+
+        [ObservableProperty] private bool _termsVisible = true;
+
         [ObservableProperty] private bool _canEdit = true;
 
         [ObservableProperty] private bool _showAddProduct = true;
@@ -176,6 +200,7 @@ namespace LaceupMigration.ViewModels
 
             ClientName = _order.Client?.ClientName ?? "Unknown Client";
             TermsText = "Terms: " + _order.Term;
+            TermsVisible = !string.IsNullOrEmpty(_order.Term);
 
             // Company info
             if (!string.IsNullOrEmpty(_order.CompanyName))
@@ -239,8 +264,15 @@ namespace LaceupMigration.ViewModels
             var qtySold = details.Where(x => !x.IsCredit).Sum(x => x.Qty);
             QtySoldText = $"Qty Sold: {qtySold}";
 
+            var orderAmount = details.Where(x => !x.IsCredit).Sum(x => x.Qty * x.Price);
+            var creditAmount = details.Where(x => x.IsCredit).Sum(x => x.Qty * x.Price);
+            OrderAmountText = $"Order: {orderAmount.ToCustomString()}";
+            var creditStr = creditAmount > 0 ? (creditAmount * -1).ToCustomString() : creditAmount.ToCustomString();
+            CreditAmountText = $"Credit: {creditStr}";
+
             var subtotal = _order.OrderTotalCost();
             SubtotalText = $"Subtotal: {subtotal.ToCustomString()}";
+            OnPropertyChanged(nameof(ShowOrderAmountInTotals));
 
             var discount = Math.Abs(_order.CalculateDiscount());
             DiscountText = $"Discount: {discount.ToCustomString()}";

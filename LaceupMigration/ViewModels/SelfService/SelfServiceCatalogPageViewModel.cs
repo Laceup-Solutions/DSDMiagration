@@ -279,7 +279,7 @@ namespace LaceupMigration.ViewModels.SelfService
                         onHand /= orderDetail.UnitOfMeasure.Conversion;
                     
                     var ohStr = onHand > 0 ? "In Stock" : "Out of Stock";
-                    var color = onHand > 0 ? "#3FBC4D" : "#BA2D0B";
+                    var color = onHand > 0 ? "#0a5713" : "#BA2D0B";
             
                     if (Config.ShowOHQtyInSelfService)
                     {
@@ -557,7 +557,7 @@ namespace LaceupMigration.ViewModels.SelfService
                     onHand /= orderDetail.UnitOfMeasure.Conversion;
                     
                 var ohStr = onHand > 0 ? "In Stock" : "Out of Stock";
-                var color = onHand > 0 ? "#3FBC4D" : "#BA2D0B";
+                var color = onHand > 0 ? "#0a5713" : "#BA2D0B";
             
                 if (Config.ShowOHQtyInSelfService)
                 {

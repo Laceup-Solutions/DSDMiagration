@@ -16,6 +16,12 @@ namespace LaceupMigration
         {
             get
             {
+                if (OrderType == OrderType.WorkOrder)
+                    return TransactionType.WorkOrder;
+
+                if (OrderType == OrderType.NoService)
+                    return TransactionType.NoService;
+
                 if (AsPresale)
                 {
                     if (OrderType == OrderType.Credit)

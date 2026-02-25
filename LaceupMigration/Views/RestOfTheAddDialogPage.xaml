@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+             x:Class="LaceupMigration.Views.RestOfTheAddDialogPage"
+             x:DataType="vm:RestOfTheAddDialogViewModel"
+             BackgroundColor="Transparent">
+    <Grid BackgroundColor="#80000000"
+          RowDefinitions="*,Auto,*"
+          ColumnDefinitions="*,Auto,*"
+          Padding="8">
+        <Border x:Name="DialogBorder"
+                Grid.Row="1"
+                Grid.Column="1"
+                BackgroundColor="White"
+                StrokeThickness="1"
+                Stroke="#E0E0E0"
+                StrokeShape="RoundRectangle 8"
+                WidthRequest="320"
+                MaximumWidthRequest="400"
+                Padding="0"
+                Margin="20,12">
+            <Grid RowDefinitions="*,Auto,Auto" ColumnDefinitions="*">
+                <ScrollView Grid.Row="0" VerticalOptions="FillAndExpand">
+                    <VerticalStackLayout Padding="12,6" Spacing="0">
+                        <!-- Title -->
+                        <Label Text="{Binding ProductName}"
+                               FontSize="15"
+                               FontAttributes="Bold"
+                               TextColor="#017CBA"
+                               Margin="0,0,0,2"
+                               LineBreakMode="WordWrap" />
+                        <BoxView HeightRequest="1" Color="#017CBA" Margin="-12,0,-12,6" />
+
+                        <!-- Qty / Weight -->
+                        <Grid IsVisible="{Binding ShowQtyEntry}"
+                              ColumnDefinitions="Auto,*"
+                              ColumnSpacing="8"
+                              Margin="0,2,0,1">
+                            <Label Text="{Binding QtyLabel}"
+                                   FontSize="14"
+                                   TextColor="#333333"
+                                   VerticalOptions="Center" />
+                            <Entry x:Name="QtyEntry"
+                                   Grid.Column="1"
+                                   Text="{Binding Qty}"
+                                   Keyboard="Numeric"
+                                   FontSize="14"
+                                   HeightRequest="32"
+                                   BackgroundColor="Transparent"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                        <Grid IsVisible="{Binding ShowWeightEntry}"
+                              ColumnDefinitions="Auto,*"
+                              ColumnSpacing="8"
+                              Margin="0,2,0,1">
+                            <Label Text="Weight:"
+                                   FontSize="14"
+                                   TextColor="#333333"
+                                   VerticalOptions="Center" />
+                            <Entry x:Name="WeightEntry"
+                                   Grid.Column="1"
+                                   Text="{Binding Weight}"
+                                   Keyboard="Numeric"
+                                   FontSize="14"
+                                   HeightRequest="32"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- UoM -->
+                        <Grid IsVisible="{Binding ShowUoM}"
+                              ColumnDefinitions="Auto,*"
+                              ColumnSpacing="8"
+                              Margin="0,2,0,1">
+                            <Label Text="UoM:"
+                                   FontSize="14"
+                                   TextColor="#333333"
+                                   VerticalOptions="Center" />
+                            <Picker Grid.Column="1"
+                                    ItemsSource="{Binding UoMItems}"
+                                    ItemDisplayBinding="{Binding Name}"
+                                    SelectedIndex="{Binding SelectedUoMIndex}"
+                                    FontSize="14"
+                                    HeightRequest="32"
+                                    BackgroundColor="Transparent"
+                                    VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Price + Free Item -->
+                        <Grid IsVisible="{Binding ShowPrice}"
+                              ColumnDefinitions="Auto,*"
+                              ColumnSpacing="8"
+                              Margin="0,2,0,1">
+                            <Label Text="Price:"
+                                   FontSize="14"
+                                   TextColor="#333333"
+                                   VerticalOptions="Center" />
+                            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Entry Text="{Binding Price}"
+                                       IsEnabled="{Binding IsPriceEnabled}"
+                                       Keyboard="Numeric"
+                                       FontSize="14"
+                                       HeightRequest="32"
+                                       BackgroundColor="Transparent"
+                                       VerticalOptions="Center" />
+                                <HorizontalStackLayout Grid.Column="1"
+                                                       IsVisible="{Binding ShowFreeItemOnRow}"
+                                                       Spacing="6"
+                                                       VerticalOptions="Center">
+                                    <CheckBox IsChecked="{Binding IsFreeItem}" />
+                                    <Label Text="Free Item"
+                                           FontSize="14"
+                                           TextColor="#333333"
+                                           VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Grid>
+                        </Grid>
+                        <HorizontalStackLayout IsVisible="{Binding ShowFreeItemRow}"
+                                               Spacing="6"
+                                               Margin="0,2,0,1">
+                            <CheckBox IsChecked="{Binding IsFreeItem}" />
+                            <Label Text="Free Item"
+                                   FontSize="14"
+                                   TextColor="#333333"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+
+                        <!-- Price Level -->
+                        <Grid IsVisible="{Binding ShowPriceLevel}"
+                              ColumnDefinitions="Auto,*"
+                              ColumnSpacing="8"
+                              Margin="0,2,0,1">
+                            <Label Text="Price Level:"
+                                   FontSize="14"
+                                   TextColor="#333333"
+                                   VerticalOptions="Center" />
+                            <Picker Grid.Column="1"
+                                    ItemsSource="{Binding PriceLevelOptions}"
+                                    SelectedIndex="{Binding SelectedPriceLevelIndex}"
+                                    FontSize="14"
+                                    HeightRequest="32"
+                                    VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Use LSP -->
+                        <HorizontalStackLayout IsVisible="{Binding ShowUseLSP}"
+                                               Spacing="6"
+                                               Margin="0,1">
+                            <CheckBox IsChecked="{Binding UseLastSoldPrice}" />
+                            <Label Text="Use Last Sold Price"
+                                   FontSize="14"
+                                   TextColor="#333333"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+
+                        <!-- Discount link -->
+                        <Label IsVisible="{Binding IsDiscountLinkVisibleAndShown}"
+                               Text="{Binding DiscountText}"
+                               FontSize="14"
+                               TextColor="#017CBA"
+                               TextDecorations="Underline"
+                               Margin="0,2,0,1">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding DiscountTappedCommand}" />
+                            </Label.GestureRecognizers>
+                        </Label>
+
+                        <!-- Lot (simple entry) -->
+                        <Grid IsVisible="{Binding ShowLotEntry}"
+                              ColumnDefinitions="Auto,*"
+                              ColumnSpacing="8"
+                              Margin="0,2,0,1">
+                            <Label Text="Lot:"
+                                   FontSize="14"
+                                   TextColor="#333333"
+                                   VerticalOptions="Center" />
+                            <Entry Grid.Column="1"
+                                   Text="{Binding Lot}"
+                                   FontSize="14"
+                                   HeightRequest="32"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Comments -->
+                        <Border IsVisible="{Binding ShowComments}"
+                                Stroke="#E0E0E0"
+                                StrokeThickness="1"
+                                Padding="6,2"
+                                Margin="0,4,0,0">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="4" />
+                            </Border.StrokeShape>
+                            <Editor Text="{Binding Comments}"
+                                    Placeholder="Enter comments"
+                                    HeightRequest="40"
+                                    FontSize="14"
+                                    BackgroundColor="White" />
+                        </Border>
+                    </VerticalStackLayout>
+                </ScrollView>
+
+                <BoxView Grid.Row="1"
+                         HeightRequest="1"
+                         Color="#E0E0E0"
+                         Margin="0,6,0,0" />
+                <Grid Grid.Row="2"
+                      ColumnDefinitions="*,1,*"
+                      ColumnSpacing="0"
+                      HeightRequest="36">
+                    <Button Text="Cancel"
+                            Command="{Binding CancelCommand}"
+                            BackgroundColor="Transparent"
+                            TextColor="#333333"
+                            FontSize="14"
+                            FontAttributes="Bold"
+                            Grid.Column="0" />
+                    <BoxView Grid.Column="1"
+                             WidthRequest="1"
+                             Color="#E0E0E0"
+                             VerticalOptions="Fill" />
+                    <Button Text="Add"
+                            Command="{Binding AddCommand}"
+                            BackgroundColor="Transparent"
+                            TextColor="#333333"
+                            FontSize="14"
+                            FontAttributes="Bold"
+                            Grid.Column="2" />
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</ContentPage>

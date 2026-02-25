@@ -30,14 +30,14 @@
                                Spacing="8"
                                Margin="8,0"
                                IsVisible="{Binding ShowButtonsLayout}">
-            <Button Text="Print"
-                    Style="{StaticResource PrimaryButton}"
-                    Command="{Binding PrintCommand}"
-                    HorizontalOptions="FillAndExpand" />
-            <Button Text="Email"
-                    Style="{StaticResource PrimaryButton}"
-                    Command="{Binding SendByEmailCommand}"
-                    HorizontalOptions="FillAndExpand" />
+            <!-- <Button Text="Print" -->
+            <!--         Style="{StaticResource PrimaryButton}" -->
+            <!--         Command="{Binding PrintCommand}" -->
+            <!--         HorizontalOptions="FillAndExpand" /> -->
+            <!-- <Button Text="Email" -->
+            <!--         Style="{StaticResource PrimaryButton}" -->
+            <!--         Command="{Binding SendByEmailCommand}" -->
+            <!--         HorizontalOptions="FillAndExpand" /> -->
             <Button Text="Resend"
                     Style="{StaticResource PrimaryButton}"
                     Command="{Binding ResendCommand}"
@@ -45,12 +45,7 @@
         </HorizontalStackLayout>
 
         <!-- Select All Layout -->
-        <Frame Grid.Row="2"
-               Padding="12"
-               Margin="8,0"
-               HasShadow="False"
-               BackgroundColor="{StaticResource Gray100}">
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*" ColumnSpacing="12" Margin="8,0">
                 <CheckBox Grid.Column="0"
                           IsChecked="{Binding IsSelectAllChecked}"
                           CheckedChanged="CheckBox_CheckedChanged"
@@ -68,7 +63,6 @@
                            VerticalOptions="Center" />
                 </Grid>
             </Grid>
-        </Frame>
 
         <!-- Loading Indicator -->
         <ActivityIndicator Grid.Row="4"
@@ -84,15 +78,13 @@
                         Margin="8,0,8,8">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:SentPaymentItemViewModel">
-                    <Frame Padding="12"
+                    <Border Padding="12"
                            Margin="0,4"
-                           BackgroundColor="{StaticResource Gray100}"
-                           HasShadow="False"
-                           CornerRadius="8"
-                           InputTransparent="False">
-                        <Frame.GestureRecognizers>
+                           InputTransparent="False"
+                           StrokeShape="RoundRectangle 8">
+                        <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding ViewDetailsCommand}" />
-                        </Frame.GestureRecognizers>
+                        </Border.GestureRecognizers>
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" InputTransparent="False">
                             <CheckBox Grid.Column="0"
                                       IsChecked="{Binding IsChecked}"
@@ -118,7 +110,7 @@
                                        IsVisible="{Binding ShowComment}" />
                             </VerticalStackLayout>
                         </Grid>
-                    </Frame>
+                    </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>

@@ -50,6 +50,23 @@ namespace LaceupMigration
             Components = new List<PaymentComponent>();
         }
 
+        /// <summary>Creates a temporal payment (not added to List) for print/email from package data.</summary>
+        public static InvoicePayment CreateTemporal(Client client, string orderId, string uniqueId, DateTime dateCreated, List<PaymentComponent> components, string invoicesId = null, bool printed = true)
+        {
+            var p = new InvoicePayment();
+            p.Id = -1;
+            p.Client = client;
+            p.OrderId = orderId ?? string.Empty;
+            p.InvoicesId = invoicesId ?? string.Empty;
+            p.UniqueId = uniqueId ?? Guid.NewGuid().ToString();
+            p.DateCreated = dateCreated;
+            p.Printed = printed;
+            p.Voided = false;
+            p.DiscountApplied = 0;
+            p.Components = components ?? new List<PaymentComponent>();
+            return p;
+        }
+
         public InvoicePayment(Client client)
         {
             this.Client = client;

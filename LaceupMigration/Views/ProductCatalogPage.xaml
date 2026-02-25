@@ -109,23 +109,23 @@
                                                             CommandParameter="{Binding .}" />
                                                     </Frame.GestureRecognizers>
                                                     <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="5">
-                                                        <Label Grid.Column="0" FontSize="17" FontAttributes="Bold" TextColor="Orange" VerticalOptions="Center" IsVisible="{Binding IsCredit}">
+                                                        <Label Grid.Column="0" FontSize="13" FontAttributes="Bold" TextColor="Orange" VerticalOptions="Center" IsVisible="{Binding IsCredit}">
                                                             <Label.Text>
                                                                 <Binding Path="Damaged" Converter="{StaticResource CreditTypeConverter}" />
                                                             </Label.Text>
                                                         </Label>
-                                                        <Label Grid.Column="1" FontSize="15" FontAttributes="Bold" TextColor="{Binding OHColor}" Text="{Binding OH}" VerticalOptions="Center"></Label>
-                                                        <Label Grid.Column="2" FontSize="17" HorizontalOptions="End" HorizontalTextAlignment="End" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" VerticalOptions="Center">
+                                                        <Label Grid.Column="1" FontSize="12" FontAttributes="Bold" TextColor="{Binding OHColor}" Text="{Binding OH}" VerticalOptions="Center"></Label>
+                                                        <Label Grid.Column="2" FontSize="13" HorizontalOptions="End" HorizontalTextAlignment="End" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" VerticalOptions="Center">
                                                             <Label.Text>
                                                                 <Binding Path="Qty" StringFormat="{}Qty: {0:F0}" />
                                                             </Label.Text>
                                                         </Label>
-                                                        <Label Grid.Column="3" FontSize="17" HorizontalOptions="Start" HorizontalTextAlignment="Start" FontAttributes="Bold" TextColor="{StaticResource Gray700}" VerticalOptions="Center">
+                                                        <Label Grid.Column="3" FontSize="13" HorizontalOptions="Start" HorizontalTextAlignment="Start" FontAttributes="Bold" TextColor="{StaticResource Gray700}" VerticalOptions="Center">
                                                             <Label.Text>
                                                                 <Binding Path="UoM.Name" TargetNullValue="" />
                                                             </Label.Text>
                                                         </Label>
-                                                        <Label Grid.Column="4" FontSize="17" FontAttributes="Bold" HorizontalOptions="End" HorizontalTextAlignment="End" TextColor="{StaticResource Gray700}" VerticalOptions="Center">
+                                                        <Label Grid.Column="4" FontSize="13" FontAttributes="Bold" HorizontalOptions="End" HorizontalTextAlignment="End" TextColor="{StaticResource Gray700}" VerticalOptions="Center">
                                                             <Label.Text>
                                                                 <Binding Path="Price" StringFormat="{}{0:C2}" />
                                                             </Label.Text>

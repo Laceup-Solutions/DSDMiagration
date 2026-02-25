@@ -276,12 +276,8 @@ namespace LaceupMigration.ViewModels
                         if (Config.OldPrinter > 0) System.Threading.Thread.Sleep(2000);
 
                         if (!result) return "Error printing";
-
-                        IPrinter zebraPrinter;
-                        if (printer is ZebraFourInchesPrinter)
-                            zebraPrinter = new ZebraFourInchesPrinter1();
-                        else
-                            zebraPrinter = new ZebraThreeInchesPrinter1();
+                        
+                        IPrinter zebraPrinter = PrinterProvider.CurrentPrinter();
 
                         result = zebraPrinter.PrintAcceptedOrders(GetOrdersList(), _inventoryAccepted);
                         if (!result) return "Error printing";
@@ -793,19 +789,14 @@ namespace LaceupMigration.ViewModels
 
                         if (!result) return "Error printing";
 
-                        IPrinter zebraPrinter;
-                        if (printer is ZebraFourInchesPrinter)
-                            zebraPrinter = new ZebraFourInchesPrinter1();
-                        else
-                            zebraPrinter = new ZebraThreeInchesPrinter1();
-
+                        IPrinter zebraPrinter = PrinterProvider.CurrentPrinter();
+                        
                         result = zebraPrinter.PrintAcceptedOrders(GetOrdersList(), _inventoryAccepted);
                         if (!result) return "Error printing";
                     }
 
-                    GoBackToLoadListAsync(true);
                     return string.Empty;
-                });
+                }, onSuccessAfterPrint: () => GoBackToLoadListAsync(true));
             }
             catch (Exception ex)
             {

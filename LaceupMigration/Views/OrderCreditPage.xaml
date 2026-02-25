@@ -36,64 +36,112 @@
                         Grid.Column="3" />
             </Grid>
 
-            <!-- Customer and Order Summary -->
-            <Frame Grid.Row="1" Padding="16" Margin="8,4" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
-                <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*,*" ColumnSpacing="12" RowSpacing="8">
-                    <!-- Customer Name -->
-                    <Label Grid.Row="0" Grid.ColumnSpan="3"
+            <!-- Customer and Order Summary (Collapsible, expanded by default) -->
+            <Frame Grid.Row="1" Padding="5" Margin="8,2" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
+                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" RowSpacing="4">
+                    <!-- Collapsed View: Client Name and Total -->
+                    <Label Grid.Row="0" Grid.Column="0"
                            Text="{Binding ClientName}"
                            FontSize="16"
                            FontAttributes="Bold"
-                           TextColor="{StaticResource PrimaryDark}" />
-                    
-                    <!-- Company -->
-                    <Label Grid.Row="1" Grid.ColumnSpan="3"
-                           Text="{Binding CompanyText}"
-                           FontSize="14"
-                           TextColor="{StaticResource Gray600}"
-                           IsVisible="{Binding ShowCompany}" />
-                    
-                    <!-- Terms -->
-                    <Label Grid.Row="2" Grid.ColumnSpan="3"
-                           Text="{Binding TermsText}"
-                           FontSize="14"
-                           TextColor="{StaticResource Gray600}" />
-                    
-                    <!-- Order Metrics (Left Column) -->
-                    <VerticalStackLayout Grid.Row="3" Grid.Column="0" Spacing="4">
-                        <Label Text="{Binding LinesText}"
+                           TextColor="{StaticResource PrimaryDark}"
+                           VerticalOptions="Center"
+                           LineBreakMode="TailTruncation" />
+                    <Label Grid.Row="0" Grid.Column="1"
+                           Text="{Binding TotalText}"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource PrimaryDark}"
+                           HorizontalOptions="End"
+                           VerticalOptions="Center"
+                           IsVisible="{Binding ShowTotalInHeader}" />
+                    <!-- Expand/Collapse Indicator -->
+                    <Grid Grid.Row="0" Grid.Column="2"
+                          HorizontalOptions="End"
+                          VerticalOptions="Center"
+                          WidthRequest="24"
+                          HeightRequest="24">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleOrderSummaryCommand}" />
+                        </Grid.GestureRecognizers>
+                        <Label Text="{Binding IsOrderSummaryExpanded, Converter={StaticResource ExpandIconConverter}}"
                                FontSize="14"
-                               TextColor="{StaticResource Gray900}" />
-                        <Label Text="{Binding QtySoldText}"
-                               FontSize="14"
-                               TextColor="{StaticResource Gray900}" />
-                    </VerticalStackLayout>
-                    
-                    <!-- Order Financials (Middle Column) -->
-                    <VerticalStackLayout Grid.Row="3" Grid.Column="1" Spacing="4">
-                        <Label Text="{Binding SubtotalText}"
-                               FontSize="14"
-                               FontAttributes="Bold"
-                               TextColor="{StaticResource Gray900}"
-                               IsVisible="{Binding ShowTotals}" />
-                    </VerticalStackLayout>
-                    
-                    <!-- Order Financials (Right Column) -->
-                    <VerticalStackLayout Grid.Row="3" Grid.Column="2" Spacing="4">
-                        <Label Text="{Binding DiscountText}"
-                               FontSize="14"
-                               TextColor="{StaticResource Gray900}"
-                               IsVisible="{Binding ShowDiscount}" />
-                        <Label Text="{Binding TaxText}"
-                               FontSize="14"
-                               TextColor="{StaticResource Gray900}"
-                               IsVisible="{Binding ShowTotals}" />
-                        <Label Text="{Binding TotalText}"
-                               FontSize="14"
-                               FontAttributes="Bold"
-                               TextColor="{StaticResource PrimaryDark}"
-                               IsVisible="{Binding ShowTotals}" />
-                    </VerticalStackLayout>
+                               TextColor="{StaticResource Gray600}"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center" />
+                    </Grid>
+                    <!-- Expanded Content -->
+                    <Grid Grid.Row="1" Grid.ColumnSpan="3"
+                          RowDefinitions="Auto,Auto,Auto"
+                          ColumnDefinitions="*,*,*"
+                          ColumnSpacing="3"
+                          RowSpacing="4"
+                          Margin="0,4,0,0"
+                          IsVisible="{Binding IsOrderSummaryExpanded}">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Grid.ColumnSpan="3">
+                            <Label Grid.Column="0"
+                                   Text="{Binding CompanyText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource Gray600}"
+                                   IsVisible="{Binding ShowCompany}"
+                                   Margin="0,0,0,0" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding TermsText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   IsVisible="{Binding TermsVisible}"
+                                   TextColor="{StaticResource Gray600}"
+                                   Margin="0,0,0,0" />
+                        </Grid>
+                        <!-- Order Metrics (Left Column) -->
+                        <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="2">
+                            <Label Text="{Binding LinesText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource Gray900}" />
+                            <Label Text="{Binding QtySoldText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource Gray900}" />
+                        </VerticalStackLayout>
+                        <!-- Order Financials (Middle Column) -->
+                        <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="2">
+                            <Label Text="{Binding OrderAmountText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource Gray900}"
+                                   IsVisible="{Binding ShowOrderAmountInTotals}" />
+                            <Label Text="{Binding CreditAmountText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource Gray900}"
+                                   IsVisible="{Binding ShowTotals}" />
+                            <Label Text="{Binding SubtotalText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource Gray900}"
+                                   IsVisible="{Binding ShowTotals}" />
+                        </VerticalStackLayout>
+                        <!-- Order Financials (Right Column) -->
+                        <VerticalStackLayout Grid.Row="1" Grid.Column="2" Spacing="2">
+                            <Label Text="{Binding TaxText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource Gray900}"
+                                   IsVisible="{Binding ShowTotals}" />
+                            <Label Text="{Binding DiscountText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource Gray900}"
+                                   IsVisible="{Binding ShowDiscount}" />
+                            <Label Text="{Binding TotalText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource PrimaryDark}"
+                                   IsVisible="{Binding ShowTotals}" />
+                        </VerticalStackLayout>
+                    </Grid>
                 </Grid>
             </Frame>
 
