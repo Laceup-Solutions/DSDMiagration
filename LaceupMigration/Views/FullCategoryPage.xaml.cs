@@ -152,6 +152,10 @@ namespace LaceupMigration.Views
                 showSendByEmail = showEmailValue.ToString() == "1" || string.Equals(showEmailValue.ToString(), "true", StringComparison.OrdinalIgnoreCase);
             }
 
+            string? returnToRoute = null;
+            if (query.TryGetValue("returnToRoute", out var returnToVal) && returnToVal != null && !string.IsNullOrWhiteSpace(returnToVal.ToString()))
+                returnToRoute = returnToVal.ToString();
+
             // Set navigation params synchronously so they are available before InitializeAsync runs
             // (e.g. when LoadCategories runs from RefreshAsync/OnAppearing before the dispatched InitializeAsync)
             _viewModel.SetNavigationQuery(
@@ -165,7 +169,8 @@ namespace LaceupMigration.Views
                 productId: productId,
                 consignmentCounting: consignmentCounting,
                 comingFrom: comingFrom,
-                showSendByEmail: showSendByEmail);
+                showSendByEmail: showSendByEmail,
+                returnToRoute: returnToRoute);
 
             Dispatcher.Dispatch(async () => await _viewModel.InitializeAsync(
                 clientId: clientId,

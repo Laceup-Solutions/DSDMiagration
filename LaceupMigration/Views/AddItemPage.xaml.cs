@@ -111,6 +111,13 @@ namespace LaceupMigration.Views
                 consignmentCounting = countingValue.ToString() == "1" || countingValue.ToString().ToLowerInvariant() == "true";
             }
 
+            if (query.TryGetValue("returnToRoute", out var returnToRouteValue) && returnToRouteValue != null)
+            {
+                var returnToRoute = returnToRouteValue.ToString();
+                if (!string.IsNullOrEmpty(returnToRoute))
+                    _viewModel.SetReturnToRoute(returnToRoute);
+            }
+
             if (orderId.HasValue)
             {
                 if (orderDetailId.HasValue)

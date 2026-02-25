@@ -1,152 +1,110 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
-             x:Class="LaceupMigration.Views.SentOrdersOrdersListPage"
-             Shell.TabBarIsVisible="False"
-             Title="Order Details">
-    <ScrollView>
-        <VerticalStackLayout Spacing="12" Padding="16">
+                         xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                         xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
+                         x:Class="LaceupMigration.Views.SentOrdersOrdersListPage"
+                         Shell.TabBarIsVisible="False"
+                         xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+                         x:DataType="vm:SentOrdersOrdersListPageViewModel"
+                         Title="Order Details">
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*, auto" Padding="5" ColumnSpacing="5">
+               
+        <Border Grid.Row="0" Grid.Column="0" StrokeShape="RoundRectangle 8">
+                 <Grid Padding="8"  RowDefinitions="auto,auto,auto,*">
+                      
+                      
             <!-- Client Name -->
             <Label Text="{Binding ClientName}"
+                   Grid.Row="0"
+                   Grid.Column="0"
                    FontSize="20"
                    FontAttributes="Bold"
-                   HorizontalOptions="Center"
-                   Margin="0,8,0,4" />
+                   HorizontalOptions="Start" />
 
             <!-- Order Type -->
-            <Label Text="{Binding OrderType}"
+            <Label Text="{Binding PropOrderType}"
+                   Grid.Row="1"
+                   Grid.Column="0"
                    FontSize="16"
-                   HorizontalOptions="Center"
-                   Margin="0,0,0,4" />
+                   HorizontalOptions="Start"/>
 
             <!-- Ship Date -->
             <Label Text="{Binding ShipDateText}"
+                   Grid.Row="2"
+                   Grid.Column="0"
                    FontSize="14"
                    HorizontalOptions="Center"
+                   HorizontalTextAlignment="Center"
                    IsVisible="{Binding ShowShipDate}"
                    Margin="0,0,0,12" />
 
-            <!-- Summary Section -->
-            <VerticalStackLayout Spacing="8" Margin="0,0,0,12">
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                    <Label Grid.Column="0"
-                           Text="{Binding LinesText}"
-                           FontSize="14" />
-                    <Label Grid.Column="1"
-                           Text="{Binding QtySoldText}"
-                           FontSize="14"
-                           HorizontalOptions="End" />
-                </Grid>
-
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding ShowTotal}">
-                    <Label Grid.Column="0"
-                           Text="{Binding SubTotalText}"
-                           FontSize="14" />
-                    <Label Grid.Column="1"
-                           Text="{Binding TaxText}"
-                           FontSize="14"
-                           HorizontalOptions="End" />
-                </Grid>
-
-                <!-- Extra Layout for Other Charges -->
-                <Grid ColumnDefinitions="*,*"
-                      ColumnSpacing="8"
-                      IsVisible="{Binding ShowExtraLayout}">
-                    <Label Grid.Column="0"
-                           Text="{Binding DiscountText}"
-                           FontSize="14"
-                           IsVisible="{Binding ShowTotal}" />
-                    <Label Grid.Column="1"
-                           Text="{Binding TotalText}"
-                           FontSize="14"
-                           HorizontalOptions="End"
-                           IsVisible="{Binding ShowTotal}" />
-                </Grid>
-
-                <Grid ColumnDefinitions="*,*"
-                      ColumnSpacing="8"
-                      IsVisible="{Binding ShowExtraLayout}">
-                    <Label Grid.Column="0"
-                           Text="{Binding ExtraTotal2Text}"
-                           FontSize="14"
-                           IsVisible="{Binding ShowTotal}" />
-                    <Label Grid.Column="1"
-                           Text="{Binding ExtraTotal3Text}"
-                           FontSize="16"
-                           FontAttributes="Bold"
-                           HorizontalOptions="End"
-                           IsVisible="{Binding ShowTotal}" />
-                </Grid>
-
-                <!-- Total (when not showing extra layout) -->
-                <Label Text="{Binding TotalText}"
-                       FontSize="18"
-                       FontAttributes="Bold"
-                       HorizontalOptions="Center"
-                       IsVisible="{Binding ShowTotal}"
-                       Margin="0,8,0,0" />
-            </VerticalStackLayout>
-
-            <!-- Action Buttons -->
-            <HorizontalStackLayout Spacing="12" Margin="0,0,0,12">
-                <Button Text="Duplicate"
-                        Style="{StaticResource PrimaryButton}"
-                        Command="{Binding DuplicateCommand}"
-                        FontSize="14"
-                        CornerRadius="8"
-                        Padding="16,12"
-                        HorizontalOptions="FillAndExpand" />
-                <Button Text="Resend"
-                        Style="{StaticResource PrimaryButton}"
-                        Command="{Binding ResendCommand}"
-                        FontSize="14"
-                        CornerRadius="8"
-                        Padding="16,12"
-                        HorizontalOptions="FillAndExpand" />
-            </HorizontalStackLayout>
-
-            <!-- Order Details List -->
-            <CollectionView ItemsSource="{Binding OrderDetails}">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="vm:SentOrderDetailViewModel">
-                        <Frame Padding="12"
-                               Margin="0,0,0,4"
-                               BackgroundColor="{Binding BackgroundColor}"
-                               HasShadow="False"
-                               CornerRadius="0"
-                               BorderColor="#E0E0E0">
-                            <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
-                                <Label Grid.Row="0"
-                                       Text="{Binding ProductName}"
-                                       FontSize="16"
-                                       FontAttributes="Bold" />
-                                <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="8">
-                                    <Label Grid.Column="0"
-                                           Text="{Binding QtyText}"
-                                           FontSize="14" />
-                                    <Label Grid.Column="1"
-                                           Text="{Binding PriceText}"
-                                           FontSize="14"
-                                           HorizontalOptions="End"
-                                           IsVisible="{Binding ShowPrice}" />
-                                </Grid>
-                                <Label Grid.Row="2"
-                                       Text="{Binding TotalText}"
+            <Grid Grid.Row="3" Grid.Column="0" ColumnDefinitions="*,*" RowDefinitions="auto,auto,auto,auto">
+                <!-- Row 0 -->
+                <Label Grid.Row="0" Grid.Column="0" Text="{Binding LinesText}" FontSize="14" />
+                <Label Grid.Row="0" Grid.Column="1" Text="{Binding SubTotalText}" FontSize="14" HorizontalOptions="End" />
+                <!-- Row 1 -->
+                <Label Grid.Row="1" Grid.Column="0" Text="{Binding QtySoldText}" FontSize="14" />
+                <Label Grid.Row="1" Grid.Column="1" Text="{Binding TaxText}" FontSize="14" HorizontalOptions="End" />
+                <!-- Row 2: O.Charges/Discount + Freight/Total -->
+                <Label Grid.Row="2" Grid.Column="0" Text="{Binding DiscountText}" FontSize="14" IsVisible="{Binding ShowTotal}" />
+                <Label Grid.Row="2" Grid.Column="1" Text="{Binding TotalText}" FontSize="14" FontAttributes="Bold" HorizontalOptions="End" IsVisible="{Binding ShowTotal}" />
+                <!-- Row 3: ExtraLayout (only when AllowOtherCharges) - Discount + Total -->
+                <Label Grid.Row="3" Grid.Column="0" Text="{Binding ExtraTotal2Text}" FontSize="14" IsVisible="{Binding ShowExtraTotals}" />
+                <Label Grid.Row="3" Grid.Column="1" Text="{Binding ExtraTotal3Text}" FontSize="16" FontAttributes="Bold" HorizontalOptions="End" IsVisible="{Binding ShowExtraTotals}" />
+            </Grid>
+            
+        </Grid>
+             
+        </Border>
+   
+        <Border Grid.Column="1" Grid.Row="0" VerticalOptions="Center" StrokeThickness="0">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding DuplicateCommand}"></TapGestureRecognizer>
+            </Border.GestureRecognizers>
+                
+            <Grid RowDefinitions="*,auto">
+                <Image Grid.Row="0" Source="{mi:MaterialOutlined Icon=ContentCopy, IconColor=Black, IconSize=24}"></Image>
+                <Label Grid.Row="1" Text="Duplicate" FontAttributes="Bold"></Label>
+            </Grid>
+        </Border>
+        
+        <!-- Order Details List -->
+        <CollectionView Margin="0,10,0,0" Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding OrderDetails}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:SentOrderDetailViewModel">
+                    <Border Padding="12"
+                           Margin="0,0,0,4"
+                           BackgroundColor="{Binding BackgroundColor}"
+                           StrokeShape="RoundRectangle 8">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+                            <Label Grid.Row="0"
+                                   Text="{Binding ProductName}"
+                                   FontSize="16"
+                                   FontAttributes="Bold" />
+                            <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <Label Grid.Column="0"
+                                       Text="{Binding QtyText}"
+                                       FontSize="14" />
+                                <Label Grid.Column="1"
+                                       Text="{Binding PriceText}"
                                        FontSize="14"
-                                       FontAttributes="Bold"
+                                       HorizontalOptions="End"
                                        IsVisible="{Binding ShowPrice}" />
-                                <Label Grid.Row="3"
-                                       Text="{Binding Comments}"
-                                       FontSize="13"
-                                       IsVisible="{Binding ShowComments}"
-                                       Margin="0,4,0,0" />
                             </Grid>
-                        </Frame>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
-        </VerticalStackLayout>
-    </ScrollView>
+                            <Label Grid.Row="2"
+                                   Text="{Binding TotalText}"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   IsVisible="{Binding ShowPrice}" />
+                            <Label Grid.Row="3"
+                                   Text="{Binding Comments}"
+                                   FontSize="13"
+                                   IsVisible="{Binding ShowComments}"
+                                   Margin="0,4,0,0" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
 </local:LaceupContentPage>
-

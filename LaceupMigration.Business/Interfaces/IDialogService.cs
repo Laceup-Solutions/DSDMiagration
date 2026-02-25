@@ -8,7 +8,7 @@ public interface IDialogService
     Task ShowAlertAsync(string message, string title = "Alert", string acceptText = "OK");
     Task<bool> ShowConfirmationAsync(string title, string message, string acceptText = "Yes", string cancelText = "No");
     Task<string> ShowActionSheetAsync(string title, string message, string cancelText, params string[] buttons);
-    Task<string> ShowPromptAsync(string title, string message, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", int maxLength = -1, string initialValue = "", Keyboard keyboard = null, bool showScanIcon = false, Func<Task<string>> scanAction = null);
+    Task<string> ShowPromptAsync(string title, string message, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", int maxLength = -1, string initialValue = "", Keyboard keyboard = null, bool showScanIcon = false, Func<Task<string>> scanAction = null, bool selectAllText = false);
     Task<bool> ShowConfirmAsync(string message, string title = "Confirm", string acceptText = "Yes", string cancelText = "No");
     Task<int> ShowSelectionAsync(string title, string[] options);
     /// <summary>Single-choice dialog with radio buttons. Returns selected index or -1 if canceled.</summary>

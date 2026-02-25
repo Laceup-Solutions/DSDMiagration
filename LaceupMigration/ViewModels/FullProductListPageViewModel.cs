@@ -26,6 +26,8 @@ namespace LaceupMigration.ViewModels
         private bool _fromCreditTemplate;
         private bool _asPresale;
         private string? _productSearch;
+        private string? _comingFrom;
+        private string? _returnToRoute;
         private List<FullProductListRowViewModel> _allRows = new();
 
         public ObservableCollection<FullProductListRowViewModel> Products { get; } = new();
@@ -43,7 +45,7 @@ namespace LaceupMigration.ViewModels
         }
 
         /// <summary>Set from query and load products. Call from ApplyQueryAttributes.</summary>
-        public void SetNavigationQuery(int? orderId, int? categoryId, int? clientId, bool fromCreditTemplate, bool asPresale, string? productSearch = null)
+        public void SetNavigationQuery(int? orderId, int? categoryId, int? clientId, bool fromCreditTemplate, bool asPresale, string? productSearch = null, string? comingFrom = null, string? returnToRoute = null)
         {
             _orderId = orderId;
             _categoryId = categoryId;
@@ -51,6 +53,8 @@ namespace LaceupMigration.ViewModels
             _fromCreditTemplate = fromCreditTemplate;
             _asPresale = asPresale;
             _productSearch = productSearch;
+            _comingFrom = comingFrom;
+            _returnToRoute = returnToRoute;
             Title = _fromCreditTemplate ? "Products (Credit)" : "Products";
         }
 
@@ -128,15 +132,42 @@ namespace LaceupMigration.ViewModels
         private async Task SelectProduct(FullProductListRowViewModel? row)
         {
             if (row == null || !_orderId.HasValue) return;
-            int itemType = 0;
+
+            // When opened from PreviouslyOrderedTemplatePage or FullCategoryPage (NewAddItemRandomWeight), go to additem/randomweightadditem
+            if (string.Equals(_comingFrom, "PreviouslyOrdered", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(_comingFrom, "FullCategory", StringComparison.OrdinalIgnoreCase))
+            {
+                var order = Order.Orders.FirstOrDefault(x => x.OrderId == _orderId.Value);
+                var asCredit = order != null && (order.OrderType == OrderType.Credit || order.OrderType == OrderType.Return);
+                if (!asCredit && _fromCreditTemplate)
+                    asCredit = true;
+                int itemType = 0;
+                if (asCredit)
+                {
+                    var choice = await _dialogService.ShowActionSheetAsync("Add as", null, "Cancel", "Dump", "Return");
+                    if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+                    itemType = choice == "Dump" ? 1 : 2;
+                }
+                var prod = Product.Find(row.ProductId);
+                var useRandomWeight = Config.NewAddItemRandomWeight && prod?.SoldByWeight == true;
+                var addItemRoute = useRandomWeight ? "randomweightadditem" : "additem";
+                var route = $"{addItemRoute}?orderId={_orderId.Value}&productId={row.ProductId}&asCreditItem={(asCredit ? 1 : 0)}";
+                if (itemType != 0) route += $"&type={itemType}";
+                if (!string.IsNullOrWhiteSpace(_returnToRoute))
+                    route += "&returnToRoute=" + Uri.EscapeDataString(_returnToRoute);
+                await Shell.Current.GoToAsync(route);
+                return;
+            }
+
+            int itemType2 = 0;
             if (_fromCreditTemplate)
             {
                 var choice = await _dialogService.ShowActionSheetAsync("Add as", null, "Cancel", "Dump", "Return");
                 if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
-                itemType = choice == "Dump" ? 1 : 2;
+                itemType2 = choice == "Dump" ? 1 : 2;
             }
-            var route = $"newordertemplatedetails?orderId={_orderId.Value}&productId={row.ProductId}&itemType={itemType}&fromCreditTemplate={(_fromCreditTemplate ? 1 : 0)}";
-            await Shell.Current.GoToAsync(route);
+            var route2 = $"newordertemplatedetails?orderId={_orderId.Value}&productId={row.ProductId}&itemType={itemType2}&fromCreditTemplate={(_fromCreditTemplate ? 1 : 0)}";
+            await Shell.Current.GoToAsync(route2);
         }
 
         [RelayCommand]

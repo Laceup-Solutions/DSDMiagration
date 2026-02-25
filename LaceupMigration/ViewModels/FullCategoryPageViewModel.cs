@@ -34,6 +34,7 @@ namespace LaceupMigration.ViewModels
         private string? _comingFrom; // "Credit" or "PreviouslyOrdered"
         private int? _scannedProductId; // Product ID from camera scan
         private bool _showSendByEmail; // True when opened from main menu or client details catalog
+        private string? _returnToRoute; // When set (e.g. previouslyorderedtemplate?orderId=1), forward to additem so Add pops back to template
 
         private ObservableCollection<CategoryViewModel> _categories = new();
         /// <summary>Categories list. Replaced (not cleared) on refresh to avoid iOS CollectionView handler crash on Reset.</summary>
@@ -85,7 +86,7 @@ namespace LaceupMigration.ViewModels
         /// </summary>
         public void SetNavigationQuery(int? clientId = null, int? orderId = null, int? categoryId = null, string? productSearch = null,
             bool comingFromSearch = false, bool asCreditItem = false, bool asReturnItem = false, int? productId = null,
-            bool consignmentCounting = false, string? comingFrom = null, bool showSendByEmail = false)
+            bool consignmentCounting = false, string? comingFrom = null, bool showSendByEmail = false, string? returnToRoute = null)
         {
             _clientId = clientId;
             _orderId = orderId;
@@ -98,6 +99,7 @@ namespace LaceupMigration.ViewModels
             _consignmentCounting = consignmentCounting;
             _comingFrom = comingFrom;
             _showSendByEmail = showSendByEmail;
+            _returnToRoute = returnToRoute;
 
             // Resolve _order and _client immediately so LoadCategories/LoadProducts always have them when IDs were passed
             if (_orderId.HasValue)
@@ -111,6 +113,12 @@ namespace LaceupMigration.ViewModels
                 _client = _order.Client;
             else
                 _client = null;
+        }
+
+        private string GetReturnToRouteQuery()
+        {
+            if (string.IsNullOrWhiteSpace(_returnToRoute)) return "";
+            return "&returnToRoute=" + Uri.EscapeDataString(_returnToRoute);
         }
 
         public async Task InitializeAsync(int? clientId = null, int? orderId = null, int? categoryId = null, 
@@ -202,32 +210,43 @@ namespace LaceupMigration.ViewModels
                 }
                 else if (!isLoadOrderCategoriesOnly && Config.UseCatalog)
                 {
-                    // If categoryId is provided, navigate directly to ProductCatalog
+                    // If categoryId is provided, navigate directly to product list (ProductCatalog or FullProductList when NewAddItemRandomWeight)
                     // Otherwise, show categories first (don't redirect)
                     if (categoryId.HasValue || !string.IsNullOrEmpty(productSearch) || comingFromSearch)
                     {
-                        // Redirect to ProductCatalog
-                        var route = $"productcatalog?orderId={orderId.Value}";
+                        // When NewAddItemRandomWeight and we have an order, use fullproductlist instead of productcatalog
+                        if (Config.NewAddItemRandomWeight && _order != null)
+                        {
+                            var route = $"fullproductlist?orderId={orderId.Value}&asPresale={(_order.AsPresale ? 1 : 0)}&fromCreditTemplate={(asCreditItem ? 1 : 0)}&comingFrom=FullCategory";
+                            if (categoryId.HasValue)
+                                route += $"&categoryId={categoryId.Value}";
+                            if (!string.IsNullOrEmpty(productSearch))
+                                route += $"&productSearch={Uri.EscapeDataString(productSearch)}";
+                            route += GetReturnToRouteQuery();
+                            await Shell.Current.GoToAsync(route);
+                            return;
+                        }
+                        var routeCatalog = $"productcatalog?orderId={orderId.Value}";
                         if (categoryId.HasValue)
-                            route += $"&categoryId={categoryId.Value}";
+                            routeCatalog += $"&categoryId={categoryId.Value}";
                         if (!string.IsNullOrEmpty(productSearch))
-                            route += $"&productSearch={Uri.EscapeDataString(productSearch)}";
+                            routeCatalog += $"&productSearch={Uri.EscapeDataString(productSearch)}";
                         if (comingFromSearch)
-                            route += "&comingFromSearch=yes";
+                            routeCatalog += "&comingFromSearch=yes";
                         if (asCreditItem)
-                            route += "&asCreditItem=1";
+                            routeCatalog += "&asCreditItem=1";
                         if (asReturnItem)
-                            route += "&asReturnItem=1";
+                            routeCatalog += "&asReturnItem=1";
                         if (productId.HasValue)
-                            route += $"&productId={productId.Value}";
+                            routeCatalog += $"&productId={productId.Value}";
                         if (consignmentCounting)
-                            route += "&consignmentCounting=1";
+                            routeCatalog += "&consignmentCounting=1";
                         if (!string.IsNullOrEmpty(_comingFrom))
-                            route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
+                            routeCatalog += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
                         if (_comingFrom == "LoadOrderTemplate")
-                            route += "&loadOrderReturnDepth=2";
-                        route += "&viaFullCategory=1";
-                        await Shell.Current.GoToAsync(route);
+                            routeCatalog += "&loadOrderReturnDepth=2";
+                        routeCatalog += "&viaFullCategory=1";
+                        await Shell.Current.GoToAsync(routeCatalog);
                         return;
                     }
                     // Otherwise, show categories (fall through to show categories)
@@ -540,7 +559,7 @@ namespace LaceupMigration.ViewModels
 
             if (items.Count == 0)
             {
-                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={productId}&asCreditItem=0");
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={productId}&asCreditItem=0{GetReturnToRouteQuery()}");
                 return;
             }
 
@@ -557,7 +576,7 @@ namespace LaceupMigration.ViewModels
             if (selectedItem != null)
             {
                 var type = selectedItem.Damaged ? 1 : 0;
-                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={productId}&asCreditItem=1&type={type}");
+                await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={productId}&asCreditItem=1&type={type}{GetReturnToRouteQuery()}");
             }
         }
 
@@ -614,17 +633,24 @@ namespace LaceupMigration.ViewModels
             }
             if (Config.UseCatalog && _orderId.HasValue)
             {
-                var route = $"productcatalog?orderId={_orderId.Value}&categoryId={categoryId}";
+                var order = _order ?? Order.Orders.FirstOrDefault(x => x.OrderId == _orderId.Value);
+                if (Config.NewAddItemRandomWeight && order != null)
+                {
+                    var route = $"fullproductlist?orderId={_orderId.Value}&categoryId={categoryId}&fromCreditTemplate={(_asCreditItem ? 1 : 0)}&asPresale={(order.AsPresale ? 1 : 0)}&comingFrom=FullCategory{GetReturnToRouteQuery()}";
+                    await Shell.Current.GoToAsync(route);
+                    return;
+                }
+                var routeCatalog = $"productcatalog?orderId={_orderId.Value}&categoryId={categoryId}";
                 if (!string.IsNullOrEmpty(_comingFrom))
-                    route += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
+                    routeCatalog += $"&comingFrom={Uri.EscapeDataString(_comingFrom)}";
                 if (_comingFrom == "LoadOrderTemplate")
-                    route += "&loadOrderReturnDepth=2";
+                    routeCatalog += "&loadOrderReturnDepth=2";
                 if (_asCreditItem)
-                    route += "&asCreditItem=1";
+                    routeCatalog += "&asCreditItem=1";
                 if (_asReturnItem)
-                    route += "&asReturnItem=1";
-                route += "&viaFullCategory=1";
-                await Shell.Current.GoToAsync(route);
+                    routeCatalog += "&asReturnItem=1";
+                routeCatalog += "&viaFullCategory=1";
+                await Shell.Current.GoToAsync(routeCatalog);
                 return;
             }
 
@@ -715,12 +741,27 @@ namespace LaceupMigration.ViewModels
 
             if (Config.UseCatalog)
             {
-                // Navigate to ProductCatalogPage with the selected product
-                var route = $"productcatalog?orderId={_order.OrderId}&productId={item.Product.ProductId}";
+                if (Config.NewAddItemRandomWeight && _order != null)
+                {
+                    var addItemRoute = item.Product.SoldByWeight ? "randomweightadditem" : "additem";
+                    var asCredit = _asCreditItem;
+                    int itemType = 0;
+                    if (asCredit)
+                    {
+                        var choice = await _dialogService.ShowActionSheetAsync("Add as", null, "Cancel", "Dump", "Return");
+                        if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+                        itemType = choice == "Dump" ? 1 : 2;
+                    }
+                    var route = $"{addItemRoute}?orderId={_order.OrderId}&productId={item.Product.ProductId}&asCreditItem={(asCredit ? 1 : 0)}";
+                    if (itemType != 0) route += $"&type={itemType}";
+                    await Shell.Current.GoToAsync(route);
+                    return;
+                }
+                var routeCatalog = $"productcatalog?orderId={_order.OrderId}&productId={item.Product.ProductId}";
                 if (_categoryId.HasValue)
-                    route += $"&categoryId={_categoryId.Value}";
-                route += "&viaFullCategory=1";
-                await Shell.Current.GoToAsync(route);
+                    routeCatalog += $"&categoryId={_categoryId.Value}";
+                routeCatalog += "&viaFullCategory=1";
+                await Shell.Current.GoToAsync(routeCatalog);
                 return;
             }
 
@@ -774,12 +815,12 @@ namespace LaceupMigration.ViewModels
                     }
 
                     // Navigate to AddItemPage with credit type
-                    await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={item.Product.ProductId}&asCreditItem=1&type={type}&reasonId={reasonId}");
+                    await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={item.Product.ProductId}&asCreditItem=1&type={type}&reasonId={reasonId}{GetReturnToRouteQuery()}");
                 }
                 else
                 {
                     // Navigate directly to AddItemPage
-                    await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={item.Product.ProductId}&asCreditItem=1");
+                    await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&productId={item.Product.ProductId}&asCreditItem=1{GetReturnToRouteQuery()}");
                 }
             }
             else
@@ -787,9 +828,8 @@ namespace LaceupMigration.ViewModels
                 // Regular product - navigate to AddItemPage
                 var route = $"additem?orderId={_order.OrderId}&productId={item.Product.ProductId}";
                 if (_consignmentCounting)
-                {
                     route += "&consignmentCounting=1";
-                }
+                route += GetReturnToRouteQuery();
                 await Shell.Current.GoToAsync(route);
             }
         }
@@ -1134,6 +1174,7 @@ namespace LaceupMigration.ViewModels
                             route += "&asReturnItem=1";
                         if (_consignmentCounting)
                             route += "&consignmentCounting=1";
+                        route += GetReturnToRouteQuery();
                         await Shell.Current.GoToAsync(route);
                     }
                     // If no order, the product will be shown filtered in the list

@@ -641,6 +641,16 @@ namespace LaceupMigration.ViewModels
                 await _dialogService.ShowAlertAsync("Cannot finalize orders that are already finalized, voided, or reshipped.", "Alert");
                 return;
             }
+            
+            if (Config.MustSetWeightInDelivery)
+            {
+                var toCheck = selectedOrders.Where(x => !x.Voided && !x.Finished).ToList();
+                if (toCheck.Any(x => x.Details.Any(y => y.Product.SoldByWeight && y.Weight == 0)))
+                {
+                    await _dialogService.ShowAlertAsync("There is one or more orders with weight items with no weight set.", "Alert");
+                    return;
+                }
+            }
 
             var result = await _dialogService.ShowConfirmAsync(
                 selectedOrders.Count == 1 ? "Are you sure that you would like to finalize this transaction?" : $"Are you sure you would like to finalize these {selectedOrders.Count} transactions?",

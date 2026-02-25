@@ -73,6 +73,7 @@ namespace LaceupMigration.Helpers
             { "productdetails", "ProductDetailsActivity" },
             { "productimage", "ProductImageActivity" },
             { "additem", "AddItemActivity" },
+            { "randomweightadditem", "IracarAddItemActivity" },
             { "inventory", "InventoryMainActivity" },
             { "viewprintinventory", "ViewPrintInventoryActivity" },
             { "checkinventory", "CheckInventoryActivity" },
@@ -390,6 +391,33 @@ namespace LaceupMigration.Helpers
         }
 
         /// <summary>
+        /// Pops back to PreviouslyOrderedTemplatePage or OrderCreditPage (whichever is on the stack), clearing all intermediate pages from ActivityState.
+        /// Same pattern as PopBackToOrderOrCreditTemplateAsync.
+        /// Call from AddItemPage / RandomWeightAddItemPage after successful Add when opened from PreviouslyOrderedTemplate or OrderCredit.
+        /// </summary>
+        /// <param name="returnToRoute">Unused; kept for API compatibility.</param>
+        /// <param name="currentPageRoute">Route name of the current page (additem or randomweightadditem) so its state is removed.</param>
+        public static async Task PopBackToRouteAndClearIntermediateAsync(string returnToRoute, string currentPageRoute)
+        {
+            if (string.IsNullOrWhiteSpace(currentPageRoute))
+            {
+                await Shell.Current.GoToAsync("..");
+                return;
+            }
+            RemoveNavigationState(currentPageRoute);
+            await Shell.Current.GoToAsync("..");
+
+            while (Shell.Current.CurrentPage != null && Shell.Current.Navigation.NavigationStack.Count > 1)
+            {
+                var route = GetRouteFromPageType(Shell.Current.CurrentPage?.GetType().Name);
+                if (route == "previouslyorderedtemplate" || route == "ordercredit")
+                    break;
+                RemoveNavigationState(route ?? "");
+                await Shell.Current.GoToAsync("..");
+            }
+        }
+
+        /// <summary>
         /// Removes state for the given routes (in order) and pops once per route.
         /// Use when leaving a page that was pushed on top of another (e.g. ProductCatalog on FullCategory: pass "productcatalog", "fullcategory").
         /// </summary>
@@ -414,8 +442,12 @@ namespace LaceupMigration.Helpers
                 "NewOrderTemplateDetailsPage" => "newordertemplatedetails",
                 "NewOrderTemplatePage" => "newordertemplate",
                 "NewCreditTemplatePage" => "newcredittemplate",
+                "PreviouslyOrderedTemplatePage" => "previouslyorderedtemplate",
+                "OrderCreditPage" => "ordercredit",
                 "ProductCatalogPage" => "productcatalog",
                 "AdvancedCatalogPage" => "advancedcatalog",
+                "AddItemPage" => "additem",
+                "RandomWeightAddItemPage" => "randomweightadditem",
                 _ => null
             };
         }

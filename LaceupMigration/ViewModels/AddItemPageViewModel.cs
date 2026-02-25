@@ -21,6 +21,10 @@ namespace LaceupMigration.ViewModels
         private int _creditType; // 0 = normal, 1 = damaged, 2 = return
         private int _reasonId;
         private bool _consignmentCounting;
+        private string _returnToRoute = "";
+
+        /// <summary>When set (e.g. from PreviouslyOrderedTemplate or OrderCredit), Add success will pop back to this route instead of single ..</summary>
+        public void SetReturnToRoute(string? route) => _returnToRoute = route ?? "";
 
         [ObservableProperty]
         private string _productName = string.Empty;
@@ -623,8 +627,10 @@ namespace LaceupMigration.ViewModels
 
             _order.Save();
 
-            // Navigate back
-            await Shell.Current.GoToAsync("..");
+            if (!string.IsNullOrEmpty(_returnToRoute))
+                await Helpers.NavigationHelper.PopBackToRouteAndClearIntermediateAsync(_returnToRoute, "additem");
+            else
+                await Shell.Current.GoToAsync("..");
         }
 
         [RelayCommand]

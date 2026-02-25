@@ -238,7 +238,7 @@
                                     </Label>
                                     <Label Text="{Binding OnHandText}"
                                            FontSize="12"
-                                           TextColor="Green" />
+                                           TextColor="{Binding OhColor}" />
                                     <Label Text="{Binding TruckInventoryText}"
                                            FontSize="12"
                                            TextColor="{StaticResource Gray600}"
