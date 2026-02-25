@@ -147,7 +147,7 @@
                     IsVisible="{Binding ShowButtonsLayout}">
             <Grid ColumnSpacing="5" HeightRequest="40" ColumnDefinitions="auto,auto,auto,auto,auto,auto"
                                   HorizontalOptions="Start">
-                <Button Text="Collect Payment"
+                <Button Text="Payment"
                         Style="{StaticResource PrimaryButton}"
                         Command="{Binding PaymentCommand}"
                         Grid.Column="0"
