@@ -1,13 +1,10 @@
-﻿
+
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
-
-
-
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Maui.ApplicationModel;
 
 
@@ -73,7 +70,7 @@ namespace LaceupMigration
             return Config.helper.AvailableDevices();
         }
 
-        public static async void PrintDocument(Func<int, string> printIt, int copies = 1)
+        public static async void PrintDocument(Func<int, string> printIt, int copies = 1, Func<Task> onSuccessAfterPrint = null)
         {
             var response = await DialogHelper._dialogService.ShowPromptAsync("Alert", "Enter Copies", "Print", "Cancel", "1", 1, copies.ToString());
 
@@ -96,24 +93,21 @@ namespace LaceupMigration
                     break;
                 case 1:
                     PrinterProvider.PrinterAddress = printers[0].Address;
-                    PrintIt(qty, printIt);
+                    PrintIt(qty, printIt, onSuccessAfterPrint);
                     break;
                 default:
-                    SelectPrinter(printers, qty, printIt);
+                    SelectPrinter(printers, qty, printIt, onSuccessAfterPrint);
                     break;
             }
         }
 
-        public static async void SelectPrinter(IList<PrinterDescription> printers, int number, Func<int, string> printIt)
+        public static async void SelectPrinter(IList<PrinterDescription> printers, int number, Func<int, string> printIt, Func<Task> onSuccessAfterPrint = null)
         {
-
             var options = printers.Select(x => x.Name).ToList();
-            var actions = printers.Select(printers => new Action(() =>
+            var actions = printers.Select(printer => new Action(() =>
             {
-                //var printer = printers.FirstOrDefault(x => x.Name == result);
-                PrinterProvider.PrinterAddress = printers.Address;
-                PrintIt(number, printIt);
-
+                PrinterProvider.PrinterAddress = printer.Address;
+                PrintIt(number, printIt, onSuccessAfterPrint);
             })).ToList();
 
             var response = await DialogHelper._dialogService.ShowActionSheetAsync("Select Printer", "", "Cancel", options.ToArray());
@@ -124,7 +118,7 @@ namespace LaceupMigration
                 actions[index].Invoke();
         }
 
-        public static void PrintIt(int number, Func<int, string> printIt)
+        public static void PrintIt(int number, Func<int, string> printIt, Func<Task> onSuccessAfterPrint = null)
         {
             DialogHelper._dialogService.ShowLoadingAsync("Printing");
 
@@ -132,15 +126,20 @@ namespace LaceupMigration
             {
                 var result = printIt(number);
 
-                MainThread.BeginInvokeOnMainThread(() =>
+                MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    DialogHelper._dialogService.HideLoadingAsync();
+                    await DialogHelper._dialogService.HideLoadingAsync();
 
                     if (!string.IsNullOrEmpty(result))
-                        DialogHelper._dialogService.ShowAlertAsync(result);
+                    {
+                        await DialogHelper._dialogService.ShowAlertAsync(result);
+                    }
                     else
-                        DialogHelper._dialogService.ShowAlertAsync("Printed Successfully!");
-
+                    {
+                        await DialogHelper._dialogService.ShowAlertAsync("Printed Successfully!");
+                        if (onSuccessAfterPrint != null)
+                            await onSuccessAfterPrint();
+                    }
                 });
             });
         }

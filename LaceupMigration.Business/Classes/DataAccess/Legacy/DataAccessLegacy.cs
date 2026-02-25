@@ -11508,6 +11508,33 @@ namespace LaceupMigration
             }
         }
 
+        public void SendThePayments(string fileName)
+        {
+            using (var access = new NetAccess())
+            {
+                try
+                {
+                    access.OpenConnection();
+                    access.WriteStringToNetwork("HELO");
+                    access.WriteStringToNetwork(Config.GetAuthString());
+                    access.WriteStringToNetwork("InvoicesAR");
+                    access.SendFile(fileName);
+                    access.WriteStringToNetwork("Goodbye");
+                    Thread.Sleep(1000);
+                    access.CloseConnection();
+                }
+                catch (AuthorizationException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Logger.CreateLog(ex);
+                    throw new ConnectionException("Error sending payments; one of the steps failed", ex);
+                }
+            }
+        }
+
         public void SendAll()
         {
             DateTime globalStart = DateTime.Now;

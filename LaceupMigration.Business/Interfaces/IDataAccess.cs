@@ -60,6 +60,8 @@ namespace LaceupMigration
         void SendTheOrders(string fileName);
         void SendTheOrders(IEnumerable<Batch> source, List<string> ordersId = null, bool deleteOrders = true, bool sendPayment = false);
         void SendTheSignatures(string file);
+        /// <summary>Resend a payment package file (zipped) to server via InvoicesAR.</summary>
+        void SendThePayments(string fileName);
         void SendAll();
         bool SendClientLocation(Client client);
         void SendSelfServiceInvitation(int clientId, string name, string email, string phone);

@@ -21,6 +21,7 @@
     <Color x:Key="colorLaceupGray">#c4c4c4</Color>
     <Color x:Key="colorWhite">#FFFFFF</Color>
     <Color x:Key="colorLaceupGreen">#3FBC4D</Color>
+    <Color x:Key="colorLaceupDarkGreen">#0a5713</Color>
     <Color x:Key="colorLaceupRed">#BA2D0B</Color>
     <Color x:Key="colorLaceupLightRed">#E57373</Color>
     <Color x:Key="colorLaceupDarkerRed">#8B2008</Color>

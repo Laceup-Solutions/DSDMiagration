@@ -13,7 +13,7 @@
             <VerticalStackLayout Padding="16" Spacing="16">
                 <!-- Sort By Section -->
                 <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
-                    <VerticalStackLayout Spacing="12">
+                    <VerticalStackLayout>
                         <Label Text="Sort By:"
                                FontSize="16"
                                FontAttributes="Bold"
@@ -51,29 +51,33 @@
 
                 <!-- Filter Section -->
                 <Frame Padding="12" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}">
-                    <VerticalStackLayout Spacing="12">
+                    <Grid RowDefinitions="auto,auto">
                         <Label Text="Filter:"
+                                Grid.Row="0"
                                FontSize="16"
                                FontAttributes="Bold"
                                TextColor="{StaticResource PrimaryDark}" />
                         
-                        <CheckBox IsChecked="{Binding IsJustOrderedChecked}" />
-                        <Label Text="Just Ordered"
-                               VerticalOptions="Center"
-                               FontSize="14"
-                               TextColor="{StaticResource Gray900}">
-                            <Label.GestureRecognizers>
-                                <TapGestureRecognizer Tapped="OnJustOrderedLabelTapped" />
-                            </Label.GestureRecognizers>
-                        </Label>
-                    </VerticalStackLayout>
+                        <Grid ColumnDefinitions="auto,*" Grid.Row="1">
+                            <CheckBox IsChecked="{Binding IsJustOrderedChecked}" Grid.Column="0" />
+                            <Label Text="Just Ordered"
+                                   Grid.Column="1"
+                                   VerticalOptions="Center"
+                                   FontSize="14"
+                                   TextColor="{StaticResource Gray900}">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnJustOrderedLabelTapped" />
+                                </Label.GestureRecognizers>
+                            </Label>
+                        </Grid>
+                    </Grid>
                 </Frame>
 
                 <!-- Buttons -->
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,0,0,0">
                     <Button Text="Cancel"
                             Command="{Binding CancelCommand}"
-                            Style="{StaticResource SecondaryButton}"
+                            Style="{StaticResource PrimaryButton}"
                             Grid.Column="0" />
                     <Button Text="Apply"
                             Command="{Binding ApplyCommand}"

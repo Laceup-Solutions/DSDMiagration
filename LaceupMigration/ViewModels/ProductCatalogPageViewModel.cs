@@ -179,7 +179,8 @@ namespace LaceupMigration.ViewModels
                 }
             }
 
-            MainThread.BeginInvokeOnMainThread(async () => await InitializeAsync(orderId));
+            if(!_initialized)
+                MainThread.BeginInvokeOnMainThread(async () => await InitializeAsync(orderId));
         }
 
         public async Task InitializeAsync(int? orderId)
@@ -361,7 +362,7 @@ namespace LaceupMigration.ViewModels
                         onHand /= orderDetail.UnitOfMeasure.Conversion;
                     
                     var ohStr = onHand > 0 ? "In Stock" : "Out of Stock";
-                    var color = onHand > 0 ? "#3FBC4D" : "#BA2D0B";
+                    var color = onHand > 0 ? "#0a5713" : "#BA2D0B";
             
                     if (Config.ShowOHQtyInSelfService || !Config.EnableSelfServiceModule)
                     {
@@ -1671,7 +1672,7 @@ namespace LaceupMigration.ViewModels
                 displayInv = baseInv / DefaultUomConversion;
             
             var ohStr = displayInv > 0 ? "In Stock" : "Out of Stock";
-            var color = displayInv > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
+            var color = displayInv > 0 ? Color.FromArgb("#0a5713") : Color.FromArgb("#BA2D0B");
             
             if (Config.ShowOHQtyInSelfService || !Config.EnableSelfServiceModule)
             {

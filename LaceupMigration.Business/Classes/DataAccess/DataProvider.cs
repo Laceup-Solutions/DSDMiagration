@@ -202,6 +202,11 @@ namespace LaceupMigration
             dataAccessInstance.SendTheSignatures(file);
         }
 
+        public static void SendThePayments(string fileName)
+        {
+            dataAccessInstance.SendThePayments(fileName);
+        }
+
         public static void SendAll()
         {
             dataAccessInstance.SendAll();

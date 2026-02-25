@@ -127,7 +127,7 @@
                                 <Label Text="{Binding QtySoldText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" />
                             </VerticalStackLayout>
                             <VerticalStackLayout Grid.Column="1" Spacing="2">
-                                <Label Text="{Binding OrderAmountText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowTotals}" />
+                                <Label Text="{Binding OrderAmountText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowOrderAmountInTotals}" />
                                 <Label Text="{Binding CreditAmountText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowTotals}" />
                                 <Label Text="{Binding SubtotalText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Gray900}" IsVisible="{Binding ShowTotals}" />
                             </VerticalStackLayout>
@@ -238,6 +238,7 @@
                                     </Label>
                                     <Label Text="{Binding OnHandText}"
                                            FontSize="12"
+                                           FontAttributes="Bold"
                                            TextColor="{Binding OhColor}" />
                                     <Label Text="{Binding TruckInventoryText}"
                                            FontSize="12"

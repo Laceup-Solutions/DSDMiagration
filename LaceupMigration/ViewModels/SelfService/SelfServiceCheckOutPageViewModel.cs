@@ -265,7 +265,7 @@ namespace LaceupMigration.ViewModels.SelfService
                 onHand /= orderDetail.UnitOfMeasure.Conversion;
             
             var ohStr = onHand > 0 ? "In Stock" : "Out of Stock";
-            var color = onHand > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
+            var color = onHand > 0 ? Color.FromArgb("#0a5713") : Color.FromArgb("#BA2D0B");
             
             if (Config.ShowOHQtyInSelfService)
             {
@@ -318,7 +318,7 @@ namespace LaceupMigration.ViewModels.SelfService
             var imagePath = ProductImage.GetProductImageWithPlaceholder(product.ProductId);
             
             var ohStr = onHand > 0 ? "In Stock" : "Out of Stock";
-            var color = onHand > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
+            var color = onHand > 0 ? Color.FromArgb("#0a5713") : Color.FromArgb("#BA2D0B");
             
             if (Config.ShowOHQtyInSelfService)
             {

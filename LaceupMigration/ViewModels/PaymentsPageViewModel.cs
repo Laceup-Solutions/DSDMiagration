@@ -221,7 +221,7 @@ namespace LaceupMigration.ViewModels
 
 			if (SelectedPayments.Any(x => !string.IsNullOrEmpty(x.OrderId)))
 			{
-				var result = await _dialogService.ShowConfirmationAsync("Send only payments for open invoices?", "Warning", "Yes", "No");
+				var result = await _dialogService.ShowConfirmationAsync("Warning", "Send only payments for open invoices?", "Yes", "No");
 				if (result)
 				{
 					SelectedPayments.Clear();
@@ -231,7 +231,7 @@ namespace LaceupMigration.ViewModels
 				return;
 			}
 
-			var confirm = await _dialogService.ShowConfirmationAsync("Continue sending payments?", "Warning", "Yes", "No");
+			var confirm = await _dialogService.ShowConfirmationAsync("Warning", "Continue sending payments?", "Yes", "No");
 			if (confirm)
 			{
 				await SendItAsync();

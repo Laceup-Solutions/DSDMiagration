@@ -176,6 +176,9 @@ namespace LaceupMigration.ViewModels
 
         public bool ShowOneDocTotalsLayout => !UseSimpleTotalsLayout;
 
+        /// <summary>When order is Credit, hide "Order" line in totals so Credit and Subtotal move up one row.</summary>
+        public bool ShowOrderAmountInTotals => ShowTotals && (_order == null || _order.OrderType != OrderType.Credit);
+
         partial void OnAllowOneDocChanged(bool value)
         {
             OnPropertyChanged(nameof(UseSimpleTotalsLayout));
@@ -1251,6 +1254,7 @@ namespace LaceupMigration.ViewModels
             ShowTotals = !Config.HidePriceInTransaction;
             ShowDiscount = _order.Client?.UseDiscount == true || _order.Client?.UseDiscountPerLine == true ||
                            _order.IsDelivery;
+            OnPropertyChanged(nameof(ShowOrderAmountInTotals));
         }
 
         private void LoadLineItems()
@@ -1383,6 +1387,8 @@ namespace LaceupMigration.ViewModels
                     
                     SearchQuery = scanResult;
                     await Task.Delay(500);
+                    
+                    await IncrementQuantityAsync(cItem.PrimaryDetail);
                 }
                 else
                 {
@@ -1393,8 +1399,8 @@ namespace LaceupMigration.ViewModels
             }
             catch (Exception ex)
             {
-                Logger.CreateLog($"Error scanning barcode: {ex.Message}");
-                await _dialogService.ShowAlertAsync("Error scanning barcode.", "Error");
+                Logger.CreateLog($"Product not found for scanned barcode.");
+                await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Error");
             }
         }
 
@@ -1642,8 +1648,13 @@ namespace LaceupMigration.ViewModels
                     LoadLineItems();
                     HighlightItemOnly(item);
                     
-                    if(_whatToViewInList == WhatToViewInList.Selected && item != null)
-                        FilteredItems.Remove(item);
+                    // When viewing "Just Ordered", remove from list only when all lines and primary detail are 0
+                    if (_whatToViewInList == WhatToViewInList.Selected && item != null)
+                    {
+                        var itemTotalQty = item.Details?.Sum(d => d.Detail?.Qty ?? 0) ?? 0;
+                        if (itemTotalQty <= 0 && FilteredItems.Contains(item))
+                            FilteredItems.Remove(item);
+                    }
                     return;
                 }
 
@@ -1661,9 +1672,18 @@ namespace LaceupMigration.ViewModels
                     detail.Detail = null;
                     
                     item.PrimaryDetail = GetDefaultUomDetail(item);
+                    
                     item.NotifySublinesChanged();
                     item.UpdateDisplayProperties();
                     LoadLineItems(); // Update line items list
+
+                    // When viewing "Just Ordered", remove from list only when all lines and primary detail are 0
+                    if (_whatToViewInList == WhatToViewInList.Selected)
+                    {
+                        var itemTotalQty = item.Details?.Sum(d => d.Detail?.Qty ?? 0) ?? 0;
+                        if (itemTotalQty <= 0 && FilteredItems.Contains(item))
+                            FilteredItems.Remove(item);
+                    }
                 }
                 else
                 {
@@ -1798,8 +1818,13 @@ namespace LaceupMigration.ViewModels
                     LoadLineItems();
                     HighlightItemOnly(item);
                     
-                    if(_whatToViewInList == WhatToViewInList.Selected && item != null)
-                        FilteredItems.Remove(item);
+                    // When viewing "Just Ordered", remove from list only when all lines and primary detail are 0
+                    if (_whatToViewInList == WhatToViewInList.Selected && item != null)
+                    {
+                        var itemTotalQty = item.Details?.Sum(d => d.Detail?.Qty ?? 0) ?? 0;
+                        if (itemTotalQty <= 0 && FilteredItems.Contains(item))
+                            FilteredItems.Remove(item);
+                    }
                     return;
                 }
                 // Remove subline from order
@@ -1815,6 +1840,14 @@ namespace LaceupMigration.ViewModels
                     item.PrimaryDetail = GetDefaultUomDetail(item);
                     item.UpdateDisplayProperties();
                     LoadLineItems();
+
+                    // When viewing "Just Ordered", remove from list only when all lines and primary detail are 0
+                    if (_whatToViewInList == WhatToViewInList.Selected)
+                    {
+                        var itemTotalQty = item.Details?.Sum(d => d.Detail?.Qty ?? 0) ?? 0;
+                        if (itemTotalQty <= 0 && FilteredItems.Contains(item))
+                            FilteredItems.Remove(item);
+                    }
                 }
                 else
                 {
@@ -2842,6 +2875,12 @@ namespace LaceupMigration.ViewModels
                 {
                     UpdateRoute(true);
                 }
+                
+                if (_order.AsPresale && Config.GeneratePresaleNumber && string.IsNullOrEmpty(_order.PrintedOrderId))
+                {
+                    _order.PrintedOrderId = InvoiceIdProvider.CurrentProvider().GetId(_order);
+                    _order.Save();
+                }
 
                 _order.Modified = true;
                 _order.Save();
@@ -3731,43 +3770,43 @@ namespace LaceupMigration.ViewModels
             // Check if order is presale and show dialog with 3 options (only for non-empty orders)
             if (_order.AsPresale)
             {
-                // Show action options dialog (matching Xamarin PreviouslyOrderedTemplateActivity logic)
-                var options = new[]
+                // Transaction name varies by order type (Order, Credit, Return, etc.)
+                var transName = _order.OrderType == OrderType.Order ? "Order" : "Credit";
+                // Option templates: {0} = trans name. Order of items defines action index.
+                var optionTemplates = new[]
                 {
-                    "Send Order",
-                    "Save Order To Send Later",
-                    "Stay In The Order"
+                    "Send {0}",
+                    "Save {0} To Send Later",
+                    "Stay In The {0}"
                 };
+                var options = optionTemplates.Select(t => string.Format(t, transName)).ToArray();
 
                 var choice = await _dialogService.ShowActionSheetAsync("Action Options", "", "Cancel", options);
-                
+
                 if (string.IsNullOrWhiteSpace(choice) || choice == "Cancel")
                     return; // User cancelled, stay in order
 
-                switch (choice)
+                // Match by position (index) so we don't depend on exact trans name
+                var choiceIndex = Array.IndexOf(options, choice);
+                switch (choiceIndex)
                 {
-                    case "Send Order":
-                        // Call SendOrderAsync which handles validation and sending
+                    case 0: // Send
                         await SendOrderAsync();
                         break;
-                    case "Save Order To Send Later":
-                        // Continue after alert - finalize order and navigate
+                    case 1: // Save To Send Later
                         var canNavigate = await FinalizeOrderAsync();
                         if (canNavigate)
                         {
-                            // [ACTIVITY STATE]: Remove state when properly exiting
                             var route = "advancedcatalog";
                             if (_order != null)
                             {
                                 route += $"?orderId={_order.OrderId}";
                             }
                             Helpers.NavigationHelper.RemoveNavigationState(route);
-                            
                             await NavigateBackFromCatalogAsync();
                         }
                         break;
-                    case "Stay In The Order":
-                        // Do nothing, stay in the order
+                    case 2: // Stay In The ...
                         return;
                 }
             }
@@ -4079,7 +4118,7 @@ namespace LaceupMigration.ViewModels
                     var ohStr = FormatOhDisplay(ohDisplay);
                     var truckStr = FormatOhDisplay(truckDisplay);
                     
-                    var color = ohDisplay > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
+                    var color = ohDisplay > 0 ? Color.FromArgb("#0a5713") : Color.FromArgb("#BA2D0B");
                     OhColor = color;
 
                     OnHandText = string.IsNullOrEmpty(uomName)
@@ -4100,7 +4139,7 @@ namespace LaceupMigration.ViewModels
                         : $"OH: {ohStr} {uomName}";
                     TruckInventoryText = string.Empty;
                     
-                    var color = ohDisplay > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
+                    var color = ohDisplay > 0 ? Color.FromArgb("#0a5713") : Color.FromArgb("#BA2D0B");
                     OhColor = color;
                 }
 

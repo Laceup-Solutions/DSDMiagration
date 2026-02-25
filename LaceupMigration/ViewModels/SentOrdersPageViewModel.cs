@@ -133,7 +133,8 @@ namespace LaceupMigration.ViewModels
 
                 var packages = SentOrderPackage.Packages(SelectedDate);
                 var processedOrderIds = new HashSet<string>();
-                
+                var selectedDateOnly = SelectedDate.Date;
+                // Packages(SelectedDate) returns all packages with CreatedDate >= SelectedDate, so we filter by order date to show only orders for the selected day
                 if (packages.Count > 0)
                 {
                     foreach (var pck in packages)
@@ -141,6 +142,8 @@ namespace LaceupMigration.ViewModels
                         var packageOrders = pck.PackageOrders();
                         foreach (var sentOrder in packageOrders)
                         {
+                            if (sentOrder.Date.Date < selectedDateOnly)
+                                continue;
                             var orderId = sentOrder.OrderUniqueId ?? $"{sentOrder.OrderId}_{sentOrder.Date.Ticks}";
                             if (processedOrderIds.Add(orderId))
                             {
@@ -177,17 +180,29 @@ namespace LaceupMigration.ViewModels
 
         partial void OnSelectedTransactionTypeChanged(string value)
         {
-            var index = TransactionTypeOptions.IndexOf(value);
-            if (index >= 0)
-            {
-                _optionSelected = (SelectedOption)index;
-            }
-            else
-            {
-                _optionSelected = SelectedOption.All;
-            }
-
+            _optionSelected = MapTransactionTypeToOption(value);
             RefreshListView();
+        }
+
+        /// <summary>Maps the display string from the picker to SelectedOption. Do not use list index - options are built dynamically and indices don't match the enum.</summary>
+        private static SelectedOption MapTransactionTypeToOption(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return SelectedOption.All;
+            return value.Trim() switch
+            {
+                "All" => SelectedOption.All,
+                "No Service" => SelectedOption.No_Service,
+                "Sales Order" => SelectedOption.Sales_Order,
+                "Credit Order" => SelectedOption.Credit_Order,
+                "Return Order" => SelectedOption.Return_Order,
+                "Quote" => SelectedOption.Quote,
+                "Sales Invoice" => SelectedOption.Sales_Invoice,
+                "Credit Invoice" => SelectedOption.Credit_Invoice,
+                "Return Invoice" => SelectedOption.Return_Invoice,
+                "Consignment" => SelectedOption.Consignment_Invoice,
+                "Par Level Invoice" => SelectedOption.ParLevel_Invoice,
+                _ => SelectedOption.All
+            };
         }
 
         [ObservableProperty]
@@ -342,8 +357,61 @@ namespace LaceupMigration.ViewModels
                 return;
             }
 
-            // TODO: Implement resend functionality
-            await _dialogService.ShowAlertAsync("Resend functionality to be implemented.", "Info", "OK");
+            try
+            {
+                await _dialogService.ShowLoadingAsync("Re-sending...");
+
+                string err = string.Empty;
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        var packageLocations = new List<string>();
+                        foreach (var o in SelectedOrders)
+                        {
+                            if (!string.IsNullOrEmpty(o.PackagePath) && !packageLocations.Contains(o.PackagePath))
+                                packageLocations.Add(o.PackagePath);
+                        }
+
+                        foreach (var package in packageLocations)
+                        {
+                            var dstFile = package;
+                            if (string.IsNullOrEmpty(dstFile) || !System.IO.File.Exists(dstFile))
+                                continue;
+
+                            string dstFileZipped = dstFile + ".zip";
+                            ZipMethods.ZipFile(dstFile, dstFileZipped);
+                            DataProvider.SendTheOrders(dstFileZipped);
+                            System.IO.File.Delete(dstFileZipped);
+
+                            var signatureFileZipped = dstFile + ".signature.zip";
+                            if (System.IO.File.Exists(signatureFileZipped))
+                            {
+                                DataProvider.SendTheSignatures(signatureFileZipped);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.CreateLog(ex);
+                        err = ex.Message;
+                    }
+                });
+
+                await _dialogService.HideLoadingAsync();
+
+                if (string.IsNullOrEmpty(err))
+                    await _dialogService.ShowAlertAsync("Orders sent.", "Info", "OK");
+                else
+                    await _dialogService.ShowAlertAsync(err, "Alert", "OK");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.HideLoadingAsync();
+                Logger.CreateLog(ex);
+                await _dialogService.ShowAlertAsync(ex.Message, "Alert", "OK");
+                _appService.TrackError(ex);
+            }
         }
 
         public void ToggleOrderSelection(SentOrder order)
