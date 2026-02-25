@@ -241,6 +241,11 @@
                                             CornerRadius="4"
                                             HorizontalOptions="End"
                                             Margin="0,2,0,0">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding HasZeroWeightLine}" Value="True">
+                                                <Setter Property="Style" Value="{StaticResource DeleteButton}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
                                         <VisualStateManager.VisualStateGroups>
                                             <VisualStateGroupList>
                                                 <VisualStateGroup x:Name="CommonStates">

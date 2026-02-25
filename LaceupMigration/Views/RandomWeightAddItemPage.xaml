@@ -2,16 +2,14 @@
 <local:LaceupContentPage xmlns:local="clr-namespace:LaceupMigration.Views" xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:LaceupMigration.ViewModels"
-             x:Class="LaceupMigration.Views.AddItemPage"
-             x:DataType="vm:AddItemPageViewModel"
+             x:Class="LaceupMigration.Views.RandomWeightAddItemPage"
+             x:DataType="vm:RandomWeightAddItemPageViewModel"
              Shell.NavBarIsVisible="True"
              Shell.TabBarIsVisible="False"
              Title="Add Item">
     <ContentPage.Content>
         <ScrollView>
             <VerticalStackLayout Padding="12" Spacing="8">
-                
-                <!-- Action Buttons -->
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,4,0,0">
                     <Button Text="Product Details"
                             Style="{StaticResource PrimaryButton}"
@@ -27,23 +25,37 @@
                             FontAttributes="Bold"
                             HeightRequest="40"
                             CornerRadius="4"
-                            Grid.Column="1" />
+                            Grid.Column="1">
+                    </Button>
                 </Grid>
-                
-                <!-- Product Description (Full line with UPC) -->
-                    <Label Text="{Binding ProductName}"
-                           FontSize="18"
-                           FontAttributes="Bold"
-                           HorizontalOptions="Center"
-                           HorizontalTextAlignment="Center"
-                           Margin="0,10,0,0"
-                           TextColor="{StaticResource Gray900}"
-                           LineBreakMode="WordWrap" />
 
-                <!-- Compact Input Fields Grid -->
+                <Label Text="{Binding ProductName}"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center"
+                       Margin="0,10,0,0"
+                       TextColor="{StaticResource Gray900}"
+                       LineBreakMode="WordWrap" />
+
+                <Label Text="Random Weight"
+                       FontSize="15"
+                       TextColor="{StaticResource colorLaceupGreen}"
+                       IsVisible="{Binding ShowRandomWeightLabel}"
+                       FontAttributes="Bold"
+                       HorizontalOptions="Center"
+                       Margin="0,0,0,4" />
+
+                <Label Text="{Binding AvgWeightText}"
+                       FontSize="12"
+                       TextColor="{StaticResource Gray600}"
+                       IsVisible="{Binding ShowAvgWeight}"
+                       HorizontalOptions="Center"
+                       Margin="0,0,0,4" />
+
                 <Frame Padding="10" HasShadow="False" CornerRadius="8" BackgroundColor="{StaticResource White}" Margin="0,0,0,4">
                     <VerticalStackLayout Spacing="6">
-                        <!-- Qty Row -->
+                        <!-- SoldByWeight: Qty shows line count (disabled). Otherwise hidden; weight/quantity handled elsewhere. -->
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" IsVisible="{Binding ShowQuantity}">
                             <Label Text="Qty:"
                                    FontSize="16"
@@ -56,10 +68,10 @@
                                    WidthRequest="100"
                                    FontSize="16"
                                    BackgroundColor="Transparent"
+                                   IsEnabled="{Binding IsQuantityEnabled}"
                                    Grid.Column="1" />
                         </Grid>
 
-                        <!-- Weight Row (alternative to Qty) -->
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" IsVisible="{Binding ShowWeight}">
                             <Label Text="Weight:"
                                    FontSize="16"
@@ -75,7 +87,6 @@
                                    Grid.Column="1" />
                         </Grid>
 
-                        <!-- Price Row -->
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding ShowPrice}">
                             <Grid ColumnDefinitions="Auto,*">
                                 <Label Text="Price:"
@@ -92,7 +103,6 @@
                                        IsReadOnly="{Binding CanEditPrice, Converter={StaticResource InvertedBoolConverter}}"
                                        Grid.Column="1" />
                             </Grid>
-                          
                             <HorizontalStackLayout Grid.Column="1" Spacing="8" IsVisible="{Binding ShowPrice}" Margin="0,4,0,0">
                                 <CheckBox IsChecked="{Binding IsFreeItem}" />
                                 <Label Text="Free Item"
@@ -102,22 +112,19 @@
                             </HorizontalStackLayout>
                         </Grid>
 
-                        <!-- Discount per line (inline, matches Xamarin AddItemActivity) -->
-                        <VerticalStackLayout x:Name="DiscountSection" Spacing="6" IsVisible="{Binding ShowDiscountPerLine}" Margin="0,4,0,0">
+                        <VerticalStackLayout Spacing="6" IsVisible="{Binding ShowDiscountPerLine}" Margin="0,4,0,0">
                             <Label Text="Discount:"
                                    FontSize="16"
                                    TextColor="{StaticResource Gray900}" />
                             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                                <RadioButton x:Name="DiscountPercentageRadio"
-                                             Content="Percentage"
+                                <RadioButton Content="Percentage"
                                              IsChecked="{Binding IsDiscountPercentage}"
                                              GroupName="DiscountType"
                                              FontSize="16"
                                              VerticalOptions="Center"
                                              Grid.Column="0" />
                                 <HorizontalStackLayout Spacing="6" VerticalOptions="Center" Grid.Column="1">
-                                    <Entry x:Name="DiscountPercentEntry"
-                                           Text="{Binding DiscountPercentText}"
+                                    <Entry Text="{Binding DiscountPercentText}"
                                            Keyboard="Numeric"
                                            FontSize="16"
                                            WidthRequest="60"
@@ -136,15 +143,13 @@
                                 </HorizontalStackLayout>
                             </Grid>
                             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                                <RadioButton x:Name="DiscountAmountRadio"
-                                             Content="Amount"
+                                <RadioButton Content="Amount"
                                              IsChecked="{Binding IsDiscountAmount}"
                                              GroupName="DiscountType"
                                              FontSize="16"
                                              VerticalOptions="Center"
                                              Grid.Column="0" />
-                                <Entry x:Name="DiscountAmountEntry"
-                                       Text="{Binding DiscountAmountText}"
+                                <Entry Text="{Binding DiscountAmountText}"
                                        Keyboard="Numeric"
                                        FontSize="16"
                                        BackgroundColor="Transparent"
@@ -154,7 +159,6 @@
                             </Grid>
                         </VerticalStackLayout>
 
-                        <!-- Total Row -->
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                             <Label Text="Total:"
                                    FontSize="20"
@@ -163,13 +167,12 @@
                                    VerticalOptions="Center"
                                    Grid.Column="0" />
                             <Label Text="{Binding TotalText}"
-                                   FontSize="20"
+                                   FontSize="18"
                                    FontAttributes="Bold"
                                    VerticalOptions="Center"
                                    Grid.Column="1" />
                         </Grid>
 
-                        <!-- On Hand Row -->
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                             <Label Text="OH:"
                                    FontSize="16"
@@ -177,13 +180,12 @@
                                    VerticalOptions="Center"
                                    Grid.Column="0" />
                             <Label Text="{Binding OnHandText}"
-                                   FontSize="14"
+                                   FontSize="16"
                                    TextColor="{StaticResource Gray900}"
                                    VerticalOptions="Center"
                                    Grid.Column="1" />
                         </Grid>
 
-                        <!-- Unit of Measure Row -->
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" IsVisible="{Binding ShowUom}">
                             <Label Text="UoM:"
                                    FontSize="16"
@@ -198,7 +200,6 @@
                                     Grid.Column="1" />
                         </Grid>
 
-                        <!-- Lot Row -->
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" IsVisible="{Binding ShowLot}">
                             <Label Text="Lot:"
                                    FontSize="16"
@@ -212,7 +213,6 @@
                                    Grid.Column="1" />
                         </Grid>
 
-                        <!-- Comments Row -->
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" IsVisible="{Binding ShowComments}">
                             <Label Text="Comments:"
                                    FontSize="16"
@@ -221,15 +221,90 @@
                                    Grid.Column="0" />
                             <Editor Text="{Binding CommentsText}"
                                     FontSize="16"
-                                    BackgroundColor="Transparent"
-                                    Placeholder="Enter comments"
-                                    Grid.Column="1" />
+                                   BackgroundColor="Transparent"
+                                   Placeholder="Enter comments"
+                                   Grid.Column="1" />
                         </Grid>
-                        
                     </VerticalStackLayout>
                 </Frame>
+
+                <!-- Lines list: Add / Remove / Clear and CollectionView (when SoldByWeight) -->
+                <VerticalStackLayout IsVisible="{Binding ShowLinesSection}" Spacing="8" Margin="0,8,0,0">
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <Button Text="Add lines"
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{Binding AddLinesCommand}"
+                                FontSize="14"
+                                Grid.Column="0" />
+                        <Button Text="Remove lines"
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{Binding RemoveLinesCommand}"
+                                FontSize="14"
+                                Grid.Column="1" />
+                        <Button Text="Clear lines"
+                                Style="{StaticResource DeleteButton}"
+                                Command="{Binding ClearLinesCommand}"
+                                FontSize="14"
+                                Grid.Column="2" />
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Label Text="Weight total:"
+                               FontSize="16"
+                               TextColor="{StaticResource Gray900}"
+                               VerticalOptions="Center"
+                               Grid.Column="0" />
+                        <Label Text="{Binding WeightTotalText}"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               VerticalOptions="Center"
+                               Grid.Column="1" />
+                    </Grid>
+                    <CollectionView ItemsSource="{Binding Lines}"
+                                    SelectionMode="None"
+                                    Margin="0,4,0,0">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:RandomWeightLineViewModel">
+                                <Border Padding="8" Margin="0,4" BackgroundColor="{StaticResource White}" StrokeShape="RoundRectangle 8">
+                                    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto" RowSpacing="4" ColumnSpacing="8">
+                                        <CheckBox Grid.Row="0" Grid.Column="0" Grid.RowSpan="3"
+                                                  IsChecked="{Binding Selected}"
+                                                  VerticalOptions="Center" />
+                                        <Label Grid.Row="0" Grid.Column="1"
+                                               Text="{Binding CaseNumber, StringFormat='Case #: {0}'}"
+                                               FontSize="14"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource Gray900}" />
+                                        <Button Grid.Row="0" Grid.RowSpan="3" Grid.Column="2"
+                                                Text="{Binding WeightText}"
+                                                VerticalOptions="Center"
+                                                Command="{Binding EditWeightCommand}"
+                                                FontSize="16"
+                                                FontAttributes="Bold"
+                                                BackgroundColor="{StaticResource colorLaceupGreen}"
+                                                TextColor="White">
+                                            <Button.Triggers>
+                                                <DataTrigger TargetType="Button" Binding="{Binding IsWeightZero}" Value="True">
+                                                    <Setter Property="Style" Value="{StaticResource DeleteButton}" />
+                                                </DataTrigger>
+                                            </Button.Triggers>
+                                        </Button>
+                                        <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                                               Text="{Binding LineTotalText, StringFormat='Total: {0}'}"
+                                               FontSize="16"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource Gray600}" />
+                                        <Label Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                                               Text="{Binding LotText}"
+                                               FontSize="12"
+                                               IsVisible="{Binding LotText, Converter={StaticResource IsStringNotEmptyConverter}}"
+                                               TextColor="{StaticResource Gray600}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
             </VerticalStackLayout>
         </ScrollView>
     </ContentPage.Content>
 </local:LaceupContentPage>
-

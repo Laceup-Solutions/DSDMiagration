@@ -144,7 +144,7 @@ public class DialogService : IDialogService
         return index >= 0 ? uoms[index] : null;
     }
 
-    public async Task<string> ShowPromptAsync(string title, string message, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", int maxLength = -1, string initialValue = "", Keyboard keyboard = null, bool showScanIcon = false, Func<Task<string>> scanAction = null)
+    public async Task<string> ShowPromptAsync(string title, string message, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", int maxLength = -1, string initialValue = "", Keyboard keyboard = null, bool showScanIcon = false, Func<Task<string>> scanAction = null, bool selectAllText = false)
     {
         var page = GetCurrentPage();
         if (page == null)
@@ -154,6 +154,12 @@ public class DialogService : IDialogService
         if (showScanIcon && scanAction != null)
         {
             return await ShowPromptWithScanAsync(title, message, scanAction, acceptText, cancelText, placeholder, initialValue, maxLength, keyboard);
+        }
+
+        // If select-all is requested, use custom dialog so we can select all text when focused
+        if (selectAllText)
+        {
+            return await ShowPromptWithSelectAllAsync(title, message, acceptText, cancelText, placeholder, initialValue, maxLength, keyboard);
         }
 
         // Otherwise, use default native implementation
@@ -440,6 +446,235 @@ public class DialogService : IDialogService
             entry.CursorPosition = 0;
             entry.SelectionLength = entry.Text.Length;
         }
+
+        return await tcs.Task;
+    }
+
+    private async Task<string> ShowPromptWithSelectAllAsync(string title, string message, string acceptText = "OK", string cancelText = "Cancel", string placeholder = "", string initialValue = "", int maxLength = -1, Keyboard keyboard = null)
+    {
+        var page = GetCurrentPage();
+        if (page == null)
+            return null;
+
+        var tcs = new TaskCompletionSource<string>();
+
+        var entry = new Entry
+        {
+            Text = initialValue,
+            Placeholder = placeholder,
+            FontSize = 16,
+            Keyboard = keyboard ?? Keyboard.Default,
+            BackgroundColor = Colors.Transparent,
+            PlaceholderColor = Colors.Gray
+        };
+
+        if (maxLength > 0)
+            entry.MaxLength = maxLength;
+
+        var underline = new BoxView
+        {
+            HeightRequest = 1,
+            Color = Color.FromArgb("#E0E0E0"),
+            Margin = new Thickness(0, 4, 0, 0)
+        };
+
+        var inputWithUnderline = new VerticalStackLayout
+        {
+            Spacing = 0,
+            Children = { entry, underline }
+        };
+
+        var content = new VerticalStackLayout
+        {
+            Spacing = 8,
+            Padding = new Thickness(24, 0, 24, 8),
+            Children =
+            {
+                new Label
+                {
+                    Text = message,
+                    FontSize = 14,
+                    TextColor = Colors.Black
+                },
+                inputWithUnderline
+            }
+        };
+
+        var buttonSeparatorLine = new BoxView
+        {
+            HeightRequest = 1,
+            Color = Color.FromArgb("#E0E0E0"),
+            Margin = new Thickness(0)
+        };
+
+        var cancelButton = new Button
+        {
+            Text = cancelText,
+            FontSize = 14,
+            TextColor = Color.FromArgb("#424242"),
+            BackgroundColor = Colors.Transparent,
+            BorderWidth = 0,
+            Padding = new Thickness(12, 8),
+            MinimumHeightRequest = 0,
+            MinimumWidthRequest = 0,
+            HorizontalOptions = LayoutOptions.Center
+        };
+
+        var okButton = new Button
+        {
+            Text = acceptText,
+            FontSize = 14,
+            TextColor = Color.FromArgb("#424242"),
+            BackgroundColor = Colors.Transparent,
+            BorderWidth = 0,
+            Padding = new Thickness(12, 8),
+            MinimumHeightRequest = 0,
+            MinimumWidthRequest = 0,
+            HorizontalOptions = LayoutOptions.Center
+        };
+
+        var verticalDivider = new BoxView
+        {
+            WidthRequest = 1,
+            Color = Color.FromArgb("#E0E0E0"),
+            VerticalOptions = LayoutOptions.Fill
+        };
+
+        var buttonRow = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = GridLength.Star }
+            },
+            Padding = new Thickness(8, 6, 8, 10),
+            ColumnSpacing = 0,
+            MinimumHeightRequest = 0
+        };
+        buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(verticalDivider);
+        buttonRow.Children.Add(okButton);
+        Grid.SetColumn(cancelButton, 0);
+        Grid.SetColumn(verticalDivider, 1);
+        Grid.SetColumn(okButton, 2);
+
+        var buttonSection = new VerticalStackLayout
+        {
+            Spacing = 0,
+            Children = { buttonSeparatorLine, buttonRow }
+        };
+
+        var mainContainer = new VerticalStackLayout
+        {
+            Spacing = 0,
+            BackgroundColor = Colors.White,
+            Children =
+            {
+                new Label
+                {
+                    Text = title,
+                    FontSize = 18,
+                    FontAttributes = FontAttributes.Bold,
+                    Padding = new Thickness(24, 24, 24, 8),
+                    TextColor = Colors.Black
+                },
+                content,
+                buttonSection
+            }
+        };
+
+        var screenWidth = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density;
+        var dialogWidth = screenWidth * 0.70;
+
+        var dialogBorder = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 0,
+            Padding = 0,
+            Margin = new Thickness(20),
+            WidthRequest = dialogWidth,
+            MaximumWidthRequest = dialogWidth,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(4) },
+            Content = mainContainer
+        };
+
+        var overlayGrid = new Grid
+        {
+            BackgroundColor = Color.FromArgb("#80000000"),
+            RowDefinitions = new RowDefinitionCollection
+            {
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            },
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        Grid.SetRow(dialogBorder, 1);
+        Grid.SetColumn(dialogBorder, 1);
+        overlayGrid.Children.Add(dialogBorder);
+
+        var dialog = new ContentPage
+        {
+            BackgroundColor = Colors.Transparent,
+            Content = overlayGrid
+        };
+
+        async Task SafePopModalAsync()
+        {
+            try
+            {
+                var currentPage = GetCurrentPage();
+                if (currentPage != null)
+                {
+                    if (currentPage == dialog && currentPage.Navigation.ModalStack.Count > 0)
+                    {
+                        await currentPage.Navigation.PopModalAsync();
+                    }
+                    else if (page != null && page.Navigation.ModalStack.Count > 0)
+                    {
+                        await page.Navigation.PopModalAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error popping modal: {ex.Message}");
+            }
+        }
+
+        okButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult(entry.Text);
+        };
+
+        cancelButton.Clicked += async (s, e) =>
+        {
+            await SafePopModalAsync();
+            tcs.SetResult(null);
+        };
+
+        await page.Navigation.PushModalAsync(dialog);
+
+        entry.Focused += (s, e) =>
+        {
+            if (s is Entry en && !string.IsNullOrEmpty(en.Text))
+            {
+                Application.Current?.Dispatcher.Dispatch(() =>
+                {
+                    en.CursorPosition = 0;
+                    en.SelectionLength = en.Text.Length;
+                });
+            }
+        };
+        entry.Focus();
 
         return await tcs.Task;
     }

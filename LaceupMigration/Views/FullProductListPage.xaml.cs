@@ -37,8 +37,14 @@ namespace LaceupMigration.Views
                 asPresale = ap.ToString() == "1" || string.Equals(ap.ToString(), "true", StringComparison.OrdinalIgnoreCase);
             if (query.TryGetValue("productSearch", out var ps) && ps != null)
                 productSearch = ps.ToString();
+            string? comingFrom = null;
+            if (query.TryGetValue("comingFrom", out var cf) && cf != null)
+                comingFrom = cf.ToString();
+            string? returnToRoute = null;
+            if (query.TryGetValue("returnToRoute", out var rtr) && rtr != null && !string.IsNullOrWhiteSpace(rtr.ToString()))
+                returnToRoute = rtr.ToString();
 
-            _viewModel.SetNavigationQuery(orderId, categoryId, clientId, fromCreditTemplate, asPresale, productSearch);
+            _viewModel.SetNavigationQuery(orderId, categoryId, clientId, fromCreditTemplate, asPresale, productSearch, comingFrom, returnToRoute);
             _viewModel.LoadProducts();
 
             var route = "fullproductlist";

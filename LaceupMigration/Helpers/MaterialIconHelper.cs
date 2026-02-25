@@ -41,6 +41,7 @@ public static class MaterialIconHelper
 			MaterialOutlinedIcons.AccessTime => "\uE192",
 			MaterialOutlinedIcons.Email => "\uE0BE",
 			MaterialOutlinedIcons.DataArray => "\uEAD1",
+			MaterialOutlinedIcons.ContentCopy => "\uE190",
 			_ => "\uEB94"
 		};
 	}

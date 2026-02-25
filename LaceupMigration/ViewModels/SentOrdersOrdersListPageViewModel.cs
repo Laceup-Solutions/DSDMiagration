@@ -26,7 +26,9 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _totalText = string.Empty;
         [ObservableProperty] private string _shipDateText = string.Empty;
         [ObservableProperty] private bool _showShipDate;
-        [ObservableProperty] private bool _showExtraLayout;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ShowExtraTotals))]
+        private bool _showExtraLayout;
         [ObservableProperty] private string _linesText = string.Empty;
         [ObservableProperty] private string _qtySoldText = string.Empty;
         [ObservableProperty] private string _subTotalText = string.Empty;
@@ -36,7 +38,12 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _extraTotal2Text = string.Empty;
         [ObservableProperty] private string _extraTotal3Text = string.Empty;
         [ObservableProperty] private ObservableCollection<SentOrderDetailViewModel> _orderDetails = new();
-        [ObservableProperty] private bool _showTotal;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ShowExtraTotals))]
+        private bool _showTotal;
+
+        /// <summary>True when both prices and the extra (other charges) layout are shown.</summary>
+        public bool ShowExtraTotals => ShowTotal && ShowExtraLayout;
 
         public SentOrdersOrdersListPageViewModel(DialogService dialogService, ILaceupAppService appService)
         {
@@ -187,6 +194,8 @@ namespace LaceupMigration.ViewModels
                 SubTotalText = $"Subtotal: {(discount + _order.CalculateItemCost()).ToCustomString()}";
                 DiscountText = $"Discount: {(discount + _order.CalculateDiscount()).ToCustomString()}";
                 TaxText = $"Tax: {_order.CalculateTax().ToCustomString()}";
+                ExtraTotal2Text = string.Empty;
+                ExtraTotal3Text = string.Empty;
             }
 
             OrderDetails.Clear();

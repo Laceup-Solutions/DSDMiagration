@@ -148,6 +148,8 @@ namespace LaceupMigration
 		builder.Services.AddTransient<ViewModels.FullProductListPageViewModel>();
 		builder.Services.AddTransient<AddItemPage>();
 		builder.Services.AddTransient<ViewModels.AddItemPageViewModel>();
+		builder.Services.AddTransient<RandomWeightAddItemPage>();
+		builder.Services.AddTransient<ViewModels.RandomWeightAddItemPageViewModel>();
 		builder.Services.AddTransient<AdvancedCatalogPage>();
 		builder.Services.AddTransient<ViewModels.AdvancedCatalogPageViewModel>();
 		builder.Services.AddTransient<ProductCatalogPage>();

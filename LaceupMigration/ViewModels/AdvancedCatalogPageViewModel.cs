@@ -3271,7 +3271,7 @@ namespace LaceupMigration.ViewModels
             // Delete Weight Lines
             if (Config.DeleteWeightItemsMenu)
             {
-                options.Add(new MenuOption("Delete Weight Lines", async () =>
+                options.Add(new MenuOption("Delete Lines With No Weight", async () =>
                 {
                     await Delete0WeightItemsAsync();
                 }));
@@ -3952,7 +3952,9 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _productDisplayName = string.Empty;
 
         [ObservableProperty] private string _onHandText = string.Empty;
-
+        
+        [ObservableProperty] private Color _ohColor = Color.FromArgb("#1f1f1f");
+        
         [ObservableProperty] private string _truckInventoryText = string.Empty;
 
         [ObservableProperty] private string _listPriceText = string.Empty;
@@ -4076,6 +4078,10 @@ namespace LaceupMigration.ViewModels
                     var truckDisplay = truckBase / uomConversion;
                     var ohStr = FormatOhDisplay(ohDisplay);
                     var truckStr = FormatOhDisplay(truckDisplay);
+                    
+                    var color = ohDisplay > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
+                    OhColor = color;
+
                     OnHandText = string.IsNullOrEmpty(uomName)
                         ? $"OH: {ohStr}"
                         : $"OH: {ohStr} {uomName}";
@@ -4093,6 +4099,9 @@ namespace LaceupMigration.ViewModels
                         ? $"OH: {ohStr}"
                         : $"OH: {ohStr} {uomName}";
                     TruckInventoryText = string.Empty;
+                    
+                    var color = ohDisplay > 0 ? Color.FromArgb("#3FBC4D") : Color.FromArgb("#BA2D0B");
+                    OhColor = color;
                 }
 
                 // Org. Qty: only for delivery orders when product had original ordered qty > 0 (matches Xamarin PreviouslyOrderedTemplateActivity)

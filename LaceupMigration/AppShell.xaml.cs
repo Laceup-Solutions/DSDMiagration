@@ -54,6 +54,7 @@ namespace LaceupMigration
             Routing.RegisterRoute("fullcategory", typeof(FullCategoryPage));
             Routing.RegisterRoute("fullproductlist", typeof(FullProductListPage));
             Routing.RegisterRoute("additem", typeof(AddItemPage));
+            Routing.RegisterRoute("randomweightadditem", typeof(RandomWeightAddItemPage));
             Routing.RegisterRoute("advancedcatalog", typeof(AdvancedCatalogPage));
             Routing.RegisterRoute("productcatalog", typeof(ProductCatalogPage));
             Routing.RegisterRoute("productimage", typeof(ProductImagePage));

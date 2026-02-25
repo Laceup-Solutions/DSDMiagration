@@ -252,33 +252,56 @@ namespace LaceupMigration.ViewModels
             TotalText = $"Total: {total.ToCustomString()}";
 
             // Load line items - only credit items (matching Xamarin's SyncLinesWithOrder)
-            // Xamarin shows only items with OrderDetail != null if order has details
             LineItems.Clear();
             var creditDetails = details.Where(x => x.IsCredit).ToList();
-            
-            // If order has details, only show items that have OrderDetail (matching Xamarin logic)
             if (details.Count > 0)
-            {
                 creditDetails = creditDetails.Where(x => x != null).ToList();
-            }
-            
-            var sortedDetails = SortDetails.SortedDetails(creditDetails).ToList();
 
-            foreach (var detail in sortedDetails)
+            if (Config.NewAddItemRandomWeight)
             {
-                var lineItem = CreateLineItemViewModel(detail);
-                LineItems.Add(lineItem);
+                // SoldByWeight: group by (ProductId, Damaged); one row per group with Qty = line count
+                var soldByWeightCredit = creditDetails.Where(d => d.Product != null && d.Product.SoldByWeight).ToList();
+                var grouped = soldByWeightCredit
+                    .GroupBy(d => (d.Product.ProductId, d.Damaged))
+                    .ToList();
+                foreach (var grp in grouped)
+                {
+                    var first = grp.First();
+                    var groupQtySum = grp.Sum(d => d.Qty);
+                    var groupTotal = grp.Sum(d => d.Qty * d.Price);
+                    LineItems.Add(CreateLineItemViewModel(first, groupQtySum, groupTotal, isSoldByWeightGroup: true));
+                }
+                // Non-SoldByWeight: one row per detail
+                var nonSoldByWeightCredit = creditDetails.Where(d => d.Product == null || !d.Product.SoldByWeight).ToList();
+                var sortedNonSbw = SortDetails.SortedDetails(nonSoldByWeightCredit).ToList();
+                foreach (var detail in sortedNonSbw)
+                    LineItems.Add(CreateLineItemViewModel(detail));
+            }
+            else
+            {
+                var sortedDetails = SortDetails.SortedDetails(creditDetails).ToList();
+                foreach (var detail in sortedDetails)
+                    LineItems.Add(CreateLineItemViewModel(detail));
             }
         }
 
-        private OrderCreditLineItemViewModel CreateLineItemViewModel(OrderDetail detail)
+        private string GetReturnToRouteQueryForAddItem()
+        {
+            if (_order == null) return "";
+            var returnToRoute = $"ordercredit?orderId={_order.OrderId}";
+            return "&returnToRoute=" + Uri.EscapeDataString(returnToRoute);
+        }
+
+        private OrderCreditLineItemViewModel CreateLineItemViewModel(OrderDetail detail, double groupQtySum = 0, double groupTotal = 0, bool isSoldByWeightGroup = false)
         {
             if (_order == null || detail == null || detail.Product == null)
                 return new OrderCreditLineItemViewModel();
 
-            var qtyText = detail.Product.SoldByWeight && detail.Weight > 0
+            var useGroupQty = isSoldByWeightGroup && groupQtySum > 0;
+            var qtyDisplay = useGroupQty ? groupQtySum : (double)detail.Qty;
+            var qtyText = detail.Product.SoldByWeight && !useGroupQty && detail.Weight > 0
                 ? $"Qty: {detail.Qty} (Weight: {detail.Weight})"
-                : $"Qty: {detail.Qty}";
+                : $"Qty: {qtyDisplay}";
 
             // On hand: use GetInventory(AsPresale, false) so when !AsPresale we show truck inventory (same as PreviouslyOrderedTemplatePage)
             var onHand = detail.Product.GetInventory(_order.AsPresale, false);
@@ -292,8 +315,8 @@ namespace LaceupMigration.ViewModels
             // Current price
             var priceText = detail.Price > 0 ? $"Price:({detail.Price.ToCustomString()})" : string.Empty;
 
-            // Total for this line
-            var total = detail.Qty * detail.Price;
+            // Total for this line (grouped: use passed groupTotal; else single detail)
+            var total = useGroupQty ? groupTotal : (detail.Qty * detail.Price);
             var totalText = $"Total:({total.ToCustomString()})";
 
             // Type (Return/Dump)
@@ -311,8 +334,8 @@ namespace LaceupMigration.ViewModels
             // UoM (e.g. Case, Each, Dozen) so multiple lines for same product are distinguishable
             var uomText = detail.UnitOfMeasure != null ? detail.UnitOfMeasure.Name : string.Empty;
 
-            // Quantity button text
-            var qtyButtonText = detail.Qty > 0 ? detail.Qty.ToString("F0") : "+";
+            // Quantity button text (grouped: sum of Qty; else single detail Qty)
+            var qtyButtonText = qtyDisplay > 0 ? qtyDisplay.ToString("F2").TrimEnd('0').TrimEnd('.') : "+";
 
             return new OrderCreditLineItemViewModel
             {
@@ -328,23 +351,42 @@ namespace LaceupMigration.ViewModels
                 TypeText = typeText,
                 TypeColor = typeColor,
                 ShowType = showType,
-                QuantityButtonText = qtyButtonText
+                QuantityButtonText = qtyButtonText,
+                IsSoldByWeightGroup = isSoldByWeightGroup
             };
         }
 
         [RelayCommand]
         private async Task LineItemSelectedAsync(OrderCreditLineItemViewModel? item)
         {
-            if (item == null || item.Detail == null) return;
+            if (item == null || item.Detail == null || _order == null) return;
 
-            // Navigate to AddItemPage to edit this credit item (use orderDetail param so correct detail is loaded)
-            await Shell.Current.GoToAsync($"additem?orderId={_order?.OrderId}&orderDetail={item.Detail.OrderDetailId}&asCreditItem=1");
+            // When NewAddItemRandomWeight and SoldByWeight group, open random weight page
+            if (Config.NewAddItemRandomWeight && item.IsSoldByWeightGroup && item.Detail.Product?.SoldByWeight == true)
+            {
+                var type = item.Detail.Damaged ? 1 : 0;
+                var returnToQuery = GetReturnToRouteQueryForAddItem();
+                await Shell.Current.GoToAsync($"randomweightadditem?orderId={_order.OrderId}&productId={item.Detail.Product.ProductId}&asCreditItem=1&type={type}&orderDetail={item.Detail.OrderDetailId}{returnToQuery}");
+                return;
+            }
+
+            var returnToQueryAdd = GetReturnToRouteQueryForAddItem();
+            await Shell.Current.GoToAsync($"additem?orderId={_order.OrderId}&orderDetail={item.Detail.OrderDetailId}&asCreditItem=1{returnToQueryAdd}");
         }
 
         [RelayCommand]
         private async Task EditLineItemAsync(OrderCreditLineItemViewModel? item)
         {
             if (item == null || item.Detail == null || _order == null || !CanEdit) return;
+
+            // When NewAddItemRandomWeight and SoldByWeight group, open random weight page instead of dialog
+            if (Config.NewAddItemRandomWeight && item.IsSoldByWeightGroup && item.Detail.Product?.SoldByWeight == true)
+            {
+                var type = item.Detail.Damaged ? 1 : 0;
+                var returnToQuery = GetReturnToRouteQueryForAddItem();
+                await Shell.Current.GoToAsync($"randomweightadditem?orderId={_order.OrderId}&productId={item.Detail.Product.ProductId}&asCreditItem=1&type={type}&orderDetail={item.Detail.OrderDetailId}{returnToQuery}");
+                return;
+            }
 
             // Use same RestOfTheAddDialog as PreviouslyOrderedTemplatePage for editing qty (lot, weight, price, comments, etc.)
             var existingDetail = item.Detail;
@@ -441,21 +483,17 @@ namespace LaceupMigration.ViewModels
                 var category = Category.Categories.FirstOrDefault();
                 if (category != null)
                 {
-                    var route = $"fullcategory?orderId={_order.OrderId}&categoryId={category.CategoryId}&asCreditItem=1&comingFrom=Credit";
+                    var route = $"fullcategory?orderId={_order.OrderId}&categoryId={category.CategoryId}&asCreditItem=1&comingFrom=Credit{GetReturnToRouteQueryForAddItem()}";
                     if ((Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order)) && _isReturn)
-                    {
                         route += "&asReturnItem=1";
-                    }
                     await Shell.Current.GoToAsync(route);
                 }
             }
             else
             {
-                var route = $"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}&asCreditItem=1&comingFrom=Credit";
+                var route = $"fullcategory?orderId={_order.OrderId}&clientId={_order.Client.ClientId}&asCreditItem=1&comingFrom=Credit{GetReturnToRouteQueryForAddItem()}";
                 if ((Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order)) && _isReturn)
-                {
                     route += "&asReturnItem=1";
-                }
                 await Shell.Current.GoToAsync(route);
             }
         }
@@ -515,20 +553,16 @@ namespace LaceupMigration.ViewModels
                 }
 
                 // Navigate to FullCategoryPage with search
-                var route = $"fullcategory?orderId={_order.OrderId}&productSearch={searchTerm}&comingFromSearch=yes&asCreditItem=1&comingFrom=Credit";
+                var route = $"fullcategory?orderId={_order.OrderId}&productSearch={searchTerm}&comingFromSearch=yes&asCreditItem=1&comingFrom=Credit{GetReturnToRouteQueryForAddItem()}";
                 if ((Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order)) && _isReturn)
-                {
                     route += "&asReturnItem=1";
-                }
                 await Shell.Current.GoToAsync(route);
             }
             else
             {
-                var route = $"fullcategory?orderId={_order.OrderId}&productSearch={searchTerm}&comingFromSearch=yes&asCreditItem=1&comingFrom=Credit";
+                var route = $"fullcategory?orderId={_order.OrderId}&productSearch={searchTerm}&comingFromSearch=yes&asCreditItem=1&comingFrom=Credit{GetReturnToRouteQueryForAddItem()}";
                 if ((Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order)) && _isReturn)
-                {
                     route += "&asReturnItem=1";
-                }
                 await Shell.Current.GoToAsync(route);
             }
         }
@@ -1244,5 +1278,8 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private string _quantityButtonText = "+";
 
         public OrderDetail Detail { get; set; } = null!;
+
+        /// <summary>True when Config.NewAddItemRandomWeight and this row is a grouped SoldByWeight product (one row per product+damaged). Qty shows line count; tap navigates to randomweightadditem.</summary>
+        public bool IsSoldByWeightGroup { get; set; }
     }
 }

@@ -18,7 +18,7 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="8">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
         <!-- Search Bar -->
         <SearchBar Grid.Row="0"
                    Text="{Binding SearchQuery}"
@@ -26,9 +26,13 @@
                    BackgroundColor="White"
                    Margin="8,8,8,0" />
 
-        <!-- Filters -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="8,0">
-            <Button Grid.Column="0"
+        <!-- Buttons Layout -->
+        <HorizontalStackLayout Grid.Row="1"
+                               Spacing="5"
+                               Margin="8,0"
+                               IsVisible="{Binding ShowButtonsLayout}">
+            
+            <Button
                     Style="{StaticResource PrimaryButton}"
                     WidthRequest="100"
                     Text="{Binding SelectedTransactionType}"
@@ -36,20 +40,7 @@
                     HorizontalOptions="Start"
                     VerticalOptions="Center"
                     Padding="12,8" />
-            <VerticalStackLayout Grid.Column="1" Spacing="4">
-                <Label Text="Date:" FontSize="12" TextColor="Gray" />
-                <DatePicker Date="{Binding SelectedDate}"
-                           Format="MM/dd/yyyy"
-                           MinimumDate="{Binding MinDate}"
-                           MaximumDate="{Binding MaxDate}" />
-            </VerticalStackLayout>
-        </Grid>
-
-        <!-- Buttons Layout -->
-        <HorizontalStackLayout Grid.Row="2"
-                               Spacing="8"
-                               Margin="8,0"
-                               IsVisible="{Binding ShowButtonsLayout}">
+            
             <Button Text="Print"
                     Style="{StaticResource PrimaryButton}"
                     Command="{Binding PrintCommand}"
@@ -65,25 +56,30 @@
         </HorizontalStackLayout>
 
         <!-- Select All Layout -->
-        <Frame Grid.Row="3"
-               Padding="12"
-               Margin="8,0"
-               HasShadow="False"
-               BackgroundColor="{StaticResource Gray100}">
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+   
+            <Grid Grid.Row="2" ColumnDefinitions="Auto,*, auto" ColumnSpacing="5">
                 <CheckBox Grid.Column="0"
                           IsChecked="{Binding IsSelectAllChecked}"
                           CheckedChanged="CheckBox_CheckedChanged"
                           VerticalOptions="Center" />
                 <Label Grid.Column="1"
                        Text="{Binding SelectAllText}"
+                       HorizontalTextAlignment="Start"
+                       HorizontalOptions="Start"
                        VerticalOptions="Center"
-                       FontSize="14" />
+                       FontSize="16" />
+                
+                <HorizontalStackLayout Grid.Column="2" Spacing="4" VerticalOptions="Center" Margin="0,0,10,0">
+                    <Label Text="Date:" FontSize="12" TextColor="Gray" VerticalOptions="Center" />
+                    <DatePicker Date="{Binding SelectedDate}"
+                                Format="MM/dd/yyyy"
+                                MinimumDate="{Binding MinDate}"
+                                MaximumDate="{Binding MaxDate}" />
+                </HorizontalStackLayout>
             </Grid>
-        </Frame>
 
         <!-- Loading Indicator -->
-        <ActivityIndicator Grid.Row="5"
+        <ActivityIndicator Grid.Row="3"
                            IsRunning="{Binding IsLoading}"
                            IsVisible="{Binding IsLoading}"
                            Color="{StaticResource Primary}"
@@ -91,16 +87,14 @@
                            HorizontalOptions="Center" />
 
         <!-- Sent Orders List -->
-        <CollectionView Grid.Row="5"
+        <CollectionView Grid.Row="3"
                         ItemsSource="{Binding SentOrders}"
                         Margin="8,0,8,8">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:SentOrderItemViewModel">
-                    <Frame Padding="12"
+                    <Border Padding="12"
                            Margin="0,4"
-                           BackgroundColor="{StaticResource Gray100}"
-                           HasShadow="False"
-                           CornerRadius="8">
+                           StrokeShape="RoundRectangle 8">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
                             <CheckBox Grid.Column="0"
                                       IsChecked="{Binding IsChecked}"
@@ -138,7 +132,7 @@
                                     HeightRequest="40"
                                     Padding="0" />
                         </Grid>
-                    </Frame>
+                    </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>

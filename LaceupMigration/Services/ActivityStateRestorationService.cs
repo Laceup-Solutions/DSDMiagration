@@ -62,6 +62,7 @@ namespace LaceupMigration.Services
             { "ProductDetailsActivity", "productdetails" },
             { "ProductImageActivity", "productimage" },
             { "AddItemActivity", "additem" },
+            { "IracarAddItemActivity", "randomweightadditem" },
             
             // Inventory pages
             { "InventoryMainActivity", "inventory" },
