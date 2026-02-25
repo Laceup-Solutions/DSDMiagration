@@ -533,6 +533,7 @@
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="BorderWidth" Value="0"/>
+        <Setter Property="LineBreakMode" Value="WordWrap"></Setter>
         <Setter Property="CornerRadius" Value="5"/>
         <Setter Property="FontAttributes" Value="Bold"></Setter>
         <Setter Property="Padding" Value="10,7"/>
@@ -603,6 +604,7 @@
         <Setter Property="Padding" Value="10,7"/>
         <Setter Property="MinimumHeightRequest" Value="44"/>
         <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="LineBreakMode" Value="WordWrap"></Setter>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
