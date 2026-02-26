@@ -1111,6 +1111,95 @@ namespace LaceupMigration.ViewModels
             _order.Save();
         }
 
+        /// <summary>Handles hardware-scanner or camera barcode data. Called from page OnDecodeData or from ScanAsync.</summary>
+        public async Task HandleScannedBarcodeAsync(string scanResult)
+        {
+            if (string.IsNullOrEmpty(scanResult)) return;
+
+            // When from Load Order Template: if scan matches one product and !ShowProductsPerUoM, add qty 1 and go back to load order page
+            if (_comingFrom == "LoadOrderTemplate" && _order != null)
+            {
+                var products = FindScannedProductsForLoadOrder(scanResult.Trim());
+                if (products != null && products.Count == 1 && products[0] != null && !Config.ShowProductsPerUoM)
+                {
+                    AddSingleProductToLoadOrder(products[0]);
+                    await Shell.Current.GoToAsync("..");
+                    return;
+                }
+                if (products != null && products.Count == 0)
+                {
+                    var p = Product.Products.Where(x => (!string.IsNullOrEmpty(x.Upc) && x.Upc == scanResult.Trim()) || (!string.IsNullOrEmpty(x.Sku) && x.Sku == scanResult.Trim()) || (!string.IsNullOrEmpty(x.Code) && x.Code == scanResult.Trim())).ToList();
+                    if (p.Count > 0 && _order.Client != null && (_order.Client.CategoryId != 0 || _order.CompanyId > 0))
+                        await _dialogService.ShowAlertAsync("Product is not authorized for this client.", "Warning", "OK");
+                    else
+                        await _dialogService.ShowAlertAsync($"{scanResult.Trim()} is not assigned to any product.", "Alert", "OK");
+                    return;
+                }
+            }
+
+            // Find product by barcode (check UPC, SKU, Code)
+            var product = Product.Products.FirstOrDefault(p =>
+                (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
+
+            if (product != null)
+            {
+                // Set the scanned product ID to filter to only this product
+                _scannedProductId = product.ProductId;
+
+                // Switch to product search mode and show products view
+                SearchByProduct = true;
+                SearchByCategory = false;
+                ShowProducts = true;
+                ShowCategories = false;
+
+                // Clear search query since we're filtering by product ID
+                SearchQuery = string.Empty;
+
+                // Reload products - will filter to show only the scanned product
+                LoadProducts();
+
+                // If we have an order, navigate to add item page
+                if (_order != null)
+                {
+                    var route = $"additem?orderId={_order.OrderId}&productId={product.ProductId}";
+                    if (_asCreditItem)
+                        route += "&asCreditItem=1";
+                    if (_asReturnItem)
+                        route += "&asReturnItem=1";
+                    if (_consignmentCounting)
+                        route += "&consignmentCounting=1";
+                    route += GetReturnToRouteQuery();
+                    await Shell.Current.GoToAsync(route);
+                }
+                // If no order, the product will be shown filtered in the list
+            }
+            else
+            {
+                // Product not found - clear scanned product ID and use search query
+                _scannedProductId = null;
+
+                // Ensure we're showing products view (not categories)
+                ShowProducts = true;
+                ShowCategories = false;
+                SearchQuery = scanResult;
+                SearchByProduct = true;
+                SearchByCategory = false;
+                LoadProducts();
+                await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
+            }
+        }
+
+        /// <summary>Handles hardware-scanner QR data. Called from page OnDecodeDataQR.</summary>
+        public async Task HandleScannedQRCodeAsync(BarcodeDecoder decoder)
+        {
+            if (decoder == null) return;
+            var data = !string.IsNullOrEmpty(decoder.UPC) ? decoder.UPC : decoder.Data;
+            if (string.IsNullOrEmpty(data)) return;
+            await HandleScannedBarcodeAsync(data);
+        }
+
         [RelayCommand]
         private async Task ScanAsync()
         {
@@ -1119,80 +1208,7 @@ namespace LaceupMigration.ViewModels
                 var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
                 if (string.IsNullOrEmpty(scanResult))
                     return;
-
-                // When from Load Order Template: if scan matches one product and !ShowProductsPerUoM, add qty 1 and go back to load order page
-                if (_comingFrom == "LoadOrderTemplate" && _order != null)
-                {
-                    var products = FindScannedProductsForLoadOrder(scanResult.Trim());
-                    if (products != null && products.Count == 1 && products[0] != null && !Config.ShowProductsPerUoM)
-                    {
-                        AddSingleProductToLoadOrder(products[0]);
-                        await Shell.Current.GoToAsync("..");
-                        return;
-                    }
-                    if (products != null && products.Count == 0)
-                    {
-                        var p = Product.Products.Where(x => (!string.IsNullOrEmpty(x.Upc) && x.Upc == scanResult.Trim()) || (!string.IsNullOrEmpty(x.Sku) && x.Sku == scanResult.Trim()) || (!string.IsNullOrEmpty(x.Code) && x.Code == scanResult.Trim())).ToList();
-                        if (p.Count > 0 && _order.Client != null && (_order.Client.CategoryId != 0 || _order.CompanyId > 0))
-                            await _dialogService.ShowAlertAsync("Product is not authorized for this client.", "Warning", "OK");
-                        else
-                            await _dialogService.ShowAlertAsync($"{scanResult.Trim()} is not assigned to any product.", "Alert", "OK");
-                        return;
-                    }
-                }
-
-                // Find product by barcode (check UPC, SKU, Code)
-                var product = Product.Products.FirstOrDefault(p =>
-                    (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
-
-                if (product != null)
-                {
-                    // Set the scanned product ID to filter to only this product
-                    _scannedProductId = product.ProductId;
-                    
-                    // Switch to product search mode and show products view
-                    SearchByProduct = true;
-                    SearchByCategory = false;
-                    ShowProducts = true;
-                    ShowCategories = false;
-                    
-                    // Clear search query since we're filtering by product ID
-                    SearchQuery = string.Empty;
-                    
-                    // Reload products - will filter to show only the scanned product
-                    LoadProducts();
-                    
-                    // If we have an order, navigate to add item page
-                    if (_order != null)
-                    {
-                        var route = $"additem?orderId={_order.OrderId}&productId={product.ProductId}";
-                        if (_asCreditItem)
-                            route += "&asCreditItem=1";
-                        if (_asReturnItem)
-                            route += "&asReturnItem=1";
-                        if (_consignmentCounting)
-                            route += "&consignmentCounting=1";
-                        route += GetReturnToRouteQuery();
-                        await Shell.Current.GoToAsync(route);
-                    }
-                    // If no order, the product will be shown filtered in the list
-                }
-                else
-                {
-                    // Product not found - clear scanned product ID and use search query
-                    _scannedProductId = null;
-                    
-                    // Ensure we're showing products view (not categories)
-                    ShowProducts = true;
-                    ShowCategories = false;
-                    SearchQuery = scanResult;
-                    SearchByProduct = true;
-                    SearchByCategory = false;
-                    LoadProducts();
-                    await _dialogService.ShowAlertAsync("Product not found for scanned barcode.", "Info");
-                }
+                await HandleScannedBarcodeAsync(scanResult);
             }
             catch (Exception ex)
             {

@@ -44,6 +44,8 @@ namespace LaceupMigration.ViewModels
 		[ObservableProperty] private bool _showSummaryButton;
 		[ObservableProperty] private bool _showDeleteButton = true;
 		[ObservableProperty] private string _deleteButtonText = "Delete";
+		[ObservableProperty] private string _searchByText = "Client Name";
+		[ObservableProperty] private string _searchPlaceholder = "Search by client name";
 
 		public PaymentsPageViewModel(DialogService dialogService, ILaceupAppService appService)
 		{
@@ -102,9 +104,17 @@ namespace LaceupMigration.ViewModels
 			var choice = await _dialogService.ShowActionSheetAsync("Search By", "", "Cancel", options);
 
 			if (choice == "Client Name")
+			{
 				_searchBy = SearchBy.ClientName;
+				SearchByText = "Client Name";
+				SearchPlaceholder = "Search by client name";
+			}
 			else if (choice == "Invoice Number")
+			{
 				_searchBy = SearchBy.InvoiceNum;
+				SearchByText = "Invoice Number";
+				SearchPlaceholder = "Search by invoice number";
+			}
 
 			if (!string.IsNullOrEmpty(_searchCriteria))
 				Filter();

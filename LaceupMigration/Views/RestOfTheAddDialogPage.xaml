@@ -20,8 +20,8 @@
                 MaximumWidthRequest="400"
                 Padding="0"
                 Margin="20,12">
-            <Grid RowDefinitions="*,Auto,Auto" ColumnDefinitions="*">
-                <ScrollView Grid.Row="0" VerticalOptions="FillAndExpand">
+            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*">
+                <ScrollView Grid.Row="0" MaximumHeightRequest="230">
                     <VerticalStackLayout Padding="12,6" Spacing="0">
                         <!-- Title -->
                         <Label Text="{Binding ProductName}"

@@ -56,6 +56,8 @@ namespace LaceupMigration.ViewModels
 		[ObservableProperty] private string _totalText = string.Empty;
 		[ObservableProperty] private bool _showTotal;
 		[ObservableProperty] private bool _showDexButton;
+		[ObservableProperty] private string _searchByText = "Client Name";
+		[ObservableProperty] private string _searchPlaceholder = "Search by client name";
 
 		public OrdersPageViewModel(DialogService dialogService, ILaceupAppService appService)
 		{
@@ -172,9 +174,17 @@ namespace LaceupMigration.ViewModels
 		var choice = await _dialogService.ShowActionSheetAsync("Search By", "", "Cancel", options);
 
 		if (choice == "Client Name")
+		{
 			_searchBy = SearchBy.ClientName;
+			SearchByText = "Client Name";
+			SearchPlaceholder = "Search by client name";
+		}
 		else if (choice == "Invoice Number")
+		{
 			_searchBy = SearchBy.InvoiceNum;
+			SearchByText = "Invoice Number";
+			SearchPlaceholder = "Search by invoice number";
+		}
 
 		if (!string.IsNullOrEmpty(_searchCriteria))
 			Filter();

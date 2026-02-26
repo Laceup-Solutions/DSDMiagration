@@ -92,6 +92,21 @@ namespace LaceupMigration.ViewModels
 
         [ObservableProperty] private bool _showDiscount = true;
 
+        /// <summary>Client's AllowOneDoc. When true, totals show Order/Credit. When false, use two-row layout (Lines|Subtotal|Tax, Qty Sold|Discount|Total).</summary>
+        [ObservableProperty] private bool _allowOneDoc = true;
+
+        /// <summary>Show Order: and Credit: in totals (one-doc layout).</summary>
+        public bool ShowOneDocTotalsLayout => _order != null && AllowOneDoc;
+
+        /// <summary>Two-row layout: Row1 Lines|Subtotal|Tax, Row2 Qty Sold|Discount|Total (no Order/Credit).</summary>
+        public bool UseSimpleTotalsLayout => _order != null && !AllowOneDoc;
+
+        partial void OnAllowOneDocChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowOneDocTotalsLayout));
+            OnPropertyChanged(nameof(UseSimpleTotalsLayout));
+        }
+
         [ObservableProperty] private bool _isOrderSummaryExpanded = true;
 
         public bool ShowTotalInHeader => ShowTotals && !IsOrderSummaryExpanded;
@@ -108,10 +123,11 @@ namespace LaceupMigration.ViewModels
         }
 
         [ObservableProperty] private bool _canEdit = true;
-
-        [ObservableProperty] private bool _showSendButton = true;
-
+        
         [ObservableProperty] private bool _showAddCredit = false;
+
+        /// <summary>Button text: "Send" when AsPresale, "Done" when not. Button is always visible; AsPresale = Send action, !AsPresale = Back/Done action.</summary>
+        public string SendOrDoneButtonText => _order?.AsPresale == true ? "Send" : "Done";
 
         [ObservableProperty] private string _actionButtonsColumnDefinitions = "*,*,*,*";
 
@@ -254,8 +270,6 @@ namespace LaceupMigration.ViewModels
                 CanEdit = !_order.Locked() && !_order.Dexed && !_order.Finished && !_order.Voided;
             }
             
-            ShowSendButton = _order.AsPresale;
-
             LoadOrderData();
             await Task.CompletedTask;
         }
@@ -356,10 +370,16 @@ namespace LaceupMigration.ViewModels
             ShowDiscount = _order.Client?.UseDiscount == true || _order.Client?.UseDiscountPerLine == true ||
                            _order.IsDelivery;
 
+            AllowOneDoc = _order.Client?.AllowOneDoc ?? true;
+            OnPropertyChanged(nameof(ShowOneDocTotalsLayout));
+            OnPropertyChanged(nameof(UseSimpleTotalsLayout));
+
             // Show Add Credit button only if Order type and AllowOneDoc is true
             // Hide if Credit or Return type (since everything added is already credit)
             ShowAddCredit = !_order.IsQuote && _order.OrderType == OrderType.Order &&
                             _order.Client?.AllowOneDoc == true;
+
+            OnPropertyChanged(nameof(SendOrDoneButtonText));
 
             // Load previously ordered products
             LoadPreviouslyOrderedProducts();
@@ -512,7 +532,9 @@ namespace LaceupMigration.ViewModels
 
                     var productViewModel =
                         CreatePreviouslyOrderedProductViewModel(orderedItem.Last.Product, orderedItem);
-                    productViewModel.IsEnabled = CanEdit;
+                    // When CanGoBelow0 is false and !AsPresale, disable Add button for history lines with no inventory (match Xamarin PreviouslyOrderedTemplateActivity)
+                    var noInventoryDisable = !Config.CanGoBelow0 && !_order.AsPresale && orderedItem.Last.Product.GetInventory(_order.AsPresale, false) <= 0;
+                    productViewModel.IsEnabled = CanEdit && !noInventoryDisable;
                     itemsToAdd.Add(productViewModel);
                 }
             }
@@ -764,10 +786,12 @@ namespace LaceupMigration.ViewModels
         internal Product? GetProductById(int productId)
         {
             if (_order == null) return null;
-            var fromDetail = _order.Details.FirstOrDefault(d => d.Product?.ProductId == productId)?.Product;
-            if (fromDetail != null) return fromDetail;
-            var list = Product.GetProductListForOrder(_order, false, 0);
-            return list.FirstOrDefault(p => p.ProductId == productId);
+            
+            return Product.Find(productId, true);
+            // var fromDetail = _order.Details.FirstOrDefault(d => d.Product?.ProductId == productId)?.Product;
+            // if (fromDetail != null) return fromDetail;
+            // var list = Product.GetProductListForOrder(_order, false, 0);
+            // return list.FirstOrDefault(p => p.ProductId == productId);
         }
 
         /// <summary>Resolve OrderDetail by id. Used so list ViewModels only hold OrderDetailId.</summary>
@@ -920,7 +944,17 @@ namespace LaceupMigration.ViewModels
             LoadPreviouslyOrderedProducts();
         }
 
+        /// <summary>Single button: when AsPresale runs Send, when !AsPresale runs GoBack (Done). Button text is SendOrDoneButtonText.</summary>
         [RelayCommand]
+        private async Task SendOrDoneAsync()
+        {
+            if (_order == null) return;
+            if (_order.AsPresale)
+                await SendOrderAsync();
+            else
+                await GoBackAsync();
+        }
+
         private async Task SendOrderAsync()
         {
             if (_order == null) return;

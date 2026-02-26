@@ -377,7 +377,6 @@
                                             Text="{Binding FreeItemButtonText}"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.AddFreeItemCommand}"
                                             CommandParameter="{Binding}"
-                                            IsEnabled="{Binding CanAddFreeItem}"
                                             IsVisible="{Binding ShowFreeItemButtonInCell}"
                                             FontSize="12"
                                             FontAttributes="Bold"

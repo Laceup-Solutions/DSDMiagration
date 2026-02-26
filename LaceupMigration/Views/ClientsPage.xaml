@@ -115,16 +115,15 @@
           RowSpacing="0">
 
         <Border Grid.Row="1"
-                Margin="5"
                 x:Name="SearchBorder"
                 StrokeThickness="1"
                 BackgroundColor="white"
                 IsVisible="{Binding IsSearchVisible}"
-                Padding="12,2"
+                Padding="12,4"
+                Margin="12,0,12,8"
                 StrokeShape="RoundRectangle 12">
             <SearchBar Placeholder="Search customers"
                        FontSize="14"
-                       HeightRequest="36"
                        BackgroundColor="White"
                        Text="{Binding SearchQuery}"
                        SearchButtonPressed="SearchBar_SearchButtonPressed" />
