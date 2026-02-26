@@ -2614,6 +2614,8 @@ namespace LaceupMigration.ViewModels
 
             try
             {
+                _skipNextOnAppearingRefresh = true;
+                    
                 await _dialogService.ShowLoadingAsync("Sending order...");
 
                 var batch = Batch.List.FirstOrDefault(x => x.Id == _order.BatchId);
