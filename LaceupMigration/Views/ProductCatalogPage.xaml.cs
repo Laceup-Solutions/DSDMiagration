@@ -8,11 +8,13 @@ namespace LaceupMigration.Views
     public partial class ProductCatalogPage : IQueryAttributable
     {
         private readonly ProductCatalogPageViewModel _viewModel;
+        private readonly IScannerService _scannerService;
 
-        public ProductCatalogPage(ProductCatalogPageViewModel viewModel)
+        public ProductCatalogPage(ProductCatalogPageViewModel viewModel, IScannerService scannerService)
         {
             InitializeComponent();
             _viewModel = viewModel;
+            _scannerService = scannerService;
             BindingContext = _viewModel;
             // Prevent LaceupContentPage from adding its own menu - we use the ViewModel's menu instead
             UseCustomMenu = true;
@@ -39,6 +41,16 @@ namespace LaceupMigration.Views
                     Order = ToolbarItemOrder.Primary,
                     Priority = 0,
                     Command = new Command(() => _ = _viewModel.AddItemsCommand.ExecuteAsync(null))
+                });
+            }
+            else if (_viewModel.ShowDoneButton)
+            {
+                ToolbarItems.Add(new ToolbarItem
+                {
+                    Text = "Done",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = 0,
+                    Command = new Command(() => _ = _viewModel.DoneCommand.ExecuteAsync(null))
                 });
             }
             else
@@ -80,6 +92,53 @@ namespace LaceupMigration.Views
         {
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
+
+            if (_scannerService != null && Config.ScannerToUse != 4)
+            {
+                _scannerService.InitScanner();
+                _scannerService.StartScanning();
+                _scannerService.OnDataScanned += OnDecodeData;
+                _scannerService.OnDataScannedQR += OnDecodeDataQR;
+            }
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            if (_scannerService != null && Config.ScannerToUse != 4)
+            {
+                _scannerService.OnDataScanned -= OnDecodeData;
+                _scannerService.OnDataScannedQR -= OnDecodeDataQR;
+                _scannerService.StopScanning();
+            }
+        }
+
+        public async void OnDecodeData(object sender, string data)
+        {
+            if (string.IsNullOrEmpty(data) || _viewModel == null) return;
+            _scannerService?.SetScannerWorking();
+            try
+            {
+                await _viewModel.HandleScannedBarcodeAsync(data);
+            }
+            finally
+            {
+                _scannerService?.ReleaseScanner();
+            }
+        }
+
+        public async void OnDecodeDataQR(object sender, BarcodeDecoder decoder)
+        {
+            if (decoder == null || _viewModel == null) return;
+            _scannerService?.SetScannerWorking();
+            try
+            {
+                await _viewModel.HandleScannedQRCodeAsync(decoder);
+            }
+            finally
+            {
+                _scannerService?.ReleaseScanner();
+            }
         }
 
         protected override string? GetRouteName() => "productcatalog";

@@ -76,6 +76,19 @@ namespace LaceupMigration.ViewModels
         /// <summary>When order is Credit, hide "Order" line in totals so Credit and Subtotal move up one row.</summary>
         public bool ShowOrderAmountInTotals => ShowTotals && (_order == null || _order.OrderType != OrderType.Credit);
 
+        /// <summary>True when order is Credit type. When true, totals show only two rows: Lines|Subtotal|Tax and Qty Sold|Discount|Total.</summary>
+        public bool IsCreditOrder => _order?.OrderType == OrderType.Credit;
+
+        /// <summary>When not Credit order, show full totals with Order/Credit columns.</summary>
+        public bool ShowFullTotalsLayout => ShowTotals && !IsCreditOrder;
+
+        /// <summary>Page title: Credit order type shows "Credit Order" (AsPresale) or "Credit Invoice"; Order type shows "Add Credit Items".</summary>
+        public string PageTitle => _order == null
+            ? "Add Credit Items"
+            : _order.OrderType == OrderType.Credit
+                ? (_order.AsPresale ? "Credit Order" : "Credit Invoice")
+                : "Add Credit Items";
+
         [ObservableProperty] private bool _termsVisible = true;
 
         [ObservableProperty] private bool _canEdit = true;
@@ -242,7 +255,7 @@ namespace LaceupMigration.ViewModels
 
             if (_asPresale && _order.OrderType == OrderType.Credit)
             {
-                DoneButtonText = "Send Order";
+                DoneButtonText = "Send";
             }
             else
             {
@@ -282,6 +295,10 @@ namespace LaceupMigration.ViewModels
 
             var total = _order.OrderTotalCost();
             TotalText = $"Total: {total.ToCustomString()}";
+
+            OnPropertyChanged(nameof(IsCreditOrder));
+            OnPropertyChanged(nameof(ShowFullTotalsLayout));
+            OnPropertyChanged(nameof(PageTitle));
 
             // Load line items - only credit items (matching Xamarin's SyncLinesWithOrder)
             LineItems.Clear();
@@ -488,12 +505,11 @@ namespace LaceupMigration.ViewModels
             {
                 var route = $"productcatalog?orderId={_order.OrderId}&categoryId={lastDetail.Product.CategoryId}";
                 route += "&asCreditItem=1";
-                
+                route += "&comingFrom=Credit";
                 if ((Config.UseReturnInvoice || (Config.UseReturnOrder && _order.OrderType != OrderType.Order)) && !lastDetail.Damaged)
                 {
                     route += "&asReturnItem=1";
                 }
-                
                 route += "&viaFullCategory=0";
                 await Shell.Current.GoToAsync(route);
             }
@@ -647,9 +663,9 @@ namespace LaceupMigration.ViewModels
                 // Show action options dialog (matching Xamarin PreviouslyOrderedTemplateActivity logic)
                 var options = new[]
                 {
-                    "Send Order",
-                    "Save Order To Send Later",
-                    "Stay In The Order"
+                    "Send Credit",
+                    "Save Credit To Send Later",
+                    "Stay In The Credit"
                 };
 
                 var choice = await _dialogService.ShowActionSheetAsync("Action Options", "", "Cancel", options);
@@ -659,11 +675,11 @@ namespace LaceupMigration.ViewModels
 
                 switch (choice)
                 {
-                    case "Send Order":
+                    case "Send Credit":
                         // Call SendOrderAsync which handles validation and sending
                         await SendOrderAsync();
                         break;
-                    case "Save Order To Send Later":
+                    case "Save Credit To Send Later":
                         // Continue after alert - finalize order and navigate
                         var canNavigate = await FinalizeOrderAsync();
                         if (canNavigate)
@@ -674,7 +690,7 @@ namespace LaceupMigration.ViewModels
                             await Shell.Current.GoToAsync("..");
                         }
                         break;
-                    case "Stay In The Order":
+                    case "Stay In The Credit":
                         // Do nothing, stay in the order
                         return;
                 }
@@ -1074,7 +1090,7 @@ namespace LaceupMigration.ViewModels
                     }));
                 }
 
-                options.Add(new MenuOption("Send Order", async () =>
+                options.Add(new MenuOption("Send Credit", async () =>
                 {
                     await SendOrderAsync();
                 }));

@@ -25,11 +25,19 @@
                         Command="{Binding FinalizeCommand}"
                         IsEnabled="{Binding CanFinalize}"
                         Grid.Column="1" />
-                <Button Text="Void"
-                        Style="{StaticResource PrimaryButton}"
-                        Command="{Binding VoidCommand}"
-                        IsEnabled="{Binding CanVoid}"
-                        Grid.Column="2" />
+                <!-- Reship and Void share same slot: show Reship when CanReship (batch has route order not finished), else Void (Xamarin BatchActivity UpdateStates) -->
+                <Grid Grid.Column="2">
+                    <Button Text="Reship"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding ReshipCommand}"
+                            IsEnabled="{Binding CanReship}"
+                            IsVisible="{Binding ShowReshipButton}" />
+                    <Button Text="Void"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding VoidCommand}"
+                            IsEnabled="{Binding CanVoid}"
+                            IsVisible="{Binding ShowVoidButton}" />
+                </Grid>
                 <Button Text="Clock Out"
                         Style="{StaticResource PrimaryButton}"
                         Command="{Binding ClockOutCommand}"

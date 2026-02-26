@@ -116,8 +116,8 @@
     </base:MainTabContentPage.Resources>
 
     <Grid RowDefinitions="Auto,Auto,Auto,*"
-          Padding="16"
-          RowSpacing="12">
+          Padding="12"
+          RowSpacing="8">
         <Border Grid.Row="0"
                 StrokeThickness="1"
                 BackgroundColor="White"
@@ -126,19 +126,20 @@
                 StrokeShape="RoundRectangle 12">
             <Grid ColumnDefinitions="*,Auto">
                 <SearchBar Grid.Column="0"
-                           Placeholder="Search payments"
+                           Placeholder="{Binding SearchPlaceholder}"
                            FontSize="14"
                            BackgroundColor="White"
                            Text="{Binding SearchQuery}"
                            SearchButtonPressed="SearchBar_SearchButtonPressed" />
-                <ImageButton Grid.Column="1"
-                             Source="{mi:MaterialOutlined Icon=MoreVert, IconColor=Black, IconSize=20}"
-                             WidthRequest="20"
-                             HeightRequest="20"
-                             Padding="0"
-                             Margin="0"
-                             BackgroundColor="Transparent"
-                             Command="{Binding SearchMenuCommand}" />
+                <Button Grid.Column="1"
+                        Text="{mi:MaterialOutlined Icon=Menu, IconColor=Black}"
+                        FontSize="18"
+                        BackgroundColor="Transparent"
+                        Command="{Binding SearchMenuCommand}"
+                        WidthRequest="40"
+                        HeightRequest="40"
+                        Padding="0"
+                        VerticalOptions="Center" />
             </Grid>
         </Border>
 

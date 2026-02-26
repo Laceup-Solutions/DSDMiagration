@@ -903,18 +903,14 @@ public class DialogService : IDialogService
 
     public async Task<int> ShowSelectionAsync(string title, string[] options)
     {
-        var page = GetCurrentPage();
-        if (page != null && options != null)
-        {
-            // Always show the popup, even if options is empty (will show just "Cancel")
-            var result = await page.DisplayActionSheet(title, "Cancel", null, options);
-            if (string.IsNullOrEmpty(result) || result == "Cancel")
-                return -1;
-
-            var index = Array.IndexOf(options, result);
-            return index;
-        }
-        return -1;
+        if (options == null)
+            return -1;
+        // Route through ShowActionSheetAsync so custom Android/iOS action sheet is used (e.g. "Select Driver")
+        var result = await ShowActionSheetAsync(title, "", "Cancel", options);
+        if (string.IsNullOrEmpty(result) || result == "Cancel")
+            return -1;
+        var index = Array.IndexOf(options, result);
+        return index;
     }
 
     // public async Task<DateTime?> ShowDatePickerAsync(string title, DateTime? initialDate = null, DateTime? minimumDate = null, DateTime? maximumDate = null)

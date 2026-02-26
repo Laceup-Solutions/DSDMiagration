@@ -67,6 +67,10 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _isFromSelfService;
 
+        /// <summary>When true, show Done toolbar button and navigate back to source (Credit/OrderCreditPage or PreviouslyOrdered/PresentedOrderedTemplatePage) on Done.</summary>
+        [ObservableProperty]
+        private bool _showDoneButton;
+
         /// <summary>When from self service, order ID to navigate back to checkout.</summary>
         public int? SelfServiceOrderId => _order?.OrderId;
 
@@ -208,6 +212,7 @@ namespace LaceupMigration.ViewModels
             _initialized = true;
             IsFromLoadOrder = _comingFrom == "LoadOrderTemplate";
             IsFromSelfService = _comingFrom == "SelfService";
+            ShowDoneButton = _comingFrom == "Credit" || _comingFrom == "PreviouslyOrdered";
             PrepareProductList();
             Filter();
         }
@@ -582,6 +587,22 @@ namespace LaceupMigration.ViewModels
             {
                 await AddButton_ClickAsync(catalogItemDefault);
             }
+        }
+
+        /// <summary>Handles hardware-scanner barcode data. Called from page OnDecodeData.</summary>
+        public async Task HandleScannedBarcodeAsync(string data)
+        {
+            if (string.IsNullOrEmpty(data)) return;
+            await ScannerDoTheThingAsync(data);
+        }
+
+        /// <summary>Handles hardware-scanner QR data. Called from page OnDecodeDataQR.</summary>
+        public async Task HandleScannedQRCodeAsync(BarcodeDecoder decoder)
+        {
+            if (decoder == null) return;
+            var data = !string.IsNullOrEmpty(decoder.UPC) ? decoder.UPC : decoder.Data;
+            if (string.IsNullOrEmpty(data)) return;
+            await ScannerDoTheThingAsync(data);
         }
 
         /// <summary>Add one product with qty 1 to load order. Same logic as NewLoadOrderTemplatePageViewModel.ScanSingleProductAsync.</summary>
@@ -1381,6 +1402,18 @@ namespace LaceupMigration.ViewModels
 
             // Navigate to load order template when adding to load order from elsewhere (use registered route)
             await Shell.Current.GoToAsync($"newloadordertemplate?orderId={_order.OrderId}");
+        }
+
+        /// <summary>Done button: navigate back to source (PreviouslyOrderedTemplatePage or OrderCreditPage). Pops ProductCatalog and, if via FullCategory, FullCategory too.</summary>
+        [RelayCommand]
+        private async Task DoneAsync()
+        {
+            Helpers.NavigationHelper.RemoveNavigationState("productcatalog");
+            if (_viaFullCategory)
+                Helpers.NavigationHelper.RemoveNavigationState("fullcategory");
+            int pops = _viaFullCategory ? 2 : 1;
+            for (int i = 0; i < pops; i++)
+                await Shell.Current.GoToAsync("..");
         }
 
         [RelayCommand]

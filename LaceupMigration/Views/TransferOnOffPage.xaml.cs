@@ -9,11 +9,13 @@ namespace LaceupMigration.Views
     public partial class TransferOnOffPage : LaceupContentPage, IQueryAttributable
     {
         private readonly TransferOnOffPageViewModel _viewModel;
+        private readonly IScannerService _scannerService;
 
-        public TransferOnOffPage(TransferOnOffPageViewModel viewModel)
+        public TransferOnOffPage(TransferOnOffPageViewModel viewModel, IScannerService scannerService)
         {
             InitializeComponent();
             _viewModel = viewModel;
+            _scannerService = scannerService;
             BindingContext = _viewModel;
 
             _viewModel.PropertyChanged += (s, e) =>
@@ -84,6 +86,14 @@ namespace LaceupMigration.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+
+            if (_scannerService != null && Config.ScannerToUse != 4)
+            {
+                _scannerService.InitScanner();
+                _scannerService.StartScanning();
+                _scannerService.OnDataScanned += OnDecodeData;
+                _scannerService.OnDataScannedQR += OnDecodeDataQR;
+            }
             
             // [ACTIVITY STATE]: Save temp file periodically to preserve progress
             // Match Xamarin TransferActivity: saves state on OnResume/OnPause
@@ -100,6 +110,13 @@ namespace LaceupMigration.Views
         protected override void OnDisappearing()
         {
             base.OnDisappearing();
+
+            if (_scannerService != null && Config.ScannerToUse != 4)
+            {
+                _scannerService.OnDataScanned -= OnDecodeData;
+                _scannerService.OnDataScannedQR -= OnDecodeDataQR;
+                _scannerService.StopScanning();
+            }
             
             // [ACTIVITY STATE]: Save temp file when leaving page to preserve progress
             // Match Xamarin TransferActivity: saves state on OnPause
@@ -135,6 +152,34 @@ namespace LaceupMigration.Views
         private async void SortButton_Tapped(object sender, EventArgs e)
         {
             await _viewModel.ShowSortDialogAsync();
+        }
+
+        public async void OnDecodeData(object sender, string data)
+        {
+            if (string.IsNullOrEmpty(data) || _viewModel == null) return;
+            _scannerService?.SetScannerWorking();
+            try
+            {
+                await _viewModel.HandleScannedBarcodeAsync(data);
+            }
+            finally
+            {
+                _scannerService?.ReleaseScanner();
+            }
+        }
+
+        public async void OnDecodeDataQR(object sender, BarcodeDecoder decoder)
+        {
+            if (decoder == null || _viewModel == null) return;
+            _scannerService?.SetScannerWorking();
+            try
+            {
+                await _viewModel.HandleScannedQRCodeAsync(decoder);
+            }
+            finally
+            {
+                _scannerService?.ReleaseScanner();
+            }
         }
     }
 }

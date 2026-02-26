@@ -207,6 +207,37 @@ namespace LaceupMigration.ViewModels
 
         #region ScanWithCamera
 
+        /// <summary>Handles hardware-scanner barcode data. Called from page OnDecodeData.</summary>
+        public async Task HandleScannedBarcodeAsync(string scanResult)
+        {
+            if (ReadOnly || string.IsNullOrEmpty(scanResult)) return;
+
+            var product = Product.Products.FirstOrDefault(p =>
+                (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
+
+            if (product == null)
+            {
+                await _dialogService.ShowAlertAsync(
+                    $"{scanResult} is not assigned to any product.",
+                    "Alert",
+                    "OK");
+                return;
+            }
+
+            await ScannerDoTheThingAsync(product);
+        }
+
+        /// <summary>Handles hardware-scanner QR data. Called from page OnDecodeDataQR.</summary>
+        public async Task HandleScannedQRCodeAsync(BarcodeDecoder decoder)
+        {
+            if (decoder == null) return;
+            var data = !string.IsNullOrEmpty(decoder.UPC) ? decoder.UPC : decoder.Data;
+            if (string.IsNullOrEmpty(data)) return;
+            await HandleScannedBarcodeAsync(data);
+        }
+
         [RelayCommand]
         private async Task ScanAsync()
         {
@@ -218,26 +249,7 @@ namespace LaceupMigration.ViewModels
                 var scanResult = await _cameraBarcodeScanner.ScanBarcodeAsync();
                 if (string.IsNullOrEmpty(scanResult))
                     return;
-
-                // Find product by barcode (check UPC, SKU, Code) - match Xamarin FindScannedProduct logic
-                var product = Product.Products.FirstOrDefault(p =>
-                    (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(scanResult, StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(scanResult, StringComparison.OrdinalIgnoreCase)));
-
-                // Match Xamarin FindScannedProduct logic: if product is null, show "xxxxxx is not assigned to any product"
-                // This matches Xamarin ActivityExtensionMethods.FindScannedProduct line 256:
-                // DisplayDialog(sender, sender.GetString(Resource.String.alert), (exists ? inventoryMessage : data + " " + sender.GetString(Resource.String.notAssigned)), ...)
-                if (product == null)
-                {
-                    await _dialogService.ShowAlertAsync(
-                        $"{scanResult} is not assigned to any product.",
-                        "Alert",
-                        "OK");
-                    return;
-                }
-
-                await ScannerDoTheThingAsync(product);
+                await HandleScannedBarcodeAsync(scanResult);
             }
             catch (Exception ex)
             {

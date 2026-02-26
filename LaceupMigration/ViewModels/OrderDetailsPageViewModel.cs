@@ -911,7 +911,7 @@ namespace LaceupMigration.ViewModels
                     }
                 }));
 
-                options.Add(new MenuOption("Send Order", async () =>
+                options.Add(new MenuOption("Send Credit", async () =>
                 {
                     await SendOrderAsync();
                 }));

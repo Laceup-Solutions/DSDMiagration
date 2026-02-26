@@ -10,11 +10,13 @@ namespace LaceupMigration.Views
     public partial class FullCategoryPage : IQueryAttributable
     {
         private readonly FullCategoryPageViewModel _viewModel;
+        private readonly IScannerService _scannerService;
 
-        public FullCategoryPage(FullCategoryPageViewModel viewModel)
+        public FullCategoryPage(FullCategoryPageViewModel viewModel, IScannerService scannerService)
         {
             InitializeComponent();
             _viewModel = viewModel;
+            _scannerService = scannerService;
             BindingContext = _viewModel;
 
             // Prevent LaceupContentPage from adding its own menu - we use the ViewModel's menu instead
@@ -207,6 +209,53 @@ namespace LaceupMigration.Views
             base.OnAppearing();
             await _viewModel.OnAppearingAsync();
             UpdateToolbar();
+
+            if (_scannerService != null && Config.ScannerToUse != 4)
+            {
+                _scannerService.InitScanner();
+                _scannerService.StartScanning();
+                _scannerService.OnDataScanned += OnDecodeData;
+                _scannerService.OnDataScannedQR += OnDecodeDataQR;
+            }
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            if (_scannerService != null && Config.ScannerToUse != 4)
+            {
+                _scannerService.OnDataScanned -= OnDecodeData;
+                _scannerService.OnDataScannedQR -= OnDecodeDataQR;
+                _scannerService.StopScanning();
+            }
+        }
+
+        public async void OnDecodeData(object sender, string data)
+        {
+            if (string.IsNullOrEmpty(data) || _viewModel == null) return;
+            _scannerService?.SetScannerWorking();
+            try
+            {
+                await _viewModel.HandleScannedBarcodeAsync(data);
+            }
+            finally
+            {
+                _scannerService?.ReleaseScanner();
+            }
+        }
+
+        public async void OnDecodeDataQR(object sender, BarcodeDecoder decoder)
+        {
+            if (decoder == null || _viewModel == null) return;
+            _scannerService?.SetScannerWorking();
+            try
+            {
+                await _viewModel.HandleScannedQRCodeAsync(decoder);
+            }
+            finally
+            {
+                _scannerService?.ReleaseScanner();
+            }
         }
 
         protected override string? GetRouteName() => "fullcategory";

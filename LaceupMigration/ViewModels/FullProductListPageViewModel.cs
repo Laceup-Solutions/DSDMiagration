@@ -175,6 +175,35 @@ namespace LaceupMigration.ViewModels
         {
             await Shell.Current.GoToAsync("..");
         }
+
+        /// <summary>Handles hardware-scanner barcode data. Called from page OnDecodeData.</summary>
+        public async Task HandleScannedBarcodeAsync(string data)
+        {
+            if (string.IsNullOrEmpty(data)) return;
+            var product = Product.Products.FirstOrDefault(p =>
+                (!string.IsNullOrEmpty(p.Upc) && p.Upc.Equals(data, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(p.Sku) && p.Sku.Equals(data, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(data, StringComparison.OrdinalIgnoreCase)));
+            if (product == null)
+            {
+                await _dialogService.ShowAlertAsync($"{data} is not assigned to any product.", "Alert", "OK");
+                return;
+            }
+            var row = Products.FirstOrDefault(x => x.ProductId == product.ProductId);
+            if (row != null)
+                await SelectProduct(row);
+            else
+                await _dialogService.ShowAlertAsync("Product not in current list.", "Info", "OK");
+        }
+
+        /// <summary>Handles hardware-scanner QR data. Called from page OnDecodeDataQR.</summary>
+        public async Task HandleScannedQRCodeAsync(BarcodeDecoder decoder)
+        {
+            if (decoder == null) return;
+            var data = !string.IsNullOrEmpty(decoder.UPC) ? decoder.UPC : decoder.Data;
+            if (string.IsNullOrEmpty(data)) return;
+            await HandleScannedBarcodeAsync(data);
+        }
     }
 
     public partial class FullProductListRowViewModel : ObservableObject

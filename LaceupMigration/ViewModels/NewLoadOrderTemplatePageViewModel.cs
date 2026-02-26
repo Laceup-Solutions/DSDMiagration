@@ -38,6 +38,12 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty] private ObservableCollection<LaceupMigration.SiteEx> _sites = new();
         [ObservableProperty] private LaceupMigration.SiteEx _selectedSite;
         [ObservableProperty] private bool _isNotReadOnly = true;
+
+        /// <summary>When true, show only lines with OrderDetail != null (Added). When false, show All. Default true on first load.</summary>
+        [ObservableProperty] private bool _showAddedOnly = true;
+
+        /// <summary>True when the load has at least one line with OrderDetail != null; used to show Added/All menu option.</summary>
+        private bool _hasAnyAddedLine;
         
         // Property to determine if using advanced catalog template
         public bool IsAdvancedCatalogTemplate => Config.UseLaceupAdvancedCatalog;
@@ -70,6 +76,8 @@ namespace LaceupMigration.ViewModels
             // If !AsPresale && (Finished || Voided), disable all modifications (only Print allowed)
             _readOnly = !_loadOrder.AsPresale && (_loadOrder.Finished || _loadOrder.Voided);
             IsNotReadOnly = !_readOnly;
+
+            ShowAddedOnly = _loadOrder.Details.Any();
 
             // Load sites if available
             LoadSites();
@@ -151,6 +159,11 @@ namespace LaceupMigration.ViewModels
 
                 // Sort and create view models
                 var sortedDetails = SortDetails.SortedDetails(details).ToList();
+
+                sortedDetails = sortedDetails.OrderBy(x => (x.OrderDetail != null ? 0 : 1)).ThenBy(x => x.Product.Name).ToList();
+                
+                if (ShowAddedOnly)
+                    sortedDetails = sortedDetails.Where(x => x.OrderDetail != null).ToList();
                 
                 OrderDetails.Clear();
                 foreach (var detail in sortedDetails)
@@ -921,6 +934,8 @@ namespace LaceupMigration.ViewModels
                 options.Add("What To View");
             }
 
+            options.Add(ShowAddedOnly ? "Added/All (Added)" : "Added/All (All)");
+
             options.Add("Print");
 
             if (Config.UseTermsInLoadOrder)
@@ -955,6 +970,10 @@ namespace LaceupMigration.ViewModels
                     break;
                 case "What To View":
                     await WhatToViewAsync();
+                    break;
+                case "Added/All (Added)":
+                case "Added/All (All)":
+                    ToggleAddedAllFilter();
                     break;
                 case "Print":
                     await PrintAsync();
@@ -1006,6 +1025,12 @@ namespace LaceupMigration.ViewModels
         {
             // TODO: Implement What To View filter
             await _dialogService.ShowAlertAsync("What To View functionality is not yet fully implemented.", "Info");
+        }
+
+        private void ToggleAddedAllFilter()
+        {
+            ShowAddedOnly = !ShowAddedOnly;
+            RefreshOrderDetails();
         }
 
         private async Task PrintAsync()

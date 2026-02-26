@@ -147,12 +147,9 @@
                                             Text="{Binding QuantityText}"
                                             Clicked="QtyButton_Clicked"
                                             IsEnabled="{Binding IsEnabled}"
-                                            BackgroundColor="{StaticResource Gray300}"
+                                            Style="{StaticResource PrimaryButton}"
                                             VerticalOptions="Center"
-                                            TextColor="Black"
                                             FontSize="14"
-                                            WidthRequest="60"
-                                            HeightRequest="40"
                                             Padding="0" />
                                     
                                     <!-- Inventory Info (OH and Truck Inventory) -->
@@ -219,6 +216,7 @@
                                                 CommandParameter="{Binding .}"
                                                 IsEnabled="{Binding IsEnabled}"
                                                 WidthRequest="40"
+                                                Style="{StaticResource PrimaryButton}"
                                                 HeightRequest="40"
                                                 FontSize="18"
                                                 VerticalOptions="Center"
@@ -237,6 +235,7 @@
                                             </Label.GestureRecognizers>
                                         </Label>
                                         <Button Text="+"
+                                                Style="{StaticResource PrimaryButton}"
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewLoadOrderTemplatePageViewModel}}, Path=IncrementQuantityCommand}"
                                                 CommandParameter="{Binding .}"
                                                 IsEnabled="{Binding IsEnabled}"

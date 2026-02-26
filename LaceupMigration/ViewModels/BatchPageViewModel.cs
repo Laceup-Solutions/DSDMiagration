@@ -104,8 +104,13 @@ namespace LaceupMigration.ViewModels
         [ObservableProperty]
         private bool _showDexButton = true;
 
+        /// <summary>When true, show Reship button in the Reship/Void slot (Xamarin BatchActivity: reship visible, void gone).</summary>
         [ObservableProperty]
         private bool _showReshipButton;
+
+        /// <summary>When true, show Void button in the Reship/Void slot (Xamarin BatchActivity: void visible, reship gone). When Config.HideVoidButton, always false.</summary>
+        [ObservableProperty]
+        private bool _showVoidButton = true;
 
         [ObservableProperty]
         private bool _showPrintLabelButton;
@@ -499,6 +504,11 @@ namespace LaceupMigration.ViewModels
             var activeOrders = Orders.Where(x => !x.Order.Voided && !x.Order.Finished).Select(x => x.Order).ToList();
             var allOrders = Orders.Select(x => x.Order).ToList();
 
+            // Reship vs Void in same slot (Xamarin BatchActivity UpdateStates lines 2283-2296): show Reship when CanReship(), else show Void; HideVoidButton hides Void.
+            bool canShowReship = Config.UseReship && RouteEx.Routes.Any(x => x.Order != null && x.Order.BatchId == _batch.Id && !x.Order.Finished);
+            ShowReshipButton = canShowReship;
+            ShowVoidButton = !canShowReship && !Config.HideVoidButton;
+
             // Xamarin UpdateStates logic (lines 2278-2354)
             // Check if batch is clocked out
             bool isClockedOut = _batch.ClockedOut != DateTime.MinValue && (DateTime.Now.Year - _batch.ClockedOut.Year < 2);
@@ -565,7 +575,6 @@ namespace LaceupMigration.ViewModels
             _advancedOptionsService = advancedOptionsService;
             ShowTotals = !Config.HidePriceInTransaction;
             ShowDexButton = Config.DexAvailable;
-            ShowReshipButton = Config.UseReship;
 
             Orders.CollectionChanged += (s, e) =>
             {

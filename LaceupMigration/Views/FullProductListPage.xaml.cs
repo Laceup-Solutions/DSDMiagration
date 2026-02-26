@@ -8,11 +8,13 @@ namespace LaceupMigration.Views
     public partial class FullProductListPage : LaceupContentPage, IQueryAttributable
     {
         private readonly FullProductListPageViewModel _viewModel;
+        private readonly IScannerService _scannerService;
 
-        public FullProductListPage(FullProductListPageViewModel viewModel)
+        public FullProductListPage(FullProductListPageViewModel viewModel, IScannerService scannerService)
         {
             InitializeComponent();
             _viewModel = viewModel;
+            _scannerService = scannerService;
             BindingContext = _viewModel;
         }
 
@@ -54,6 +56,57 @@ namespace LaceupMigration.Views
                 if (q.Length > 0) route += "?" + string.Join("&", q);
             }
             Helpers.NavigationHelper.SaveNavigationState(route);
+        }
+
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+            if (_scannerService != null && Config.ScannerToUse != 4)
+            {
+                _scannerService.InitScanner();
+                _scannerService.StartScanning();
+                _scannerService.OnDataScanned += OnDecodeData;
+                _scannerService.OnDataScannedQR += OnDecodeDataQR;
+            }
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            if (_scannerService != null && Config.ScannerToUse != 4)
+            {
+                _scannerService.OnDataScanned -= OnDecodeData;
+                _scannerService.OnDataScannedQR -= OnDecodeDataQR;
+                _scannerService.StopScanning();
+            }
+        }
+
+        public async void OnDecodeData(object sender, string data)
+        {
+            if (string.IsNullOrEmpty(data) || _viewModel == null) return;
+            _scannerService?.SetScannerWorking();
+            try
+            {
+                await _viewModel.HandleScannedBarcodeAsync(data);
+            }
+            finally
+            {
+                _scannerService?.ReleaseScanner();
+            }
+        }
+
+        public async void OnDecodeDataQR(object sender, BarcodeDecoder decoder)
+        {
+            if (decoder == null || _viewModel == null) return;
+            _scannerService?.SetScannerWorking();
+            try
+            {
+                await _viewModel.HandleScannedQRCodeAsync(decoder);
+            }
+            finally
+            {
+                _scannerService?.ReleaseScanner();
+            }
         }
 
         protected override string? GetRouteName() => "fullproductlist";
