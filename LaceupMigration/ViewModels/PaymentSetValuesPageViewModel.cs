@@ -786,7 +786,7 @@ namespace LaceupMigration.ViewModels
             if (component == null) return;
             
             // Prompt for new bank name (matches Xamarin AddBank_Click dialog)
-            var bankName = await _dialogService.ShowPromptAsync("Enter new bank:", "Enter bank name:", "OK", "Cancel", "Ex: Wells Fargo, Chase, Bank of America", -1, string.Empty);
+            var bankName = await _dialogService.ShowPromptAsync("Alert", "Enter bank name:", "OK", "Cancel", "Ex: Wells Fargo, Chase, Bank of America", -1, string.Empty);
             if (!string.IsNullOrWhiteSpace(bankName))
             {
                 // Check if bank already exists (matches Xamarin AddBank_Click validation)
